@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  player
+  staff
+  admin
+}
+
+enum TicketType {
+  bug_report
+  permission_request
+  suggestion
+  report
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+  closed
+  rejected
+}
+
+enum Priority {
+  low
+  medium
+  high
+  critical
+}
+
+enum CommentSource {
+  web
+  minecraft
+}
+
+enum ExecutionStatus {
+  pending
+  executed
+  failed
+}
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String    @map("password_hash")
+  username       String    @unique
+  minecraftUuid  String?   @unique @map("minecraft_uuid")
+  minecraftName  String?   @map("minecraft_name")
+  role           Role      @default(player)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  tickets         Ticket[]  @relation("author")
+  assignedTickets Ticket[]  @relation("assignee")
+  comments        Comment[]
+  attachments     Attachment[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+model Server {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  apiKey      String   @unique @map("api_key")
+  address     String?
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tickets     Ticket[]
+  linkCodes   LinkCode[]
+
+  @@map("servers")
+}
+
+model Ticket {
+  id         String       @id @default(cuid())
+  title      String
+  body       String
+  type       TicketType
+  status     TicketStatus @default(open)
+  priority   Priority     @default(medium)
+  authorId   String       @map("author_id")
+  serverId   String?      @map("server_id")
+  assigneeId String?      @map("assignee_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+  closedAt   DateTime?    @map("closed_at")
+
+  author     User         @relation("author", fields: [authorId], references: [id])
+  server     Server?      @relation(fields: [serverId], references: [id])
+  assignee   User?        @relation("assignee", fields: [assigneeId], references: [id])
+  labels     TicketLabel[]
+  comments   Comment[]
+  attachments Attachment[]
+  auditLogs  AuditLog[]
+  permissionRequest PermissionRequest?
+
+  @@map("tickets")
+}
+
+model Label {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  color       String
+  description String?
+  tickets     TicketLabel[]
+
+  @@map("labels")
+}
+
+model TicketLabel {
+  ticketId String @map("ticket_id")
+  labelId  String @map("label_id")
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  label    Label  @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, labelId])
+  @@map("ticket_labels")
+}
+
+model Comment {
+  id        String        @id @default(cuid())
+  ticketId  String        @map("ticket_id")
+  authorId  String        @map("author_id")
+  body      String
+  source    CommentSource @default(web)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  ticket      Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author      User         @relation(fields: [authorId], references: [id])
+  attachments Attachment[]
+
+  @@map("comments")
+}
+
+model Attachment {
+  id         String   @id @default(cuid())
+  ticketId   String?  @map("ticket_id")
+  commentId  String?  @map("comment_id")
+  filename   String
+  path       String
+  mimeType   String   @map("mime_type")
+  size       Int
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  ticket     Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
+
+  @@map("attachments")
+}
+
+model PermissionRequest {
+  id              String          @id @default(cuid())
+  ticketId        String          @unique @map("ticket_id")
+  permissionNode  String?         @map("permission_node")
+  groupName       String?         @map("group_name")
+  executionStatus ExecutionStatus @default(pending) @map("execution_status")
+  executedAt      DateTime?       @map("executed_at")
+  errorMessage    String?         @map("error_message")
+
+  ticket          Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("permission_requests")
+}
+
+model LinkCode {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  minecraftUuid String   @map("minecraft_uuid")
+  minecraftName String   @map("minecraft_name")
+  serverId      String   @map("server_id")
+  expiresAt     DateTime @map("expires_at")
+  used          Boolean  @default(false)
+
+  server        Server   @relation(fields: [serverId], references: [id])
+
+  @@map("link_codes")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  ticketId  String   @map("ticket_id")
+  actorId   String   @map("actor_id")
+  action    String
+  oldValue  String?  @map("old_value")
+  newValue  String?  @map("new_value")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actor     User     @relation(fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}
