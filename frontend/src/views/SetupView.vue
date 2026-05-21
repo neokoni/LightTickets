@@ -70,7 +70,7 @@ async function submit() {
     step.value = 6
     setTimeout(() => router.replace({ name: 'tickets' }), 1800)
   } catch (e: any) {
-    error.value = e?.response?.data?.error || 'Setup failed, please try again.'
+    error.value = e?.message || '设置失败，请重试。'  
   } finally {
     loading.value = false
   }
@@ -81,8 +81,8 @@ async function submit() {
   <div class="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4">
     <div class="w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-8">
       <div class="mb-8">
-        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">Site Setup</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Step {{ step }} / {{ totalSteps }}</p>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">站点初始化</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">步骤 {{ step }} / {{ totalSteps }}</p>
         <div class="mt-4 h-1 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
           <div
             class="h-full bg-accent-500 transition-all duration-300"
@@ -97,16 +97,16 @@ async function submit() {
           <div class="w-16 h-16 rounded-2xl bg-accent-500 mx-auto mb-4 flex items-center justify-center text-white text-2xl font-bold">
             LT
           </div>
-          <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Welcome to LightTicket</h2>
+          <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">欢迎使用 LightTicket</h2>
           <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed max-w-xs mx-auto">
-            This wizard will guide you through initializing your site: database configuration, admin account creation, and basic site settings.
+            本向导将帮助你完成站点初始化：数据库配置、管理员账户创建和基本站点设置。
           </p>
         </div>
       </div>
 
       <!-- Step 2: Database -->
       <div v-else-if="step === 2" class="space-y-5">
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Database Configuration</h2>
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">数据库配置</h2>
         <div class="flex gap-3">
           <button
             class="flex-1 py-3 rounded-xl border text-sm font-medium transition-colors"
@@ -128,39 +128,39 @@ async function submit() {
           </button>
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Database URL</label>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">数据库地址</label>
           <BaseInput
             v-model="payload.db.databaseUrl"
             :placeholder="payload.db.provider === 'sqlite' ? 'file:./dev.db' : 'mysql://user:pass@localhost:3306/db'"
           />
-          <p class="text-xs text-slate-400 mt-1">For SQLite, a relative path like <code>file:./dev.db</code> is recommended.</p>
+          <p class="text-xs text-slate-400 mt-1">SQLite 建议使用相对路径，如 <code>file:./dev.db</code>。</p>
         </div>
       </div>
 
       <!-- Step 3: Admin Account -->
       <div v-else-if="step === 3" class="space-y-5">
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Admin Account</h2>
-        <BaseInput v-model="payload.admin.username" label="Username" placeholder="admin" />
-        <BaseInput v-model="payload.admin.email" label="Email" placeholder="admin@example.com" type="email" />
-        <BaseInput v-model="payload.admin.password" label="Password" placeholder="At least 6 characters" type="password" />
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">管理员账户</h2>
+        <BaseInput v-model="payload.admin.username" label="用户名" placeholder="admin" />
+        <BaseInput v-model="payload.admin.email" label="邮箱" placeholder="admin@example.com" type="email" />
+        <BaseInput v-model="payload.admin.password" label="密码" placeholder="至少 6 位字符" type="password" />
       </div>
 
       <!-- Step 4: Site Settings -->
       <div v-else-if="step === 4" class="space-y-5">
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Site Settings</h2>
-        <BaseInput v-model="payload.site!.siteName" label="Site Name" placeholder="LightTicket" />
-        <BaseInput v-model="payload.site!.siteUrl" label="Site URL (optional)" placeholder="https://ticket.example.com" />
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">站点设置</h2>
+        <BaseInput v-model="payload.site!.siteName" label="站点名称" placeholder="LightTicket" />
+        <BaseInput v-model="payload.site!.siteUrl" label="站点地址（可选）" placeholder="https://ticket.example.com" />
         <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Accent Color</label>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">强调色</label>
           <BaseColorPicker v-model="payload.site!.accentColor" />
         </div>
       </div>
 
       <!-- Step 5: Optional Default Server -->
       <div v-else-if="step === 5" class="space-y-5">
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Minecraft Server (optional)</h2>
-        <BaseInput v-model="payload.mc!.defaultServerName" label="Default Server Name" placeholder="MyServer" />
-        <p class="text-xs text-slate-400">Leave empty to skip. You can add servers later from Admin &gt; Servers.</p>
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Minecraft 服务器（可选）</h2>
+        <BaseInput v-model="payload.mc!.defaultServerName" label="默认服务器名称" placeholder="MyServer" />
+        <p class="text-xs text-slate-400">留空可跳过。之后可在「管理 › 服务器」中添加服务器。</p>
       </div>
 
       <!-- Step 6: Complete -->
@@ -168,8 +168,8 @@ async function submit() {
         <div class="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 mx-auto flex items-center justify-center text-2xl">
           ✓
         </div>
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Setup Complete!</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">Redirecting to tickets...</p>
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">设置完成！</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">正在跳转至工单列表...</p>
       </div>
 
       <div v-if="error" class="mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
@@ -178,17 +178,17 @@ async function submit() {
 
       <div class="mt-8 flex justify-between">
         <BaseButton v-if="step > 1 && step < 6" variant="secondary" @click="back">
-          Back
+          上一步
         </BaseButton>
         <div v-else />
         <BaseButton v-if="step < 5" :disabled="!canNext" @click="next">
-          Next
+          下一步
         </BaseButton>
         <BaseButton v-else-if="step === 5" :loading="loading" @click="submit">
-          Finish Setup
+          完成设置
         </BaseButton>
         <BaseButton v-else-if="step === 1" @click="next">
-          Get Started
+          开始使用
         </BaseButton>
       </div>
     </div>

@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getSetupStatus } from '@/api/setup'
 
-let setupChecked: boolean | null = null
+export let setupChecked: boolean | null = sessionStorage.getItem('setup-checked') === 'true' ? true : null
 
 const router = createRouter({
   history: createWebHistory(),
@@ -76,6 +76,7 @@ router.beforeEach(async (to) => {
     try {
       const status = await getSetupStatus()
       setupChecked = status.isSetup
+      sessionStorage.setItem('setup-checked', 'true')
       if (!setupChecked) {
         return { name: 'setup' }
       }

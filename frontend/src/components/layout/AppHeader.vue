@@ -71,7 +71,7 @@ const ui = useUiStore()
       <div v-if="ui.mobileMenuOpen" class="fixed inset-0 z-40 sm:hidden bg-slate-950/40 dark:bg-slate-950/60 flex flex-col p-4 pt-[4.5rem]" @click.self="ui.mobileMenuOpen = false">
         <div class="mx-auto w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-sm overflow-hidden pointer-events-auto">
           <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-            <span class="text-sm font-medium text-slate-900 dark:text-white">Menu</span>
+            <span class="text-sm font-medium text-slate-900 dark:text-white">菜单</span>
             <button @click="ui.mobileMenuOpen = false" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
               <Icon icon="lucide:x" class="w-4 h-4" />
             </button>
