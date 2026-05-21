@@ -64,7 +64,7 @@ router.post('/:id/reject', requireRole('staff'), async (req: Request, res: Respo
 // Labels
 router.post('/:id/labels', requireRole('staff'), async (req: Request, res: Response) => {
   const { labelId } = req.body;
-  if (!labelId) throw new ValidationError('labelId is required');
+  if (!labelId) throw new ValidationError('标签ID不能为空');
   await labelService.addToTicket(req.params.id, labelId);
   res.status(201).end();
 });

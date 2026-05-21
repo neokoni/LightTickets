@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export async function create(name: string, address?: string, description?: string) {
   const existing = await prisma.server.findUnique({ where: { name } });
-  if (existing) throw new AppError(409, 'Server name already exists');
+  if (existing) throw new AppError(409, '服务器名称已存在');
 
   const apiKey = `lt_${crypto.randomBytes(24).toString('hex')}`;
 
@@ -21,7 +21,7 @@ export async function list() {
 
 export async function regenerateKey(id: string) {
   const server = await prisma.server.findUnique({ where: { id } });
-  if (!server) throw new NotFoundError('Server not found');
+  if (!server) throw new NotFoundError('服务器不存在');
 
   const apiKey = `lt_${crypto.randomBytes(24).toString('hex')}`;
   return prisma.server.update({ where: { id }, data: { apiKey } });

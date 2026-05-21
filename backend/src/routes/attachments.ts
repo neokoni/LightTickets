@@ -9,7 +9,7 @@ import { config } from '../config.js';
 const router = Router();
 
 router.post('/upload', authMiddleware, upload.single('file'), async (req: Request, res: Response) => {
-  if (!req.file) throw new ValidationError('No file provided');
+  if (!req.file) throw new ValidationError('请选择要上传的文件');
 
   const attachment = await attachmentService.create({
     filename: req.file.originalname,

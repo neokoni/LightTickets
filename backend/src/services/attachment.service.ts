@@ -19,6 +19,6 @@ export async function create(input: CreateAttachmentInput) {
 
 export async function getById(id: string) {
   const attachment = await prisma.attachment.findUnique({ where: { id } });
-  if (!attachment) throw new NotFoundError('Attachment not found');
+  if (!attachment) throw new NotFoundError('附件不存在');
   return attachment;
 }

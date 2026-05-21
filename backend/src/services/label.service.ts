@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export async function create(name: string, color: string, description?: string) {
   const existing = await prisma.label.findUnique({ where: { name } });
-  if (existing) throw new AppError(409, 'Label already exists');
+  if (existing) throw new AppError(409, '标签已存在');
 
   return prisma.label.create({ data: { name, color, description } });
 }
@@ -16,7 +16,7 @@ export async function list() {
 
 export async function update(id: string, data: { name?: string; color?: string; description?: string }) {
   const label = await prisma.label.findUnique({ where: { id } });
-  if (!label) throw new NotFoundError('Label not found');
+  if (!label) throw new NotFoundError('标签不存在');
   return prisma.label.update({ where: { id }, data });
 }
 

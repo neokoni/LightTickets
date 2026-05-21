@@ -12,7 +12,7 @@ export async function register(email: string, password: string, username: string
     where: { OR: [{ email }, { username }] },
   });
   if (existing) {
-    throw new AppError(409, existing.email === email ? 'Email already registered' : 'Username taken');
+    throw new AppError(409, existing.email === email ? '该邮箱已被注册' : '该用户名已被占用');
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
@@ -26,10 +26,10 @@ export async function register(email: string, password: string, username: string
 
 export async function login(email: string, password: string) {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new UnauthorizedError('Invalid credentials');
+  if (!user) throw new UnauthorizedError('邮箱或密码错误');
 
   const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) throw new UnauthorizedError('Invalid credentials');
+  if (!valid) throw new UnauthorizedError('邮箱或密码错误');
 
   const tokens = generateTokens(user.id, user.role);
   return { user: sanitizeUser(user), ...tokens };
@@ -48,7 +48,7 @@ export async function refresh(refreshToken: string) {
     );
     return { accessToken, user: sanitizeUser(user) };
   } catch {
-    throw new UnauthorizedError('Invalid refresh token');
+    throw new UnauthorizedError('刷新令牌无效或已过期');
   }
 }
 
@@ -56,7 +56,7 @@ export async function linkMinecraft(userId: string, code: string) {
   const linkCode = await prisma.linkCode.findFirst({
     where: { code, used: false, expiresAt: { gt: new Date() } },
   });
-  if (!linkCode) throw new ValidationError('Invalid or expired link code');
+  if (!linkCode) throw new ValidationError('无效或已过期的绑定码');
 
   await prisma.user.update({
     where: { id: userId },

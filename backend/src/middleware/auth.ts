@@ -19,7 +19,7 @@ declare global {
 export function authMiddleware(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
-    throw new UnauthorizedError('Missing or invalid token');
+    throw new UnauthorizedError('缺少认证令牌或格式不正确');
   }
 
   const token = header.slice(7);
@@ -28,6 +28,6 @@ export function authMiddleware(req: Request, _res: Response, next: NextFunction)
     req.user = payload;
     next();
   } catch {
-    throw new UnauthorizedError('Invalid or expired token');
+    throw new UnauthorizedError('无效的认证令牌');
   }
 }
