@@ -1,9 +1,18 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getSetupStatus } from '@/api/setup'
+
+let setupChecked: boolean | null = null
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    {
+      path: '/setup',
+      name: 'setup',
+      component: () => import('@/views/SetupView.vue'),
+      meta: { setup: true },
+    },
     {
       path: '/login',
       name: 'login',
@@ -60,6 +69,23 @@ router.beforeEach(async (to) => {
 
   if (auth.loading) {
     await auth.restore()
+  }
+
+  // Setup guard: if not set up, only allow setup page
+  if (setupChecked === null && to.name !== 'setup') {
+    try {
+      const status = await getSetupStatus()
+      setupChecked = status.isSetup
+      if (!setupChecked) {
+        return { name: 'setup' }
+      }
+    } catch {
+      return { name: 'setup' }
+    }
+  }
+
+  if (to.meta.setup && setupChecked) {
+    return { name: 'tickets' }
   }
 
   if (to.meta.auth && !auth.isAuthenticated) {

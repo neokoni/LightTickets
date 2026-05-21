@@ -66,31 +66,62 @@ const ui = useUiStore()
       </div>
     </div>
 
-    <Transition name="slide">
-      <div v-if="ui.mobileMenuOpen && auth.isAuthenticated" class="sm:hidden border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 space-y-2">
-        <RouterLink to="/" class="block py-2 text-sm text-slate-700 dark:text-slate-300" @click="ui.mobileMenuOpen = false">工单</RouterLink>
-        <RouterLink to="/tickets/new" class="block py-2 text-sm text-slate-700 dark:text-slate-300" @click="ui.mobileMenuOpen = false">新建工单</RouterLink>
-        <RouterLink v-if="auth.isAdmin" to="/admin" class="block py-2 text-sm text-slate-700 dark:text-slate-300" @click="ui.mobileMenuOpen = false">管理</RouterLink>
-        <RouterLink to="/profile" class="block py-2 text-sm text-slate-700 dark:text-slate-300" @click="ui.mobileMenuOpen = false">个人资料</RouterLink>
+    <!-- craft233 style mobile overlay menu -->
+    <Transition name="mobile-menu">
+      <div v-if="ui.mobileMenuOpen" class="fixed inset-0 z-40 sm:hidden bg-slate-950/40 dark:bg-slate-950/60 flex flex-col p-4 pt-[4.5rem]" @click.self="ui.mobileMenuOpen = false">
+        <div class="mx-auto w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-sm overflow-hidden pointer-events-auto">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+            <span class="text-sm font-medium text-slate-900 dark:text-white">Menu</span>
+            <button @click="ui.mobileMenuOpen = false" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+              <Icon icon="lucide:x" class="w-4 h-4" />
+            </button>
+          </div>
+          <div class="px-2 py-2 space-y-1">
+            <template v-if="auth.isAuthenticated">
+              <RouterLink to="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
+                <Icon icon="lucide:ticket" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                工单
+              </RouterLink>
+              <RouterLink to="/tickets/new" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
+                <Icon icon="lucide:plus" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                新建工单
+              </RouterLink>
+              <RouterLink v-if="auth.isAdmin" to="/admin" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
+                <Icon icon="lucide:shield" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                管理
+              </RouterLink>
+              <div class="my-1 border-t border-slate-200 dark:border-slate-700" />
+              <RouterLink to="/profile" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
+                <Icon icon="lucide:user" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                个人资料
+              </RouterLink>
+              <button @click="auth.logout(); ui.mobileMenuOpen = false" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <Icon icon="lucide:log-out" class="w-4 h-4" />
+                退出登录
+              </button>
+            </template>
+            <template v-else>
+              <RouterLink to="/login" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
+                <Icon icon="lucide:log-in" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                登录
+              </RouterLink>
+            </template>
+          </div>
+        </div>
       </div>
     </Transition>
   </header>
 </template>
 
 <style scoped>
-.slide-enter-active,
-.slide-leave-active {
-  transition: max-height 0.28s ease, opacity 0.28s ease;
-  overflow: hidden;
+.mobile-menu-enter-active {
+  transition: opacity 0.2s ease;
 }
-.slide-enter-from,
-.slide-leave-to {
-  max-height: 0;
+.mobile-menu-leave-active {
+  transition: opacity 0.18s ease;
+}
+.mobile-menu-enter-from,
+.mobile-menu-leave-to {
   opacity: 0;
-}
-.slide-enter-to,
-.slide-leave-from {
-  max-height: 200px;
-  opacity: 1;
 }
 </style>
