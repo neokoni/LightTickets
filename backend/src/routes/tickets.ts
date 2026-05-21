@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import * as ticketService from '../services/ticket.service.js';
+import * as labelService from '../services/label.service.js';
 import * as permissionService from '../services/permission.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
@@ -58,6 +59,19 @@ router.post('/:id/approve', requireRole('staff'), async (req: Request, res: Resp
 router.post('/:id/reject', requireRole('staff'), async (req: Request, res: Response) => {
   const ticket = await permissionService.reject(req.params.id, req.user!.userId, req.body.reason);
   res.json(ticket);
+});
+
+// Labels
+router.post('/:id/labels', requireRole('staff'), async (req: Request, res: Response) => {
+  const { labelId } = req.body;
+  if (!labelId) throw new ValidationError('labelId is required');
+  await labelService.addToTicket(req.params.id, labelId);
+  res.status(201).end();
+});
+
+router.delete('/:id/labels/:labelId', requireRole('staff'), async (req: Request, res: Response) => {
+  await labelService.removeFromTicket(req.params.id, req.params.labelId);
+  res.status(204).end();
 });
 
 export default router;

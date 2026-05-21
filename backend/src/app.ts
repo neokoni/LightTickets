@@ -11,6 +11,7 @@ import labelRoutes from './routes/labels.js';
 import attachmentRoutes from './routes/attachments.js';
 import serverRoutes from './routes/servers.js';
 import mcRoutes from './routes/mc.js';
+import auditRoutes from './routes/audit.js';
 
 export function createApp() {
   const app = express();
@@ -29,6 +30,7 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/tickets', ticketRoutes);
   app.use('/api/tickets/:id/comments', commentRoutes);
+  app.use('/api/tickets/:ticketId/audit', auditRoutes);
   app.use('/api/labels', labelRoutes);
   app.use('/api/attachments', attachmentRoutes);
   app.use('/api/servers', serverRoutes);

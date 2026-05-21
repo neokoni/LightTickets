@@ -1,5 +1,6 @@
 import { PrismaClient, TicketStatus, TicketType, Priority } from '@prisma/client';
 import { NotFoundError, ForbiddenError } from '../utils/errors.js';
+import * as auditService from './audit.service.js';
 
 const prisma = new PrismaClient();
 
@@ -112,12 +113,30 @@ export async function update(
   if (data.priority && isStaff) updateData.priority = data.priority;
   if (data.assigneeId && isStaff) updateData.assigneeId = data.assigneeId;
 
+  await prisma.ticket.update({
+    where: { id },
+    data: updateData,
+  });
+
+  if (data.status && data.status !== ticket.status) {
+    await auditService.create(id, userId, 'status_change', ticket.status, data.status);
+  }
+  if (data.assigneeId && data.assigneeId !== ticket.assigneeId) {
+    await auditService.create(id, userId, 'assign', ticket.assigneeId || 'unassigned', data.assigneeId);
+  }
+  if (data.priority && data.priority !== ticket.priority) {
+    await auditService.create(id, userId, 'priority_change', ticket.priority, data.priority);
+  }
+
   return prisma.ticket.update({
     where: { id },
     data: updateData,
     include: {
       author: { select: { id: true, username: true, minecraftName: true } },
+      assignee: { select: { id: true, username: true } },
       labels: { include: { label: true } },
+      server: { select: { id: true, name: true } },
+      permissionRequest: true,
     },
   });
 }
