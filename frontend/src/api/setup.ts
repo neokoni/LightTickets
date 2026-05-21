@@ -3,7 +3,6 @@ import { apiFetch } from './client';
 export interface SetupStatus {
   isSetup: boolean;
   siteName: string;
-  accentColor: string;
 }
 
 export interface SetupPayload {
@@ -19,7 +18,6 @@ export interface SetupPayload {
   site?: {
     siteName?: string;
     siteUrl?: string;
-    accentColor?: string;
   };
   mc?: {
     defaultServerName?: string;
@@ -32,17 +30,16 @@ export interface SetupResult {
     isSetup: boolean;
     siteName: string;
     siteUrl: string | null;
-    accentColor: string;
     createdAt: string;
     updatedAt: string;
   };
   admin: {
-    id: number;
+    id: string;
     email: string;
     username: string;
     role: string;
   };
-  token: string;
+  accessToken: string;
   refreshToken: string;
 }
 

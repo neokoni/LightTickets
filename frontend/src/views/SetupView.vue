@@ -5,7 +5,6 @@ import { useAuthStore } from '@/stores/auth'
 import { completeSetup, type SetupPayload } from '@/api/setup'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import BaseColorPicker from '@/components/base/BaseColorPicker.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -26,7 +25,6 @@ const payload = reactive<SetupPayload>({
   site: {
     siteName: 'LightTicket',
     siteUrl: '',
-    accentColor: '#111111',
   },
   mc: {
     defaultServerName: '',
@@ -96,8 +94,11 @@ async function submit() {
       site: payload.site,
       mc: payload.mc?.defaultServerName ? { defaultServerName: payload.mc.defaultServerName } : undefined,
     })
-    auth.setTokens(res.token, res.refreshToken)
+    auth.setTokens(res.accessToken, res.refreshToken, res.admin)
     step.value = 6
+    // mark setup as done so router guard allows navigation
+    import('@/router').then((mod) => { mod.setupChecked = true })
+    sessionStorage.setItem('setup-checked', 'true')
     setTimeout(() => router.replace({ name: 'tickets' }), 1800)
   } catch (e: any) {
     error.value = e?.message || '设置失败，请重试。'
@@ -115,7 +116,7 @@ async function submit() {
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">步骤 {{ step }} / {{ totalSteps }}</p>
         <div class="mt-4 h-1 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
           <div
-            class="h-full bg-accent-500 transition-all duration-300"
+            class="h-full bg-slate-900 dark:bg-slate-100 transition-all duration-300"
             :style="{ width: ((step / totalSteps) * 100) + '%' }"
           />
         </div>
@@ -124,7 +125,7 @@ async function submit() {
       <!-- Step 1: Welcome -->
       <div v-if="step === 1">
         <div class="text-center py-6">
-          <div class="w-16 h-16 rounded-2xl bg-accent-500 mx-auto mb-4 flex items-center justify-center text-white text-2xl font-bold">
+          <div class="w-16 h-16 rounded-2xl bg-slate-900 dark:bg-slate-100 mx-auto mb-4 flex items-center justify-center text-white dark:text-slate-900 text-2xl font-bold">
             LT
           </div>
           <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">欢迎使用 LightTicket</h2>
@@ -141,7 +142,7 @@ async function submit() {
           <button
             class="flex-1 py-3 rounded-xl border text-sm font-medium transition-colors"
             :class="payload.db.provider === 'sqlite'
-              ? 'bg-accent-500 text-white border-accent-500'
+              ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100'
               : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'"
             @click="payload.db.provider = 'sqlite'"
           >
@@ -150,7 +151,7 @@ async function submit() {
           <button
             class="flex-1 py-3 rounded-xl border text-sm font-medium transition-colors"
             :class="payload.db.provider === 'mysql'
-              ? 'bg-accent-500 text-white border-accent-500'
+              ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100'
               : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'"
             @click="payload.db.provider = 'mysql'"
           >
@@ -168,14 +169,14 @@ async function submit() {
           <div class="flex gap-2">
             <button
               class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-              :class="mysqlMode === 'fields' ? 'bg-accent-500 text-white border-accent-500' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'"
+              :class="mysqlMode === 'fields' ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'"
               @click="mysqlMode = 'fields'"
             >
               分别填写
             </button>
             <button
               class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-              :class="mysqlMode === 'url' ? 'bg-accent-500 text-white border-accent-500' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'"
+              :class="mysqlMode === 'url' ? 'bg-slate-900 text-white border-slate-900 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'"
               @click="mysqlMode = 'url'"
             >
               直接输入地址
@@ -212,10 +213,6 @@ async function submit() {
         <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">站点设置</h2>
         <BaseInput v-model="payload.site!.siteName" label="站点名称" placeholder="LightTicket" />
         <BaseInput v-model="payload.site!.siteUrl" label="站点地址（可选）" placeholder="https://ticket.example.com" />
-        <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">强调色</label>
-          <BaseColorPicker v-model="payload.site!.accentColor" />
-        </div>
       </div>
 
       <!-- Step 5: Optional Default Server -->

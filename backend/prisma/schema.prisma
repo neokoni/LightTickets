@@ -192,7 +192,6 @@ model SetupStatus {
   isSetup     Boolean  @default(false) @map("is_setup")
   siteName    String   @default("LightTicket") @map("site_name")
   siteUrl     String?  @map("site_url")
-  accentColor String   @default("#111111") @map("accent_color")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

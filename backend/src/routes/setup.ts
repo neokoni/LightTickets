@@ -18,7 +18,6 @@ const setupSchema = z.object({
   site: z.object({
     siteName: z.string().optional(),
     siteUrl: z.string().optional(),
-    accentColor: z.string().optional(),
   }).optional(),
   mc: z.object({
     defaultServerName: z.string().optional(),

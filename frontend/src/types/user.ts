@@ -7,8 +7,8 @@ export interface User {
   minecraftUuid?: string
   minecraftName?: string
   role: Role
-  createdAt: string
-  updatedAt: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface AuthResponse {

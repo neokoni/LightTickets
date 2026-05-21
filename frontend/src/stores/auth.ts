@@ -49,6 +49,12 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('lt-refresh-token')
   }
 
+  function setTokens(accessToken: string, refreshToken: string, userData: User) {
+    user.value = userData
+    setAccessToken(accessToken)
+    localStorage.setItem('lt-refresh-token', refreshToken)
+  }
+
   async function linkMinecraft(code: string) {
     const res = await apiLinkMinecraft(code)
     if (user.value) {
@@ -57,5 +63,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, loading, isAuthenticated, isStaff, isAdmin, login, register, restore, logout, linkMinecraft }
+  return { user, loading, isAuthenticated, isStaff, isAdmin, login, register, restore, logout, setTokens, linkMinecraft }
 })

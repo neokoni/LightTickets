@@ -13,7 +13,6 @@ export interface DbConfig {
 export interface SiteConfig {
   siteName: string;
   siteUrl?: string;
-  accentColor?: string;
 }
 
 export interface SetupInput {
@@ -34,7 +33,6 @@ export async function getSetupStatus() {
   return {
     isSetup: status?.isSetup ?? false,
     siteName: status?.siteName ?? 'LightTicket',
-    accentColor: status?.accentColor ?? '#111111',
   };
 }
 
@@ -42,23 +40,23 @@ export async function completeSetup(input: SetupInput) {
   // Guard: already set up
   const existingSetup = await prisma.setupStatus.findFirst();
   if (existingSetup) {
-    throw new AppError(409, 'Setup has already been completed');
+    throw new AppError(409, '站点已完成初始化，无法重复设置');
   }
 
   // 1. Validate DB config
   if (!input.db.provider || !['sqlite', 'mysql'].includes(input.db.provider)) {
-    throw new ValidationError('Invalid database provider. Must be sqlite or mysql.');
+    throw new ValidationError('无效的数据库类型，仅支持 sqlite 或 mysql');
   }
   if (!input.db.databaseUrl) {
-    throw new ValidationError('Database URL is required.');
+    throw new ValidationError('数据库连接地址不能为空');
   }
 
   // 2. Validate admin
   if (!input.admin.email || !input.admin.password || !input.admin.username) {
-    throw new ValidationError('Admin email, password, and username are required.');
+    throw new ValidationError('管理员邮箱、密码和用户名均为必填项');
   }
   if (input.admin.password.length < 6) {
-    throw new ValidationError('Admin password must be at least 6 characters.');
+    throw new ValidationError('管理员密码长度不能低于 6 位');
   }
 
   // 3. Create admin user
@@ -66,7 +64,7 @@ export async function completeSetup(input: SetupInput) {
     where: { OR: [{ email: input.admin.email }, { username: input.admin.username }] },
   });
   if (existing) {
-    throw new AppError(409, 'Admin email or username already exists');
+    throw new AppError(409, '该邮箱或用户名已被使用');
   }
 
   const passwordHash = await bcrypt.hash(input.admin.password, 12);
@@ -86,7 +84,6 @@ export async function completeSetup(input: SetupInput) {
       isSetup: true,
       siteName: siteConfig.siteName || 'LightTicket',
       siteUrl: siteConfig.siteUrl || null,
-      accentColor: siteConfig.accentColor || '#111111',
     },
   });
 
