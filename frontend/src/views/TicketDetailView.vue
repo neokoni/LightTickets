@@ -12,6 +12,8 @@ import BaseBadge from '@/components/base/BaseBadge.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
+import TicketLabels from '@/components/tickets/TicketLabels.vue'
+import TicketAuditLog from '@/components/tickets/TicketAuditLog.vue'
 import type { Comment, TicketStatus } from '@/types/ticket'
 
 const route = useRoute()
@@ -193,6 +195,14 @@ usePolling(async () => {
           <span class="text-slate-500 dark:text-slate-400">服务器</span>
           <span class="text-slate-700 dark:text-slate-300">{{ ticket.server.name }}</span>
         </div>
+      </div>
+
+      <!-- Labels -->
+      <TicketLabels v-if="ticket" :ticket="ticket" />
+
+      <!-- Audit Log -->
+      <div class="p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+        <TicketAuditLog :ticket-id="ticket.id" />
       </div>
 
       <!-- Permission request actions -->

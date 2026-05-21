@@ -58,3 +58,14 @@ export interface Ticket {
   permissionRequest?: PermissionRequest
   _count?: { comments: number }
 }
+
+export interface AuditLog {
+  id: string
+  ticketId: string
+  actorId: string
+  action: string
+  oldValue?: string
+  newValue?: string
+  createdAt: string
+  actor: { id: string; username: string; minecraftName?: string }
+}

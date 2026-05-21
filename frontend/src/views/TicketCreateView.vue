@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { apiCreateTicket } from '@/api/tickets'
+import { apiUploadAttachment } from '@/api/attachments'
 import { useUiStore } from '@/stores/ui'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
@@ -22,8 +23,21 @@ const types: { key: TicketType; label: string; icon: string; desc: string }[] = 
 const selectedType = ref<TicketType | null>(null)
 const title = ref('')
 const body = ref('')
+const files = ref<File[]>([])
 const loading = ref(false)
 const error = ref('')
+
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files.length > 0) {
+    files.value.push(...Array.from(input.files))
+  }
+  input.value = ''
+}
+
+function removeFile(index: number) {
+  files.value.splice(index, 1)
+}
 
 async function submit() {
   if (!selectedType.value || !title.value.trim()) return
@@ -35,6 +49,12 @@ async function submit() {
       body: body.value,
       type: selectedType.value,
     })
+
+    // Upload attachments after ticket creation
+    if (files.value.length > 0) {
+      await Promise.all(files.value.map(file => apiUploadAttachment(ticket.id, file)))
+    }
+
     ui.toast('工单已创建', 'success')
     router.push(`/tickets/${ticket.id}`)
   } catch (e: any) {
@@ -76,6 +96,48 @@ async function submit() {
 
       <BaseInput v-model="title" label="标题" placeholder="简要描述问题" />
       <BaseTextarea v-model="body" label="详细描述" placeholder="支持 Markdown 格式" :rows="8" />
+
+      <!-- Attachment upload -->
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">附件</label>
+        <div class="flex items-center gap-2">
+          <input
+            id="file-upload"
+            type="file"
+            multiple
+            accept="image/*,.pdf,.txt,.zip,.log"
+            @change="onFileChange"
+            class="hidden"
+          />
+          <label
+            for="file-upload"
+            class="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+          >
+            <Icon icon="lucide:paperclip" class="w-4 h-4" />
+            上传文件
+          </label>
+        </div>
+        <div v-if="files.length > 0" class="space-y-1">
+          <div
+            v-for="(file, idx) in files"
+            :key="idx"
+            class="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-sm"
+          >
+            <div class="flex items-center gap-2 min-w-0">
+              <Icon icon="lucide:file" class="w-4 h-4 text-slate-400 shrink-0" />
+              <span class="text-slate-700 dark:text-slate-300 truncate">{{ file.name }}</span>
+              <span class="text-xs text-slate-400 shrink-0">{{ (file.size / 1024).toFixed(1) }} KB</span>
+            </div>
+            <button
+              type="button"
+              @click="removeFile(idx)"
+              class="text-slate-400 hover:text-red-500 shrink-0"
+            >
+              <Icon icon="lucide:x" class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
 
       <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
