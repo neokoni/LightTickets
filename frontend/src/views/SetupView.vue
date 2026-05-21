@@ -33,12 +33,34 @@ const payload = reactive<SetupPayload>({
   },
 })
 
+// MySQL 字段模式 vs URL 模式
+const mysqlMode = ref<'fields' | 'url'>('fields')
+const mysqlFields = reactive({
+  host: 'localhost',
+  port: '3306',
+  user: 'root',
+  password: '',
+  database: 'lightticket',
+  params: '',
+})
+
+function buildMysqlUrl() {
+  const { host, port, user, password, database, params } = mysqlFields
+  let url = `mysql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
+  if (params.trim()) {
+    url += '?' + params.trim()
+  }
+  return url
+}
+
 const totalSteps = 5
 
 const canNext = computed(() => {
   switch (step.value) {
     case 2:
-      return payload.db.provider && payload.db.databaseUrl
+      if (payload.db.provider === 'sqlite') return !!payload.db.databaseUrl
+      if (mysqlMode.value === 'url') return !!payload.db.databaseUrl
+      return !!(mysqlFields.host && mysqlFields.port && mysqlFields.user && mysqlFields.database)
     case 3:
       return payload.admin.email && payload.admin.password.length >= 6 && payload.admin.username.length >= 2
     case 4:
@@ -49,6 +71,10 @@ const canNext = computed(() => {
 })
 
 function next() {
+  // 自动拼接待 MySQL 字段模式下的 URL
+  if (step.value === 2 && payload.db.provider === 'mysql' && mysqlMode.value === 'fields') {
+    payload.db.databaseUrl = buildMysqlUrl()
+  }
   if (step.value < totalSteps) step.value++
 }
 
@@ -57,6 +83,10 @@ function back() {
 }
 
 async function submit() {
+  // 提交前自动拼接 MySQL 字段
+  if (payload.db.provider === 'mysql' && mysqlMode.value === 'fields') {
+    payload.db.databaseUrl = buildMysqlUrl()
+  }
   loading.value = true
   error.value = ''
   try {
@@ -70,7 +100,7 @@ async function submit() {
     step.value = 6
     setTimeout(() => router.replace({ name: 'tickets' }), 1800)
   } catch (e: any) {
-    error.value = e?.message || '设置失败，请重试。'  
+    error.value = e?.message || '设置失败，请重试。'
   } finally {
     loading.value = false
   }
@@ -127,20 +157,45 @@ async function submit() {
             MySQL
           </button>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">数据库地址</label>
-          <BaseInput
-            v-model="payload.db.databaseUrl"
-            :placeholder="payload.db.provider === 'sqlite' ? 'file:./dev.db' : 'mysql://user:pass@localhost:3306/db'"
-          />
-          <p class="text-xs text-slate-400 mt-1">
-            <template v-if="payload.db.provider === 'sqlite'">
-              建议使用相对路径，如 <code>file:./dev.db</code>。
-            </template>
-            <template v-else>
-              MySQL 连接字符串，如 <code>mysql://root:password@localhost:3306/lightticket</code>。
-            </template>
-          </p>
+
+        <div v-if="payload.db.provider === 'sqlite'">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">数据库文件路径</label>
+          <BaseInput v-model="payload.db.databaseUrl" placeholder="file:./dev.db" />
+          <p class="text-xs text-slate-400 mt-1">建议使用相对路径，如 <code>file:./dev.db</code>。</p>
+        </div>
+
+        <div v-else class="space-y-4">
+          <div class="flex gap-2">
+            <button
+              class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+              :class="mysqlMode === 'fields' ? 'bg-accent-500 text-white border-accent-500' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'"
+              @click="mysqlMode = 'fields'"
+            >
+              分别填写
+            </button>
+            <button
+              class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
+              :class="mysqlMode === 'url' ? 'bg-accent-500 text-white border-accent-500' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'"
+              @click="mysqlMode = 'url'"
+            >
+              直接输入地址
+            </button>
+          </div>
+
+          <div v-if="mysqlMode === 'fields'" class="grid grid-cols-2 gap-3">
+            <BaseInput v-model="mysqlFields.host" label="主机" placeholder="localhost" />
+            <BaseInput v-model="mysqlFields.port" label="端口" placeholder="3306" />
+            <BaseInput v-model="mysqlFields.user" label="用户名" placeholder="root" />
+            <BaseInput v-model="mysqlFields.password" label="密码" type="password" placeholder="password" />
+            <BaseInput v-model="mysqlFields.database" label="数据库" placeholder="lightticket" class="col-span-2" />
+            <BaseInput v-model="mysqlFields.params" label="额外参数（可选）" placeholder="sslaccept=strict&connect_timeout=10" class="col-span-2" />
+          </div>
+
+          <div v-else>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">数据库地址</label>
+            <BaseInput v-model="payload.db.databaseUrl" placeholder="mysql://root:password@localhost:3306/lightticket" />
+            <p class="text-xs text-slate-400 mt-1">如 <code>mysql://root:password@localhost:3306/lightticket</code>。</p>
+          </div>
         </div>
       </div>
 
