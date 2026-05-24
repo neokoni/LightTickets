@@ -4,7 +4,6 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { siteConfig } from '@/router'
-import BaseButton from '@/components/base/BaseButton.vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -42,8 +41,6 @@ function handleLogout() {
         </button>
 
         <template v-if="auth.isAuthenticated">
-          <BaseButton as="router-link" to="/tickets/new" size="sm" icon="lucide:plus" class="hidden sm:inline-flex">新建工单</BaseButton>
-
           <div class="relative group">
             <button class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <div class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-700 dark:text-slate-300">
@@ -86,10 +83,6 @@ function handleLogout() {
               <RouterLink to="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
                 <Icon icon="lucide:ticket" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 工单
-              </RouterLink>
-              <RouterLink to="/tickets/new" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
-                <Icon icon="lucide:plus" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                新建工单
               </RouterLink>
               <RouterLink v-if="auth.isAdmin" to="/admin" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
                 <Icon icon="lucide:shield" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
