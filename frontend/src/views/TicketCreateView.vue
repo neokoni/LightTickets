@@ -55,7 +55,7 @@ async function submit() {
       await Promise.all(files.value.map(file => apiUploadAttachment(ticket.id, file)))
     }
 
-    ui.toast('工单已创建', 'success')
+    ui.toast('议题已创建', 'success')
     router.push(`/tickets/${ticket.id}`)
   } catch (e: any) {
     error.value = e.message || '创建失败'
@@ -67,7 +67,7 @@ async function submit() {
 
 <template>
   <div class="max-w-2xl mx-auto space-y-6">
-    <h1 class="text-xl font-bold text-slate-900 dark:text-white">新建工单</h1>
+    <h1 class="text-xl font-bold text-slate-900 dark:text-white">新建议题</h1>
 
     <!-- Type selection -->
     <div v-if="!selectedType" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -143,7 +143,7 @@ async function submit() {
 
       <div class="flex justify-end gap-2">
         <BaseButton variant="secondary" type="button" @click="router.back()">取消</BaseButton>
-        <BaseButton type="submit" :loading="loading" :disabled="!title.trim()">提交工单</BaseButton>
+        <BaseButton type="submit" :loading="loading" :disabled="!title.trim()">提交议题</BaseButton>
       </div>
     </form>
   </div>

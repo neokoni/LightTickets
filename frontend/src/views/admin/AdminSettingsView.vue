@@ -42,8 +42,8 @@ async function save() {
     <div v-else class="space-y-4 max-w-lg">
       <div class="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
         <div>
-          <p class="text-sm font-medium text-slate-900 dark:text-white">要求登录查看工单</p>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">开启后，未登录用户将无法查看工单列表和详情</p>
+          <p class="text-sm font-medium text-slate-900 dark:text-white">要求登录查看议题</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">开启后，未登录用户将无法查看议题列表和详情</p>
         </div>
         <button
           @click="requireLogin = !requireLogin"

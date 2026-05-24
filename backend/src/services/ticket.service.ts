@@ -85,7 +85,7 @@ export async function getById(id: string) {
       permissionRequest: true,
     },
   });
-  if (!ticket) throw new NotFoundError('工单不存在');
+  if (!ticket) throw new NotFoundError('议题不存在');
   return ticket;
 }
 
@@ -96,12 +96,12 @@ export async function update(
   data: { status?: TicketStatus; priority?: Priority; assigneeId?: string },
 ) {
   const ticket = await prisma.ticket.findUnique({ where: { id } });
-  if (!ticket) throw new NotFoundError('工单不存在');
+  if (!ticket) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
   const isStaff = userRole === 'staff' || userRole === 'admin';
 
-  if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此工单');
+  if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
 
   const updateData: any = {};
   if (data.status) {

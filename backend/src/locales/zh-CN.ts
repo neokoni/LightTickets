@@ -25,9 +25,9 @@ export const Errors = {
   Auth_RefreshTokenInvalid: '刷新令牌无效或已过期',
   Auth_InvalidLinkCode: '无效或已过期的绑定码',
 
-  // 工单 (tickets)
-  Ticket_NotFound: '工单不存在',
-  Ticket_NoPermission: '无权操作此工单',
+  // 议题 (tickets)
+  Ticket_NotFound: '议题不存在',
+  Ticket_NoPermission: '无权操作此议题',
 
   // 附件 (attachments)
   Attachment_NotFound: '附件不存在',
@@ -42,6 +42,6 @@ export const Errors = {
   Server_NotFound: '服务器不存在',
 
   // 权限申请 (permission)
-  Permission_NotRequest: '该工单不是权限申请类型',
+  Permission_NotRequest: '该议题不是权限申请类型',
   Permission_NoRequestData: '该权限申请缺少必要数据',
 } as const;

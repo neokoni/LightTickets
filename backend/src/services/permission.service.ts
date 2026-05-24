@@ -10,8 +10,8 @@ export async function approve(ticketId: string, actorId: string) {
     include: { permissionRequest: true, author: true },
   });
 
-  if (!ticket) throw new NotFoundError('工单不存在');
-  if (ticket.type !== 'permission_request') throw new ValidationError('该工单不是权限申请类型');
+  if (!ticket) throw new NotFoundError('议题不存在');
+  if (ticket.type !== 'permission_request') throw new ValidationError('该议题不是权限申请类型');
   if (!ticket.permissionRequest) throw new ValidationError('该权限申请缺少必要数据');
 
   const updated = await prisma.ticket.update({
@@ -42,8 +42,8 @@ export async function reject(ticketId: string, actorId: string, reason?: string)
     include: { permissionRequest: true, author: true },
   });
 
-  if (!ticket) throw new NotFoundError('工单不存在');
-  if (ticket.type !== 'permission_request') throw new ValidationError('该工单不是权限申请类型');
+  if (!ticket) throw new NotFoundError('议题不存在');
+  if (ticket.type !== 'permission_request') throw new ValidationError('该议题不是权限申请类型');
 
   const updated = await prisma.ticket.update({
     where: { id: ticketId },

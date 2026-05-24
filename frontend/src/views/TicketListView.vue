@@ -79,9 +79,9 @@ watch(() => store.filters.search, () => {
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between">
-      <h1 class="text-xl font-bold text-slate-900 dark:text-white">工单</h1>
+      <h1 class="text-xl font-bold text-slate-900 dark:text-white">议题</h1>
       <BaseButton v-if="auth.isAuthenticated" as="router-link" to="/tickets/new" size="sm" icon="lucide:plus">新建</BaseButton>
-      <RouterLink v-else to="/login" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">登录以创建工单</RouterLink>
+      <RouterLink v-else to="/login" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">登录以创建议题</RouterLink>
     </div>
 
     <!-- Status tabs -->
@@ -106,7 +106,7 @@ watch(() => store.filters.search, () => {
       <input
         v-model="store.filters.search"
         type="text"
-        placeholder="搜索工单..."
+        placeholder="搜索议题..."
         class="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/40 focus:border-slate-900 dark:focus:ring-slate-100/40 dark:focus:border-slate-100 transition-colors"
       />
     </div>
@@ -117,7 +117,7 @@ watch(() => store.filters.search, () => {
     </div>
 
     <div v-else-if="!store.tickets.length" class="py-12 text-center text-slate-400">
-      暂无工单
+      暂无议题
     </div>
 
     <div v-else class="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">

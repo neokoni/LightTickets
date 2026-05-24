@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export async function create(ticketId: string, authorId: string, body: string, source: CommentSource = 'web') {
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
-  if (!ticket) throw new NotFoundError('工单不存在');
+  if (!ticket) throw new NotFoundError('议题不存在');
 
   return prisma.comment.create({
     data: { ticketId, authorId, body, source },

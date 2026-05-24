@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 export async function listByTicket(ticketId: string) {
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
-  if (!ticket) throw new NotFoundError('工单不存在');
+  if (!ticket) throw new NotFoundError('议题不存在');
 
   return prisma.auditLog.findMany({
     where: { ticketId },
