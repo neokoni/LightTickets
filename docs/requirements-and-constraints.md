@@ -1,6 +1,6 @@
-# LightTicket 项目约束与需求文档
+# LightTickets 项目约束与需求文档
 
-> 本文档记录 LightTicket 在开发、部署、运行过程中必须遵循的约束条件与项目需求。  
+> 本文档记录 LightTickets 在开发、部署、运行过程中必须遵循的约束条件与项目需求。  
 > **最后更新:** 2025-05-20
 
 ---
@@ -72,13 +72,13 @@
 
 ### 4.2 用户角色
 - 三种固定角色：`player`（玩家）、`staff`（工作人员）、`admin`（管理员）。
-- `staff` 与 `admin` 可处理工单审批；仅 `admin` 可管理服务器和标签。
+- `staff` 与 `admin` 可处理议题审批；仅 `admin` 可管理服务器和标签。
 - 角色字段为枚举值，不可自由扩展，如需新增角色必须先改 Prisma schema 并执行 migration。
 
-### 4.3 工单（Ticket）规则
-- 工单的 `type` 必须为以下四类之一：`bug_report`、`permission_request`、`suggestion`、`report`。
-- 工单创建后，`author`（作者）可修改 `status`；`staff`/`admin` 可修改 `priority`、`assignee` 以及 `status`。
-- `permission_request` 类型工单需要关联 `permissionRequest` 数据，否则审批接口会拒绝。
+### 4.3 议题（Ticket）规则
+- 议题的 `type` 必须为以下四类之一：`bug_report`、`permission_request`、`suggestion`、`report`。
+- 议题创建后，`author`（作者）可修改 `status`；`staff`/`admin` 可修改 `priority`、`assignee` 以及 `status`。
+- `permission_request` 类型议题需要关联 `permissionRequest` 数据，否则审批接口会拒绝。
 - 状态变更为 `resolved`/`closed`/`rejected` 时，系统应自动填充 `closedAt`；但 Prisma 中该字段由业务代码写入，不是 `@updatedAt` 的自动行为。
 
 ### 4.4 文件上传
@@ -93,7 +93,7 @@
 ### 5.1 强制测试覆盖
 - **任何新增 API 接口必须编写对应的自动化测试**。现有后端测试包括：
   - `auth.test.ts` — 注册、登录、Token 刷新
-  - `tickets.test.ts` — 工单创建与更新
+  - `tickets.test.ts` — 议题创建与更新
   - `comments.test.ts` — 评论增删改查
   - `labels.test.ts` — 标签 CRUD
   - `permissions.test.ts` — 权限申请审批、角色控制
@@ -117,7 +117,7 @@
 ## 六、Socket.io 与实时通信约束
 
 ### 6.1 实时更新策略
-- MC 插件通过 WebSocket 订阅工单实时通知。
+- MC 插件通过 WebSocket 订阅议题实时通知。
 - 目前 Web 端仍采用**智能轮询**策略（详情页 5-10s，列表页 20-30s）。
 - Socket.io 的 ticket 更新事件需在 Service 层状态变更后显式调用 `emitTicketUpdate()` 触发，不能遗漏。
 

@@ -7,7 +7,7 @@
 当前存在三个问题：
 1. 首次访问已 setup 的实例时，路由守卫会错误地重定向到 `/setup`（因为 `setupChecked === null` 且目标不是 setup 跨由时直接跳 setup，而非先判断是否已 setup）
 2. Setup 页面没有主题切换按钮
-3. 所有工单页面强制登录，没有公开访问模式；退出登录后仍留在主页面而非回到登录页
+3. 所有议题页面强制登录，没有公开访问模式；退出登录后仍留在主页面而非回到登录页
 
 ## 设计
 
@@ -68,10 +68,10 @@ requireLogin Boolean @default(false) @map("require_login")
 - `GET /api/setup/status` — 移除，功能合并到 `GET /api/site-config`
 - `PATCH /api/admin/settings` — 管理员可更新 `requireLogin`
 
-**后端工单访问控制：**
+**后端议题访问控制：**
 
 - 公开模式下，`GET /api/tickets` 和 `GET /api/tickets/:id` 不需要认证
-- 创建工单、评论等写操作始终要求认证
+- 创建议题、评论等写操作始终要求认证
 - 实现方式：将 `router.use(authMiddleware)` 改为逐路由指定。GET 列表和 GET 详情路由前加条件判断：若内存缓存的 `requireLogin` 为 true 则应用 `authMiddleware`，否则跳过
 
 **登出行为：**
@@ -81,7 +81,7 @@ requireLogin Boolean @default(false) @map("require_login")
 
 **前端管理页面：**
 
-AdminSettingsView 增加"要求登录查看工单"开关（toggle），调用 `PATCH /api/admin/settings` 更新 `requireLogin`。更新后前端缓存也同步刷新。
+AdminSettingsView 增加"要求登录查看议题"开关（toggle），调用 `PATCH /api/admin/settings` 更新 `requireLogin`。更新后前端缓存也同步刷新。
 
 **前端 site-config 缓存：**
 

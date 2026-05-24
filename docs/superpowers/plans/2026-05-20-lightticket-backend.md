@@ -1,8 +1,8 @@
-# LightTicket Backend Implementation Plan
+# LightTickets Backend Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the Express REST API + Socket.io server that powers the LightTicket platform, with JWT auth, Prisma ORM (MySQL/SQLite), file uploads, and MC plugin WebSocket integration.
+**Goal:** Build the Express REST API + Socket.io server that powers the LightTickets platform, with JWT auth, Prisma ORM (MySQL/SQLite), file uploads, and MC plugin WebSocket integration.
 
 **Architecture:** Express app with layered structure (routes → controllers → services → Prisma). Socket.io server runs alongside HTTP for MC plugin real-time notifications. Prisma handles DB abstraction for MySQL/SQLite switching via env var.
 
@@ -504,7 +504,7 @@ const app = createApp();
 const server = createServer(app);
 
 server.listen(config.port, () => {
-  console.log(`LightTicket API running on port ${config.port}`);
+  console.log(`LightTickets API running on port ${config.port}`);
 });
 ```
 
@@ -2062,7 +2062,7 @@ const server = createServer(app);
 initSocket(server);
 
 server.listen(config.port, () => {
-  console.log(`LightTicket API running on port ${config.port}`);
+  console.log(`LightTickets API running on port ${config.port}`);
 });
 ```
 

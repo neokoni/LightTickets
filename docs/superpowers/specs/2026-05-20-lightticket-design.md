@@ -1,8 +1,8 @@
-# LightTicket 设计文档
+# LightTickets 设计文档
 
 ## 概述
 
-LightTicket 是一个与 Minecraft 服务器深度集成的工单管理平台，采用前后端分离架构。玩家可在游戏内或 Web 端提交 Bug 报告、权限申请、建议反馈和举报，管理员通过 Web 端或游戏内处理工单。前端体验对标 GitHub Issues 的标签与筛选能力。
+LightTickets 是一个与 Minecraft 服务器深度集成的议题管理平台，采用前后端分离架构。玩家可在游戏内或 Web 端提交 Bug 报告、权限申请、建议反馈和举报，管理员通过 Web 端或游戏内处理议题。前端体验对标 GitHub Issues 的标签与筛选能力。
 
 ## 技术栈
 
@@ -47,7 +47,7 @@ LightTicket 是一个与 Minecraft 服务器深度集成的工单管理平台，
 - address, description
 - created_at
 
-### Ticket（工单）
+### Ticket（议题）
 - id, title, body（Markdown）
 - type: bug_report | permission_request | suggestion | report
 - status: open | in_progress | resolved | closed | rejected
@@ -57,7 +57,7 @@ LightTicket 是一个与 Minecraft 服务器深度集成的工单管理平台，
 - assignee_id → User（可选）
 - created_at, updated_at, closed_at
 
-### TicketLabel（工单-标签关联）
+### TicketLabel（议题-标签关联）
 - ticket_id → Ticket
 - label_id → Label
 
@@ -120,8 +120,8 @@ LightTicket 是一个与 Minecraft 服务器深度集成的工单管理平台，
 ### 权限角色
 | 角色 | 权限 |
 |------|------|
-| player | 创建工单、评论自己的工单、查看公开工单 |
-| staff | 处理工单、分配标签、审批权限申请 |
+| player | 创建议题、评论自己的议题、查看公开议题 |
+| staff | 处理议题、分配标签、审批权限申请 |
 | admin | 全部权限 + 管理用户/服务器/系统设置 |
 
 ## MC 插件设计
@@ -129,15 +129,15 @@ LightTicket 是一个与 Minecraft 服务器深度集成的工单管理平台，
 ### 命令（使用 Brigadier API）
 
 ```
-/lt create <类型> <标题>        创建工单（后续聊天输入描述）
-/lt list [mine|all]            查看工单列表
-/lt view <ID>                  查看工单详情
+/lt create <类型> <标题>        创建议题（后续聊天输入描述）
+/lt list [mine|all]            查看议题列表
+/lt view <ID>                  查看议题详情
 /lt comment <ID> <内容>        添加评论
-/lt close <ID>                 关闭自己的工单
+/lt close <ID>                 关闭自己的议题
 /lt link                       生成绑定验证码
 
 # Staff 命令
-/lt assign <ID> <玩家>         分配工单
+/lt assign <ID> <玩家>         分配议题
 /lt label <ID> <标签>          添加标签
 /lt approve <ID>               审批权限申请
 /lt reject <ID> [原因]         拒绝权限申请
@@ -148,14 +148,14 @@ LightTicket 是一个与 Minecraft 服务器深度集成的工单管理平台，
 - Folia 兼容：所有调度使用 RegionScheduler / GlobalRegionScheduler / EntityScheduler，不使用 BukkitScheduler
 - 异步 HTTP 请求不阻塞游戏线程
 
-### 自动采集上下文（Bug 工单）
+### 自动采集上下文（Bug 议题）
 - 玩家坐标（世界名 + XYZ）
 - 服务器版本、子服务器名称
 - 玩家当前游戏模式
 - 可配置是否采集最近聊天记录
 
 ### 实时通知（WebSocket 接收）
-- 工单被回复 → 聊天消息提醒（Adventure Component）
+- 议题被回复 → 聊天消息提醒（Adventure Component）
 - 权限审批通过 → 通知 + 自动执行 LuckPerms API
 - 权限被拒绝 → 通知 + 原因
 
@@ -163,7 +163,7 @@ LightTicket 是一个与 Minecraft 服务器深度集成的工单管理平台，
 审批通过后：
 - 通过 LuckPerms API 添加权限节点或用户组
 - 执行结果回报后端，更新 PermissionRequest 状态
-- 失败时记录错误信息，工单标记为 failed
+- 失败时记录错误信息，议题标记为 failed
 
 ## 前端设计
 
@@ -175,10 +175,10 @@ LightTicket 是一个与 Minecraft 服务器深度集成的工单管理平台，
 - @iconify/vue 图标库
 
 ### 核心页面
-- **工单列表页**: 状态/类型/标签/服务器筛选，搜索，排序，标签彩色展示
-- **工单详情页**: Markdown 渲染，评论时间线，状态变更记录，附件预览
-- **创建工单页**: 类型选择 → 动态表单（Bug 有截图上传，权限申请有权限选择器）
-- **个人中心**: 我的工单、账号设置、MC 绑定管理
+- **议题列表页**: 状态/类型/标签/服务器筛选，搜索，排序，标签彩色展示
+- **议题详情页**: Markdown 渲染，评论时间线，状态变更记录，附件预览
+- **创建议题页**: 类型选择 → 动态表单（Bug 有截图上传，权限申请有权限选择器）
+- **个人中心**: 我的议题、账号设置、MC 绑定管理
 - **管理后台**: 用户管理、服务器管理、标签管理、系统设置
 
 ### 交互特点
@@ -195,7 +195,7 @@ POST   /api/auth/login
 POST   /api/auth/refresh
 POST   /api/auth/link-minecraft    (验证码绑定)
 
-# 工单
+# 议题
 GET    /api/tickets                 (列表，支持筛选/分页)
 POST   /api/tickets                 (创建)
 GET    /api/tickets/:id             (详情)
@@ -226,15 +226,15 @@ POST   /api/servers                  (admin)
 
 # MC 插件专用（X-Server-Key 认证）
 POST   /api/mc/link-code            (生成验证码)
-POST   /api/mc/tickets              (游戏内创建工单)
-GET    /api/mc/tickets/:uuid        (查询玩家工单)
+POST   /api/mc/tickets              (游戏内创建议题)
+GET    /api/mc/tickets/:uuid        (查询玩家议题)
 POST   /api/mc/comments             (游戏内评论)
 ```
 
 ## 项目结构
 
 ```
-LightTickets/
+LightTicketss/
 ├── frontend/                  Vue 3 前端
 │   ├── src/
 │   │   ├── views/            页面组件

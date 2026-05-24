@@ -4,7 +4,7 @@
 
 **Goal:** 修复路由守卫重定向逻辑，为 Setup 页面添加主题切换，实现公开/登录访问控制。
 
-**Architecture:** 后端新增 `requireLogin` 字段和内存缓存，前端路由守卫按 setup→requireLogin→auth→admin 的严格顺序检查。Setup 页面独立添加主题按钮。工单列表/详情在公开模式下无需认证。
+**Architecture:** 后端新增 `requireLogin` 字段和内存缓存，前端路由守卫按 setup→requireLogin→auth→admin 的严格顺序检查。Setup 页面独立添加主题按钮。议题列表/详情在公开模式下无需认证。
 
 **Tech Stack:** Vue 3.5, Vue Router, Pinia, Express, Prisma, TailwindCSS 4
 
@@ -57,7 +57,7 @@
 model SetupStatus {
   id           String   @id @default(cuid())
   isSetup      Boolean  @default(false) @map("is_setup")
-  siteName     String   @default("LightTicket") @map("site_name")
+  siteName     String   @default("LightTickets") @map("site_name")
   siteUrl      String?  @map("site_url")
   requireLogin Boolean  @default(false) @map("require_login")
   createdAt    DateTime @default(now()) @map("created_at")
@@ -69,11 +69,11 @@ model SetupStatus {
 
 - [ ] **Step 2: 创建并运行迁移**
 
-Run: `cd /home/neokoni/projects/LightTickets/backend && npx prisma migrate dev --name add_require_login`
+Run: `cd /home/neokoni/projects/LightTicketss/backend && npx prisma migrate dev --name add_require_login`
 
 - [ ] **Step 3: 生成 Prisma 客户端**
 
-Run: `cd /home/neokoni/projects/LightTickets/backend && npx prisma generate`
+Run: `cd /home/neokoni/projects/LightTicketss/backend && npx prisma generate`
 
 - [ ] **Step 4: 提交**
 
@@ -121,7 +121,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
   cachedSiteConfig = {
     isSetup: status?.isSetup ?? false,
     requireLogin: status?.requireLogin ?? false,
-    siteName: status?.siteName ?? 'LightTicket',
+    siteName: status?.siteName ?? 'LightTickets',
   };
   return cachedSiteConfig;
 }
@@ -130,7 +130,7 @@ export async function getSetupStatus() {
   const status = await prisma.setupStatus.findFirst();
   return {
     isSetup: status?.isSetup ?? false,
-    siteName: status?.siteName ?? 'LightTicket',
+    siteName: status?.siteName ?? 'LightTickets',
   };
 }
 
@@ -240,7 +240,7 @@ git commit -m "feat: add site-config and settings API with in-memory cache"
 
 ---
 
-### Task 3: 后端 — 工单路由条件认证
+### Task 3: 后端 — 议题路由条件认证
 
 **Files:**
 - Modify: `backend/src/middleware/auth.ts`
@@ -801,8 +801,8 @@ import('@/router').then((mod) => {
 1. 未 setup → 访问任意页 → 应跳转 /setup
 2. 已 setup → 访问 /setup → 应跳转 /login
 3. requireLogin=true + 未登录 → / → /login
-4. requireLogin=false + 未登录 → / → 显示工单列表
-5. 已登录 → /login → / (工单列表)
+4. requireLogin=false + 未登录 → / → 显示议题列表
+5. 已登录 → /login → / (议题列表)
 
 - [ ] **Step 4: 提交**
 
@@ -964,7 +964,7 @@ git commit -m "feat: logout redirects to login only when requireLogin is on"
 改为：
 ```html
 <BaseButton v-if="auth.isAuthenticated" as="router-link" to="/tickets/new" size="sm" icon="lucide:plus">新建</BaseButton>
-<RouterLink v-else to="/login" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">登录以创建工单</RouterLink>
+<RouterLink v-else to="/login" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">登录以创建议题</RouterLink>
 ```
 
 在 `<script setup>` 中添加 `import { useAuthStore } from '@/stores/auth'` 和 `const auth = useAuthStore()`。
@@ -1042,8 +1042,8 @@ async function save() {
     <div v-else class="space-y-4 max-w-lg">
       <div class="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
         <div>
-          <p class="text-sm font-medium text-slate-900 dark:text-white">要求登录查看工单</p>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">开启后，未登录用户将无法查看工单列表和详情</p>
+          <p class="text-sm font-medium text-slate-900 dark:text-white">要求登录查看议题</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">开启后，未登录用户将无法查看议题列表和详情</p>
         </div>
         <button
           @click="requireLogin = !requireLogin"
@@ -1085,28 +1085,28 @@ git commit -m "feat: add requireLogin toggle to admin settings"
 
 - [ ] **Step 1: 验证后端启动无报错**
 
-Run: `cd /home/neokoni/projects/LightTickets/backend && npm run dev`
+Run: `cd /home/neokoni/projects/LightTicketss/backend && npm run dev`
 
 确认没有 TypeScript 编译错误。
 
 - [ ] **Step 2: 验证前端启动无报错**
 
-Run: `cd /home/neokoni/projects/LightTickets/frontend && npm run dev`
+Run: `cd /home/neokoni/projects/LightTicketss/frontend && npm run dev`
 
 确认没有 TypeScript 编译错误。
 
 - [ ] **Step 3: 手动测试场景清单**
 
 1. **未 setup 状态** → 访问 `/` → 应重定向到 `/setup`
-2. **已 setup + requireLogin=false + 未登录** → `/` → 显示工单列表，无"新建"按钮，有"登录以创建工单"链接
-3. **已 setup + requireLogin=false + 未登录** → `/tickets/:id` → 显示工单详情，无评论表单
+2. **已 setup + requireLogin=false + 未登录** → `/` → 显示议题列表，无"新建"按钮，有"登录以创建议题"链接
+3. **已 setup + requireLogin=false + 未登录** → `/tickets/:id` → 显示议题详情，无评论表单
 4. **已 setup + requireLogin=false + 未登录** → `/tickets/new` → 重定向到 `/login`
 5. **已 setup + requireLogin=true + 未登录** → `/` → 重定向到 `/login`
 6. **已 setup + requireLogin=true + 登录后退出** → 重定向到 `/login`
 7. **已 setup + requireLogin=false + 登录后退出** → 停留在当前页面
 8. **已 setup → 访问 `/setup`** → 重定向到 `/login`
 9. **Setup 页面** → 右上角有主题切换按钮，样式与导航栏一致
-10. **Admin 设置页** → "要求登录查看工单"开关可切换，保存后生效
+10. **Admin 设置页** → "要求登录查看议题"开关可切换，保存后生效
 
 - [ ] **Step 4: 最终提交（如有修复）**
 
