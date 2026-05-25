@@ -45,9 +45,9 @@ async function copyCode(pre: HTMLPreElement) {
   await navigator.clipboard.writeText(text)
   const btn = pre.querySelector('.copy-btn')
   if (btn) {
-    btn.dataset.copied = 'true'
+    (btn as HTMLElement).dataset.copied = 'true'
     setTimeout(() => {
-      delete btn.dataset.copied
+      delete (btn as HTMLElement).dataset.copied
     }, 2000)
   }
 }
@@ -73,7 +73,7 @@ watch(rendered, () => {
   font-weight: 600;
   background-color: var(--color-slate-100);
   padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
+  border-radius: 0.375rem;
 }
 
 .dark .markdown-body code {
@@ -86,8 +86,8 @@ watch(rendered, () => {
   padding: 1rem;
   background-color: var(--color-slate-50) !important;
   color: var(--color-slate-800) !important;
-  border-radius: 0.5rem;
-  border: 1px solid var(--color-slate-200);
+  border-radius: 0.75rem;
+  border: 1px solid rgb(226 232 240 / 0.8);
   font-size: 0.875rem;
   line-height: 1.5;
   font-weight: 400;
@@ -96,7 +96,7 @@ watch(rendered, () => {
 .dark .markdown-body pre code {
   background-color: var(--color-slate-800) !important;
   color: var(--color-slate-100) !important;
-  border-color: var(--color-slate-700);
+  border-color: rgb(30 41 59 / 0.8);
 }
 
 .markdown-body pre {
@@ -112,7 +112,7 @@ watch(rendered, () => {
   width: 2rem;
   height: 2rem;
   padding: 0.375rem;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
   background-color: var(--color-slate-200);
   color: var(--color-slate-600);
   border: none;

@@ -70,7 +70,7 @@ async function removeLabel(labelId: string) {
     <div v-if="auth.isStaff && unassignedLabels.length > 0" class="pt-1">
       <select
         @change="($event) => { const id = ($event.target as HTMLSelectElement).value; if (id) { addLabel(id); ($event.target as HTMLSelectElement).value = '' } }"
-        class="w-full px-2 py-1 text-xs rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+        class="w-full px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 backdrop-blur-sm"
       >
         <option value="">添加标签...</option>
         <option v-for="label in unassignedLabels" :key="label.id" :value="label.id">
