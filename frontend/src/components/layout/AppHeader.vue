@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Icon } from '@iconify/vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { siteConfig } from '@/router'
@@ -8,10 +9,24 @@ import { siteConfig } from '@/router'
 const auth = useAuthStore()
 const ui = useUiStore()
 const router = useRouter()
+const route = useRoute()
+
+const profileMenuOpen = ref(false)
+const profileMenuRef = ref<HTMLElement | null>(null)
+
+function handleClickOutside(e: MouseEvent) {
+  if (profileMenuRef.value && !profileMenuRef.value.contains(e.target as Node)) {
+    profileMenuOpen.value = false
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutside))
+onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside))
 
 function handleLogout() {
   auth.logout()
   ui.mobileMenuOpen = false
+  profileMenuOpen.value = false
   if (siteConfig.requireLogin) {
     router.push({ name: 'login' })
   }
@@ -19,107 +34,159 @@ function handleLogout() {
 </script>
 
 <template>
-  <header class="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-      <div class="flex items-center gap-6">
-        <RouterLink to="/" class="text-lg font-semibold text-slate-900 dark:text-white">
-          LightTickets
-        </RouterLink>
-        <nav v-if="auth.isAuthenticated" class="hidden sm:flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-          <RouterLink to="/" class="hover:text-slate-900 dark:hover:text-white transition-colors">议题</RouterLink>
-          <RouterLink v-if="auth.isAdmin" to="/admin" class="hover:text-slate-900 dark:hover:text-white transition-colors">管理</RouterLink>
-        </nav>
-      </div>
+  <header class="sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/45 dark:bg-slate-950/45 backdrop-blur-xl">
+    <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
+      <RouterLink to="/" class="inline-flex w-fit shrink-0 items-center gap-3">
+        <div class="text-sm font-semibold tracking-[0.06em] text-slate-900 dark:text-slate-100 lg:text-base">LightTickets</div>
+      </RouterLink>
 
-      <div class="flex items-center gap-3">
+      <nav v-if="auth.isAuthenticated" class="hidden items-center gap-1 lg:flex">
+        <RouterLink to="/" class="nav-link px-2 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 lg:px-2.5 lg:text-base" :class="{ 'nav-link-active': route.path === '/' || route.path.startsWith('/tickets') }">
+          <span class="nav-link-text">议题</span>
+        </RouterLink>
+        <RouterLink v-if="auth.isAdmin" to="/admin" class="nav-link px-2 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 lg:px-2.5 lg:text-base" :class="{ 'nav-link-active': route.path.startsWith('/admin') }">
+          <span class="nav-link-text">管理</span>
+        </RouterLink>
+      </nav>
+
+      <div class="ml-auto flex items-center gap-2">
         <button
           @click="ui.toggleTheme()"
-          class="p-2 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100 lg:h-11 lg:w-11"
           :aria-label="ui.theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'"
         >
-          <Icon :icon="ui.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" class="w-5 h-5" />
+          <Transition name="theme-icon" mode="out-in">
+            <Icon :key="ui.theme" :icon="ui.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" class="h-5 w-5" />
+          </Transition>
         </button>
 
         <template v-if="auth.isAuthenticated">
-          <div class="relative group">
-            <button class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <div class="relative" ref="profileMenuRef">
+            <button @click="profileMenuOpen = !profileMenuOpen" class="flex items-center gap-2 p-1.5 rounded-full border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition">
               <div class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-700 dark:text-slate-300">
                 {{ auth.user?.username?.charAt(0).toUpperCase() }}
               </div>
             </button>
-            <div class="absolute right-0 top-full mt-1 w-48 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-              <RouterLink to="/profile" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">个人资料</RouterLink>
-              <button @click="handleLogout" class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-slate-50 dark:hover:bg-slate-700">退出登录</button>
+            <div v-if="profileMenuOpen" class="absolute right-0 top-full mt-1 w-48 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
+              <RouterLink to="/profile" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100" @click="profileMenuOpen = false">个人资料</RouterLink>
+              <button @click="handleLogout" class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">退出登录</button>
             </div>
           </div>
         </template>
 
         <template v-else>
-          <RouterLink to="/login" class="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">登录</RouterLink>
+          <RouterLink to="/login" class="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-slate-100 transition">登录</RouterLink>
         </template>
 
         <button
           @click="ui.mobileMenuOpen = !ui.mobileMenuOpen"
-          class="sm:hidden p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100 lg:hidden"
           aria-label="菜单"
         >
-          <Icon :icon="ui.mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="w-5 h-5" />
+          <Icon :icon="ui.mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="h-5 w-5" />
         </button>
       </div>
     </div>
+  </header>
 
-    <!-- craft233 style mobile overlay menu -->
-    <Transition name="mobile-menu">
-      <div v-if="ui.mobileMenuOpen" class="fixed inset-0 z-40 sm:hidden bg-slate-950/40 dark:bg-slate-950/60 flex flex-col p-4 pt-[4.5rem]" @click.self="ui.mobileMenuOpen = false">
-        <div class="mx-auto w-full max-w-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-sm overflow-hidden pointer-events-auto">
-          <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-            <span class="text-sm font-medium text-slate-900 dark:text-white">菜单</span>
-            <button @click="ui.mobileMenuOpen = false" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
-              <Icon icon="lucide:x" class="w-4 h-4" />
-            </button>
-          </div>
-          <div class="px-2 py-2 space-y-1">
-            <template v-if="auth.isAuthenticated">
-              <RouterLink to="/" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
-                <Icon icon="lucide:ticket" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                议题
-              </RouterLink>
-              <RouterLink v-if="auth.isAdmin" to="/admin" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
-                <Icon icon="lucide:shield" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                管理
-              </RouterLink>
-              <div class="my-1 border-t border-slate-200 dark:border-slate-700" />
-              <RouterLink to="/profile" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
-                <Icon icon="lucide:user" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                个人资料
-              </RouterLink>
-              <button @click="handleLogout" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                <Icon icon="lucide:log-out" class="w-4 h-4" />
-                退出登录
+  <!-- Mobile overlay menu (outside header to avoid backdrop-blur clipping) -->
+  <Transition name="fade">
+    <div v-if="ui.mobileMenuOpen" class="fixed inset-0 z-[60] flex items-start justify-center bg-slate-950/40 backdrop-blur-sm p-4 pt-[4.5rem] lg:hidden" @click.self="ui.mobileMenuOpen = false">
+      <Transition name="mobile-menu" appear>
+        <div class="w-full max-w-xl rounded-xl border border-slate-200 bg-white/95 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/95" @click.stop>
+            <div class="mb-5 flex items-center justify-between">
+              <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">LightTickets</div>
+              <button
+                type="button"
+                class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 dark:border-slate-800 dark:text-slate-200"
+                aria-label="关闭菜单"
+                @click="ui.mobileMenuOpen = false"
+              >
+                ✕
               </button>
-            </template>
-            <template v-else>
-              <RouterLink to="/login" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" @click="ui.mobileMenuOpen = false">
-                <Icon icon="lucide:log-in" class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                登录
-              </RouterLink>
-            </template>
+            </div>
+
+            <nav class="flex flex-col gap-1">
+              <template v-if="auth.isAuthenticated">
+                <RouterLink
+                  to="/"
+                  class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                  active-class="nav-link-active"
+                  @click="ui.mobileMenuOpen = false"
+                >
+                  议题
+                </RouterLink>
+                <RouterLink
+                  v-if="auth.isAdmin"
+                  to="/admin"
+                  class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                  active-class="nav-link-active"
+                  @click="ui.mobileMenuOpen = false"
+                >
+                  管理
+                </RouterLink>
+                <div class="my-1 border-t border-slate-200 dark:border-slate-800" />
+                <RouterLink
+                  to="/profile"
+                  class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                  @click="ui.mobileMenuOpen = false"
+                >
+                  个人资料
+                </RouterLink>
+                <button @click="handleLogout" class="w-full rounded-md px-4 py-2.5 text-left text-sm font-medium text-red-600 dark:text-red-400 transition hover:text-red-700 dark:hover:text-red-300">
+                  退出登录
+                </button>
+              </template>
+              <template v-else>
+                <RouterLink
+                  to="/login"
+                  class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                  @click="ui.mobileMenuOpen = false"
+                >
+                  登录
+                </RouterLink>
+              </template>
+            </nav>
           </div>
-        </div>
+        </Transition>
       </div>
     </Transition>
-  </header>
-</template>
+  </template>
 
 <style scoped>
-.mobile-menu-enter-active {
-  transition: opacity 0.2s ease;
-}
-.mobile-menu-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.18s ease;
 }
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.mobile-menu-enter-active,
+.mobile-menu-leave-active {
+  transition: transform 0.24s ease, opacity 0.24s ease;
+}
+
 .mobile-menu-enter-from,
 .mobile-menu-leave-to {
+  transform: translateY(-14px);
   opacity: 0;
+}
+
+.theme-icon-enter-active,
+.theme-icon-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.theme-icon-enter-from {
+  opacity: 0;
+  transform: rotate(-16deg) scale(0.9);
+}
+
+.theme-icon-leave-to {
+  opacity: 0;
+  transform: rotate(16deg) scale(0.9);
 }
 </style>

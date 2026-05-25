@@ -11,7 +11,7 @@ const ui = useUiStore()
         <div
           v-for="toast in ui.toasts"
           :key="toast.id"
-          class="px-4 py-3 rounded-lg shadow-lg text-sm font-medium backdrop-blur-sm border"
+          class="px-4 py-3 rounded-md shadow-lg text-sm font-medium backdrop-blur-sm border"
           :class="{
             'bg-green-50/90 dark:bg-green-950/90 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800': toast.type === 'success',
             'bg-red-50/90 dark:bg-red-950/90 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800': toast.type === 'error',
