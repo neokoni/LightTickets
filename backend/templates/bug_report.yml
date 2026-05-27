@@ -1,0 +1,23 @@
+name: "Bug 反馈"
+description: "报告游戏中遇到的问题"
+title_prefix: "[Bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你反馈问题！请尽量提供**稳定复现的步骤**。
+  - type: textarea
+    id: description
+    validations:
+      required: true
+    attributes:
+      label: "问题描述"
+      placeholder: "清晰描述你遇到的问题..."
+  - type: textarea
+    id: reproduce
+    validations:
+      required: true
+    attributes:
+      label: "复现步骤"
+completion_hooks: []

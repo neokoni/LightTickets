@@ -1,0 +1,16 @@
+name: "建议"
+description: "提出改进建议"
+title_prefix: "[建议] "
+labels: []
+body:
+  - type: textarea
+    id: description
+    validations:
+      required: true
+    attributes:
+      label: "建议内容"
+      placeholder: "描述你的改进想法..."
+completion_hooks:
+  - event: resolved
+    commands:
+      - "tell {player_name} 你的建议 #{ticket_id} 已被采纳"

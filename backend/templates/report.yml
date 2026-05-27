@@ -1,0 +1,19 @@
+name: "举报"
+description: "举报违规玩家"
+title_prefix: "[举报] "
+labels: []
+body:
+  - type: input
+    id: target
+    validations:
+      required: true
+    attributes:
+      label: "被举报玩家名"
+  - type: textarea
+    id: description
+    validations:
+      required: true
+    attributes:
+      label: "举报详情"
+      placeholder: "描述违规行为，尽量提供证据..."
+completion_hooks: []

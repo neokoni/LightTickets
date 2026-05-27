@@ -1,0 +1,25 @@
+name: "权限申请"
+description: "申请权限组或特殊节点"
+title_prefix: "[权限] "
+labels: []
+body:
+  - type: textarea
+    id: reason
+    validations:
+      required: true
+    attributes:
+      label: "申请理由"
+  - type: input
+    id: permission
+    validations:
+      required: false
+    attributes:
+      label: "权限节点（选填）"
+      placeholder: "如 essentials.fly"
+completion_hooks:
+  - event: resolved
+    commands:
+      - "tell {player_name} 你的权限申请 #{ticket_id} 已通过"
+  - event: rejected
+    commands:
+      - "tell {player_name} 你的权限申请 #{ticket_id} 已被拒绝"
