@@ -207,3 +207,19 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+model TicketTemplate {
+  id              Int      @id @default(autoincrement())
+  name            String   @unique
+  nameI18n        String   @map("name_i18n")
+  description     String
+  titlePrefix     String?  @map("title_prefix")
+  labels          String   @default("[]")
+  body            String
+  completionHooks String   @default("[]") @map("completion_hooks")
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("ticket_templates")
+}
