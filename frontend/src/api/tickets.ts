@@ -22,7 +22,7 @@ export function apiGetTickets(filters: TicketFilters = {}) {
   return apiFetch<PaginatedResponse<Ticket>>(`/tickets${qs ? '?' + qs : ''}`)
 }
 
-export function apiGetTicket(id: string) {
+export function apiGetTicket(id: number) {
   return apiFetch<Ticket>(`/tickets/${id}`)
 }
 
@@ -33,18 +33,18 @@ export function apiCreateTicket(data: { title: string; body: string; type: Ticke
   })
 }
 
-export function apiUpdateTicket(id: string, data: { status?: TicketStatus; priority?: string; assigneeId?: string }) {
+export function apiUpdateTicket(id: number, data: { status?: TicketStatus; priority?: string; assigneeId?: string }) {
   return apiFetch<Ticket>(`/tickets/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   })
 }
 
-export function apiApproveTicket(id: string) {
+export function apiApproveTicket(id: number) {
   return apiFetch<Ticket>(`/tickets/${id}/approve`, { method: 'POST' })
 }
 
-export function apiRejectTicket(id: string, reason?: string) {
+export function apiRejectTicket(id: number, reason?: string) {
   return apiFetch<Ticket>(`/tickets/${id}/reject`, {
     method: 'POST',
     body: JSON.stringify({ reason }),

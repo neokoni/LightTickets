@@ -13,14 +13,14 @@ export interface Label {
 }
 
 export interface TicketLabel {
-  ticketId: string
+  ticketId: number
   labelId: string
   label: Label
 }
 
 export interface Comment {
   id: string
-  ticketId: string
+  ticketId: number
   authorId: string
   body: string
   source: CommentSource
@@ -30,7 +30,7 @@ export interface Comment {
 
 export interface PermissionRequest {
   id: string
-  ticketId: string
+  ticketId: number
   permissionNode?: string
   groupName?: string
   executionStatus: ExecutionStatus
@@ -39,7 +39,7 @@ export interface PermissionRequest {
 }
 
 export interface Ticket {
-  id: string
+  id: number
   title: string
   body: string
   type: TicketType
@@ -61,7 +61,7 @@ export interface Ticket {
 
 export interface AuditLog {
   id: string
-  ticketId: string
+  ticketId: number
   actorId: string
   action: string
   oldValue?: string

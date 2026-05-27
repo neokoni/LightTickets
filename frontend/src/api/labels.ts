@@ -23,13 +23,13 @@ export function apiDeleteLabel(id: string) {
   return apiFetch<void>(`/labels/${id}`, { method: 'DELETE' })
 }
 
-export function apiAddTicketLabel(ticketId: string, labelId: string) {
+export function apiAddTicketLabel(ticketId: number, labelId: string) {
   return apiFetch<void>(`/tickets/${ticketId}/labels`, {
     method: 'POST',
     body: JSON.stringify({ labelId }),
   })
 }
 
-export function apiRemoveTicketLabel(ticketId: string, labelId: string) {
+export function apiRemoveTicketLabel(ticketId: number, labelId: string) {
   return apiFetch<void>(`/tickets/${ticketId}/labels/${labelId}`, { method: 'DELETE' })
 }

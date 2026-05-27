@@ -29,23 +29,23 @@ export const useTicketsStore = defineStore('tickets', () => {
     }
   }
 
-  async function fetchDetail(id: string) {
+  async function fetchDetail(id: number) {
     currentTicket.value = await apiGetTicket(id)
   }
 
-  async function updateStatus(id: string, status: TicketStatus) {
+  async function updateStatus(id: number, status: TicketStatus) {
     const updated = await apiUpdateTicket(id, { status })
     if (currentTicket.value?.id === id) currentTicket.value = updated
     const idx = tickets.value.findIndex(t => t.id === id)
     if (idx !== -1) tickets.value[idx] = updated
   }
 
-  async function approve(id: string) {
+  async function approve(id: number) {
     const updated = await apiApproveTicket(id)
     if (currentTicket.value?.id === id) currentTicket.value = updated
   }
 
-  async function reject(id: string, reason?: string) {
+  async function reject(id: number, reason?: string) {
     const updated = await apiRejectTicket(id, reason)
     if (currentTicket.value?.id === id) currentTicket.value = updated
   }
