@@ -1,12 +1,12 @@
 import { apiFetch } from './client'
-import type { Ticket, TicketStatus, TicketType } from '@/types/ticket'
+import type { Ticket, TicketStatus, TemplateSummary, TemplateDefinition } from '@/types/ticket'
 import type { PaginatedResponse } from '@/types/api'
 
 export interface TicketFilters {
   page?: number
   pageSize?: number
   status?: TicketStatus
-  type?: TicketType
+  type?: string
   authorId?: string
   serverId?: string
   labelId?: string
@@ -26,7 +26,7 @@ export function apiGetTicket(id: number) {
   return apiFetch<Ticket>(`/tickets/${id}`)
 }
 
-export function apiCreateTicket(data: { title: string; body: string; type: TicketType; priority?: string; serverId?: string }) {
+export function apiCreateTicket(data: { title: string; template: string; formData: Record<string, string>; priority?: string; serverId?: string }) {
   return apiFetch<Ticket>('/tickets', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -49,4 +49,12 @@ export function apiRejectTicket(id: number, reason?: string) {
     method: 'POST',
     body: JSON.stringify({ reason }),
   })
+}
+
+export function apiGetTemplates() {
+  return apiFetch<TemplateSummary[]>('/templates')
+}
+
+export function apiGetTemplate(name: string) {
+  return apiFetch<TemplateDefinition>(`/templates/${name}`)
 }

@@ -1,5 +1,4 @@
 export type Role = 'player' | 'staff' | 'admin'
-export type TicketType = 'bug_report' | 'permission_request' | 'suggestion' | 'report'
 export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'rejected'
 export type Priority = 'low' | 'medium' | 'high' | 'critical'
 export type CommentSource = 'web' | 'minecraft'
@@ -42,7 +41,7 @@ export interface Ticket {
   id: number
   title: string
   body: string
-  type: TicketType
+  template: string
   status: TicketStatus
   priority: Priority
   authorId: string
@@ -68,4 +67,33 @@ export interface AuditLog {
   newValue?: string
   createdAt: string
   actor: { id: string; username: string; minecraftName?: string }
+}
+
+export interface TemplateField {
+  type: 'markdown' | 'input' | 'textarea' | 'checkboxes' | 'dropdown'
+  id?: string
+  validations?: { required?: boolean }
+  attributes: {
+    label?: string
+    description?: string
+    placeholder?: string
+    value?: string
+    options?: (string | { label: string; required?: boolean })[]
+  }
+}
+
+export interface TemplateDefinition {
+  name: string
+  name_i18n: string
+  description: string
+  title_prefix?: string
+  labels: string[]
+  body: TemplateField[]
+}
+
+export interface TemplateSummary {
+  name: string
+  name_i18n: string
+  description: string
+  labels: string[]
 }
