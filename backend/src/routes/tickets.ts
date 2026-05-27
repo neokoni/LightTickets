@@ -9,6 +9,12 @@ import { ValidationError } from '../utils/errors.js';
 
 const router = Router();
 
+function parseId(raw: string): number {
+  const id = Number(raw);
+  if (isNaN(id)) throw new ValidationError('无效的议题ID');
+  return id;
+}
+
 const createSchema = z.object({
   title: z.string().min(1).max(200),
   body: z.string().min(1),
@@ -40,22 +46,22 @@ router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) =
 });
 
 router.get('/:id', conditionalAuthMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.getById(Number(req.params.id));
+  const ticket = await ticketService.getById(parseId(req.params.id));
   res.json(ticket);
 });
 
 router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.update(Number(req.params.id), req.user!.userId, req.user!.role, req.body);
+  const ticket = await ticketService.update(parseId(req.params.id), req.user!.userId, req.user!.role, req.body);
   res.json(ticket);
 });
 
 router.post('/:id/approve', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const ticket = await permissionService.approve(Number(req.params.id), req.user!.userId);
+  const ticket = await permissionService.approve(parseId(req.params.id), req.user!.userId);
   res.json(ticket);
 });
 
 router.post('/:id/reject', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const ticket = await permissionService.reject(Number(req.params.id), req.user!.userId, req.body.reason);
+  const ticket = await permissionService.reject(parseId(req.params.id), req.user!.userId, req.body.reason);
   res.json(ticket);
 });
 
@@ -63,12 +69,12 @@ router.post('/:id/reject', authMiddleware, requireRole('staff'), async (req: Req
 router.post('/:id/labels', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
   const { labelId } = req.body;
   if (!labelId) throw new ValidationError('标签ID不能为空');
-  await labelService.addToTicket(Number(req.params.id), labelId);
+  await labelService.addToTicket(parseId(req.params.id), labelId);
   res.status(201).end();
 });
 
 router.delete('/:id/labels/:labelId', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  await labelService.removeFromTicket(Number(req.params.id), req.params.labelId);
+  await labelService.removeFromTicket(parseId(req.params.id), req.params.labelId);
   res.status(204).end();
 });
 
