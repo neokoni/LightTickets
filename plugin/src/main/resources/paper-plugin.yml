@@ -1,0 +1,7 @@
+name: LightTickets
+version: '${version}'
+main: ink.neokoni.lighttickets.LightTickets
+api-version: '1.21.1'
+description: LightTickets Minecraft Server Plugin
+authors: [neokoni]
+folia-supported: true
