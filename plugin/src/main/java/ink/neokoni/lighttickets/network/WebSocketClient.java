@@ -54,7 +54,7 @@ public class WebSocketClient {
         socket.on("permission:approved", args -> {
             try {
                 JSONObject data = (JSONObject) args[0];
-                String ticketId = data.getString("ticketId");
+                int ticketId = data.getInt("ticketId");
                 String playerUuid = data.getString("playerUuid");
                 String groupName = data.optString("groupName", null);
                 plugin.getServer().getGlobalRegionScheduler().run(plugin,
@@ -65,7 +65,7 @@ public class WebSocketClient {
         socket.on("permission:rejected", args -> {
             try {
                 JSONObject data = (JSONObject) args[0];
-                String ticketId = data.getString("ticketId");
+                int ticketId = data.getInt("ticketId");
                 String playerUuid = data.getString("playerUuid");
                 String reason = data.optString("reason", null);
                 plugin.getServer().getGlobalRegionScheduler().run(plugin,
@@ -76,7 +76,7 @@ public class WebSocketClient {
         socket.on("ticket:status_changed", args -> {
             try {
                 JSONObject data = (JSONObject) args[0];
-                String ticketId = data.getString("ticketId");
+                int ticketId = data.getInt("ticketId");
                 String playerUuid = data.getString("playerUuid");
                 String newStatus = data.getString("newStatus");
                 plugin.getServer().getGlobalRegionScheduler().run(plugin,

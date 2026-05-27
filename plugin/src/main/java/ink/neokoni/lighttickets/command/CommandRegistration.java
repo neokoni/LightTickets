@@ -147,16 +147,16 @@ public class CommandRegistration {
             return 0;
         }
         String uuid = player.getUniqueId().toString();
-        String ticketId = ctx.getArgument("id", String.class);
+        int ticketId = Integer.parseInt(ctx.getArgument("id", String.class));
 
         api.getMyTickets(uuid)
             .thenAccept(tickets -> {
                 plugin.getServer().getGlobalRegionScheduler().run(plugin, t -> {
                     Ticket found = tickets.stream()
-                        .filter(tk -> tk.getId().equals(ticketId))
+                        .filter(tk -> tk.getId() == ticketId)
                         .findFirst().orElse(null);
                     if (found == null) {
-                        player.sendMessage(lang.prefixFormat("error-ticket-not-found", "{ticketId}", ticketId));
+                        player.sendMessage(lang.prefixFormat("error-ticket-not-found", "{ticketId}", String.valueOf(ticketId)));
                         return;
                     }
                     player.sendMessage(lang.prefixFormat("cmd-ticket-header", "{id}", found.getId()));
@@ -208,7 +208,7 @@ public class CommandRegistration {
             player.sendMessage(lang.get("no-permission"));
             return 0;
         }
-        String ticketId = ctx.getArgument("id", String.class);
+        int ticketId = Integer.parseInt(ctx.getArgument("id", String.class));
         String text = ctx.getArgument("text", String.class);
         String uuid = player.getUniqueId().toString();
 

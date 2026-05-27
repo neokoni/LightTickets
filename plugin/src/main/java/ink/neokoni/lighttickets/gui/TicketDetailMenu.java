@@ -63,7 +63,7 @@ public class TicketDetailMenu extends BaseMenu {
         return actions;
     }
 
-    private void registerChatInput(Player player, String ticketId) {
+    private void registerChatInput(Player player, int ticketId) {
         PluginManager pm = org.bukkit.Bukkit.getPluginManager();
 
         pm.registerEvents(new Listener() {

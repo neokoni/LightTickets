@@ -64,7 +64,7 @@ public class ApiClient {
             for (var element : arr) {
                 JsonObject obj = element.getAsJsonObject();
                 tickets.add(new Ticket(
-                    obj.get("id").getAsString(),
+                    obj.get("id").getAsInt(),
                     obj.get("title").getAsString(),
                     obj.has("body") ? obj.get("body").getAsString() : "",
                     obj.has("type") ? obj.get("type").getAsString() : "",
@@ -91,7 +91,7 @@ public class ApiClient {
         return executeAsync(request).thenApply(json -> {
             JsonObject obj = JsonParser.parseString(json).getAsJsonObject();
             return new Ticket(
-                obj.get("id").getAsString(),
+                obj.get("id").getAsInt(),
                 obj.get("title").getAsString(),
                 obj.has("body") ? obj.get("body").getAsString() : "",
                 obj.has("type") ? obj.get("type").getAsString() : "",
@@ -102,7 +102,7 @@ public class ApiClient {
         });
     }
 
-    public CompletableFuture<Void> addComment(String playerUuid, String ticketId, String body) {
+    public CompletableFuture<Void> addComment(String playerUuid, int ticketId, String body) {
         JsonObject payload = new JsonObject();
         payload.addProperty("minecraftUuid", playerUuid);
         payload.addProperty("ticketId", ticketId);
@@ -130,7 +130,7 @@ public class ApiClient {
         });
     }
 
-    public CompletableFuture<Void> reportPermissionExecution(String ticketId, boolean success, String errorMessage) {
+    public CompletableFuture<Void> reportPermissionExecution(int ticketId, boolean success, String errorMessage) {
         JsonObject payload = new JsonObject();
         payload.addProperty("ticketId", ticketId);
         payload.addProperty("success", success);

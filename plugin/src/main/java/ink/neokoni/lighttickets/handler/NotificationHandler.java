@@ -18,21 +18,21 @@ public class NotificationHandler {
         this.lang = lang;
     }
 
-    public void handlePermissionApproved(String playerUuid, String ticketId, String groupName) {
+    public void handlePermissionApproved(String playerUuid, int ticketId, String groupName) {
         var message = lang.format("notify-permission-approved",
-            "{ticketId}", ticketId,
+            "{ticketId}", String.valueOf(ticketId),
             "{groupName}", groupName != null ? groupName : "unknown");
         deliver(playerUuid, message);
     }
 
-    public void handlePermissionRejected(String playerUuid, String ticketId, String reason) {
+    public void handlePermissionRejected(String playerUuid, int ticketId, String reason) {
         var message = lang.format("notify-permission-rejected",
-            "{ticketId}", ticketId,
+            "{ticketId}", String.valueOf(ticketId),
             "{reason}", reason != null ? reason : "无");
         deliver(playerUuid, message);
     }
 
-    public void handleStatusChanged(String playerUuid, String ticketId, String newStatus) {
+    public void handleStatusChanged(String playerUuid, int ticketId, String newStatus) {
         String statusKey = switch (newStatus) {
             case "open" -> "status-open";
             case "in_progress" -> "status-in_progress";
@@ -43,7 +43,7 @@ public class NotificationHandler {
         };
         String statusName = statusKey != null ? lang.getRaw(statusKey) : newStatus;
         var message = lang.format("notify-ticket-status",
-            "{ticketId}", ticketId,
+            "{ticketId}", String.valueOf(ticketId),
             "{status}", statusName);
         deliver(playerUuid, message);
     }

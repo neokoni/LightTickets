@@ -3,7 +3,7 @@ package ink.neokoni.lighttickets.model;
 import java.util.Map;
 
 public class Ticket {
-    private final String id;
+    private final int id;
     private final String title;
     private final String body;
     private final String type;
@@ -26,7 +26,7 @@ public class Ticket {
         "report", "举报"
     );
 
-    public Ticket(String id, String title, String body, String type, String status, String priority, String createdAt) {
+    public Ticket(int id, String title, String body, String type, String status, String priority, String createdAt) {
         this.id = id;
         this.title = title;
         this.body = body;
@@ -36,7 +36,7 @@ public class Ticket {
         this.createdAt = createdAt;
     }
 
-    public String getId() { return id; }
+    public int getId() { return id; }
     public String getTitle() { return title; }
     public String getBody() { return body; }
     public String getType() { return type; }
