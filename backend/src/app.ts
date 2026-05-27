@@ -15,6 +15,7 @@ import mcRoutes from './routes/mc.js';
 import auditRoutes from './routes/audit.js';
 import templateRoutes from './routes/templates.js';
 import adminTemplateRoutes from './routes/admin-templates.js';
+import userRoutes from './routes/users.js';
 import { initTemplates } from './services/template.service.js';
 
 export function createApp() {
@@ -44,6 +45,7 @@ app.use('/api/admin/templates', adminTemplateRoutes);
   app.use('/api/attachments', attachmentRoutes);
   app.use('/api/servers', serverRoutes);
   app.use('/api/mc', mcRoutes);
+  app.use('/api/users', userRoutes);
 
   // Error handler
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
