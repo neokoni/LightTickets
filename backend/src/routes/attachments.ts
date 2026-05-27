@@ -17,7 +17,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req: Reques
     mimeType: req.file.mimetype,
     size: req.file.size,
     uploadedBy: req.user!.userId,
-    ticketId: req.body.ticketId,
+    ticketId: req.body.ticketId ? Number(req.body.ticketId) : undefined,
     commentId: req.body.commentId,
   });
 

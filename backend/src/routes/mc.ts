@@ -95,7 +95,7 @@ router.post('/comments', async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({ where: { minecraftUuid } });
   if (!user) throw new NotFoundError('Player not linked');
 
-  const comment = await commentService.create(ticketId, user.id, body, 'minecraft');
+  const comment = await commentService.create(Number(ticketId), user.id, body, 'minecraft');
   res.status(201).json(comment);
 });
 
@@ -103,7 +103,7 @@ router.post('/permission-executed', async (req: Request, res: Response) => {
   const { ticketId, success, errorMessage } = req.body;
   if (!ticketId) throw new ValidationError('ticketId required');
 
-  await permissionService.reportExecution(ticketId, success, errorMessage);
+  await permissionService.reportExecution(Number(ticketId), success, errorMessage);
   res.json({ ok: true });
 });
 
