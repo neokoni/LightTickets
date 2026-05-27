@@ -18,9 +18,10 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("io.socket:socket.io-client:2.1.0")
-    implementation("org.xerial:sqlite-jdbc:3.45.3.0")
+    compileOnly("org.apache.maven.resolver:maven-resolver-api:1.9.22")
+    compileOnly("com.squareup.okhttp3:okhttp:4.12.0")
+    compileOnly("io.socket:socket.io-client:2.1.0")
+    compileOnly("org.xerial:sqlite-jdbc:3.45.3.0")
 }
 
 tasks.processResources {
