@@ -131,6 +131,10 @@ export async function completeSetup(input: SetupInput) {
     });
   }
 
+  // 6. Seed default templates from YAML files into DB
+  const { seedTemplatesFromFiles } = await import('./template.service.js');
+  await seedTemplatesFromFiles();
+
   const tokens = generateTokens(admin.id, admin.role);
   return {
     setup: setupRecord,
