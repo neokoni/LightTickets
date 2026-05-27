@@ -75,7 +75,7 @@ export async function list(input: ListTicketsInput) {
   return { tickets, total, page, pageSize };
 }
 
-export async function getById(id: string) {
+export async function getById(id: number) {
   const ticket = await prisma.ticket.findUnique({
     where: { id },
     include: {
@@ -91,7 +91,7 @@ export async function getById(id: string) {
 }
 
 export async function update(
-  id: string,
+  id: number,
   userId: string,
   userRole: string,
   data: { status?: TicketStatus; priority?: Priority; assigneeId?: string },

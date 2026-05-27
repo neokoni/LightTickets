@@ -24,10 +24,10 @@ export async function remove(id: string) {
   await prisma.label.delete({ where: { id } });
 }
 
-export async function addToTicket(ticketId: string, labelId: string) {
+export async function addToTicket(ticketId: number, labelId: string) {
   return prisma.ticketLabel.create({ data: { ticketId, labelId } });
 }
 
-export async function removeFromTicket(ticketId: string, labelId: string) {
+export async function removeFromTicket(ticketId: number, labelId: string) {
   await prisma.ticketLabel.delete({ where: { ticketId_labelId: { ticketId, labelId } } });
 }

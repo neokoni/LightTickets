@@ -7,7 +7,7 @@ const router = Router({ mergeParams: true });
 router.use(authMiddleware);
 
 router.get('/', async (req: Request, res: Response) => {
-  const logs = await auditService.listByTicket(req.params.ticketId);
+  const logs = await auditService.listByTicket(Number(req.params.ticketId));
   res.json(logs);
 });
 

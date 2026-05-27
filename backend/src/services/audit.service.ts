@@ -3,7 +3,7 @@ import { NotFoundError } from '../utils/errors.js';
 
 const prisma = new PrismaClient();
 
-export async function listByTicket(ticketId: string) {
+export async function listByTicket(ticketId: number) {
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
   if (!ticket) throw new NotFoundError('议题不存在');
 
@@ -17,7 +17,7 @@ export async function listByTicket(ticketId: string) {
 }
 
 export async function create(
-  ticketId: string,
+  ticketId: number,
   actorId: string,
   action: string,
   oldValue?: string,

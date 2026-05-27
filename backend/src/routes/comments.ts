@@ -11,7 +11,7 @@ const createSchema = z.object({
 });
 
 router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) => {
-  const comments = await commentService.listByTicket(req.params.id);
+  const comments = await commentService.listByTicket(Number(req.params.id));
   res.json(comments);
 });
 
@@ -19,7 +19,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
 
-  const comment = await commentService.create(req.params.id, req.user!.userId, parsed.data.body);
+  const comment = await commentService.create(Number(req.params.id), req.user!.userId, parsed.data.body);
   res.status(201).json(comment);
 });
 

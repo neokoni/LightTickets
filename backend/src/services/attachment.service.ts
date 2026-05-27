@@ -9,7 +9,7 @@ interface CreateAttachmentInput {
   mimeType: string;
   size: number;
   uploadedBy: string;
-  ticketId?: string;
+  ticketId?: number;
   commentId?: string;
 }
 

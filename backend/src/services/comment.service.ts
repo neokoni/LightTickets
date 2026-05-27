@@ -3,7 +3,7 @@ import { NotFoundError } from '../utils/errors.js';
 
 const prisma = new PrismaClient();
 
-export async function create(ticketId: string, authorId: string, body: string, source: CommentSource = 'web') {
+export async function create(ticketId: number, authorId: string, body: string, source: CommentSource = 'web') {
   const ticket = await prisma.ticket.findUnique({ where: { id: ticketId } });
   if (!ticket) throw new NotFoundError('议题不存在');
 
@@ -13,7 +13,7 @@ export async function create(ticketId: string, authorId: string, body: string, s
   });
 }
 
-export async function listByTicket(ticketId: string) {
+export async function listByTicket(ticketId: number) {
   return prisma.comment.findMany({
     where: { ticketId },
     orderBy: { createdAt: 'asc' },
