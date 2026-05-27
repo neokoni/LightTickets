@@ -6,6 +6,7 @@ import { useTicketsStore } from '@/stores/tickets'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { usePolling } from '@/composables/usePolling'
+import { renderTicketRefs } from '@/composables/useTicketRef'
 import { apiGetComments, apiCreateComment } from '@/api/comments'
 import { timeAgo, formatDate } from '@/utils/date'
 import BaseBadge from '@/components/base/BaseBadge.vue'
@@ -35,12 +36,18 @@ const store = useTicketsStore()
 const auth = useAuthStore()
 const ui = useUiStore()
 
-const id = route.params.id as string
+const id = Number(route.params.id)
 const comments = ref<Comment[]>([])
 const newComment = ref('')
 const submitting = ref(false)
 
 const ticket = computed(() => store.currentTicket)
+
+const ticketBody = computed(() => ticket.value ? renderTicketRefs(ticket.value.body) : '')
+
+function commentBody(comment: Comment): string {
+  return renderTicketRefs(comment.body)
+}
 
 const statusOptions: { key: TicketStatus; label: string; icon: string }[] = [
   { key: 'open', label: '开放', icon: 'lucide:circle-dot' },
@@ -125,7 +132,7 @@ usePolling(async () => {
       <div class="flex-1 min-w-0 space-y-6">
         <!-- Body -->
         <div class="p-6 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur">
-          <MarkdownRenderer :content="ticket.body" />
+          <MarkdownRenderer :content="ticketBody" />
         </div>
 
         <!-- Comments -->
@@ -143,7 +150,7 @@ usePolling(async () => {
                 <BaseBadge v-if="comment.source === 'minecraft'" color="#4ade80">MC</BaseBadge>
               </div>
               <div class="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                <MarkdownRenderer :content="comment.body" />
+                <MarkdownRenderer :content="commentBody(comment)" />
               </div>
             </div>
           </div>

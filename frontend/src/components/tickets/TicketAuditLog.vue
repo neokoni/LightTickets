@@ -6,7 +6,7 @@ import { timeAgo } from '@/utils/date'
 import type { AuditLog } from '@/types/ticket'
 
 const props = defineProps<{
-  ticketId: string
+  ticketId: number
 }>()
 
 const logs = ref<AuditLog[]>([])
