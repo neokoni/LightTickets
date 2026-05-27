@@ -77,7 +77,7 @@ model Ticket {
   id         Int          @id @default(autoincrement())
   title      String
   body       String
-  template   String
+  template   String   @default("")
   formData   String?      @map("form_data")
   status     TicketStatus @default(open)
   priority   Priority     @default(medium)
