@@ -50,6 +50,9 @@ export function loadTemplates(): void {
     try {
       const raw = fs.readFileSync(path.join(templatesDir, file), 'utf-8');
       const def = yaml.load(raw) as TemplateDefinition;
+      if (!def.name || !def.description || !Array.isArray(def.body)) {
+        throw new Error(`Template "${file}" is missing required fields: name, description, or body`);
+      }
       const name = file.replace(/\.ya?ml$/, '');
       cache.set(name, def);
       console.log(`[templates] loaded: ${name} (${def.name})`);
@@ -90,23 +93,24 @@ export function renderBody(def: TemplateDefinition, formData: Record<string, str
     if (field.type === 'markdown') {
       parts.push(field.attributes.value || '');
     } else if (field.type === 'checkboxes') {
-      const checkedLabels = formData[field.id!]?.split(',').filter(Boolean) || [];
+      if (!field.id) continue;
+      const checkedLabels = formData[field.id]?.split(',').filter(Boolean) || [];
       for (const label of checkedLabels) {
         parts.push(`- [x] ${label.trim()}`);
       }
     } else {
+      if (!field.id) continue;
       const label = field.attributes.label || field.id;
-      const value = formData[field.id!] || '';
+      const value = formData[field.id] || '';
       if (field.type === 'input' || field.type === 'dropdown') {
         parts.push(`**${label}:** ${value}`);
       } else if (field.type === 'textarea') {
         parts.push(`**${label}:**\n\n${value}`);
       }
     }
-    parts.push('');
   }
 
-  const body = parts.join('\n---\n\n');
+  const body = parts.join('\n\n---\n\n');
   return body || 'No content provided';
 }
 
