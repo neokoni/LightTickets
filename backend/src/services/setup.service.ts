@@ -34,21 +34,13 @@ export interface SetupInput {
   };
 }
 
-let cachedSiteConfig: SiteConfig | null = null;
-
-export function invalidateSiteCache() {
-  cachedSiteConfig = null;
-}
-
 export async function getSiteConfig(): Promise<SiteConfig> {
-  if (cachedSiteConfig) return cachedSiteConfig;
   const status = await prisma.setupStatus.findFirst();
-  cachedSiteConfig = {
+  return {
     isSetup: status?.isSetup ?? false,
     requireLogin: status?.requireLogin ?? false,
     siteName: status?.siteName ?? 'LightTickets',
   };
-  return cachedSiteConfig;
 }
 
 export async function updateSettings(data: { requireLogin?: boolean }) {
@@ -61,8 +53,6 @@ export async function updateSettings(data: { requireLogin?: boolean }) {
       ...(data.requireLogin !== undefined && { requireLogin: data.requireLogin }),
     },
   });
-
-  invalidateSiteCache();
 
   return {
     requireLogin: updated.requireLogin,
@@ -141,7 +131,6 @@ export async function completeSetup(input: SetupInput) {
     });
   }
 
-  invalidateSiteCache();
   const tokens = generateTokens(admin.id, admin.role);
   return {
     setup: setupRecord,

@@ -2,31 +2,17 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getSiteConfig } from '@/api/setup'
 
-// Site config cache (persists per session)
-function getCachedSiteConfig() {
-  const isSetup = sessionStorage.getItem('lt-setup-checked')
-  const requireLogin = sessionStorage.getItem('lt-require-login')
-  return {
-    isSetup: isSetup === 'true' ? true : isSetup === 'false' ? false : null,
-    requireLogin: requireLogin === 'true' ? true : requireLogin === 'false' ? false : null,
-  }
-}
-
-export let siteConfig = getCachedSiteConfig()
-
-function updateSiteConfigCache(data: { isSetup: boolean; requireLogin: boolean }) {
-  siteConfig = { isSetup: data.isSetup, requireLogin: data.requireLogin }
-  sessionStorage.setItem('lt-setup-checked', String(data.isSetup))
-  sessionStorage.setItem('lt-require-login', String(data.requireLogin))
+export let siteConfig: { isSetup: boolean | null; requireLogin: boolean | null } = {
+  isSetup: null,
+  requireLogin: null,
 }
 
 export function setSiteConfigCache(data: { isSetup: boolean; requireLogin: boolean }) {
-  updateSiteConfigCache(data)
+  siteConfig = { ...data }
 }
 
 export function setRequireLoginCache(value: boolean) {
   siteConfig.requireLogin = value
-  sessionStorage.setItem('lt-require-login', String(value))
 }
 
 const router = createRouter({
@@ -97,16 +83,14 @@ router.beforeEach(async (to) => {
     await auth.restore()
   }
 
-  // 2. Fetch site config if not cached
+  // 2. Fetch site config from server if not yet loaded
   if (siteConfig.isSetup === null) {
     try {
       const config = await getSiteConfig()
-      updateSiteConfigCache(config)
+      setSiteConfigCache(config)
     } catch {
       siteConfig.isSetup = false
       siteConfig.requireLogin = false
-      sessionStorage.setItem('lt-setup-checked', 'false')
-      sessionStorage.setItem('lt-require-login', 'false')
     }
   }
 
