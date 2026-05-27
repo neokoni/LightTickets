@@ -61,7 +61,7 @@ public class CreateTicketMenu extends BaseMenu {
                         bodyBuilder.isEmpty() ? "Created via GUI" : bodyBuilder.toString(), selectedType)
                     .thenAccept(ticket -> plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
                         player.sendMessage(lang.prefixFormat("cmd-create-success",
-                            "{ticketId}", ticket.getId(), "{title}", ticket.getTitle()))))
+                            "{ticketId}", String.valueOf(ticket.getId()), "{title}", ticket.getTitle()))))
                     .exceptionally(ex -> {
                         plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
                             player.sendMessage(lang.prefix("error-api-failed")));

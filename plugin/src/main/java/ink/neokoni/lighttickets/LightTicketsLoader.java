@@ -19,8 +19,6 @@ public class LightTicketsLoader implements PluginLoader {
         resolver.addDependency(new Dependency(
             new DefaultArtifact("org.xerial:sqlite-jdbc:3.45.3.0"), null));
 
-        resolver.addRepository(MavenLibraryResolver.MAVEN_CENTRAL_DEFAULT_MIRROR);
-
         classpathBuilder.addLibrary(resolver);
     }
 }

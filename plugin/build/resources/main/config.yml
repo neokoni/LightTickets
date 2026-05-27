@@ -1,0 +1,13 @@
+server:
+  url: "http://localhost:3000"
+  key: "lt_xxxxxxxxxxxx"
+  maxRetries: 20
+  retryInterval: 3
+
+notifications:
+  offlineQueue: true
+  showOnJoin: true
+
+gui:
+  refreshInterval: 0
+  placeholderItem: 160

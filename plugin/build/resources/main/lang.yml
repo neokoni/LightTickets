@@ -1,0 +1,56 @@
+prefix: "[LightTickets]"
+no-permission: "你没有执行此操作的权限"
+
+notify-ticket-status: "你的议题 #{ticketId} 状态已更新为 {status}"
+notify-permission-approved: "你的议题 #{ticketId} 权限申请已通过：{groupName}"
+notify-permission-rejected: "你的议题 #{ticketId} 被拒绝：{reason}"
+notify-offline-summary: "你有 {count} 条离线通知："
+
+cmd-help: |
+  §6=== LightTickets 帮助 ===
+  §e/lt §7- 打开主菜单
+  §e/lt create <标题> §7- 创建议题
+  §e/lt tickets §7- 查看我的议题
+  §e/lt ticket <id> §7- 查看议题详情
+  §e/lt comment <id> <内容> §7- 添加评论
+  §e/lt link §7- 账号绑定
+  §e/lt help §7- 显示帮助
+cmd-create-success: "议题创建成功：#{ticketId} {title}"
+cmd-comment-success: "评论已添加"
+cmd-link-code: "你的绑定验证码是：§6{code}§e，5分钟内有效，请到网页端输入完成绑定。"
+cmd-link-pending: "验证码已发送，请在游戏内等待确认..."
+cmd-link-success: "账号绑定成功！Minecraft：{name}"
+cmd-tickets-header: "§6=== 我的议题列表 ==="
+cmd-tickets-empty: "暂无议题"
+cmd-tickets-item: "§e#{id} §f{title} §7[{status}]"
+cmd-ticket-header: "§6=== 议题 #{id} ==="
+cmd-ticket-title: "标题：{title}"
+cmd-ticket-status: "状态：{status}"
+cmd-ticket-type: "类型：{type}"
+cmd-ticket-body: "§7内容：§f"
+cmd-ticket-comments-header: "§7--- 评论 ---"
+cmd-ticket-no-comments: "暂无评论"
+cmd-ticket-comment-item: "§7[{source}] §f{author}：{body}"
+cmd-create-select-type: "§6选择议题类型："
+cmd-create-type-bug: "§cBug报告"
+cmd-create-type-permission: "§a权限申请"
+cmd-create-type-suggestion: "§b建议"
+cmd-create-type-report: "§e举报"
+cmd-create-enter-title: "§e请输入议题标题（在聊天框输入）："
+cmd-create-enter-body: "§e请输入议题内容（输入 /done 结束）："
+cmd-create-cancelled: "议题创建已取消"
+cmd-create-confirm: "§6确认创建？§e 点击此处确认"
+error-api-failed: "请求失败，请稍后重试"
+error-not-linked: "你的账号未绑定，请先使用 /lt link 完成绑定"
+error-ticket-not-found: "议题 #{ticketId} 不存在"
+error-connection-failed: "无法连接到服务器，轻工单功能已暂时禁用"
+error-player-not-linked: "此玩家未绑定账号"
+error-type-bug: "Bug报告"
+error-type-permission: "权限申请"
+error-type-suggestion: "建议"
+error-type-report: "举报"
+status-open: "待处理"
+status-in_progress: "处理中"
+status-resolved: "已解决"
+status-closed: "已关闭"
+status-rejected: "已拒绝"

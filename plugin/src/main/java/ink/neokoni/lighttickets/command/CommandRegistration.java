@@ -125,7 +125,7 @@ public class CommandRegistration {
                     player.sendMessage(lang.prefix("cmd-tickets-header"));
                     for (Ticket ticket : tickets) {
                         player.sendMessage(lang.format("cmd-tickets-item",
-                            "{id}", ticket.getId(),
+                            "{id}", String.valueOf(ticket.getId()),
                             "{title}", ticket.getTitle(),
                             "{status}", ticket.getStatusName()));
                     }
@@ -159,7 +159,7 @@ public class CommandRegistration {
                         player.sendMessage(lang.prefixFormat("error-ticket-not-found", "{ticketId}", String.valueOf(ticketId)));
                         return;
                     }
-                    player.sendMessage(lang.prefixFormat("cmd-ticket-header", "{id}", found.getId()));
+                    player.sendMessage(lang.prefixFormat("cmd-ticket-header", "{id}", String.valueOf(found.getId())));
                     player.sendMessage(lang.format("cmd-ticket-title", "{title}", found.getTitle()));
                     player.sendMessage(lang.format("cmd-ticket-status", "{status}", found.getStatusName()));
                     player.sendMessage(lang.format("cmd-ticket-type", "{type}", found.getTypeName()));
@@ -191,7 +191,7 @@ public class CommandRegistration {
             .thenAccept(ticket -> {
                 plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
                     player.sendMessage(lang.prefixFormat("cmd-create-success",
-                        "{ticketId}", ticket.getId(), "{title}", ticket.getTitle())));
+                        "{ticketId}", String.valueOf(ticket.getId()), "{title}", ticket.getTitle())));
             })
             .exceptionally(ex -> {
                 plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
