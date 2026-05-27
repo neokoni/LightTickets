@@ -162,7 +162,7 @@ public class CommandRegistration {
                     player.sendMessage(lang.prefixFormat("cmd-ticket-header", "{id}", String.valueOf(found.getId())));
                     player.sendMessage(lang.format("cmd-ticket-title", "{title}", found.getTitle()));
                     player.sendMessage(lang.format("cmd-ticket-status", "{status}", found.getStatusName()));
-                    player.sendMessage(lang.format("cmd-ticket-type", "{type}", found.getTypeName()));
+                    player.sendMessage(lang.format("cmd-ticket-type", "{type}", found.getTemplate()));
                     player.sendMessage(lang.get("cmd-ticket-body"));
                     for (String line : found.getBody().split("\n")) {
                         player.sendMessage(Component.text("  " + line));

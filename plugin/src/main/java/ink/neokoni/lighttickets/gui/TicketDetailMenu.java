@@ -36,7 +36,7 @@ public class TicketDetailMenu extends BaseMenu {
 
         actions.put(10, new SlotAction(createItem(Material.NAME_TAG, "§f" + ticket.getTitle())));
         actions.put(11, new SlotAction(createItem(Material.BOOK, "§7状态: §f" + ticket.getStatusName())));
-        actions.put(12, new SlotAction(createItem(Material.PAPER, "§7类型: §f" + ticket.getTypeName())));
+        actions.put(12, new SlotAction(createItem(Material.PAPER, "§7模板: §f" + ticket.getTemplate())));
         actions.put(13, new SlotAction(createItem(Material.REDSTONE, "§7优先级: §f" + ticket.getPriority())));
 
         String[] bodyLines = ticket.getBody().split("\n");

@@ -83,6 +83,23 @@ public class WebSocketClient {
                     t -> notificationHandler.handleStatusChanged(playerUuid, ticketId, newStatus));
             } catch (Exception ignored) {}
         });
+
+        socket.on("hook:execute", args -> {
+            try {
+                JSONObject data = (JSONObject) args[0];
+                int ticketId = data.getInt("ticketId");
+                org.json.JSONArray commands = data.getJSONArray("commands");
+
+                plugin.getLogger().info("Executing hooks for ticket #" + ticketId + " (" + commands.length() + " commands)");
+
+                for (int i = 0; i < commands.length(); i++) {
+                    String command = commands.getString(i);
+                    plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
+                        plugin.getServer().dispatchCommand(
+                            plugin.getServer().getConsoleSender(), command));
+                }
+            } catch (Exception ignored) {}
+        });
     }
 
     private void scheduleReconnect() {

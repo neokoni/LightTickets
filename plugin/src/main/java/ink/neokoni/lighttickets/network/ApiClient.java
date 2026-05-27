@@ -67,7 +67,7 @@ public class ApiClient {
                     obj.get("id").getAsInt(),
                     obj.get("title").getAsString(),
                     obj.has("body") ? obj.get("body").getAsString() : "",
-                    obj.has("type") ? obj.get("type").getAsString() : "",
+                    obj.has("template") ? obj.get("template").getAsString() : "",
                     obj.has("status") ? obj.get("status").getAsString() : "",
                     obj.has("priority") ? obj.get("priority").getAsString() : "",
                     obj.has("createdAt") ? obj.get("createdAt").getAsString() : ""
@@ -77,12 +77,12 @@ public class ApiClient {
         });
     }
 
-    public CompletableFuture<Ticket> createTicket(String playerUuid, String title, String body, String type) {
+    public CompletableFuture<Ticket> createTicket(String playerUuid, String title, String body, String template) {
         JsonObject payload = new JsonObject();
         payload.addProperty("minecraftUuid", playerUuid);
         payload.addProperty("title", title);
         payload.addProperty("body", body);
-        payload.addProperty("type", type);
+        payload.addProperty("template", template);
 
         Request request = request("/api/mc/tickets")
             .post(RequestBody.create(payload.toString(), MediaType.parse("application/json")))
@@ -94,7 +94,7 @@ public class ApiClient {
                 obj.get("id").getAsInt(),
                 obj.get("title").getAsString(),
                 obj.has("body") ? obj.get("body").getAsString() : "",
-                obj.has("type") ? obj.get("type").getAsString() : "",
+                obj.has("template") ? obj.get("template").getAsString() : "",
                 obj.has("status") ? obj.get("status").getAsString() : "",
                 obj.has("priority") ? obj.get("priority").getAsString() : "",
                 obj.has("createdAt") ? obj.get("createdAt").getAsString() : ""

@@ -17,7 +17,7 @@ import java.util.Map;
 public class CreateTicketMenu extends BaseMenu {
     private final ApiClient api;
     private final Player owner;
-    private String selectedType = "bug_report";
+    private String selectedTemplate = "bug_report";
     private String title = "";
     private final StringBuilder bodyBuilder = new StringBuilder();
 
@@ -58,7 +58,7 @@ public class CreateTicketMenu extends BaseMenu {
                 }
                 player.closeInventory();
                 api.createTicket(player.getUniqueId().toString(), title,
-                        bodyBuilder.isEmpty() ? "Created via GUI" : bodyBuilder.toString(), selectedType)
+                        bodyBuilder.isEmpty() ? "Created via GUI" : bodyBuilder.toString(), selectedTemplate)
                     .thenAccept(ticket -> plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
                         player.sendMessage(lang.prefixFormat("cmd-create-success",
                             "{ticketId}", String.valueOf(ticket.getId()), "{title}", ticket.getTitle()))))
@@ -80,11 +80,11 @@ public class CreateTicketMenu extends BaseMenu {
     }
 
     private SlotAction typeButton(Material material, String name, String type) {
-        boolean isSelected = selectedType.equals(type);
+        boolean isSelected = selectedTemplate.equals(type);
         String displayName = isSelected ? name + " ✓" : name;
         return new SlotAction(
             createItem(material, displayName),
-            () -> { selectedType = type; refresh(owner); });
+            () -> { selectedTemplate = type; refresh(owner); });
     }
 
     private void registerTitleInput(Player player) {
