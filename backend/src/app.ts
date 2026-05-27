@@ -13,9 +13,13 @@ import attachmentRoutes from './routes/attachments.js';
 import serverRoutes from './routes/servers.js';
 import mcRoutes from './routes/mc.js';
 import auditRoutes from './routes/audit.js';
+import templateRoutes from './routes/templates.js';
+import { loadTemplates } from './services/template.service.js';
 
 export function createApp() {
   const app = express();
+
+  loadTemplates();
 
   app.use(cors());
   app.use(express.json());
@@ -30,6 +34,7 @@ export function createApp() {
 
   app.use('/api/setup', setupRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/templates', templateRoutes);
   app.use('/api/tickets', ticketRoutes);
   app.use('/api/tickets/:id/comments', commentRoutes);
   app.use('/api/tickets/:ticketId/audit', auditRoutes);
