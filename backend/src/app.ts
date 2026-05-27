@@ -14,6 +14,7 @@ import serverRoutes from './routes/servers.js';
 import mcRoutes from './routes/mc.js';
 import auditRoutes from './routes/audit.js';
 import templateRoutes from './routes/templates.js';
+import adminTemplateRoutes from './routes/admin-templates.js';
 import { initTemplates } from './services/template.service.js';
 
 export function createApp() {
@@ -35,6 +36,7 @@ export function createApp() {
   app.use('/api/setup', setupRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/templates', templateRoutes);
+app.use('/api/admin/templates', adminTemplateRoutes);
   app.use('/api/tickets', ticketRoutes);
   app.use('/api/tickets/:id/comments', commentRoutes);
   app.use('/api/tickets/:ticketId/audit', auditRoutes);
