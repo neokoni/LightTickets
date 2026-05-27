@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Icon } from '@iconify/vue'
 
 const props = defineProps<{
@@ -15,7 +15,7 @@ const emit = defineEmits<{
   'update:pageSize': [size: number]
 }>()
 
-const sizes = props.pageSizeOptions ?? [20, 50, 100]
+const sizes = computed(() => props.pageSizeOptions ?? [20, 50, 100])
 
 // Page size dropdown
 const sizeOpen = ref(false)

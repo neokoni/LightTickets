@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { apiFetch } from '@/api/client'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
@@ -35,21 +35,30 @@ const roleOptions = [
   { value: 'admin', label: 'admin' },
 ]
 
+let fetchSeq = 0
+
 async function fetchUsers() {
-  const res = await apiFetch<UsersResponse>(`/users?page=${page.value}&pageSize=${pageSize.value}`)
-  users.value = res.users
-  total.value = res.total
+  const seq = ++fetchSeq
+  try {
+    const res = await apiFetch<UsersResponse>(`/users?page=${page.value}&pageSize=${pageSize.value}`)
+    if (seq !== fetchSeq) return
+    users.value = res.users
+    total.value = res.total
+  } catch (e: any) {
+    if (seq !== fetchSeq) return
+    ui.toast(e.message || '加载失败', 'error')
+  }
 }
 
-function setPage(p: number) {
+async function setPage(p: number) {
   page.value = p
-  fetchUsers()
+  await fetchUsers()
 }
 
-function setPageSize(s: number) {
+async function setPageSize(s: number) {
   pageSize.value = s
   page.value = 1
-  fetchUsers()
+  await fetchUsers()
 }
 
 async function changeRole(userId: string, role: Role) {
@@ -70,13 +79,12 @@ async function deleteUser(userId: string) {
   if (!confirm('确定要删除该用户吗？此操作不可撤销。')) return
   try {
     await apiFetch(`/users/${userId}`, { method: 'DELETE' })
-    users.value = users.value.filter(u => u.id !== userId)
-    total.value--
+    ui.toast('用户已删除', 'success')
+    await fetchUsers()
     if (users.value.length === 0 && page.value > 1) {
       page.value--
-      fetchUsers()
+      await fetchUsers()
     }
-    ui.toast('用户已删除', 'success')
   } catch (e: any) {
     ui.toast(e.message || '操作失败', 'error')
   }
