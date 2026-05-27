@@ -73,9 +73,7 @@ async function removeLabel(labelId: string) {
         class="w-full px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 backdrop-blur-sm"
       >
         <option value="">添加标签...</option>
-        <option v-for="label in unassignedLabels" :key="label.id" :value="label.id">
-          <span :style="{ color: label.color }">●</span> {{ label.name }}
-        </option>
+        <option v-for="label in unassignedLabels" :key="label.id" :value="label.id">● {{ label.name }}</option>
       </select>
     </div>
   </div>
