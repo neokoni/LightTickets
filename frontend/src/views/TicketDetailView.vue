@@ -69,9 +69,16 @@ const timeline = computed<(Comment | AuditLog)[]>(() => {
   return items
 })
 
-function eventLabel(action: string): string {
+function eventLabel(item: AuditLog): string {
+  if (item.action === 'status_change') {
+    if (item.newValue === 'resolved') {
+      return item.actor.id === ticket.value?.authorId ? '关闭了此议题' : '关闭了此议题并标记为已完成'
+    }
+    if (item.newValue === 'open') return '重新打开了此议题'
+    if (item.newValue === 'in_progress') return '开始处理此议题'
+    if (item.newValue === 'closed') return '标记为无效'
+  }
   const map: Record<string, string> = {
-    status_change: '变更了状态',
     assign: '变更了负责人',
     priority_change: '变更了优先级',
     permission_approved: '审批通过了权限',
@@ -79,7 +86,7 @@ function eventLabel(action: string): string {
     label_add: '添加了标签',
     label_remove: '移除了标签',
   }
-  return map[action] || action
+  return map[item.action] || item.action
 }
 
 function eventIcon(item: AuditLog): string {
@@ -250,8 +257,8 @@ usePolling(async () => {
                 :class="item.action === 'status_change' && item.newValue ? statusColor(item.newValue) : ''"
               />
               <span class="font-medium text-slate-600 dark:text-slate-300">{{ item.actor.username }}</span>
-              <span>{{ eventLabel(item.action) }}</span>
-              <span v-if="item.oldValue || item.newValue" class="flex items-center gap-1">
+              <span>{{ eventLabel(item) }}</span>
+              <span v-if="item.action !== 'status_change' && (item.oldValue || item.newValue)" class="flex items-center gap-1">
                 <span v-if="item.oldValue" class="line-through opacity-60">{{ item.oldValue }}</span>
                 <Icon v-if="item.oldValue && item.newValue" icon="lucide:arrow-right" class="w-3 h-3" />
                 <span v-if="item.newValue">{{ item.newValue }}</span>
