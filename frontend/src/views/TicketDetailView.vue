@@ -71,12 +71,19 @@ const timeline = computed<(Comment | AuditLog)[]>(() => {
 
 function eventLabel(item: AuditLog): string {
   if (item.action === 'status_change') {
+    const hasComment = comments.value.some(c =>
+      c.authorId === item.actorId &&
+      Math.abs(new Date(c.createdAt).getTime() - new Date(item.createdAt).getTime()) < 10000
+    )
+    const prefix = hasComment ? '评论并' : ''
     if (item.newValue === 'resolved') {
-      return item.actor.id === ticket.value?.authorId ? '关闭了此议题' : '关闭了此议题并标记为已完成'
+      return item.actor.id === ticket.value?.authorId
+        ? prefix + '关闭了此议题'
+        : prefix + '关闭了此议题并标记为已完成'
     }
-    if (item.newValue === 'open') return '重新打开了此议题'
+    if (item.newValue === 'open') return prefix + '重新打开了此议题'
     if (item.newValue === 'in_progress') return '开始处理此议题'
-    if (item.newValue === 'closed') return '标记为无效'
+    if (item.newValue === 'closed') return '标记为不做计划'
   }
   const map: Record<string, string> = {
     assign: '变更了负责人',
