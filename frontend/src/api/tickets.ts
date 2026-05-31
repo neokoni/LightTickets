@@ -51,6 +51,14 @@ export function apiRejectTicket(id: number, reason?: string) {
   })
 }
 
+export function apiCloseTicket(id: number) {
+  return apiFetch<Ticket>(`/tickets/${id}/close`, { method: 'POST' })
+}
+
+export function apiReopenTicket(id: number) {
+  return apiFetch<Ticket>(`/tickets/${id}/reopen`, { method: 'POST' })
+}
+
 export function apiGetTemplates() {
   return apiFetch<TemplateSummary[]>('/templates')
 }

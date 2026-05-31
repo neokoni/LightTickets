@@ -107,6 +107,24 @@ async function rejectTicket() {
   }
 }
 
+async function closeTicket() {
+  try {
+    await store.closeTicket(id)
+    ui.toast('议题已关闭', 'success')
+  } catch (e: any) {
+    ui.toast(e.message || '操作失败', 'error')
+  }
+}
+
+async function reopenTicket() {
+  try {
+    await store.reopenTicket(id)
+    ui.toast('议题已重新打开', 'success')
+  } catch (e: any) {
+    ui.toast(e.message || '操作失败', 'error')
+  }
+}
+
 onMounted(async () => {
   fetchTemplateNames()
   await Promise.all([store.fetchDetail(id), fetchComments()])
@@ -165,7 +183,31 @@ usePolling(async () => {
           <!-- Comment form -->
           <form v-if="auth.isAuthenticated" @submit.prevent="submitComment" class="space-y-3">
             <BaseTextarea v-model="newComment" placeholder="添加评论... (支持 Markdown)" :rows="3" />
-            <div class="flex justify-end">
+            <div class="flex justify-end items-center gap-1.5">
+              <BaseButton
+                v-if="ticket.authorId === auth.user?.id && (ticket.status === 'open' || ticket.status === 'in_progress')"
+                size="sm"
+                icon="lucide:check-circle-2"
+                @click="closeTicket"
+              >
+                关闭议题
+              </BaseButton>
+              <BaseButton
+                v-if="auth.isStaff && (ticket.status === 'open' || ticket.status === 'in_progress') && ticket.authorId !== auth.user?.id"
+                size="sm"
+                icon="lucide:check-circle-2"
+                @click="closeTicket"
+              >
+                已完成关闭
+              </BaseButton>
+              <BaseButton
+                v-if="(ticket.authorId === auth.user?.id && ticket.status === 'resolved') || (auth.isStaff && (ticket.status === 'resolved' || ticket.status === 'closed'))"
+                size="sm"
+                icon="lucide:rotate-ccw"
+                @click="reopenTicket"
+              >
+                重新打开
+              </BaseButton>
               <BaseButton type="submit" size="sm" :loading="submitting" :disabled="!newComment.trim()">发送</BaseButton>
             </div>
           </form>
@@ -193,7 +235,7 @@ usePolling(async () => {
             </span>
           </div>
 
-          <!-- Staff actions -->
+          <!-- Staff status change buttons -->
           <div v-if="auth.isStaff" class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
             <BaseButton
               v-for="opt in statusOptions.filter(s => s.key !== ticket!.status)"

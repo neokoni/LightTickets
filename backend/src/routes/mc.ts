@@ -109,4 +109,26 @@ router.post('/permission-executed', async (req: Request, res: Response) => {
   res.json({ ok: true });
 });
 
+router.post('/tickets/:id/close', async (req: Request, res: Response) => {
+  const { minecraftUuid } = req.body;
+  if (!minecraftUuid) throw new ValidationError('minecraftUuid required');
+
+  const user = await prisma.user.findUnique({ where: { minecraftUuid } });
+  if (!user) throw new NotFoundError('Player not linked');
+
+  const ticket = await ticketService.closeTicket(Number(req.params.id), user.id, user.role);
+  res.json(ticket);
+});
+
+router.post('/tickets/:id/reopen', async (req: Request, res: Response) => {
+  const { minecraftUuid } = req.body;
+  if (!minecraftUuid) throw new ValidationError('minecraftUuid required');
+
+  const user = await prisma.user.findUnique({ where: { minecraftUuid } });
+  if (!user) throw new NotFoundError('Player not linked');
+
+  const ticket = await ticketService.reopenTicket(Number(req.params.id), user.id, user.role);
+  res.json(ticket);
+});
+
 export default router;

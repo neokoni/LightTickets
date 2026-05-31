@@ -70,6 +70,16 @@ router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
   res.json(ticket);
 });
 
+router.post('/:id/close', authMiddleware, async (req: Request, res: Response) => {
+  const ticket = await ticketService.closeTicket(parseId(req.params.id), req.user!.userId, req.user!.role);
+  res.json(ticket);
+});
+
+router.post('/:id/reopen', authMiddleware, async (req: Request, res: Response) => {
+  const ticket = await ticketService.reopenTicket(parseId(req.params.id), req.user!.userId, req.user!.role);
+  res.json(ticket);
+});
+
 router.post('/:id/approve', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
   const ticket = await permissionService.approve(parseId(req.params.id), req.user!.userId);
   res.json(ticket);

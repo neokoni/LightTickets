@@ -54,3 +54,6 @@ status-in_progress: "处理中"
 status-resolved: "已解决"
 status-closed: "已关闭"
 status-rejected: "已拒绝"
+
+cmd-close-success: "议题 #{ticketId} 已关闭"
+cmd-reopen-success: "议题 #{ticketId} 已重新打开"

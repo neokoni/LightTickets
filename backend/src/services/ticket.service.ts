@@ -167,3 +167,87 @@ export async function update(
     },
   });
 }
+
+export async function closeTicket(id: number, userId: string, userRole: string) {
+  const ticket = await prisma.ticket.findUnique({
+    where: { id },
+    include: {
+      author: { select: { id: true, minecraftUuid: true, minecraftName: true } },
+      server: { select: { id: true } },
+    },
+  });
+  if (!ticket) throw new NotFoundError('议题不存在');
+
+  const isAuthor = ticket.authorId === userId;
+  const isStaff = userRole === 'staff' || userRole === 'admin';
+
+  if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
+  if (ticket.status !== 'open' && ticket.status !== 'in_progress') {
+    throw new ForbiddenError('只有开放或处理中的议题可以关闭');
+  }
+
+  await prisma.ticket.update({
+    where: { id },
+    data: { status: 'resolved', closedAt: new Date() },
+  });
+
+  await auditService.create(id, userId, 'status_change', ticket.status, 'resolved');
+
+  if (ticket.serverId && ticket.author?.minecraftUuid) {
+    emitTicketUpdate(ticket.serverId, 'ticket:status_changed', {
+      ticketId: ticket.id,
+      playerUuid: ticket.author.minecraftUuid,
+      oldStatus: ticket.status,
+      newStatus: 'resolved',
+    });
+  }
+
+  if (ticket.serverId) {
+    const updatedTicket = await prisma.ticket.findUnique({
+      where: { id },
+      include: { author: { select: { minecraftUuid: true, minecraftName: true } } },
+    });
+    if (updatedTicket) {
+      emitHookExecute(ticket.serverId, updatedTicket, 'resolved');
+    }
+  }
+
+  return getById(id);
+}
+
+export async function reopenTicket(id: number, userId: string, userRole: string) {
+  const ticket = await prisma.ticket.findUnique({
+    where: { id },
+    include: {
+      author: { select: { id: true, minecraftUuid: true, minecraftName: true } },
+      server: { select: { id: true } },
+    },
+  });
+  if (!ticket) throw new NotFoundError('议题不存在');
+
+  const isAuthor = ticket.authorId === userId;
+  const isStaff = userRole === 'staff' || userRole === 'admin';
+
+  if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
+  if (ticket.status !== 'resolved' && !(ticket.status === 'closed' && isStaff)) {
+    throw new ForbiddenError('只有已解决的议题可以重新打开');
+  }
+
+  await prisma.ticket.update({
+    where: { id },
+    data: { status: 'open', closedAt: null },
+  });
+
+  await auditService.create(id, userId, 'status_change', ticket.status, 'open');
+
+  if (ticket.serverId && ticket.author?.minecraftUuid) {
+    emitTicketUpdate(ticket.serverId, 'ticket:status_changed', {
+      ticketId: ticket.id,
+      playerUuid: ticket.author.minecraftUuid,
+      oldStatus: ticket.status,
+      newStatus: 'open',
+    });
+  }
+
+  return getById(id);
+}

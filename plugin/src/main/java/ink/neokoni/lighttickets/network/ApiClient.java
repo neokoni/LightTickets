@@ -144,4 +144,26 @@ public class ApiClient {
 
         return executeAsync(request).thenApply(v -> null);
     }
+
+    public CompletableFuture<Void> closeTicket(String playerUuid, int ticketId) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("minecraftUuid", playerUuid);
+
+        Request request = request("/api/mc/tickets/" + ticketId + "/close")
+            .post(RequestBody.create(payload.toString(), MediaType.parse("application/json")))
+            .build();
+
+        return executeAsync(request).thenApply(v -> null);
+    }
+
+    public CompletableFuture<Void> reopenTicket(String playerUuid, int ticketId) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("minecraftUuid", playerUuid);
+
+        Request request = request("/api/mc/tickets/" + ticketId + "/reopen")
+            .post(RequestBody.create(payload.toString(), MediaType.parse("application/json")))
+            .build();
+
+        return executeAsync(request).thenApply(v -> null);
+    }
 }

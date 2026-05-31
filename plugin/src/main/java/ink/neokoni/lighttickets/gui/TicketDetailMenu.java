@@ -15,6 +15,7 @@ import org.bukkit.plugin.PluginManager;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class TicketDetailMenu extends BaseMenu {
     private final ApiClient api;
@@ -56,6 +57,30 @@ public class TicketDetailMenu extends BaseMenu {
                 registerChatInput(player, ticket.getId());
             }));
 
+        // Close ticket (slot 33)
+        boolean canClose = ticket.getStatus().equals("open") || ticket.getStatus().equals("in_progress");
+        if (canClose) {
+            actions.put(33, new SlotAction(
+                createItem(Material.LIME_DYE, "§a关闭议题"),
+                () -> {
+                    player.closeInventory();
+                    player.sendMessage(lang.prefixRaw("§e确认关闭议题 #" + ticket.getId() + "？在聊天框输入 y 确认"));
+                    registerConfirmInput(player, ticket.getId(), "close", api);
+                }));
+        }
+
+        // Reopen ticket (slot 33, same slot since mutually exclusive)
+        boolean canReopen = ticket.getStatus().equals("resolved") || ticket.getStatus().equals("closed");
+        if (canReopen) {
+            actions.put(33, new SlotAction(
+                createItem(Material.ORANGE_DYE, "§e重新打开"),
+                () -> {
+                    player.closeInventory();
+                    player.sendMessage(lang.prefixRaw("§e确认重新打开议题 #" + ticket.getId() + "？在聊天框输入 y 确认"));
+                    registerConfirmInput(player, ticket.getId(), "reopen", api);
+                }));
+        }
+
         actions.put(35, new SlotAction(
             createItem(Material.ARROW, "§7返回主菜单"),
             () -> new MainMenu(plugin, config, lang, api).open(player)));
@@ -76,6 +101,39 @@ public class TicketDetailMenu extends BaseMenu {
                 api.addComment(player.getUniqueId().toString(), ticketId, body)
                     .thenRun(() -> plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
                         player.sendMessage(lang.prefix("cmd-comment-success"))))
+                    .exceptionally(ex -> {
+                        plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
+                            player.sendMessage(lang.prefix("error-api-failed")));
+                        return null;
+                    });
+
+                HandlerList.unregisterAll(this);
+            }
+        }, plugin);
+    }
+
+    private void registerConfirmInput(Player player, int ticketId, String action, ApiClient api) {
+        PluginManager pm = org.bukkit.Bukkit.getPluginManager();
+
+        pm.registerEvents(new Listener() {
+            @EventHandler
+            public void onChat(AsyncPlayerChatEvent event) {
+                if (!event.getPlayer().getUniqueId().equals(player.getUniqueId())) return;
+                event.setCancelled(true);
+
+                String message = event.getMessage().trim();
+                if (!message.equalsIgnoreCase("y") && !message.equalsIgnoreCase("yes")) {
+                    player.sendMessage(lang.prefixRaw("§c操作已取消"));
+                    HandlerList.unregisterAll(this);
+                    return;
+                }
+
+                CompletableFuture<Void> future = action.equals("close")
+                    ? api.closeTicket(player.getUniqueId().toString(), ticketId)
+                    : api.reopenTicket(player.getUniqueId().toString(), ticketId);
+
+                future.thenRun(() -> plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
+                        player.sendMessage(lang.prefix(action.equals("close") ? "cmd-close-success" : "cmd-reopen-success"))))
                     .exceptionally(ex -> {
                         plugin.getServer().getGlobalRegionScheduler().run(plugin, t ->
                             player.sendMessage(lang.prefix("error-api-failed")));
