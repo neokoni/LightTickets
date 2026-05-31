@@ -51,6 +51,23 @@ async function remove(id: string) {
   }
 }
 
+const copiedId = ref<string | null>(null)
+
+async function copyToClipboard(server: Server) {
+  try {
+    await navigator.clipboard.writeText(server.apiKey)
+    copiedId.value = server.id
+    setTimeout(() => {
+      if (copiedId.value === server.id) {
+        copiedId.value = null
+      }
+    }, 2000)
+    ui.toast('API Key 已复制到剪贴板', 'success')
+  } catch (e: any) {
+    ui.toast('复制失败', 'error')
+  }
+}
+
 onMounted(fetchServers)
 </script>
 
@@ -77,8 +94,14 @@ onMounted(fetchServers)
             </button>
           </div>
         </div>
-        <div class="flex items-center gap-2">
-          <code class="flex-1 px-2 py-1 text-xs bg-slate-100 dark:bg-slate-800 rounded-md font-mono truncate">{{ server.apiKey }}</code>
+        <div class="relative flex items-center gap-2 group">
+          <code class="flex-1 px-3 py-3 pr-12 text-xs bg-slate-100 dark:bg-slate-800 rounded-md font-mono truncate">{{ server.apiKey }}</code>
+          <button @click="copyToClipboard(server)" :class="[
+            'absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 opacity-0 group-hover:opacity-100 transition-opacity',
+            copiedId === server.id ? 'text-green-500 dark:text-green-400' : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+          ]" title="复制 Key">
+            <Icon :icon="copiedId === server.id ? 'lucide:check' : 'lucide:clipboard-copy'" class="w-[18px] h-[18px]" />
+          </button>
         </div>
       </div>
       <div v-if="!servers.length" class="py-8 text-center text-sm text-slate-500 dark:text-slate-400">暂无服务器</div>
@@ -97,3 +120,4 @@ onMounted(fetchServers)
     </BaseModal>
   </div>
 </template>
+
