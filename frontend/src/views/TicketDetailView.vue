@@ -175,20 +175,36 @@ async function rejectTicket() {
 }
 
 async function closeTicket() {
+  submitting.value = true
   try {
+    if (newComment.value.trim()) {
+      await apiCreateComment(id, newComment.value)
+      newComment.value = ''
+    }
     await store.closeTicket(id)
+    await fetchAuditLogs()
     ui.toast('议题已关闭', 'success')
   } catch (e: any) {
     ui.toast(e.message || '操作失败', 'error')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function reopenTicket() {
+  submitting.value = true
   try {
+    if (newComment.value.trim()) {
+      await apiCreateComment(id, newComment.value)
+      newComment.value = ''
+    }
     await store.reopenTicket(id)
+    await fetchAuditLogs()
     ui.toast('议题已重新打开', 'success')
   } catch (e: any) {
     ui.toast(e.message || '操作失败', 'error')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -277,7 +293,7 @@ usePolling(async () => {
                 icon="lucide:check-circle-2"
                 @click="closeTicket"
               >
-                关闭议题
+                {{ newComment.trim() ? '评论并关闭' : '关闭议题' }}
               </BaseButton>
               <BaseButton
                 v-if="auth.isStaff && (ticket.status === 'open' || ticket.status === 'in_progress') && ticket.authorId !== auth.user?.id"
@@ -285,7 +301,7 @@ usePolling(async () => {
                 icon="lucide:check-circle-2"
                 @click="closeTicket"
               >
-                已完成关闭
+                {{ newComment.trim() ? '评论并已完成关闭' : '已完成关闭' }}
               </BaseButton>
               <BaseButton
                 v-if="(ticket.authorId === auth.user?.id && ticket.status === 'resolved') || (auth.isStaff && (ticket.status === 'resolved' || ticket.status === 'closed'))"
@@ -293,7 +309,7 @@ usePolling(async () => {
                 icon="lucide:rotate-ccw"
                 @click="reopenTicket"
               >
-                重新打开
+                {{ newComment.trim() ? '评论并重新打开' : '重新打开' }}
               </BaseButton>
               <BaseButton type="submit" size="sm" :loading="submitting" :disabled="!newComment.trim()">发送</BaseButton>
             </div>
