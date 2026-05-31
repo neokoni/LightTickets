@@ -9,13 +9,13 @@ import { usePolling } from '@/composables/usePolling'
 import { renderTicketRefs } from '@/composables/ticketRef'
 import { apiGetComments, apiCreateComment } from '@/api/comments'
 import { timeAgo, formatDate } from '@/utils/date'
+import { apiFetch } from '@/api/client'
 import BaseBadge from '@/components/base/BaseBadge.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
 import TicketLabels from '@/components/tickets/TicketLabels.vue'
-import TicketAuditLog from '@/components/tickets/TicketAuditLog.vue'
-import type { Comment, TicketStatus, Priority } from '@/types/ticket'
+import type { Comment, AuditLog, TicketStatus, Priority } from '@/types/ticket'
 import { apiGetTemplates } from '@/api/tickets'
 
 const templateMap = ref<Record<string, string>>({})
@@ -54,6 +54,60 @@ const ticket = computed(() => store.currentTicket)
 
 const ticketBody = computed(() => ticket.value ? renderTicketRefs(ticket.value.body) : '')
 
+const auditLogs = ref<AuditLog[]>([])
+
+function isComment(item: Comment | AuditLog): item is Comment {
+  return 'body' in item
+}
+
+const timeline = computed<(Comment | AuditLog)[]>(() => {
+  const items: (Comment | AuditLog)[] = [
+    ...comments.value,
+    ...auditLogs.value,
+  ]
+  items.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+  return items
+})
+
+function eventLabel(action: string): string {
+  const map: Record<string, string> = {
+    status_change: '变更了状态',
+    assign: '变更了负责人',
+    priority_change: '变更了优先级',
+    permission_approved: '审批通过了权限',
+    permission_rejected: '审批拒绝了权限',
+    label_add: '添加了标签',
+    label_remove: '移除了标签',
+  }
+  return map[action] || action
+}
+
+function eventIcon(item: AuditLog): string {
+  if (item.action === 'status_change' && item.newValue) {
+    return statusOptions.find(s => s.key === item.newValue)?.icon || 'lucide:circle'
+  }
+  const map: Record<string, string> = {
+    assign: 'lucide:user-plus',
+    priority_change: 'lucide:signal',
+    permission_approved: 'lucide:check-check',
+    permission_rejected: 'lucide:x-circle',
+    label_add: 'lucide:tag',
+    label_remove: 'lucide:tag-off',
+  }
+  return map[item.action] || 'lucide:dot'
+}
+
+function statusColor(status: string): string {
+  const map: Record<string, string> = {
+    open: 'text-green-500',
+    in_progress: 'text-yellow-500',
+    resolved: 'text-purple-500',
+    closed: 'text-slate-400',
+    rejected: 'text-red-500',
+  }
+  return map[status] || 'text-slate-400'
+}
+
 const statusOptions: { key: TicketStatus; label: string; icon: string }[] = [
   { key: 'open', label: '开放', icon: 'lucide:circle-dot' },
   { key: 'in_progress', label: '处理中', icon: 'lucide:loader' },
@@ -64,6 +118,12 @@ const statusOptions: { key: TicketStatus; label: string; icon: string }[] = [
 async function fetchComments() {
   const raw = await apiGetComments(id)
   comments.value = raw.map(c => ({ ...c, body: renderTicketRefs(c.body) }))
+}
+
+async function fetchAuditLogs() {
+  try {
+    auditLogs.value = await apiFetch<AuditLog[]>(`/tickets/${id}/audit`)
+  } catch { /* ignore */ }
 }
 
 async function submitComment() {
@@ -127,11 +187,11 @@ async function reopenTicket() {
 
 onMounted(async () => {
   fetchTemplateNames()
-  await Promise.all([store.fetchDetail(id), fetchComments()])
+  await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()])
 })
 
 usePolling(async () => {
-  await Promise.all([store.fetchDetail(id), fetchComments()])
+  await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()])
 }, 10000)
 </script>
 
@@ -164,19 +224,39 @@ usePolling(async () => {
         <div class="space-y-4">
           <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">评论 ({{ comments.length }})</h2>
 
-          <div v-for="comment in comments" :key="comment.id" class="flex gap-3">
-            <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">
-              {{ comment.author.username.charAt(0).toUpperCase() }}
+          <div v-for="item in timeline" :key="item.id + ('body' in item ? '-comment' : '-audit')">
+            <!-- Comment -->
+            <div v-if="isComment(item)" class="flex gap-3 mb-4">
+              <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">
+                {{ item.author.username.charAt(0).toUpperCase() }}
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 text-sm">
+                  <span class="font-medium text-slate-900 dark:text-white">{{ item.author.username }}</span>
+                  <span class="text-slate-400 text-xs">{{ timeAgo(item.createdAt) }}</span>
+                  <BaseBadge v-if="item.source === 'minecraft'" color="#4ade80">MC</BaseBadge>
+                </div>
+                <div class="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                  <MarkdownRenderer :content="item.body" />
+                </div>
+              </div>
             </div>
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 text-sm">
-                <span class="font-medium text-slate-900 dark:text-white">{{ comment.author.username }}</span>
-                <span class="text-slate-400 text-xs">{{ timeAgo(comment.createdAt) }}</span>
-                <BaseBadge v-if="comment.source === 'minecraft'" color="#4ade80">MC</BaseBadge>
-              </div>
-              <div class="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                <MarkdownRenderer :content="comment.body" />
-              </div>
+
+            <!-- Audit event -->
+            <div v-else class="flex items-center gap-2 py-2 text-sm text-slate-500 dark:text-slate-400">
+              <Icon
+                :icon="eventIcon(item)"
+                class="w-3.5 h-3.5 shrink-0"
+                :class="item.action === 'status_change' && item.newValue ? statusColor(item.newValue) : ''"
+              />
+              <span class="font-medium text-slate-600 dark:text-slate-300">{{ item.actor.username }}</span>
+              <span>{{ eventLabel(item.action) }}</span>
+              <span v-if="item.oldValue || item.newValue" class="flex items-center gap-1">
+                <span v-if="item.oldValue" class="line-through opacity-60">{{ item.oldValue }}</span>
+                <Icon v-if="item.oldValue && item.newValue" icon="lucide:arrow-right" class="w-3 h-3" />
+                <span v-if="item.newValue">{{ item.newValue }}</span>
+              </span>
+              <span class="text-xs text-slate-400">{{ timeAgo(item.createdAt) }}</span>
             </div>
           </div>
 
@@ -270,11 +350,6 @@ usePolling(async () => {
 
         <!-- Labels -->
         <TicketLabels v-if="ticket" :ticket="ticket" />
-
-        <!-- Audit Log -->
-        <div class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-2">
-          <TicketAuditLog :ticket-id="ticket.id" />
-        </div>
 
         <!-- Permission request actions -->
         <div v-if="ticket.template === 'permission_request' && ticket.permissionRequest && auth.isStaff" class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3">
