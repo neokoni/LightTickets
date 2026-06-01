@@ -5,6 +5,7 @@ import { Icon } from '@iconify/vue'
 import { useTicketsStore } from '@/stores/tickets'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
+import { useLabelsStore } from '@/stores/labels'
 import { usePolling } from '@/composables/usePolling'
 import { useMarkdownUpload } from '@/composables/useMarkdownUpload'
 import { renderTicketRefs } from '@/composables/ticketRef'
@@ -46,6 +47,7 @@ const route = useRoute()
 const store = useTicketsStore()
 const auth = useAuthStore()
 const ui = useUiStore()
+const labels = useLabelsStore()
 
 const id = Number(route.params.id)
 const comments = ref<Comment[]>([])
@@ -184,6 +186,15 @@ function eventLabel(item: AuditLog): string {
   return map[item.action] || item.action
 }
 
+function parseLabelData(json: string | undefined): { name: string; color: string } | null {
+  if (!json) return null
+  try {
+    const data = JSON.parse(json) as { name: string; color: string }
+    const current = labels.labels.find(l => l.name === data.name)
+    return current ? { name: current.name, color: current.color } : data
+  } catch { return null }
+}
+
 function eventIcon(item: AuditLog): string {
   if (item.action === 'status_change' && item.newValue) {
     return statusOptions.find(s => s.key === item.newValue)?.icon || 'lucide:circle'
@@ -194,7 +205,7 @@ function eventIcon(item: AuditLog): string {
     permission_approved: 'lucide:check-check',
     permission_rejected: 'lucide:x-circle',
     label_add: 'lucide:tag',
-    label_remove: 'lucide:tag-off',
+    label_remove: 'lucide:tag',
     title_change: 'lucide:type',
     body_change: 'lucide:file-text',
   }
@@ -326,6 +337,7 @@ async function reopenTicket() {
 
 onMounted(async () => {
   fetchTemplateNames()
+  if (!labels.loaded) labels.fetch()
   await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()])
 })
 
@@ -448,6 +460,16 @@ function onCommentFilePaste(e: ClipboardEvent) {
                 />
                 <span class="font-medium text-slate-600 dark:text-slate-300">{{ item.actor.username }}</span>
                 <span>{{ eventLabel(item) }}</span>
+                <span
+                  v-if="(item.action === 'label_add' || item.action === 'label_remove') && parseLabelData(item.action === 'label_add' ? item.newValue : item.oldValue)"
+                  class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full"
+                  :style="{
+                    backgroundColor: parseLabelData(item.action === 'label_add' ? item.newValue : item.oldValue)!.color + '22',
+                    color: parseLabelData(item.action === 'label_add' ? item.newValue : item.oldValue)!.color,
+                  }"
+                >
+                  {{ parseLabelData(item.action === 'label_add' ? item.newValue : item.oldValue)!.name }}
+                </span>
                 <span class="text-xs text-slate-400">{{ timeAgo(item.createdAt) }}</span>
               </div>
               <!-- Title change: inline strikethrough old → new -->
@@ -492,7 +514,7 @@ function onCommentFilePaste(e: ClipboardEvent) {
                 </div>
               </div>
               <!-- Other actions: old → new inline -->
-              <div v-else-if="item.action !== 'status_change' && (item.oldValue || item.newValue)" class="ml-5.5 mt-1 flex items-center gap-1">
+              <div v-else-if="item.action !== 'status_change' && item.action !== 'label_add' && item.action !== 'label_remove' && (item.oldValue || item.newValue)" class="ml-5.5 mt-1 flex items-center gap-1">
                 <span v-if="item.oldValue" class="line-through opacity-60">{{ item.oldValue }}</span>
                 <Icon v-if="item.oldValue && item.newValue" icon="lucide:arrow-right" class="w-3 h-3" />
                 <span v-if="item.newValue">{{ item.newValue }}</span>
