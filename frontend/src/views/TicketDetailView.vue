@@ -332,6 +332,7 @@ function onCommentFilePaste(e: ClipboardEvent) {
               placeholder="添加评论... (支持 Markdown)"
               :rows="3"
               uploadable
+              previewable
               @file-drop="onCommentFileDrop"
               @file-paste="onCommentFilePaste"
             />

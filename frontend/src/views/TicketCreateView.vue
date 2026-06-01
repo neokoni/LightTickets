@@ -150,6 +150,7 @@ async function submit() {
           :placeholder="field.attributes.placeholder"
           :rows="6"
           uploadable
+          previewable
           @file-drop="onTextareaFileDrop($event, field.id || '')"
           @file-paste="onTextareaFilePaste($event, field.id || '')"
         />
