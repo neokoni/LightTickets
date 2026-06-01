@@ -203,6 +203,19 @@ export async function updateTitle(id: number, userId: string, userRole: string, 
   const isStaff = userRole === 'staff' || userRole === 'admin';
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
 
+  if (title === ticket.title) {
+    return prisma.ticket.findUnique({
+      where: { id },
+      include: {
+        author: { select: { id: true, username: true, minecraftName: true } },
+        assignee: { select: { id: true, username: true } },
+        labels: { include: { label: true } },
+        server: { select: { id: true, name: true } },
+        permissionRequest: true,
+      },
+    });
+  }
+
   const updated = await prisma.ticket.update({
     where: { id },
     data: { title },

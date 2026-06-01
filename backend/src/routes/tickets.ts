@@ -85,7 +85,7 @@ router.patch('/:id/body', authMiddleware, async (req: Request, res: Response) =>
 });
 
 const updateTitleSchema = z.object({
-  title: z.string().min(1).max(200),
+  title: z.string().trim().min(1).max(200),
 });
 
 router.patch('/:id/title', authMiddleware, async (req: Request, res: Response) => {
