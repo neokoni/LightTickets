@@ -29,4 +29,20 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
   res.status(201).json(comment);
 });
 
+const updateBodySchema = z.object({
+  body: z.string().min(1),
+});
+
+router.patch('/:commentId/body', authMiddleware, async (req: Request, res: Response) => {
+  const parsed = updateBodySchema.safeParse(req.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+
+  const comment = await commentService.updateBody(
+    req.params.commentId,
+    req.user!.userId,
+    parsed.data.body,
+  );
+  res.json(comment);
+});
+
 export default router;

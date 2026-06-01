@@ -72,6 +72,18 @@ router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
   res.json(ticket);
 });
 
+const updateBodySchema = z.object({
+  body: z.string().min(1),
+});
+
+router.patch('/:id/body', authMiddleware, async (req: Request, res: Response) => {
+  const parsed = updateBodySchema.safeParse(req.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+
+  const ticket = await ticketService.updateBody(parseId(req.params.id), req.user!.userId, req.user!.role, parsed.data.body);
+  res.json(ticket);
+});
+
 router.post('/:id/close', authMiddleware, async (req: Request, res: Response) => {
   const ticket = await ticketService.closeTicket(parseId(req.params.id), req.user!.userId, req.user!.role);
   res.json(ticket);
