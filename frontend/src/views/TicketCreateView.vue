@@ -2,10 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { apiCreateTicket } from '@/api/tickets'
+import { apiCreateTicket, apiUpdateTicketBody } from '@/api/tickets'
 import { apiUploadAttachment } from '@/api/attachments'
 import { useUiStore } from '@/stores/ui'
 import { useTicketForm } from '@/composables/useTicketForm'
+import { useMarkdownUpload } from '@/composables/useMarkdownUpload'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -29,6 +30,8 @@ const {
   goToStep,
 } = useTicketForm()
 
+const mdUpload = useMarkdownUpload()
+
 const files = ref<File[]>([])
 const loading = ref(false)
 const error = ref('')
@@ -47,6 +50,24 @@ function removeFile(index: number) {
   files.value.splice(index, 1)
 }
 
+function getActiveTextarea(): HTMLTextAreaElement | null {
+  return document.activeElement as HTMLTextAreaElement | null
+}
+
+function onTextareaFileDrop(e: DragEvent, fieldId: string) {
+  const textarea = getActiveTextarea()
+  if (!textarea) return
+  const modelValue = { get value() { return formValues.value[fieldId] || '' }, set value(v: string) { setFieldValue(fieldId, v) } }
+  mdUpload.handleDrop(e, textarea, modelValue)
+}
+
+function onTextareaFilePaste(e: ClipboardEvent, fieldId: string) {
+  const textarea = getActiveTextarea()
+  if (!textarea) return
+  const modelValue = { get value() { return formValues.value[fieldId] || '' }, set value(v: string) { setFieldValue(fieldId, v) } }
+  mdUpload.handlePaste(e, textarea, modelValue)
+}
+
 async function submit() {
   if (!selectedTemplateName.value || !title.value.trim()) return
   error.value = ''
@@ -58,8 +79,15 @@ async function submit() {
       formData: formValues.value,
     })
     if (files.value.length > 0) {
-      await Promise.all(files.value.map(file => apiUploadAttachment(ticket.id, file)))
+      await Promise.all(files.value.map(file => apiUploadAttachment(file, { ticketId: ticket.id })))
     }
+
+    // Upload markdown-embedded images and update body
+    if (mdUpload.pendingFiles.value.size > 0) {
+      const updatedBody = await mdUpload.uploadAndReplace(ticket.body, ticket.id)
+      await apiUpdateTicketBody(ticket.id, updatedBody)
+    }
+
     ui.toast('议题已创建', 'success')
     router.push(`/tickets/${ticket.id}`)
   } catch (e: any) {
@@ -121,7 +149,23 @@ async function submit() {
           :label="field.attributes.label || ''"
           :placeholder="field.attributes.placeholder"
           :rows="6"
+          uploadable
+          @file-drop="onTextareaFileDrop($event, field.id || '')"
+          @file-paste="onTextareaFilePaste($event, field.id || '')"
         />
+        <div v-if="field.type === 'textarea' && mdUpload.pendingFiles.value.size > 0" class="mt-1 flex flex-wrap gap-2">
+          <div
+            v-for="[url, file] in mdUpload.pendingFiles.value"
+            :key="url"
+            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+          >
+            <Icon icon="lucide:image" class="w-3 h-3 text-slate-400" />
+            <span class="text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{{ file.name }}</span>
+            <button type="button" @click="mdUpload.removePending(url)" class="text-slate-400 hover:text-red-500">
+              <Icon icon="lucide:x" class="w-3 h-3" />
+            </button>
+          </div>
+        </div>
 
         <!-- checkboxes -->
         <fieldset v-else-if="field.type === 'checkboxes'" class="space-y-2">
