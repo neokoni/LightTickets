@@ -111,14 +111,18 @@ function cancelEditBody() {
   editingBody.value = false
 }
 
-const showDiffModal = ref(false)
+const expandedBodyDiff = ref<string | null>(null)
 const diffOld = ref('')
 const diffNew = ref('')
 
-function openDiffModal(item: AuditLog) {
-  diffOld.value = item.oldValue || ''
-  diffNew.value = item.newValue || ''
-  showDiffModal.value = true
+function toggleDiff(item: AuditLog) {
+  if (expandedBodyDiff.value === item.id) {
+    expandedBodyDiff.value = null
+  } else {
+    diffOld.value = item.oldValue || ''
+    diffNew.value = item.newValue || ''
+    expandedBodyDiff.value = item.id
+  }
 }
 
 const diffResult = computed(() => {
@@ -452,14 +456,40 @@ function onCommentFilePaste(e: ClipboardEvent) {
                 <Icon icon="lucide:arrow-right" class="w-3 h-3 text-slate-400 shrink-0" />
                 <span class="text-slate-700 dark:text-slate-200">{{ item.newValue }}</span>
               </div>
-              <!-- Body change: clickable link to diff modal -->
+              <!-- Body change: expandable inline diff -->
               <div v-else-if="item.action === 'body_change'" class="ml-5.5 mt-1">
                 <button
                   class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline transition"
-                  @click="openDiffModal(item)"
+                  @click="toggleDiff(item)"
                 >
-                  查看变更
+                  {{ expandedBodyDiff === item.id ? '收起变更' : '查看变更' }}
                 </button>
+                <div v-if="expandedBodyDiff === item.id" class="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 overflow-hidden">
+                  <div class="flex items-center justify-between px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
+                    <span class="text-xs text-slate-500">内容变更详情</span>
+                    <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" @click="expandedBodyDiff = null">
+                      <Icon icon="lucide:x" class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div class="max-h-[60vh] overflow-y-auto font-mono text-xs leading-relaxed">
+                    <div v-for="(part, i) in diffResult" :key="i">
+                      <div
+                        v-for="(line, j) in part.value.split('\n').filter((l, k, arr) => !(k === arr.length - 1 && l === ''))"
+                        :key="j"
+                        class="px-3 py-0.5"
+                        :class="{
+                          'bg-red-500/10 text-red-400': part.removed,
+                          'bg-green-500/10 text-green-400': part.added,
+                          'text-slate-500 dark:text-slate-400': !part.removed && !part.added,
+                        }"
+                      >
+                        <span class="inline-block w-4 text-right mr-2 select-none text-slate-400">
+                          {{ part.removed ? '-' : part.added ? '+' : ' ' }}
+                        </span>{{ line }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <!-- Other actions: old → new inline -->
               <div v-else-if="item.action !== 'status_change' && (item.oldValue || item.newValue)" class="ml-5.5 mt-1 flex items-center gap-1">
@@ -601,26 +631,5 @@ function onCommentFilePaste(e: ClipboardEvent) {
       </aside>
     </div>
 
-    <!-- Diff Modal -->
-    <BaseModal v-model="showDiffModal" title="内容变更详情">
-      <div class="max-h-[60vh] overflow-y-auto rounded-lg bg-slate-50 dark:bg-slate-950 font-mono text-sm leading-relaxed">
-        <div v-for="(part, i) in diffResult" :key="i">
-          <div
-            v-for="(line, j) in part.value.split('\n').filter((l, k, arr) => !(k === arr.length - 1 && l === ''))"
-            :key="j"
-            class="px-4 py-0.5"
-            :class="{
-              'bg-red-500/10 text-red-400': part.removed,
-              'bg-green-500/10 text-green-400': part.added,
-              'text-slate-500 dark:text-slate-400': !part.removed && !part.added,
-            }"
-          >
-            <span class="inline-block w-4 text-right mr-3 select-none text-slate-400">
-              {{ part.removed ? '-' : part.added ? '+' : ' ' }}
-            </span>{{ line }}
-          </div>
-        </div>
-      </div>
-    </BaseModal>
   </div>
 </template>
