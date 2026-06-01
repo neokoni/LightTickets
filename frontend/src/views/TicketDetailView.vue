@@ -18,6 +18,7 @@ import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
 import TicketLabels from '@/components/tickets/TicketLabels.vue'
 import type { Comment, AuditLog, TicketStatus, Priority } from '@/types/ticket'
 import { apiGetTemplates } from '@/api/tickets'
+import { diffLines } from 'diff'
 
 const templateMap = ref<Record<string, string>>({})
 
@@ -110,6 +111,20 @@ function cancelEditBody() {
   editingBody.value = false
 }
 
+const showDiffModal = ref(false)
+const diffOld = ref('')
+const diffNew = ref('')
+
+function openDiffModal(item: AuditLog) {
+  diffOld.value = item.oldValue || ''
+  diffNew.value = item.newValue || ''
+  showDiffModal.value = true
+}
+
+const diffResult = computed(() => {
+  return diffLines(diffOld.value, diffNew.value)
+})
+
 watch(newComment, (val) => {
   mdUpload.syncPending(val)
 })
@@ -159,6 +174,8 @@ function eventLabel(item: AuditLog): string {
     permission_rejected: '审批拒绝了权限',
     label_add: '添加了标签',
     label_remove: '移除了标签',
+    title_change: '更改了标题',
+    body_change: '编辑了内容',
   }
   return map[item.action] || item.action
 }
@@ -174,6 +191,8 @@ function eventIcon(item: AuditLog): string {
     permission_rejected: 'lucide:x-circle',
     label_add: 'lucide:tag',
     label_remove: 'lucide:tag-off',
+    title_change: 'lucide:type',
+    body_change: 'lucide:file-text',
   }
   return map[item.action] || 'lucide:dot'
 }
@@ -416,20 +435,38 @@ function onCommentFilePaste(e: ClipboardEvent) {
             </div>
 
             <!-- Audit event -->
-            <div v-else class="flex items-center gap-2 py-2 text-sm text-slate-500 dark:text-slate-400">
-              <Icon
-                :icon="eventIcon(item)"
-                class="w-3.5 h-3.5 shrink-0"
-                :class="item.action === 'status_change' && item.newValue ? statusColor(item.newValue) : ''"
-              />
-              <span class="font-medium text-slate-600 dark:text-slate-300">{{ item.actor.username }}</span>
-              <span>{{ eventLabel(item) }}</span>
-              <span v-if="item.action !== 'status_change' && (item.oldValue || item.newValue)" class="flex items-center gap-1">
+            <div v-else class="py-2 text-sm text-slate-500 dark:text-slate-400">
+              <div class="flex items-center gap-2">
+                <Icon
+                  :icon="eventIcon(item)"
+                  class="w-3.5 h-3.5 shrink-0"
+                  :class="item.action === 'status_change' && item.newValue ? statusColor(item.newValue) : ''"
+                />
+                <span class="font-medium text-slate-600 dark:text-slate-300">{{ item.actor.username }}</span>
+                <span>{{ eventLabel(item) }}</span>
+                <span class="text-xs text-slate-400">{{ timeAgo(item.createdAt) }}</span>
+              </div>
+              <!-- Title change: inline strikethrough old → new -->
+              <div v-if="item.action === 'title_change'" class="ml-5.5 mt-1 flex items-center gap-1.5 text-sm">
+                <span class="line-through text-slate-400">{{ item.oldValue }}</span>
+                <Icon icon="lucide:arrow-right" class="w-3 h-3 text-slate-400 shrink-0" />
+                <span class="text-slate-700 dark:text-slate-200">{{ item.newValue }}</span>
+              </div>
+              <!-- Body change: clickable link to diff modal -->
+              <div v-else-if="item.action === 'body_change'" class="ml-5.5 mt-1">
+                <button
+                  class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline transition"
+                  @click="openDiffModal(item)"
+                >
+                  查看变更
+                </button>
+              </div>
+              <!-- Other actions: old → new inline -->
+              <div v-else-if="item.action !== 'status_change' && (item.oldValue || item.newValue)" class="ml-5.5 mt-1 flex items-center gap-1">
                 <span v-if="item.oldValue" class="line-through opacity-60">{{ item.oldValue }}</span>
                 <Icon v-if="item.oldValue && item.newValue" icon="lucide:arrow-right" class="w-3 h-3" />
                 <span v-if="item.newValue">{{ item.newValue }}</span>
-              </span>
-              <span class="text-xs text-slate-400">{{ timeAgo(item.createdAt) }}</span>
+              </div>
             </div>
           </div>
 
@@ -563,5 +600,27 @@ function onCommentFilePaste(e: ClipboardEvent) {
         </div>
       </aside>
     </div>
+
+    <!-- Diff Modal -->
+    <BaseModal v-model="showDiffModal" title="内容变更详情">
+      <div class="max-h-[60vh] overflow-y-auto rounded-lg bg-slate-50 dark:bg-slate-950 font-mono text-sm leading-relaxed">
+        <div v-for="(part, i) in diffResult" :key="i">
+          <div
+            v-for="(line, j) in part.value.split('\n').filter((l, k, arr) => !(k === arr.length - 1 && l === ''))"
+            :key="j"
+            class="px-4 py-0.5"
+            :class="{
+              'bg-red-500/10 text-red-400': part.removed,
+              'bg-green-500/10 text-green-400': part.added,
+              'text-slate-500 dark:text-slate-400': !part.removed && !part.added,
+            }"
+          >
+            <span class="inline-block w-4 text-right mr-3 select-none text-slate-400">
+              {{ part.removed ? '-' : part.added ? '+' : ' ' }}
+            </span>{{ line }}
+          </div>
+        </div>
+      </div>
+    </BaseModal>
   </div>
 </template>
