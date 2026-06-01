@@ -6,8 +6,9 @@ import { useTicketsStore } from '@/stores/tickets'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { usePolling } from '@/composables/usePolling'
+import { useMarkdownUpload } from '@/composables/useMarkdownUpload'
 import { renderTicketRefs } from '@/composables/ticketRef'
-import { apiGetComments, apiCreateComment } from '@/api/comments'
+import { apiGetComments, apiCreateComment, apiUpdateCommentBody } from '@/api/comments'
 import { timeAgo, formatDate } from '@/utils/date'
 import { apiFetch } from '@/api/client'
 import BaseBadge from '@/components/base/BaseBadge.vue'
@@ -49,6 +50,8 @@ const id = Number(route.params.id)
 const comments = ref<Comment[]>([])
 const newComment = ref('')
 const submitting = ref(false)
+const commentTextareaRef = ref<InstanceType<typeof BaseTextarea> | null>(null)
+const mdUpload = useMarkdownUpload()
 
 const ticket = computed(() => store.currentTicket)
 
@@ -145,6 +148,13 @@ async function submitComment() {
   submitting.value = true
   try {
     const comment = await apiCreateComment(id, newComment.value)
+
+    if (mdUpload.pendingFiles.value.size > 0) {
+      const updatedBody = await mdUpload.uploadForComment(comment.body, id, comment.id)
+      await apiUpdateCommentBody(id, comment.id, updatedBody)
+      comment.body = updatedBody
+    }
+
     comments.value.push(comment)
     newComment.value = ''
   } catch (e: any) {
@@ -185,7 +195,13 @@ async function closeTicket() {
   submitting.value = true
   try {
     if (newComment.value.trim()) {
-      await apiCreateComment(id, newComment.value)
+      const comment = await apiCreateComment(id, newComment.value)
+      if (mdUpload.pendingFiles.value.size > 0) {
+        const updatedBody = await mdUpload.uploadForComment(comment.body, id, comment.id)
+        await apiUpdateCommentBody(id, comment.id, updatedBody)
+        comment.body = updatedBody
+      }
+      comments.value.push(comment)
       newComment.value = ''
     }
     await store.closeTicket(id)
@@ -202,7 +218,13 @@ async function reopenTicket() {
   submitting.value = true
   try {
     if (newComment.value.trim()) {
-      await apiCreateComment(id, newComment.value)
+      const comment = await apiCreateComment(id, newComment.value)
+      if (mdUpload.pendingFiles.value.size > 0) {
+        const updatedBody = await mdUpload.uploadForComment(comment.body, id, comment.id)
+        await apiUpdateCommentBody(id, comment.id, updatedBody)
+        comment.body = updatedBody
+      }
+      comments.value.push(comment)
       newComment.value = ''
     }
     await store.reopenTicket(id)
@@ -223,6 +245,18 @@ onMounted(async () => {
 usePolling(async () => {
   await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()])
 }, 10000)
+
+function onCommentFileDrop(e: DragEvent) {
+  const textarea = commentTextareaRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement
+  if (!textarea) return
+  mdUpload.handleDrop(e, textarea, newComment)
+}
+
+function onCommentFilePaste(e: ClipboardEvent) {
+  const textarea = commentTextareaRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement
+  if (!textarea) return
+  mdUpload.handlePaste(e, textarea, newComment)
+}
 </script>
 
 <template>
@@ -292,7 +326,28 @@ usePolling(async () => {
 
           <!-- Comment form -->
           <form v-if="auth.isAuthenticated" @submit.prevent="submitComment" class="space-y-3">
-            <BaseTextarea v-model="newComment" placeholder="添加评论... (支持 Markdown)" :rows="3" />
+            <BaseTextarea
+              ref="commentTextareaRef"
+              v-model="newComment"
+              placeholder="添加评论... (支持 Markdown)"
+              :rows="3"
+              uploadable
+              @file-drop="onCommentFileDrop"
+              @file-paste="onCommentFilePaste"
+            />
+            <div v-if="mdUpload.pendingFiles.value.size > 0" class="flex flex-wrap gap-2">
+              <div
+                v-for="[url, file] in mdUpload.pendingFiles.value"
+                :key="url"
+                class="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+              >
+                <Icon icon="lucide:image" class="w-3 h-3 text-slate-400" />
+                <span class="text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{{ file.name }}</span>
+                <button type="button" @click="mdUpload.removePending(url)" class="text-slate-400 hover:text-red-500">
+                  <Icon icon="lucide:x" class="w-3 h-3" />
+                </button>
+              </div>
+            </div>
             <div class="flex justify-end items-center gap-1.5">
               <BaseButton
                 v-if="ticket.authorId === auth.user?.id && (ticket.status === 'open' || ticket.status === 'in_progress')"
