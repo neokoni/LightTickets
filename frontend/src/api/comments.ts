@@ -11,3 +11,10 @@ export function apiCreateComment(ticketId: number, body: string) {
     body: JSON.stringify({ body }),
   })
 }
+
+export function apiUpdateCommentBody(ticketId: number, commentId: string, body: string) {
+  return apiFetch<Comment>(`/tickets/${ticketId}/comments/${commentId}/body`, {
+    method: 'PATCH',
+    body: JSON.stringify({ body }),
+  })
+}

@@ -14,10 +14,12 @@ export function apiGetAttachments(ticketId: number) {
   return apiFetch<Attachment[]>(`/tickets/${ticketId}/attachments`)
 }
 
-export function apiUploadAttachment(ticketId: number, file: File) {
+export function apiUploadAttachment(file: File, opts?: { ticketId?: number; commentId?: string }) {
   const form = new FormData()
   form.append('file', file)
-  return apiFetch<Attachment>(`/tickets/${ticketId}/attachments`, {
+  if (opts?.ticketId) form.append('ticketId', String(opts.ticketId))
+  if (opts?.commentId) form.append('commentId', opts.commentId)
+  return apiFetch<Attachment>('/attachments/upload', {
     method: 'POST',
     body: form,
   })

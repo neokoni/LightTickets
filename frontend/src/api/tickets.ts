@@ -66,3 +66,10 @@ export function apiGetTemplates() {
 export function apiGetTemplate(name: string) {
   return apiFetch<TemplateDefinition>(`/templates/${name}`)
 }
+
+export function apiUpdateTicketBody(id: number, body: string) {
+  return apiFetch<Ticket>(`/tickets/${id}/body`, {
+    method: 'PATCH',
+    body: JSON.stringify({ body }),
+  })
+}
