@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { Icon } from '@iconify/vue'
 import { apiAddTicketLabel, apiRemoveTicketLabel } from '@/api/labels'
 import { useTicketsStore } from '@/stores/tickets'
@@ -22,6 +22,25 @@ const ticketLabelIds = computed(() => new Set(props.ticket.labels.map(l => l.lab
 const unassignedLabels = computed(() =>
   labels.labels.filter(l => !ticketLabelIds.value.has(l.id))
 )
+
+const dropdownOpen = ref(false)
+const dropdownEl = ref<HTMLElement>()
+
+function onClickOutside(e: MouseEvent) {
+  if (dropdownEl.value && !dropdownEl.value.contains(e.target as Node)) {
+    dropdownOpen.value = false
+  }
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') dropdownOpen.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', onClickOutside)
+  if (!labels.loaded) labels.fetch()
+})
+onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
 
 async function addLabel(labelId: string) {
   try {
@@ -53,30 +72,66 @@ async function removeLabel(labelId: string) {
       <span
         v-for="tl in ticket.labels"
         :key="tl.labelId"
-        class="group inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full"
+        class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full transition cursor-default"
+        :class="auth.isStaff ? 'hover:ring-1 hover:ring-red-400/50 cursor-pointer' : ''"
         :style="{ backgroundColor: tl.label.color + '22', color: tl.label.color }"
+        :title="auth.isStaff ? '点击移除' : undefined"
+        @click="auth.isStaff && removeLabel(tl.labelId)"
       >
         {{ tl.label.name }}
-        <button
-          v-if="auth.isStaff"
-          @click="removeLabel(tl.labelId)"
-          class="opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <Icon icon="lucide:x" class="w-3 h-3" />
-        </button>
       </span>
     </div>
     <!-- Label selector for staff -->
-    <div v-if="auth.isStaff && unassignedLabels.length > 0" class="pt-1">
-      <select
-        @change="($event) => { const id = ($event.target as HTMLSelectElement).value; if (id) { addLabel(id); ($event.target as HTMLSelectElement).value = '' } }"
-        class="w-full px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 backdrop-blur-sm"
+    <div v-if="auth.isStaff" class="pt-1 relative" ref="dropdownEl">
+      <button
+        type="button"
+        @click="dropdownOpen = !dropdownOpen"
+        @keydown="onKeydown"
+        class="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 backdrop-blur-sm hover:border-slate-400 dark:hover:border-slate-600 transition"
+        :class="dropdownOpen ? 'border-slate-400 dark:border-slate-600 ring-2 ring-slate-900/20 dark:ring-slate-100/20' : ''"
       >
-        <option value="">添加标签...</option>
-        <option v-for="label in unassignedLabels" :key="label.id" :value="label.id">
-          {{ label.name }}
-        </option>
-      </select>
+        <span>添加标签...</span>
+        <Icon
+          icon="lucide:chevron-down"
+          class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200"
+          :class="{ 'rotate-180': dropdownOpen }"
+        />
+      </button>
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="opacity-0 -translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition duration-100 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-1"
+      >
+        <div
+          v-if="dropdownOpen"
+          class="absolute z-50 mt-1 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg overflow-hidden"
+        >
+          <div class="py-1">
+            <template v-if="unassignedLabels.length">
+              <button
+                v-for="label in unassignedLabels"
+                :key="label.id"
+                type="button"
+                @mousedown.prevent
+                @click="addLabel(label.id)"
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+              >
+                <span
+                  class="w-2.5 h-2.5 rounded-full shrink-0"
+                  :style="{ backgroundColor: label.color }"
+                />
+                <span class="text-slate-700 dark:text-slate-300">{{ label.name }}</span>
+              </button>
+            </template>
+            <div v-else class="px-3 py-2 text-xs text-slate-400 dark:text-slate-500">
+              所有标签已添加
+            </div>
+          </div>
+        </div>
+      </Transition>
     </div>
   </div>
 </template>
