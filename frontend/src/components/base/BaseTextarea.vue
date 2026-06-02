@@ -44,7 +44,7 @@ function onPaste(e: ClipboardEvent) {
           ? 'text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white -mb-px'
           : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'"
         @click="mode = 'write'"
-      >Write</button>
+      >编辑</button>
       <button
         type="button"
         class="px-3 py-1.5 text-sm font-medium transition"
@@ -52,7 +52,7 @@ function onPaste(e: ClipboardEvent) {
           ? 'text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white -mb-px'
           : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'"
         @click="mode = 'preview'"
-      >Preview</button>
+      >预览</button>
     </div>
     <textarea
       v-if="!previewable || mode === 'write'"
@@ -71,7 +71,7 @@ function onPaste(e: ClipboardEvent) {
       :class="{ 'border-red-400 dark:border-red-500': error }"
     >
       <MarkdownRenderer v-if="model" :content="model" />
-      <p v-else class="text-sm text-slate-400 dark:text-slate-500 italic">Nothing to preview</p>
+      <p v-else class="text-sm text-slate-400 dark:text-slate-500 italic">暂无内容可预览</p>
     </div>
     <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
   </div>
