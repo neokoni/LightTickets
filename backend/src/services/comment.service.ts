@@ -1,5 +1,6 @@
 import { PrismaClient, CommentSource } from '@prisma/client';
 import { NotFoundError, ForbiddenError } from '../utils/errors.js';
+import * as auditService from './audit.service.js';
 
 const prisma = new PrismaClient();
 
@@ -29,9 +30,13 @@ export async function updateBody(id: string, userId: string, body: string) {
   if (!comment) throw new NotFoundError('评论不存在');
   if (comment.authorId !== userId) throw new ForbiddenError('无权操作此评论');
 
-  return prisma.comment.update({
+  const updated = await prisma.comment.update({
     where: { id },
     data: { body },
     include: { author: { select: { id: true, username: true, minecraftName: true } } },
   });
+
+  await auditService.create(comment.ticketId, userId, 'comment_edit', comment.body, body);
+
+  return updated;
 }
