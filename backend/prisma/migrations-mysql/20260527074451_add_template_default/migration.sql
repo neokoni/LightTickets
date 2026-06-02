@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `tickets` MODIFY COLUMN `template` VARCHAR(191) NOT NULL DEFAULT '';
