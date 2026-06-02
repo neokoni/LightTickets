@@ -87,6 +87,83 @@ const editingBody = ref(false)
 const editBodyValue = ref('')
 const bodyUpload = useMarkdownUpload()
 
+// Comment edit state
+const editingCommentId = ref<string | null>(null)
+const editCommentValue = ref('')
+const savingComment = ref(false)
+const commentRawBodies = ref<Record<string, string>>({})
+
+function startEditComment(comment: Comment) {
+  editingCommentId.value = comment.id
+  editCommentValue.value = commentRawBodies.value[comment.id] || comment.body
+}
+
+function cancelEditComment() {
+  editingCommentId.value = null
+  editCommentValue.value = ''
+}
+
+async function saveEditComment(commentId: string) {
+  if (!editCommentValue.value.trim()) return
+  savingComment.value = true
+  try {
+    const updated = await apiUpdateCommentBody(id, commentId, editCommentValue.value)
+    const idx = comments.value.findIndex(c => c.id === commentId)
+    if (idx !== -1) {
+      comments.value[idx] = { ...updated, body: renderTicketRefs(updated.body) }
+    }
+    commentRawBodies.value[commentId] = updated.body
+    editingCommentId.value = null
+    editCommentValue.value = ''
+    await fetchAuditLogs()
+    ui.toast('评论已更新', 'success')
+  } catch (e: any) {
+    ui.toast(e.message || '操作失败', 'error')
+  } finally {
+    savingComment.value = false
+  }
+}
+
+function quoteComment(comment: Comment) {
+  const body = commentRawBodies.value[comment.id] || comment.body
+  const quoted = body.split('\n').map(line => `> ${line}`).join('\n')
+  newComment.value = newComment.value
+    ? `${newComment.value}\n\n${quoted}\n\n`
+    : `${quoted}\n\n`
+  nextTick(() => {
+    const textarea = commentTextareaRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement
+    if (textarea) textarea.focus()
+  })
+}
+
+async function copyCommentLink(commentId: string) {
+  const url = `${window.location.origin}${window.location.pathname}#comment-${commentId}`
+  try {
+    await navigator.clipboard.writeText(url)
+    ui.toast('链接已复制', 'success')
+  } catch {
+    // Fallback
+    const input = document.createElement('input')
+    input.value = url
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    document.body.removeChild(input)
+    ui.toast('链接已复制', 'success')
+  }
+}
+
+function scrollToComment(commentId: string) {
+  const el = document.getElementById(`comment-${commentId}`)
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('ring-2', 'ring-slate-400/50', 'dark:ring-slate-500/50', 'rounded-lg')
+    setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-slate-400/50', 'dark:ring-slate-500/50', 'rounded-lg')
+    }, 2000)
+  }
+}
+
 function startEditBody() {
   if (!ticket.value) return
   editBodyValue.value = ticket.value.body
@@ -182,6 +259,7 @@ function eventLabel(item: AuditLog): string {
     label_remove: '移除了标签',
     title_change: '更改了标题',
     body_change: '编辑了内容',
+    comment_edit: '编辑了评论',
   }
   return map[item.action] || item.action
 }
@@ -208,6 +286,7 @@ function eventIcon(item: AuditLog): string {
     label_remove: 'lucide:tag',
     title_change: 'lucide:type',
     body_change: 'lucide:file-text',
+    comment_edit: 'lucide:message-square-pen',
   }
   return map[item.action] || 'lucide:dot'
 }
@@ -232,6 +311,11 @@ const statusOptions: { key: TicketStatus; label: string; icon: string }[] = [
 
 async function fetchComments() {
   const raw = await apiGetComments(id)
+  const rawMap: Record<string, string> = {}
+  for (const c of raw) {
+    rawMap[c.id] = c.body
+  }
+  commentRawBodies.value = rawMap
   comments.value = raw.map(c => ({ ...c, body: renderTicketRefs(c.body) }))
 }
 
@@ -253,7 +337,8 @@ async function submitComment() {
       comment.body = updatedBody
     }
 
-    comments.value.push(comment)
+    commentRawBodies.value[comment.id] = comment.body
+    comments.value.push({ ...comment, body: renderTicketRefs(comment.body) })
     newComment.value = ''
   } catch (e: any) {
     ui.toast(e.message || '评论失败', 'error')
@@ -299,7 +384,8 @@ async function closeTicket() {
         await apiUpdateCommentBody(id, comment.id, updatedBody)
         comment.body = updatedBody
       }
-      comments.value.push(comment)
+      commentRawBodies.value[comment.id] = comment.body
+      comments.value.push({ ...comment, body: renderTicketRefs(comment.body) })
       newComment.value = ''
     }
     await store.closeTicket(id)
@@ -322,7 +408,8 @@ async function reopenTicket() {
         await apiUpdateCommentBody(id, comment.id, updatedBody)
         comment.body = updatedBody
       }
-      comments.value.push(comment)
+      commentRawBodies.value[comment.id] = comment.body
+      comments.value.push({ ...comment, body: renderTicketRefs(comment.body) })
       newComment.value = ''
     }
     await store.reopenTicket(id)
@@ -339,11 +426,22 @@ onMounted(async () => {
   fetchTemplateNames()
   if (!labels.loaded) labels.fetch()
   await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()])
+  if (route.hash && route.hash.startsWith('#comment-')) {
+    const commentId = route.hash.slice('#comment-'.length)
+    nextTick(() => scrollToComment(commentId))
+  }
 })
 
 usePolling(async () => {
   await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()])
 }, 10000)
+
+watch(() => route.hash, (hash) => {
+  if (hash && hash.startsWith('#comment-')) {
+    const commentId = hash.slice('#comment-'.length)
+    nextTick(() => scrollToComment(commentId))
+  }
+})
 
 function onCommentFileDrop(e: DragEvent) {
   const textarea = commentTextareaRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement
@@ -464,18 +562,56 @@ function onBodyFilePaste(e: ClipboardEvent) {
 
           <div v-for="item in timeline" :key="item.id + ('body' in item ? '-comment' : '-audit')">
             <!-- Comment -->
-            <div v-if="isComment(item)" class="flex gap-3 mb-4">
+            <div v-if="isComment(item)" :id="`comment-${item.id}`" class="group flex gap-3 mb-4 scroll-mt-24">
               <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">
                 {{ item.author.username.charAt(0).toUpperCase() }}
               </div>
               <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 text-sm">
-                  <span class="font-medium text-slate-900 dark:text-white">{{ item.author.username }}</span>
-                  <span class="text-slate-400 text-xs">{{ timeAgo(item.createdAt) }}</span>
-                  <BaseBadge v-if="item.source === 'minecraft'" color="#4ade80">MC</BaseBadge>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2 text-sm">
+                    <span class="font-medium text-slate-900 dark:text-white">{{ item.author.username }}</span>
+                    <span class="text-slate-400 text-xs">{{ timeAgo(item.createdAt) }}</span>
+                    <BaseBadge v-if="item.source === 'minecraft'" color="#4ade80">MC</BaseBadge>
+                  </div>
+                  <div v-if="auth.isAuthenticated && editingCommentId !== item.id" class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                    <button
+                      class="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                      title="引用回复"
+                      @click="quoteComment(item)"
+                    >
+                      <Icon icon="lucide:text-quote" class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      v-if="item.authorId === auth.user?.id || auth.isStaff"
+                      class="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                      title="编辑"
+                      @click="startEditComment(item)"
+                    >
+                      <Icon icon="lucide:pencil" class="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      class="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                      title="复制链接"
+                      @click="copyCommentLink(item.id)"
+                    >
+                      <Icon icon="lucide:link" class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
-                <div class="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                <div v-if="editingCommentId !== item.id" class="mt-1 text-sm text-slate-700 dark:text-slate-300">
                   <MarkdownRenderer :content="item.body" />
+                </div>
+                <div v-else class="mt-2 space-y-2">
+                  <BaseTextarea
+                    v-model="editCommentValue"
+                    :rows="4"
+                    uploadable
+                    previewable
+                  />
+                  <div class="flex justify-end gap-2">
+                    <BaseButton size="sm" :loading="savingComment" @click="saveEditComment(item.id)">保存</BaseButton>
+                    <BaseButton size="sm" variant="secondary" @click="cancelEditComment">取消</BaseButton>
+                  </div>
                 </div>
               </div>
             </div>
@@ -508,8 +644,8 @@ function onBodyFilePaste(e: ClipboardEvent) {
                 <Icon icon="lucide:arrow-right" class="w-3 h-3 text-slate-400 shrink-0" />
                 <span class="text-slate-700 dark:text-slate-200">{{ item.newValue }}</span>
               </div>
-              <!-- Body change: expandable inline diff -->
-              <div v-else-if="item.action === 'body_change'" class="ml-5.5 mt-1">
+              <!-- Body/comment change: expandable inline diff -->
+              <div v-else-if="item.action === 'body_change' || item.action === 'comment_edit'" class="ml-5.5 mt-1">
                 <button
                   class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 underline transition"
                   @click="toggleDiff(item)"
@@ -518,7 +654,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
                 </button>
                 <div v-if="expandedBodyDiff === item.id" class="mt-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 overflow-hidden">
                   <div class="flex items-center justify-between px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900">
-                    <span class="text-xs text-slate-500">内容变更详情</span>
+                    <span class="text-xs text-slate-500">{{ item.action === 'comment_edit' ? '评论变更详情' : '内容变更详情' }}</span>
                     <button class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300" @click="expandedBodyDiff = null">
                       <Icon icon="lucide:x" class="w-3.5 h-3.5" />
                     </button>
