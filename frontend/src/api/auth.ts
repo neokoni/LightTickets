@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { AuthResponse, RefreshResponse } from '@/types/user'
+import type { AuthResponse, RefreshResponse, User } from '@/types/user'
 
 export function apiRegister(email: string, password: string, username: string) {
   return apiFetch<AuthResponse>('/auth/register', {
@@ -26,5 +26,12 @@ export function apiLinkMinecraft(code: string) {
   return apiFetch<{ uuid: string; name: string }>('/auth/link-minecraft', {
     method: 'POST',
     body: JSON.stringify({ code }),
+  })
+}
+
+export function apiUpdateAvatar(avatarUrl: string | null) {
+  return apiFetch<User>('/users/me/avatar', {
+    method: 'PATCH',
+    body: JSON.stringify({ avatarUrl }),
   })
 }
