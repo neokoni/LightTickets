@@ -3,7 +3,12 @@ import yaml from 'js-yaml';
 import path from 'path';
 
 const configPath = path.resolve('data/config.yml');
-const raw = (yaml.load(fs.readFileSync(configPath, 'utf-8')) as Record<string, any>) ?? {};
+let raw: Record<string, any> = {};
+try {
+  raw = (yaml.load(fs.readFileSync(configPath, 'utf-8')) as Record<string, any>) ?? {};
+} catch {
+  // config.yml missing or malformed — start in setup-only mode
+}
 const port = parseInt(raw?.port || '3000', 10);
 const dbConfigured = raw.db?.databaseUrl && raw.db?.provider;
 
