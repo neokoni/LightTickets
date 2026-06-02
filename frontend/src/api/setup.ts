@@ -66,3 +66,16 @@ export async function updateSettings(data: { requireLogin?: boolean }): Promise<
     body: JSON.stringify(data),
   });
 }
+
+export async function waitForServerReady(maxAttempts = 30, intervalMs = 1000): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const res = await fetch('/api/health', { signal: AbortSignal.timeout(2000) });
+      if (res.ok) return true;
+    } catch {
+      // Server not ready yet
+    }
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
+  return false;
+}

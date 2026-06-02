@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import type { User } from '@/types/user'
 import { Icon } from '@iconify/vue'
-import { completeSetup, type SetupPayload } from '@/api/setup'
+import { completeSetup, waitForServerReady, type SetupPayload } from '@/api/setup'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 
@@ -103,7 +103,13 @@ async function submit() {
     import('@/router').then((mod) => {
       mod.setSiteConfigCache({ isSetup: true, requireLogin: false })
     })
-    setTimeout(() => router.replace({ name: 'tickets' }), 1800)
+    // Server restarts after setup — wait for it to come back
+    const ready = await waitForServerReady()
+    if (ready) {
+      router.replace({ name: 'tickets' })
+    } else {
+      error.value = '服务器重启超时，请手动刷新页面。'
+    }
   } catch (e: any) {
     error.value = e?.message || '设置失败，请重试。'
   } finally {
@@ -243,7 +249,8 @@ async function submit() {
           ✓
         </div>
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">设置完成！</h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">正在跳转至议题列表...</p>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">服务器正在重启，请稍候...</p>
+        <div v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</div>
       </div>
 
       <div v-if="error" class="mt-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">

@@ -4,6 +4,14 @@ import path from 'path';
 
 const configPath = path.resolve('data/config.yml');
 
+const minimalConfig = `port: 3000
+jwtSecret: ""
+jwtRefreshSecret: ""
+db:
+  provider: "sqlite"
+  databaseUrl: "file:../data/data.db"
+`;
+
 describe('config', () => {
   const originalContent = fs.existsSync(configPath)
     ? fs.readFileSync(configPath, 'utf-8')
@@ -11,6 +19,8 @@ describe('config', () => {
 
   beforeEach(() => {
     vi.resetModules();
+    // Ensure config has db section for loadConfig tests
+    fs.writeFileSync(configPath, minimalConfig, 'utf-8');
   });
 
   afterEach(() => {

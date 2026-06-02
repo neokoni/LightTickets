@@ -61,8 +61,11 @@ async function startSetupServer() {
     res.json({ isSetup: false, requireLogin: false, siteName: 'LightTickets' });
   });
 
-  const setupRoutes = (await import('./routes/setup.js')).default;
-  app.use('/api/setup', setupRoutes);
+  const { createServer } = await import('http');
+  const server = createServer(app);
+
+  const createSetupRoutes = (await import('./routes/setup.js')).default;
+  app.use('/api/setup', createSetupRoutes(server));
 
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     if (err instanceof AppError) {
@@ -72,9 +75,6 @@ async function startSetupServer() {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });
   });
-
-  const { createServer } = await import('http');
-  const server = createServer(app);
 
   server.listen(port, () => {
     console.log(`LightTickets setup server running on port ${port}`);

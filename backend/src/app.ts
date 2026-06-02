@@ -4,7 +4,7 @@ import cors from 'cors';
 import fs from 'fs';
 import { AppError } from './utils/errors.js';
 import { getConfig } from './config.js';
-import setupRoutes from './routes/setup.js';
+import createSetupRoutes from './routes/setup.js';
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js';
 import commentRoutes from './routes/comments.js';
@@ -34,7 +34,7 @@ export function createApp() {
     res.json({ status: 'ok' });
   });
 
-  app.use('/api/setup', setupRoutes);
+  app.use('/api/setup', createSetupRoutes());
   app.use('/api/auth', authRoutes);
   app.use('/api/templates', templateRoutes);
   app.use('/api/admin/templates', adminTemplateRoutes);

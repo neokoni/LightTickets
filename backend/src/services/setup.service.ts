@@ -226,3 +226,28 @@ export async function completeSetup(input: SetupInput) {
     ...tokens,
   };
 }
+
+export async function startFullAppAfterSetup(setupServer: import('http').Server): Promise<void> {
+  const { loadConfig } = await import('../config.js');
+  const config = loadConfig();
+
+  const { initPrisma } = await import('../db.js');
+  initPrisma();
+
+  const { initTemplates } = await import('./template.service.js');
+  await initTemplates();
+
+  const { createApp } = await import('../app.js');
+  const { createServer } = await import('http');
+  const { initSocket } = await import('../socket/index.js');
+
+  const app = createApp();
+  const server = createServer(app);
+  initSocket(server);
+
+  setupServer.close(() => {
+    server.listen(config.port, () => {
+      console.log(`LightTickets API running on port ${config.port}`);
+    });
+  });
+}
