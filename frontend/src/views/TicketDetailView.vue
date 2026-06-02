@@ -563,7 +563,13 @@ function onBodyFilePaste(e: ClipboardEvent) {
           <div v-for="item in timeline" :key="item.id + ('body' in item ? '-comment' : '-audit')">
             <!-- Comment -->
             <div v-if="isComment(item)" :id="`comment-${item.id}`" class="group flex gap-3 mb-4 scroll-mt-24">
-              <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">
+              <img
+                v-if="item.author.avatarUrl"
+                :src="item.author.avatarUrl"
+                class="w-8 h-8 rounded-full object-cover shrink-0"
+                alt="avatar"
+              />
+              <div v-else class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">
                 {{ item.author.username.charAt(0).toUpperCase() }}
               </div>
               <div class="flex-1 min-w-0">
