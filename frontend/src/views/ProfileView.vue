@@ -12,6 +12,34 @@ const ui = useUiStore()
 const mcCode = ref('')
 const linking = ref(false)
 
+const avatarInput = ref(auth.user?.avatarUrl || '')
+const savingAvatar = ref(false)
+
+async function saveAvatar() {
+  savingAvatar.value = true
+  try {
+    await auth.updateAvatar(avatarInput.value.trim() || null)
+    ui.toast('头像已更新', 'success')
+  } catch (e: any) {
+    ui.toast(e.message || '更新失败', 'error')
+  } finally {
+    savingAvatar.value = false
+  }
+}
+
+async function clearAvatar() {
+  avatarInput.value = ''
+  savingAvatar.value = true
+  try {
+    await auth.updateAvatar(null)
+    ui.toast('头像已清除', 'success')
+  } catch (e: any) {
+    ui.toast(e.message || '更新失败', 'error')
+  } finally {
+    savingAvatar.value = false
+  }
+}
+
 async function linkMc() {
   if (!mcCode.value.trim()) return
   linking.value = true
@@ -30,6 +58,29 @@ async function linkMc() {
 <template>
   <div class="max-w-2xl mx-auto space-y-8">
     <h1 class="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">个人资料</h1>
+
+    <!-- Avatar -->
+    <section class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-4">
+      <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">头像</h2>
+      <div class="flex items-center gap-4">
+        <img
+          v-if="auth.user?.avatarUrl"
+          :src="auth.user.avatarUrl"
+          class="w-16 h-16 rounded-full object-cover border border-slate-200 dark:border-slate-700"
+          alt="avatar"
+        />
+        <div v-else class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xl font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+          {{ auth.user?.username?.charAt(0).toUpperCase() }}
+        </div>
+        <div class="flex-1 space-y-2">
+          <BaseInput v-model="avatarInput" placeholder="输入头像直链 URL" />
+          <div class="flex gap-2">
+            <BaseButton size="sm" :loading="savingAvatar" @click="saveAvatar">保存</BaseButton>
+            <BaseButton v-if="auth.user?.avatarUrl" size="sm" variant="secondary" :loading="savingAvatar" @click="clearAvatar">清除</BaseButton>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Account info -->
     <section class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-4">
