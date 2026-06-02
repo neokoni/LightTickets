@@ -19,7 +19,7 @@ const error = ref('')
 const payload = reactive<SetupPayload>({
   db: {
     provider: 'sqlite',
-    databaseUrl: 'file:./dev.db',
+    databaseUrl: 'file:../data/data.db',
   },
   admin: {
     email: '',
@@ -126,13 +126,15 @@ async function submit() {
     <div class="w-full max-w-xl bg-white/95 dark:bg-slate-900/95 rounded-xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm backdrop-blur p-8">
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">LightTickets初始化向导</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">步骤 {{ step }} / {{ totalSteps }}</p>
-        <div class="mt-4 h-1 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
-          <div
-            class="h-full bg-slate-900 dark:bg-slate-200 transition-all duration-300"
-            :style="{ width: ((step / totalSteps) * 100) + '%' }"
-          />
-        </div>
+        <template v-if="step <= totalSteps">
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">步骤 {{ step }} / {{ totalSteps }}</p>
+          <div class="mt-4 h-1 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
+            <div
+              class="h-full bg-slate-900 dark:bg-slate-200 transition-all duration-300"
+              :style="{ width: ((step / totalSteps) * 100) + '%' }"
+            />
+          </div>
+        </template>
       </div>
 
       <!-- Step 1: Welcome -->
@@ -174,8 +176,8 @@ async function submit() {
 
         <div v-if="payload.db.provider === 'sqlite'">
           <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">数据库文件路径</label>
-          <BaseInput v-model="payload.db.databaseUrl" placeholder="file:./dev.db" />
-          <p class="text-xs text-slate-400 mt-1">建议使用相对路径，如 <code>file:./dev.db</code>。</p>
+          <BaseInput v-model="payload.db.databaseUrl" placeholder="file:../data/data.db" />
+          <p class="text-xs text-slate-400 mt-1">路径相对于 prisma 目录，如 <code>file:../data/data.db</code>。</p>
         </div>
 
         <div v-else class="space-y-4">
@@ -249,14 +251,14 @@ async function submit() {
       </div>
 
       <div class="mt-8 flex justify-between">
-        <BaseButton v-if="step > 1 && step < 6" @click="back">
+        <BaseButton v-if="step > 1 && step <= totalSteps" @click="back">
           上一步
         </BaseButton>
         <div v-else />
-        <BaseButton v-if="step < 5" :disabled="!canNext" @click="next">
+        <BaseButton v-if="step < totalSteps" :disabled="!canNext" @click="next">
           下一步
         </BaseButton>
-        <BaseButton v-else-if="step === 5" :loading="loading" @click="submit">
+        <BaseButton v-else-if="step === totalSteps" :loading="loading" @click="submit">
           完成设置
         </BaseButton>
         <BaseButton v-else-if="step === 1" @click="next">
