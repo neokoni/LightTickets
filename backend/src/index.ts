@@ -1,10 +1,12 @@
+import { loadConfig, getConfig } from './config.js';
+loadConfig();
 import { createServer } from 'http';
 import { createApp } from './app.js';
-import { config } from './config.js';
 import { initSocket } from './socket/index.js';
 
 const app = createApp();
 const server = createServer(app);
+const config = getConfig();
 
 initSocket(server);
 

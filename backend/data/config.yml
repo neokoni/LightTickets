@@ -1,0 +1,6 @@
+port: 3000
+jwtSecret: ""
+jwtRefreshSecret: ""
+db:
+  provider: "sqlite"
+  databaseUrl: "file:../data/data.db"
