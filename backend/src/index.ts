@@ -3,11 +3,22 @@ import yaml from 'js-yaml';
 import path from 'path';
 
 const configPath = path.resolve('data/config.yml');
+const defaultConfigPath = path.resolve('src/config.default.yml');
+
+// Ensure data/config.yml exists by copying from source template
+if (!fs.existsSync(configPath)) {
+  const dataDir = path.dirname(configPath);
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  fs.copyFileSync(defaultConfigPath, configPath);
+}
+
 let raw: Record<string, any> = {};
 try {
   raw = (yaml.load(fs.readFileSync(configPath, 'utf-8')) as Record<string, any>) ?? {};
 } catch {
-  // config.yml missing or malformed — start in setup-only mode
+  // config.yml malformed — start in setup-only mode
 }
 const port = parseInt(raw?.port || '3000', 10);
 const dbConfigured = raw.db?.databaseUrl && raw.db?.provider;
