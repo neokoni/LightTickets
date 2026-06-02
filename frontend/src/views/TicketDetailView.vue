@@ -98,7 +98,7 @@ async function saveBody() {
   try {
     let body = editBodyValue.value
     if (bodyUpload.pendingFiles.value.size > 0) {
-      body = await bodyUpload.uploadForComment(body, ticket.value.id)
+      body = await bodyUpload.uploadAndReplace(body, ticket.value.id)
     }
     await store.updateBody(ticket.value.id, body)
     editingBody.value = false
@@ -356,6 +356,20 @@ function onCommentFilePaste(e: ClipboardEvent) {
   if (!textarea) return
   mdUpload.handlePaste(e, textarea, newComment)
 }
+
+const bodyTextareaRef = ref<InstanceType<typeof BaseTextarea> | null>(null)
+
+function onBodyFileDrop(e: DragEvent) {
+  const textarea = bodyTextareaRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement
+  if (!textarea) return
+  bodyUpload.handleDrop(e, textarea, editBodyValue)
+}
+
+function onBodyFilePaste(e: ClipboardEvent) {
+  const textarea = bodyTextareaRef.value?.$el?.querySelector('textarea') as HTMLTextAreaElement
+  if (!textarea) return
+  bodyUpload.handlePaste(e, textarea, editBodyValue)
+}
 </script>
 
 <template>
@@ -416,11 +430,27 @@ function onCommentFilePaste(e: ClipboardEvent) {
           </div>
           <div v-else class="p-6 space-y-3">
             <BaseTextarea
+              ref="bodyTextareaRef"
               v-model="editBodyValue"
               :rows="12"
               uploadable
               previewable
+              @file-drop="onBodyFileDrop"
+              @file-paste="onBodyFilePaste"
             />
+            <div v-if="bodyUpload.pendingFiles.value.size > 0" class="flex flex-wrap gap-2">
+              <div
+                v-for="[url, file] in bodyUpload.pendingFiles.value"
+                :key="url"
+                class="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+              >
+                <Icon icon="lucide:image" class="w-3 h-3 text-slate-400" />
+                <span class="text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{{ file.name }}</span>
+                <button type="button" @click="bodyUpload.removePending(url)" class="text-slate-400 hover:text-red-500">
+                  <Icon icon="lucide:x" class="w-3 h-3" />
+                </button>
+              </div>
+            </div>
             <div class="flex justify-end gap-2">
               <BaseButton size="sm" @click="saveBody">保存</BaseButton>
               <BaseButton size="sm" variant="secondary" @click="cancelEditBody">取消</BaseButton>
