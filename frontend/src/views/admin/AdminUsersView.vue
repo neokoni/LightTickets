@@ -101,6 +101,7 @@ onMounted(fetchUsers)
       <thead>
         <tr class="border-b border-slate-200 dark:border-slate-800">
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">用户名</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"></th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">邮箱</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">MC</th>
           <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">角色</th>
@@ -110,6 +111,17 @@ onMounted(fetchUsers)
       <tbody class="divide-y divide-slate-100 dark:divide-slate-800/60">
         <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
           <td class="px-4 py-3 text-slate-900 dark:text-white font-medium">{{ user.username }}</td>
+          <td class="px-4 py-3">
+            <img
+              v-if="user.avatarUrl"
+              :src="user.avatarUrl"
+              class="w-7 h-7 rounded-full object-cover"
+              alt="avatar"
+            />
+            <div v-else class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-700 dark:text-slate-300">
+              {{ user.username.charAt(0).toUpperCase() }}
+            </div>
+          </td>
           <td class="px-4 py-3 text-slate-600 dark:text-slate-400">{{ user.email }}</td>
           <td class="px-4 py-3 text-slate-600 dark:text-slate-400">{{ user.minecraftName || '-' }}</td>
           <td class="px-4 py-3 min-w-[120px]">
