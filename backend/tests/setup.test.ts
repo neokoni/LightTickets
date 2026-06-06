@@ -21,6 +21,20 @@ describe('GET /api/setup/site-config', () => {
     expect(res.body.siteName).toBe('LightTickets');
     expect(res.body).toHaveProperty('requireLogin');
   });
+
+  it('returns footerContent and siteUrl in site config', async () => {
+    await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        admin: { email: 'config-test@test.com', password: 'admin123', username: 'configtest' },
+      });
+
+    const res = await request(app).get('/api/setup/site-config');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('siteUrl');
+    expect(res.body).toHaveProperty('footerContent');
+  });
 });
 
 describe('POST /api/setup', () => {
@@ -117,6 +131,82 @@ describe('PATCH /api/setup/settings', () => {
       .send({ requireLogin: true });
 
     expect(res.status).toBe(403);
+  });
+
+  it('allows admin to update siteName, siteUrl, and footerContent', async () => {
+    await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        admin: { email: 'settings-ext@test.com', password: 'admin123', username: 'settingsadminext' },
+      });
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'settings-ext@test.com', password: 'admin123' });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .send({
+        siteName: 'My Tickets',
+        siteUrl: 'https://tickets.example.com',
+        footerContent: '<a href="https://beian.miit.gov.cn">京ICP备12345678号</a>',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.siteName).toBe('My Tickets');
+    expect(res.body.siteUrl).toBe('https://tickets.example.com');
+    expect(res.body.footerContent).toBe('<a href="https://beian.miit.gov.cn">京ICP备12345678号</a>');
+  });
+
+  it('allows clearing siteUrl and footerContent with null', async () => {
+    await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        admin: { email: 'settings-clear@test.com', password: 'admin123', username: 'settingsadminclear' },
+      });
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'settings-clear@test.com', password: 'admin123' });
+
+    // First set values
+    await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .send({ siteUrl: 'https://example.com', footerContent: '<p>info</p>' });
+
+    // Then clear them
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .send({ siteUrl: null, footerContent: null });
+
+    expect(res.status).toBe(200);
+    expect(res.body.siteUrl).toBeNull();
+    expect(res.body.footerContent).toBeNull();
+  });
+
+  it('rejects empty siteName', async () => {
+    await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        admin: { email: 'settings-valid@test.com', password: 'admin123', username: 'settingsadminvalid' },
+      });
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'settings-valid@test.com', password: 'admin123' });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .send({ siteName: '' });
+
+    expect([400, 422]).toContain(res.status);
   });
 });
 

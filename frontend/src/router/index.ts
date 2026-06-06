@@ -2,12 +2,27 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getSiteConfig } from '@/api/setup'
 
-export let siteConfig: { isSetup: boolean | null; requireLogin: boolean | null } = {
+export let siteConfig: {
+  isSetup: boolean | null;
+  requireLogin: boolean | null;
+  siteName: string;
+  siteUrl: string | null;
+  footerContent: string | null;
+} = {
   isSetup: null,
   requireLogin: null,
+  siteName: 'LightTickets',
+  siteUrl: null,
+  footerContent: null,
 }
 
-export function setSiteConfigCache(data: { isSetup: boolean; requireLogin: boolean }) {
+export function setSiteConfigCache(data: {
+  isSetup: boolean;
+  requireLogin: boolean;
+  siteName: string;
+  siteUrl: string | null;
+  footerContent: string | null;
+}) {
   siteConfig = { ...data }
 }
 

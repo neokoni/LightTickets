@@ -4,6 +4,8 @@ export interface SiteConfig {
   isSetup: boolean;
   requireLogin: boolean;
   siteName: string;
+  siteUrl: string | null;
+  footerContent: string | null;
 }
 
 export interface SetupPayload {
@@ -47,6 +49,8 @@ export interface SetupResult {
 export interface SettingsResult {
   requireLogin: boolean;
   siteName: string;
+  siteUrl: string | null;
+  footerContent: string | null;
 }
 
 export async function getSiteConfig(): Promise<SiteConfig> {
@@ -60,7 +64,12 @@ export async function completeSetup(payload: SetupPayload): Promise<SetupResult>
   });
 }
 
-export async function updateSettings(data: { requireLogin?: boolean }): Promise<SettingsResult> {
+export async function updateSettings(data: {
+  requireLogin?: boolean;
+  siteName?: string;
+  siteUrl?: string | null;
+  footerContent?: string | null;
+}): Promise<SettingsResult> {
   return apiFetch<SettingsResult>('/setup/settings', {
     method: 'PATCH',
     body: JSON.stringify(data),

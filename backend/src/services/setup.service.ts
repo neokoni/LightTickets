@@ -17,6 +17,8 @@ export interface SiteConfig {
   isSetup: boolean;
   requireLogin: boolean;
   siteName: string;
+  siteUrl: string | null;
+  footerContent: string | null;
 }
 
 export interface DbConfig {
@@ -44,12 +46,12 @@ export interface SetupInput {
 
 export async function getSiteConfig(): Promise<SiteConfig> {
   if (!fs.existsSync(CONFIG_PATH)) {
-    return { isSetup: false, requireLogin: false, siteName: 'LightTickets' };
+    return { isSetup: false, requireLogin: false, siteName: 'LightTickets', siteUrl: null, footerContent: null };
   }
 
   const raw = readYaml(CONFIG_PATH);
   if (!raw.db?.databaseUrl || !raw.db?.provider) {
-    return { isSetup: false, requireLogin: false, siteName: raw.siteName || 'LightTickets' };
+    return { isSetup: false, requireLogin: false, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
   }
 
   try {
@@ -60,15 +62,22 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       isSetup: status?.isSetup ?? false,
       requireLogin: status?.requireLogin ?? false,
       siteName: status?.siteName || raw.siteName || 'LightTickets',
+      siteUrl: status?.siteUrl ?? null,
+      footerContent: status?.footerContent ?? null,
     };
   } catch (e) {
     // DB not initialized yet — expected on fresh install
     console.warn('[setup] Could not query setup status:', e instanceof Error ? e.message : e);
-    return { isSetup: false, requireLogin: false, siteName: raw.siteName || 'LightTickets' };
+    return { isSetup: false, requireLogin: false, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
   }
 }
 
-export async function updateSettings(data: { requireLogin?: boolean }) {
+export async function updateSettings(data: {
+  requireLogin?: boolean;
+  siteName?: string;
+  siteUrl?: string | null;
+  footerContent?: string | null;
+}) {
   const { getPrisma } = await import('../db.js');
   const prisma = getPrisma();
 
@@ -79,12 +88,17 @@ export async function updateSettings(data: { requireLogin?: boolean }) {
     where: { id: status.id },
     data: {
       ...(data.requireLogin !== undefined && { requireLogin: data.requireLogin }),
+      ...(data.siteName !== undefined && { siteName: data.siteName }),
+      ...(data.siteUrl !== undefined && { siteUrl: data.siteUrl }),
+      ...(data.footerContent !== undefined && { footerContent: data.footerContent }),
     },
   });
 
   return {
     requireLogin: updated.requireLogin,
     siteName: updated.siteName,
+    siteUrl: updated.siteUrl,
+    footerContent: updated.footerContent,
   };
 }
 

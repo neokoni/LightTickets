@@ -48,6 +48,9 @@ export default function createSetupRoutes(server?: Server) {
   router.patch('/settings', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
     const schema = z.object({
       requireLogin: z.boolean().optional(),
+      siteName: z.string().min(1).max(100).optional(),
+      siteUrl: z.string().url().nullable().optional(),
+      footerContent: z.string().max(2000).nullable().optional(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);

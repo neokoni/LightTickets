@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getSiteConfig, updateSettings } from '@/api/setup'
-import { setRequireLoginCache } from '@/router'
+import { setRequireLoginCache, siteConfig } from '@/router'
 import { useUiStore } from '@/stores/ui'
 import BaseButton from '@/components/base/BaseButton.vue'
 
 const ui = useUiStore()
 const requireLogin = ref(false)
+const siteName = ref('')
+const siteUrl = ref('')
+const footerContent = ref('')
 const loading = ref(false)
 const saving = ref(false)
 
@@ -15,6 +18,9 @@ onMounted(async () => {
   try {
     const config = await getSiteConfig()
     requireLogin.value = config.requireLogin
+    siteName.value = config.siteName
+    siteUrl.value = config.siteUrl ?? ''
+    footerContent.value = config.footerContent ?? ''
   } finally {
     loading.value = false
   }
@@ -23,8 +29,16 @@ onMounted(async () => {
 async function save() {
   saving.value = true
   try {
-    const result = await updateSettings({ requireLogin: requireLogin.value })
+    const result = await updateSettings({
+      requireLogin: requireLogin.value,
+      siteName: siteName.value,
+      siteUrl: siteUrl.value || null,
+      footerContent: footerContent.value || null,
+    })
     setRequireLoginCache(result.requireLogin)
+    siteConfig.siteName = result.siteName
+    siteConfig.siteUrl = result.siteUrl
+    siteConfig.footerContent = result.footerContent
     ui.toast('设置已保存', 'success')
   } catch (e: any) {
     ui.toast(e.message || '保存失败', 'error')
@@ -41,6 +55,43 @@ async function save() {
     <div v-if="loading" class="py-4 text-center text-slate-400">加载中...</div>
 
     <div v-else class="space-y-4 max-w-lg">
+      <!-- Site Name -->
+      <div class="space-y-1.5">
+        <label class="text-sm font-medium text-slate-900 dark:text-white">站点名称</label>
+        <input
+          v-model="siteName"
+          type="text"
+          maxlength="100"
+          class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500"
+          placeholder="LightTickets"
+        />
+      </div>
+
+      <!-- Site URL -->
+      <div class="space-y-1.5">
+        <label class="text-sm font-medium text-slate-900 dark:text-white">站点地址</label>
+        <input
+          v-model="siteUrl"
+          type="url"
+          class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500"
+          placeholder="https://ticket.example.com"
+        />
+      </div>
+
+      <!-- Footer Content -->
+      <div class="space-y-1.5">
+        <label class="text-sm font-medium text-slate-900 dark:text-white">页脚自定义内容</label>
+        <p class="text-xs text-slate-500 dark:text-slate-400">支持 HTML，可用于添加备案信息、版权声明等</p>
+        <textarea
+          v-model="footerContent"
+          rows="3"
+          maxlength="2000"
+          class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500"
+          placeholder="<a href='https://beian.miit.gov.cn'>京ICP备xxxxxxx号</a>"
+        />
+      </div>
+
+      <!-- Require Login Toggle -->
       <div class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
         <div>
           <p class="text-sm font-medium text-slate-900 dark:text-white">要求登录查看议题</p>
