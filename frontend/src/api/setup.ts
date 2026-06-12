@@ -3,6 +3,7 @@ import { apiFetch } from './client';
 export interface SiteConfig {
   isSetup: boolean;
   requireLogin: boolean;
+  allowWebRegister: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
@@ -48,6 +49,7 @@ export interface SetupResult {
 
 export interface SettingsResult {
   requireLogin: boolean;
+  allowWebRegister: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
@@ -66,6 +68,7 @@ export async function completeSetup(payload: SetupPayload): Promise<SetupResult>
 
 export async function updateSettings(data: {
   requireLogin?: boolean;
+  allowWebRegister?: boolean;
   siteName?: string;
   siteUrl?: string | null;
   footerContent?: string | null;

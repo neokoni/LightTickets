@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { siteConfig } from '@/router'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 
@@ -47,7 +48,7 @@ async function submit() {
         <BaseButton filled type="submit" :loading="loading" class="w-full">登录</BaseButton>
       </form>
 
-      <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400" v-if="siteConfig.allowWebRegister">
         没有账号？
         <RouterLink to="/register" class="font-semibold text-slate-900 dark:text-slate-100 hover:text-slate-700 dark:hover:text-slate-300 transition">注册</RouterLink>
       </p>

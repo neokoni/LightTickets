@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { siteConfig } from '@/router'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 
@@ -14,6 +15,12 @@ const password = ref('')
 const confirmPassword = ref('')
 const error = ref('')
 const loading = ref(false)
+
+onMounted(() => {
+  if (!siteConfig.allowWebRegister) {
+    router.replace('/login')
+  }
+})
 
 async function submit() {
   error.value = ''

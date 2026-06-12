@@ -16,6 +16,7 @@ function readYaml(filePath: string): Record<string, any> {
 export interface SiteConfig {
   isSetup: boolean;
   requireLogin: boolean;
+  allowWebRegister: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
@@ -46,12 +47,12 @@ export interface SetupInput {
 
 export async function getSiteConfig(): Promise<SiteConfig> {
   if (!fs.existsSync(CONFIG_PATH)) {
-    return { isSetup: false, requireLogin: false, siteName: 'LightTickets', siteUrl: null, footerContent: null };
+    return { isSetup: false, requireLogin: false, allowWebRegister: true, siteName: 'LightTickets', siteUrl: null, footerContent: null };
   }
 
   const raw = readYaml(CONFIG_PATH);
   if (!raw.db?.databaseUrl || !raw.db?.provider) {
-    return { isSetup: false, requireLogin: false, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
+    return { isSetup: false, requireLogin: false, allowWebRegister: true, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
   }
 
   try {
@@ -61,6 +62,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
     return {
       isSetup: status?.isSetup ?? false,
       requireLogin: status?.requireLogin ?? false,
+      allowWebRegister: status?.allowWebRegister ?? true,
       siteName: status?.siteName || raw.siteName || 'LightTickets',
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
@@ -68,12 +70,13 @@ export async function getSiteConfig(): Promise<SiteConfig> {
   } catch (e) {
     // DB not initialized yet — expected on fresh install
     console.warn('[setup] Could not query setup status:', e instanceof Error ? e.message : e);
-    return { isSetup: false, requireLogin: false, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
+    return { isSetup: false, requireLogin: false, allowWebRegister: true, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
   }
 }
 
 export async function updateSettings(data: {
   requireLogin?: boolean;
+  allowWebRegister?: boolean;
   siteName?: string;
   siteUrl?: string | null;
   footerContent?: string | null;
@@ -88,6 +91,7 @@ export async function updateSettings(data: {
     where: { id: status.id },
     data: {
       ...(data.requireLogin !== undefined && { requireLogin: data.requireLogin }),
+      ...(data.allowWebRegister !== undefined && { allowWebRegister: data.allowWebRegister }),
       ...(data.siteName !== undefined && { siteName: data.siteName }),
       ...(data.siteUrl !== undefined && { siteUrl: data.siteUrl }),
       ...(data.footerContent !== undefined && { footerContent: data.footerContent }),
@@ -96,6 +100,7 @@ export async function updateSettings(data: {
 
   return {
     requireLogin: updated.requireLogin,
+    allowWebRegister: updated.allowWebRegister,
     siteName: updated.siteName,
     siteUrl: updated.siteUrl,
     footerContent: updated.footerContent,

@@ -5,12 +5,14 @@ import { getSiteConfig } from '@/api/setup'
 export let siteConfig: {
   isSetup: boolean | null;
   requireLogin: boolean | null;
+  allowWebRegister: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
 } = {
   isSetup: null,
   requireLogin: null,
+  allowWebRegister: true,
   siteName: 'LightTickets',
   siteUrl: null,
   footerContent: null,
@@ -19,6 +21,7 @@ export let siteConfig: {
 export function setSiteConfigCache(data: {
   isSetup: boolean;
   requireLogin: boolean;
+  allowWebRegister: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;

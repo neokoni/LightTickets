@@ -21,6 +21,13 @@ router.post('/register', async (req: Request, res: Response) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
 
+  const { getSiteConfig } = await import('../services/setup.service.js');
+  const config = await getSiteConfig();
+  if (!config.allowWebRegister) {
+    res.status(403).json({ message: '网页注册已关闭，请联系管理员' });
+    return;
+  }
+
   const result = await authService.register(parsed.data.email, parsed.data.password, parsed.data.username);
   res.status(201).json(result);
 });

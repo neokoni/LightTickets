@@ -7,6 +7,7 @@ import BaseButton from '@/components/base/BaseButton.vue'
 
 const ui = useUiStore()
 const requireLogin = ref(false)
+const allowWebRegister = ref(true)
 const siteName = ref('')
 const siteUrl = ref('')
 const footerContent = ref('')
@@ -20,6 +21,7 @@ onMounted(async () => {
     requireLogin.value = config.requireLogin
     siteName.value = config.siteName
     siteUrl.value = config.siteUrl ?? ''
+    allowWebRegister.value = config.allowWebRegister ?? true
     footerContent.value = config.footerContent ?? ''
   } finally {
     loading.value = false
@@ -31,6 +33,7 @@ async function save() {
   try {
     const result = await updateSettings({
       requireLogin: requireLogin.value,
+      allowWebRegister: allowWebRegister.value,
       siteName: siteName.value,
       siteUrl: siteUrl.value || null,
       footerContent: footerContent.value || null,
@@ -39,6 +42,7 @@ async function save() {
     siteConfig.siteName = result.siteName
     siteConfig.siteUrl = result.siteUrl
     siteConfig.footerContent = result.footerContent
+    siteConfig.allowWebRegister = result.allowWebRegister
     ui.toast('设置已保存', 'success')
   } catch (e: any) {
     ui.toast(e.message || '保存失败', 'error')
@@ -89,6 +93,24 @@ async function save() {
           class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500"
           placeholder="<a href='https://beian.miit.gov.cn'>京ICP备xxxxxxx号</a>"
         />
+      </div>
+
+      <!-- Allow Web Register Toggle -->
+      <div class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
+        <div>
+          <p class="text-sm font-medium text-slate-900 dark:text-white">允许网页注册</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">关闭后登录页不显示注册入口，且网页注册接口将被禁用</p>
+        </div>
+        <button
+          @click="allowWebRegister = !allowWebRegister"
+          class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition"
+          :class="allowWebRegister ? 'bg-slate-900 dark:bg-slate-200' : 'bg-slate-200 dark:bg-slate-700'"
+        >
+          <span
+            class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform dark:bg-slate-800"
+            :class="allowWebRegister ? 'translate-x-5' : 'translate-x-0'"
+          />
+        </button>
       </div>
 
       <!-- Require Login Toggle -->
