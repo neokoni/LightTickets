@@ -1,4 +1,5 @@
 import { Role } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { getPrisma } from '../db.js';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
 
@@ -102,4 +103,15 @@ export async function updateAvatar(userId: number, avatarUrl: string | null) {
       updatedAt: true,
     },
   });
+}
+
+export async function changePassword(userId: number, currentPassword: string, newPassword: string) {
+  const user = await prisma().user.findUnique({ where: { id: userId } });
+  if (!user) throw new NotFoundError('用户不存在');
+
+  const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!valid) throw new ValidationError('当前密码错误');
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  await prisma().user.update({ where: { id: userId }, data: { passwordHash } });
 }

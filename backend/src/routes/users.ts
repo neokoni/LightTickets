@@ -39,6 +39,19 @@ router.patch('/me/username', authMiddleware, async (req: Request, res: Response)
   res.json(user);
 });
 
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, '请输入当前密码'),
+  newPassword: z.string().min(8, '新密码至少 8 个字符').max(128),
+});
+
+router.patch('/me/password', authMiddleware, async (req: Request, res: Response) => {
+  const parsed = passwordSchema.safeParse(req.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+
+  await userService.changePassword(req.user!.userId, parsed.data.currentPassword, parsed.data.newPassword);
+  res.json({ message: '密码已更新' });
+});
+
 const roleSchema = z.object({
   role: z.enum(['player', 'staff', 'admin']),
 });

@@ -42,3 +42,10 @@ export function apiUpdateUsername(username: string) {
     body: JSON.stringify({ username }),
   })
 }
+
+export function apiChangePassword(currentPassword: string, newPassword: string) {
+  return apiFetch<{ message: string }>('/users/me/password', {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+}

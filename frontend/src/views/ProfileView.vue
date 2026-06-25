@@ -18,6 +18,11 @@ const savingAvatar = ref(false)
 const usernameInput = ref(auth.user?.username || '')
 const savingUsername = ref(false)
 
+const currentPassword = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const savingPassword = ref(false)
+
 async function saveUsername() {
   const val = usernameInput.value.trim()
   if (!val || val.length < 2 || val.length > 32) {
@@ -74,6 +79,33 @@ async function linkMc() {
     linking.value = false
   }
 }
+
+async function changePassword() {
+  if (!currentPassword.value || !newPassword.value) {
+    ui.toast('请填写所有密码字段', 'error')
+    return
+  }
+  if (newPassword.value.length < 8) {
+    ui.toast('新密码至少 8 个字符', 'error')
+    return
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    ui.toast('两次输入的密码不一致', 'error')
+    return
+  }
+  savingPassword.value = true
+  try {
+    await auth.changePassword(currentPassword.value, newPassword.value)
+    ui.toast('密码已更新', 'success')
+    currentPassword.value = ''
+    newPassword.value = ''
+    confirmPassword.value = ''
+  } catch (e: any) {
+    ui.toast(e.message || '更新失败', 'error')
+  } finally {
+    savingPassword.value = false
+  }
+}
 </script>
 
 <template>
@@ -117,6 +149,28 @@ async function linkMc() {
           <BaseButton v-if="auth.user?.avatarUrl" size="sm" :loading="savingAvatar" @click="clearAvatar">清除</BaseButton>
         </div>
       </div>
+    </section>
+
+    <!-- Change password -->
+    <section class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-4">
+      <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">修改密码</h2>
+
+      <div class="space-y-1.5">
+        <label class="text-sm text-slate-500 dark:text-slate-400">当前密码</label>
+        <BaseInput v-model="currentPassword" type="password" placeholder="输入当前密码" />
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-sm text-slate-500 dark:text-slate-400">新密码</label>
+        <BaseInput v-model="newPassword" type="password" placeholder="至少 8 个字符" />
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-sm text-slate-500 dark:text-slate-400">确认新密码</label>
+        <BaseInput v-model="confirmPassword" type="password" placeholder="再次输入新密码" />
+      </div>
+
+      <BaseButton size="sm" :loading="savingPassword" @click="changePassword">更新密码</BaseButton>
     </section>
 
     <!-- MC binding -->
