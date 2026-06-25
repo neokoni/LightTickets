@@ -24,12 +24,15 @@ export async function register(email: string, password: string, username: string
   return { user: sanitizeUser(user), ...tokens };
 }
 
-export async function login(email: string, password: string) {
-  const user = await prisma().user.findUnique({ where: { email } });
-  if (!user) throw new UnauthorizedError('邮箱或密码错误');
+export async function login(emailOrUsername: string, password: string) {
+  const isEmail = emailOrUsername.includes('@');
+  const user = await prisma().user.findUnique({
+    where: isEmail ? { email: emailOrUsername } : { username: emailOrUsername },
+  });
+  if (!user) throw new UnauthorizedError('邮箱/用户名或密码错误');
 
   const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) throw new UnauthorizedError('邮箱或密码错误');
+  if (!valid) throw new UnauthorizedError('邮箱/用户名或密码错误');
 
   const tokens = generateTokens(user.id, user.role);
   return { user: sanitizeUser(user), ...tokens };

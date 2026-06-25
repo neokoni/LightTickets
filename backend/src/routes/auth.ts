@@ -13,7 +13,7 @@ const registerSchema = z.object({
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  emailOrUsername: z.string().min(1),
   password: z.string(),
 });
 
@@ -36,7 +36,7 @@ router.post('/login', async (req: Request, res: Response) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
 
-  const result = await authService.login(parsed.data.email, parsed.data.password);
+  const result = await authService.login(parsed.data.emailOrUsername, parsed.data.password);
   res.json(result);
 });
 

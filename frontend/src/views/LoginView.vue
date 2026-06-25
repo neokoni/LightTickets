@@ -10,7 +10,7 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
-const email = ref('')
+const emailOrUsername = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
@@ -19,7 +19,7 @@ async function submit() {
   error.value = ''
   loading.value = true
   try {
-    await auth.login(email.value, password.value)
+    await auth.login(emailOrUsername.value, password.value)
     const redirect = (route.query.redirect as string) || '/'
     router.push(redirect)
   } catch (e: any) {
@@ -40,7 +40,7 @@ async function submit() {
       </div>
 
       <form @submit.prevent="submit" class="mt-6 space-y-4">
-        <BaseInput v-model="email" label="邮箱" type="email" placeholder="you@example.com" />
+        <BaseInput v-model="emailOrUsername" label="邮箱/用户名" type="text" placeholder="请输入邮箱或用户名" />
         <BaseInput v-model="password" label="密码" type="password" placeholder="••••••••" />
 
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>

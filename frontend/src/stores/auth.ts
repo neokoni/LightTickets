@@ -12,8 +12,8 @@ export const useAuthStore = defineStore('auth', () => {
   const isStaff = computed(() => user.value?.role === 'staff' || user.value?.role === 'admin')
   const isAdmin = computed(() => user.value?.role === 'admin')
 
-  async function login(email: string, password: string) {
-    const res = await apiLogin(email, password)
+  async function login(emailOrUsername: string, password: string) {
+    const res = await apiLogin(emailOrUsername, password)
     user.value = res.user
     setAccessToken(res.accessToken)
     localStorage.setItem('lt-refresh-token', res.refreshToken)

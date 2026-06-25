@@ -31,23 +31,45 @@ describe('POST /api/auth/register', () => {
 });
 
 describe('POST /api/auth/login', () => {
-  it('returns tokens for valid credentials', async () => {
+  it('returns tokens for valid email credentials', async () => {
     await request(app)
       .post('/api/auth/register')
       .send({ email: 'login@example.com', password: 'Password123!', username: 'loginuser' });
 
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'login@example.com', password: 'Password123!' });
+      .send({ emailOrUsername: 'login@example.com', password: 'Password123!' });
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('accessToken');
   });
 
+  it('returns tokens for valid username credentials', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'userlogin@example.com', password: 'Password123!', username: 'userlogin' });
+
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ emailOrUsername: 'userlogin', password: 'Password123!' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('accessToken');
+    expect(res.body.user.username).toBe('userlogin');
+  });
+
   it('rejects invalid password', async () => {
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'login@example.com', password: 'wrong' });
+      .send({ emailOrUsername: 'login@example.com', password: 'wrong' });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects non-existent username', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ emailOrUsername: 'nonexistent', password: 'Password123!' });
 
     expect(res.status).toBe(401);
   });

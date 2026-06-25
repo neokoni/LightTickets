@@ -8,10 +8,10 @@ export function apiRegister(email: string, password: string, username: string) {
   })
 }
 
-export function apiLogin(email: string, password: string) {
+export function apiLogin(emailOrUsername: string, password: string) {
   return apiFetch<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ emailOrUsername, password }),
   })
 }
 
