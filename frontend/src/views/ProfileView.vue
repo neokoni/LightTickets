@@ -118,6 +118,10 @@ async function linkMc() {
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
         <div>
+          <span class="text-slate-500 dark:text-slate-400">用户 ID</span>
+          <p class="mt-1 font-medium text-slate-900 dark:text-white font-mono text-xs">{{ auth.user?.id }}</p>
+        </div>
+        <div>
           <span class="text-slate-500 dark:text-slate-400">邮箱</span>
           <p class="mt-1 font-medium text-slate-900 dark:text-white">{{ auth.user?.email }}</p>
         </div>

@@ -49,11 +49,11 @@ export function runMigrations(provider: 'sqlite' | 'mysql'): void {
   // Step 2: Save current migrations under provider-specific name
   if (currentProviderSuffix) {
     fs.renameSync(currentDir, path.join(PRISMA_DIR, `migrations-${currentProviderSuffix}`));
-  }
 
-  // Step 3: Rename target migrations to migrations/
-  if (fs.existsSync(targetDir)) {
-    fs.renameSync(targetDir, currentDir);
+    // Step 3: Rename target migrations to migrations/
+    if (fs.existsSync(targetDir)) {
+      fs.renameSync(targetDir, currentDir);
+    }
   }
 
   // Generate Prisma Client

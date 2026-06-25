@@ -1,11 +1,12 @@
 -- CreateTable
 CREATE TABLE "users" (
-    "id" TEXT NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "email" TEXT NOT NULL,
     "password_hash" TEXT NOT NULL,
     "username" TEXT NOT NULL,
     "minecraft_uuid" TEXT,
     "minecraft_name" TEXT,
+    "avatar_url" TEXT,
     "role" TEXT NOT NULL DEFAULT 'player',
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME NOT NULL
@@ -26,12 +27,13 @@ CREATE TABLE "tickets" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "title" TEXT NOT NULL,
     "body" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
+    "template" TEXT NOT NULL DEFAULT '',
+    "form_data" TEXT,
     "status" TEXT NOT NULL DEFAULT 'open',
     "priority" TEXT NOT NULL DEFAULT 'medium',
-    "author_id" TEXT NOT NULL,
+    "author_id" INTEGER NOT NULL,
     "server_id" TEXT,
-    "assignee_id" TEXT,
+    "assignee_id" INTEGER,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME NOT NULL,
     "closed_at" DATETIME,
@@ -62,7 +64,7 @@ CREATE TABLE "ticket_labels" (
 CREATE TABLE "comments" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "ticket_id" INTEGER NOT NULL,
-    "author_id" TEXT NOT NULL,
+    "author_id" INTEGER NOT NULL,
     "body" TEXT NOT NULL,
     "source" TEXT NOT NULL DEFAULT 'web',
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -79,7 +81,7 @@ CREATE TABLE "attachments" (
     "path" TEXT NOT NULL,
     "mime_type" TEXT NOT NULL,
     "size" INTEGER NOT NULL,
-    "uploaded_by" TEXT NOT NULL,
+    "uploaded_by" INTEGER NOT NULL,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "attachments_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "attachments_comment_id_fkey" FOREIGN KEY ("comment_id") REFERENCES "comments" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
@@ -117,6 +119,8 @@ CREATE TABLE "setup_status" (
     "site_name" TEXT NOT NULL DEFAULT 'LightTickets',
     "site_url" TEXT,
     "require_login" BOOLEAN NOT NULL DEFAULT false,
+    "allow_web_register" BOOLEAN NOT NULL DEFAULT true,
+    "footer_content" TEXT,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME NOT NULL
 );
@@ -125,13 +129,28 @@ CREATE TABLE "setup_status" (
 CREATE TABLE "audit_logs" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "ticket_id" INTEGER NOT NULL,
-    "actor_id" TEXT NOT NULL,
+    "actor_id" INTEGER NOT NULL,
     "action" TEXT NOT NULL,
     "old_value" TEXT,
     "new_value" TEXT,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "audit_logs_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "audit_logs_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "ticket_templates" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" TEXT NOT NULL,
+    "name_i18n" TEXT NOT NULL,
+    "description" TEXT NOT NULL,
+    "title_prefix" TEXT,
+    "labels" TEXT NOT NULL DEFAULT '[]',
+    "body" TEXT NOT NULL,
+    "completion_hooks" TEXT NOT NULL DEFAULT '[]',
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME NOT NULL
 );
 
 -- CreateIndex
@@ -157,3 +176,6 @@ CREATE UNIQUE INDEX "permission_requests_ticket_id_key" ON "permission_requests"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "link_codes_code_key" ON "link_codes"("code");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ticket_templates_name_key" ON "ticket_templates"("name");

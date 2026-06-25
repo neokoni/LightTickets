@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { initPrisma, getPrisma, resetPrisma } from '../src/db.js';
 
-const DB_URL = process.env.DATABASE_URL || 'file:./data/dev.db';
+const DB_URL = process.env.DATABASE_URL || 'file:./dev.db';
 
 describe('db', () => {
   afterEach(() => {

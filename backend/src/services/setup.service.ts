@@ -180,12 +180,8 @@ export async function completeSetup(input: SetupInput) {
   fs.writeFileSync(CONFIG_PATH, yaml.dump(configData, { lineWidth: -1 }), 'utf-8');
 
   // 4. Set DATABASE_URL and run migrations
-  let databaseUrl = input.db.databaseUrl;
-  if (input.db.provider === 'sqlite' && databaseUrl.startsWith('file:')) {
-    const relPath = databaseUrl.slice(5);
-    databaseUrl = `file:${path.resolve('data', relPath)}`;
-  }
-  process.env.DATABASE_URL = databaseUrl;
+  // Prisma resolves file: URLs relative to the schema directory automatically
+  process.env.DATABASE_URL = input.db.databaseUrl;
 
   // Always run migrations to bring schema up to date, then (re)init prisma
   const { runMigrations } = await import('../migrate.js');

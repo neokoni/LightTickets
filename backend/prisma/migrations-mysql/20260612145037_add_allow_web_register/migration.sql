@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE `setup_status` ADD COLUMN `allow_web_register` BOOLEAN NOT NULL DEFAULT true;
