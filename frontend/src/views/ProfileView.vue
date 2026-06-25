@@ -116,7 +116,7 @@ async function linkMc() {
 
       <div v-else class="space-y-3">
         <p class="text-sm text-slate-500 dark:text-slate-400">
-          在游戏中输入 <code class="px-1 py-0.5 bg-slate-100 dark:bg-slate-800 rounded-md text-xs">/bindweb</code> 获取验证码
+          请输入在游戏中获取的验证码
         </p>
         <form @submit.prevent="linkMc" class="flex gap-2">
           <BaseInput v-model="mcCode" placeholder="6位验证码" class="flex-1" />
