@@ -1,22 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { getSiteConfig } from '@/api/setup'
 
-export let siteConfig: {
-  isSetup: boolean | null;
-  requireLogin: boolean | null;
-  allowWebRegister: boolean;
-  siteName: string;
-  siteUrl: string | null;
-  footerContent: string | null;
-} = {
-  isSetup: null,
-  requireLogin: null,
+export const siteConfig = reactive({
+  isSetup: null as boolean | null,
+  requireLogin: null as boolean | null,
   allowWebRegister: true,
   siteName: 'LightTickets',
-  siteUrl: null,
-  footerContent: null,
-}
+  siteUrl: null as string | null,
+  footerContent: null as string | null,
+})
 
 export function setSiteConfigCache(data: {
   isSetup: boolean;
@@ -26,7 +20,7 @@ export function setSiteConfigCache(data: {
   siteUrl: string | null;
   footerContent: string | null;
 }) {
-  siteConfig = { ...data }
+  Object.assign(siteConfig, data)
 }
 
 export function setRequireLoginCache(value: boolean) {
