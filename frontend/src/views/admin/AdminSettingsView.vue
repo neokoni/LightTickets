@@ -85,13 +85,13 @@ async function save() {
       <!-- Footer Content -->
       <div class="space-y-1.5">
         <label class="text-sm font-medium text-slate-900 dark:text-white">页脚自定义内容</label>
-        <p class="text-xs text-slate-500 dark:text-slate-400">支持 HTML，可用于添加备案信息、版权声明等</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400">支持 Markdown，可用于添加备案信息、版权声明等</p>
         <textarea
           v-model="footerContent"
           rows="3"
           maxlength="2000"
           class="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500"
-          placeholder="<a href='https://beian.miit.gov.cn'>京ICP备xxxxxxx号</a>"
+          placeholder="[京ICP备xxxxxxx号](https://beian.miit.gov.cn)"
         />
       </div>
 
