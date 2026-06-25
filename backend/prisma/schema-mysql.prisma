@@ -188,10 +188,11 @@ model SetupStatus {
   isSetup       Boolean  @default(false) @map("is_setup")
   siteName      String   @default("LightTickets") @map("site_name")
   siteUrl       String?  @map("site_url")
-  requireLogin  Boolean  @default(false) @map("require_login")
-  footerContent String?  @map("footer_content")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  requireLogin      Boolean  @default(false) @map("require_login")
+  allowWebRegister  Boolean  @default(true) @map("allow_web_register")
+  footerContent     String?  @map("footer_content")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("setup_status")
 }
