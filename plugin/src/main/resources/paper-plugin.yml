@@ -1,0 +1,11 @@
+name: LightTickets
+description: $description
+prefix: ${prefix}
+version: '${version}'
+
+main: ink.neokoni.lightTickets.LightTickets
+loader: ink.neokoni.lightTickets.LightTicketsLoader
+api-version: '1.21'
+folia-supported: true
+
+authors: [ Neokoni ]
