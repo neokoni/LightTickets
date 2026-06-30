@@ -9,15 +9,25 @@ import BaseButton from '@/components/base/BaseButton.vue'
 const auth = useAuthStore()
 const ui = useUiStore()
 
+const activeSection = ref<'account' | 'password' | 'minecraft'>('account')
+
+const navItems = [
+  { key: 'account' as const, label: '账号信息', icon: 'lucide:user' },
+  { key: 'password' as const, label: '修改密码', icon: 'lucide:lock' },
+  { key: 'minecraft' as const, label: 'Minecraft 绑定', icon: 'lucide:gamepad-2' },
+]
+
 const mcCode = ref('')
 const linking = ref(false)
 
 const avatarInput = ref(auth.user?.avatarUrl || '')
 const savingAvatar = ref(false)
 
+const editingUsername = ref(false)
 const usernameInput = ref(auth.user?.username || '')
 const savingUsername = ref(false)
 
+const editingEmail = ref(false)
 const emailInput = ref(auth.user?.email || '')
 const savingEmail = ref(false)
 
@@ -37,6 +47,7 @@ async function saveUsername() {
   try {
     await auth.updateUsername(val)
     ui.toast('用户名已更新', 'success')
+    editingUsername.value = false
   } catch (e: any) {
     ui.toast(e.message || '更新失败', 'error')
   } finally {
@@ -55,6 +66,7 @@ async function saveEmail() {
   try {
     await auth.updateEmail(val)
     ui.toast('邮箱已更新', 'success')
+    editingEmail.value = false
   } catch (e: any) {
     ui.toast(e.message || '更新失败', 'error')
   } finally {
@@ -130,99 +142,131 @@ async function changePassword() {
 </script>
 
 <template>
-  <div class="max-w-2xl mx-auto space-y-8">
-    <h1 class="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">个人资料</h1>
+  <div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
+    <nav class="flex md:flex-col gap-1">
+      <button
+        v-for="item in navItems"
+        :key="item.key"
+        class="flex items-center gap-2 px-4 py-3 text-sm rounded-md transition text-left"
+        :class="activeSection === item.key
+          ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium'
+          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'"
+        @click="activeSection = item.key"
+      >
+        <Icon :icon="item.icon" class="w-4 h-4" />
+        {{ item.label }}
+      </button>
+    </nav>
 
-    <!-- Account info -->
-    <section class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-4">
-      <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">账号信息</h2>
+    <div class="space-y-6">
+      <!-- Account Info -->
+      <template v-if="activeSection === 'account'">
+        <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">账号信息</h2>
 
-      <div class="flex items-start gap-4">
-        <img
-          v-if="auth.user?.avatarUrl"
-          :src="auth.user.avatarUrl"
-          class="w-16 h-16 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-          alt="avatar"
-          @error="auth.user.avatarUrl = null"
-        />
-        <div v-else class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xl font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
-          {{ auth.user?.username?.charAt(0).toUpperCase() }}
+        <div class="flex items-start gap-4">
+          <img
+            v-if="auth.user?.avatarUrl"
+            :src="auth.user.avatarUrl"
+            class="w-16 h-16 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+            alt="avatar"
+            @error="auth.user.avatarUrl = null"
+          />
+          <div v-else class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xl font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+            {{ auth.user?.username?.charAt(0).toUpperCase() }}
+          </div>
+          <div class="space-y-0.5 flex-1 min-w-0">
+            <template v-if="!editingUsername">
+              <div class="flex items-center gap-2">
+                <p class="font-semibold text-slate-900 dark:text-white">{{ auth.user?.username }}</p>
+                <button class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition" @click="editingUsername = true">
+                  <Icon icon="lucide:pencil" class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex items-center gap-2">
+                <BaseInput v-model="usernameInput" placeholder="2-32 个字符" class="flex-1 !py-1 !text-sm" />
+                <BaseButton size="sm" :loading="savingUsername" :disabled="usernameInput.trim() === auth.user?.username" @click="saveUsername">确认</BaseButton>
+                <BaseButton size="sm" @click="editingUsername = false; usernameInput = auth.user?.username || ''">取消</BaseButton>
+              </div>
+            </template>
+            <template v-if="!editingEmail">
+              <div class="flex items-center gap-2">
+                <p class="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">邮箱: {{ auth.user?.email }}</p>
+                <button class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition" @click="editingEmail = true">
+                  <Icon icon="lucide:pencil" class="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </template>
+            <template v-else>
+              <div class="flex items-center gap-2">
+                <BaseInput v-model="emailInput" placeholder="your@email.com" class="flex-1 !py-1 !text-sm" />
+                <BaseButton size="sm" :loading="savingEmail" :disabled="emailInput.trim() === auth.user?.email" @click="saveEmail">确认</BaseButton>
+                <BaseButton size="sm" @click="editingEmail = false; emailInput = auth.user?.email || ''">取消</BaseButton>
+              </div>
+            </template>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">ID: {{ auth.user?.id }}</p>
+          </div>
         </div>
-        <div class="space-y-0.5">
-          <p class="font-semibold text-slate-900 dark:text-white">{{ auth.user?.username }}</p>
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">ID: {{ auth.user?.id }}</p>
+
+        <div class="space-y-4 max-w-lg">
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-900 dark:text-white">头像链接</label>
+            <div class="flex gap-2">
+              <BaseInput v-model="avatarInput" placeholder="https://xxxx" class="flex-1" />
+              <BaseButton size="sm" :loading="savingAvatar" @click="saveAvatar">保存</BaseButton>
+              <BaseButton v-if="auth.user?.avatarUrl" size="sm" :loading="savingAvatar" @click="clearAvatar">清除</BaseButton>
+            </div>
+          </div>
         </div>
-      </div>
+      </template>
 
-      <div class="space-y-1.5">
-        <label class="text-sm text-slate-500 dark:text-slate-400">用户名</label>
-        <div class="flex gap-2">
-          <BaseInput v-model="usernameInput" placeholder="2-32 个字符" class="flex-1" />
-          <BaseButton size="sm" :loading="savingUsername" :disabled="usernameInput.trim() === auth.user?.username" @click="saveUsername">保存</BaseButton>
+      <!-- Change Password -->
+      <template v-if="activeSection === 'password'">
+        <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">修改密码</h2>
+
+        <div class="space-y-4 max-w-lg">
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-900 dark:text-white">当前密码</label>
+            <BaseInput v-model="currentPassword" type="password" placeholder="输入当前密码" />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-900 dark:text-white">新密码</label>
+            <BaseInput v-model="newPassword" type="password" placeholder="至少 8 个字符" />
+          </div>
+
+          <div class="space-y-1.5">
+            <label class="text-sm font-medium text-slate-900 dark:text-white">确认新密码</label>
+            <BaseInput v-model="confirmPassword" type="password" placeholder="再次输入新密码" />
+          </div>
+
+          <BaseButton size="sm" :loading="savingPassword" @click="changePassword">更新密码</BaseButton>
         </div>
-      </div>
+      </template>
 
-      <div class="space-y-1.5">
-        <label class="text-sm text-slate-500 dark:text-slate-400">邮箱</label>
-        <div class="flex gap-2">
-          <BaseInput v-model="emailInput" placeholder="your@email.com" class="flex-1" />
-          <BaseButton size="sm" :loading="savingEmail" :disabled="emailInput.trim() === auth.user?.email" @click="saveEmail">保存</BaseButton>
+      <!-- MC Binding -->
+      <template v-if="activeSection === 'minecraft'">
+        <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Minecraft 绑定</h2>
+
+        <div v-if="auth.user?.minecraftName" class="flex items-center gap-3">
+          <Icon icon="lucide:gamepad-2" class="w-5 h-5 text-green-500" />
+          <div>
+            <p class="font-medium text-slate-900 dark:text-white">{{ auth.user.minecraftName }}</p>
+            <p class="text-xs text-slate-500">UUID: {{ auth.user.minecraftUuid }}</p>
+          </div>
         </div>
-      </div>
 
-      <div class="space-y-1.5">
-        <label class="text-sm text-slate-500 dark:text-slate-400">头像链接</label>
-        <div class="flex gap-2">
-          <BaseInput v-model="avatarInput" placeholder="https://xxxx" class="flex-1" />
-          <BaseButton size="sm" :loading="savingAvatar" @click="saveAvatar">保存</BaseButton>
-          <BaseButton v-if="auth.user?.avatarUrl" size="sm" :loading="savingAvatar" @click="clearAvatar">清除</BaseButton>
+        <div v-else class="space-y-3 max-w-lg">
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            请输入在游戏中获取的验证码
+          </p>
+          <form @submit.prevent="linkMc" class="flex gap-2">
+            <BaseInput v-model="mcCode" placeholder="6位验证码" class="flex-1" />
+            <BaseButton type="submit" :loading="linking" :disabled="!mcCode.trim()">绑定</BaseButton>
+          </form>
         </div>
-      </div>
-    </section>
-
-    <!-- Change password -->
-    <section class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-4">
-      <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">修改密码</h2>
-
-      <div class="space-y-1.5">
-        <label class="text-sm text-slate-500 dark:text-slate-400">当前密码</label>
-        <BaseInput v-model="currentPassword" type="password" placeholder="输入当前密码" />
-      </div>
-
-      <div class="space-y-1.5">
-        <label class="text-sm text-slate-500 dark:text-slate-400">新密码</label>
-        <BaseInput v-model="newPassword" type="password" placeholder="至少 8 个字符" />
-      </div>
-
-      <div class="space-y-1.5">
-        <label class="text-sm text-slate-500 dark:text-slate-400">确认新密码</label>
-        <BaseInput v-model="confirmPassword" type="password" placeholder="再次输入新密码" />
-      </div>
-
-      <BaseButton size="sm" :loading="savingPassword" @click="changePassword">更新密码</BaseButton>
-    </section>
-
-    <!-- MC binding -->
-    <section class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-4">
-      <h2 class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Minecraft 绑定</h2>
-
-      <div v-if="auth.user?.minecraftName" class="flex items-center gap-3">
-        <Icon icon="lucide:gamepad-2" class="w-5 h-5 text-green-500" />
-        <div>
-          <p class="font-medium text-slate-900 dark:text-white">{{ auth.user.minecraftName }}</p>
-          <p class="text-xs text-slate-500">UUID: {{ auth.user.minecraftUuid }}</p>
-        </div>
-      </div>
-
-      <div v-else class="space-y-3">
-        <p class="text-sm text-slate-500 dark:text-slate-400">
-          请输入在游戏中获取的验证码
-        </p>
-        <form @submit.prevent="linkMc" class="flex gap-2">
-          <BaseInput v-model="mcCode" placeholder="6位验证码" class="flex-1" />
-          <BaseButton type="submit" :loading="linking" :disabled="!mcCode.trim()">绑定</BaseButton>
-        </form>
-      </div>
-    </section>
+      </template>
+    </div>
   </div>
 </template>
