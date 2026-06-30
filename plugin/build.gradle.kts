@@ -1,6 +1,7 @@
 plugins {
     id("java-library")
     id("xyz.jpenilla.run-paper") version "3.0.2"
+    id("com.gradleup.shadow") version "8.3.10"
     id("io.freefair.lombok") version "8.7.1"
 }
 
@@ -11,6 +12,13 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT")
+    compileOnly("com.google.code.gson:gson:2.13.2")
+    compileOnly("com.zaxxer:HikariCP:7.0.2")
+    compileOnly("com.mysql:mysql-connector-j:9.5.0");
+    compileOnly("org.mariadb.jdbc:mariadb-java-client:3.5.6");
+    compileOnly("org.xerial:sqlite-jdbc:3.51.2.0")
+
+    implementation("de.exlll:configlib-yaml:4.8.1")
 }
 
 java {
@@ -35,5 +43,14 @@ tasks {
         filesMatching("paper-plugin.yml") {
             expand(props)
         }
+    }
+
+    shadowJar {
+        relocate("de.exlll", "ink.neokoni.lightTickets.libs.configlib")
+        minimize()
+    }
+
+    build {
+        dependsOn(shadowJar)
     }
 }
