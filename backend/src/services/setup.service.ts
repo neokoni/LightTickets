@@ -17,6 +17,7 @@ export interface SiteConfig {
   isSetup: boolean;
   requireLogin: boolean;
   allowWebRegister: boolean;
+  allowMcRegister: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
@@ -47,12 +48,12 @@ export interface SetupInput {
 
 export async function getSiteConfig(): Promise<SiteConfig> {
   if (!fs.existsSync(CONFIG_PATH)) {
-    return { isSetup: false, requireLogin: false, allowWebRegister: true, siteName: 'LightTickets', siteUrl: null, footerContent: null };
+    return { isSetup: false, requireLogin: false, allowWebRegister: true, allowMcRegister: true, siteName: 'LightTickets', siteUrl: null, footerContent: null };
   }
 
   const raw = readYaml(CONFIG_PATH);
   if (!raw.db?.databaseUrl || !raw.db?.provider) {
-    return { isSetup: false, requireLogin: false, allowWebRegister: true, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
+    return { isSetup: false, requireLogin: false, allowWebRegister: true, allowMcRegister: true, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
   }
 
   try {
@@ -63,6 +64,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       isSetup: status?.isSetup ?? false,
       requireLogin: status?.requireLogin ?? false,
       allowWebRegister: status?.allowWebRegister ?? true,
+      allowMcRegister: status?.allowMcRegister ?? true,
       siteName: status?.siteName || raw.siteName || 'LightTickets',
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
@@ -76,13 +78,14 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       throw e;
     }
     console.warn('[setup] Could not query setup status:', msg);
-    return { isSetup: false, requireLogin: false, allowWebRegister: true, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
+    return { isSetup: false, requireLogin: false, allowWebRegister: true, allowMcRegister: true, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
   }
 }
 
 export async function updateSettings(data: {
   requireLogin?: boolean;
   allowWebRegister?: boolean;
+  allowMcRegister?: boolean;
   siteName?: string;
   siteUrl?: string | null;
   footerContent?: string | null;
@@ -98,6 +101,7 @@ export async function updateSettings(data: {
     data: {
       ...(data.requireLogin !== undefined && { requireLogin: data.requireLogin }),
       ...(data.allowWebRegister !== undefined && { allowWebRegister: data.allowWebRegister }),
+      ...(data.allowMcRegister !== undefined && { allowMcRegister: data.allowMcRegister }),
       ...(data.siteName !== undefined && { siteName: data.siteName }),
       ...(data.siteUrl !== undefined && { siteUrl: data.siteUrl }),
       ...(data.footerContent !== undefined && { footerContent: data.footerContent }),
@@ -107,6 +111,7 @@ export async function updateSettings(data: {
   return {
     requireLogin: updated.requireLogin,
     allowWebRegister: updated.allowWebRegister,
+    allowMcRegister: updated.allowMcRegister,
     siteName: updated.siteName,
     siteUrl: updated.siteUrl,
     footerContent: updated.footerContent,
@@ -179,11 +184,13 @@ export async function completeSetup(input: SetupInput) {
 
   fs.writeFileSync(CONFIG_PATH, yaml.dump(configData, { lineWidth: -1 }), 'utf-8');
 
-  // 4. Set DATABASE_URL and run migrations
-  // Prisma resolves file: URLs relative to the schema directory automatically
-  process.env.DATABASE_URL = input.db.databaseUrl;
+  // 4. Load config to resolve DATABASE_URL consistently (loadConfig resolves
+  //    sqlite file: URLs to absolute paths relative to data/, matching what
+  //    startFullApp uses on restart — so setup and runtime share the same DB).
+  const { loadConfig } = await import('../config.js');
+  loadConfig();
 
-  // Always run migrations to bring schema up to date, then (re)init prisma
+  // Run migrations with the resolved DATABASE_URL, then init prisma
   const { runMigrations } = await import('../migrate.js');
   runMigrations(input.db.provider);
 

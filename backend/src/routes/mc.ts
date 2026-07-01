@@ -8,6 +8,7 @@ import { NotFoundError, ValidationError } from '../utils/errors.js';
 import * as ticketService from '../services/ticket.service.js';
 import * as commentService from '../services/comment.service.js';
 import * as permissionService from '../services/permission.service.js';
+import * as authService from '../services/auth.service.js';
 
 const prisma = () => getPrisma();
 const router = Router();
@@ -15,6 +16,14 @@ const router = Router();
 router.use(serverAuthMiddleware);
 
 const linkCodeSchema = z.object({
+  minecraftUuid: z.string(),
+  minecraftName: z.string(),
+});
+
+const mcRegisterSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  username: z.string().min(2).max(32),
   minecraftUuid: z.string(),
   minecraftName: z.string(),
 });
@@ -32,6 +41,27 @@ const mcTicketSchema = z.object({
     z: z.number().optional(),
     gameMode: z.string().optional(),
   }).optional(),
+});
+
+router.post('/register', async (req: Request, res: Response) => {
+  const parsed = mcRegisterSchema.safeParse(req.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+
+  const { getSiteConfig } = await import('../services/setup.service.js');
+  const siteConfig = await getSiteConfig();
+  if (!siteConfig.allowMcRegister) {
+    res.status(403).json({ message: 'Minecraft注册已关闭，请联系管理员' });
+    return;
+  }
+
+  const result = await authService.registerFromMinecraft(
+    parsed.data.email,
+    parsed.data.password,
+    parsed.data.username,
+    parsed.data.minecraftUuid,
+    parsed.data.minecraftName,
+  );
+  res.status(201).json(result);
 });
 
 router.post('/link-code', async (req: Request, res: Response) => {

@@ -133,6 +133,26 @@ describe('PATCH /api/setup/settings', () => {
     expect(res.status).toBe(403);
   });
 
+  it('allows admin to update allowMcRegister setting', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        admin: { email: 'mc-settings-admin@test.com', password: 'admin123', username: 'mcsettingsadmin' },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.accessToken}`)
+      .send({ allowMcRegister: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.allowMcRegister).toBe(false);
+
+    const config = await request(app).get('/api/setup/site-config');
+    expect(config.body.allowMcRegister).toBe(false);
+  });
+
   it('allows admin to update siteName, siteUrl, and footerContent', async () => {
     await request(app)
       .post('/api/setup')

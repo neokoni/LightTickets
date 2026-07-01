@@ -4,10 +4,11 @@ import { beforeEach, afterAll } from 'vitest';
 
 // Ensure config.yml has db section before any module imports getConfig()
 const configPath = path.resolve('data/config.yml');
-const cleanConfig = `port: 3000
-jwtSecret: ""
-jwtRefreshSecret: ""
-`;
+// Back up the user's real config so tests never clobber production settings.
+const realConfigBackup = fs.existsSync(configPath)
+  ? fs.readFileSync(configPath, 'utf-8')
+  : null;
+
 const testConfig = `port: 3000
 jwtSecret: ""
 jwtRefreshSecret: ""
@@ -16,15 +17,18 @@ db:
   databaseUrl: "file:./dev.db"
 `;
 
-// Delete stale test DB so migrations always start fresh.
-// Prisma resolves file: URLs relative to the schema directory (prisma/).
-const testDbPath = path.resolve('prisma', 'dev.db');
-if (fs.existsSync(testDbPath)) {
-  fs.unlinkSync(testDbPath);
+// Delete stale test DBs so migrations always start fresh.
+// loadConfig resolves file:./dev.db to data/dev.db (relative to data/ dir),
+// matching the path completeSetup and startFullApp use in production.
+for (const p of [path.resolve('data', 'dev.db'), path.resolve('prisma', 'dev.db')]) {
+  if (fs.existsSync(p)) fs.unlinkSync(p);
 }
 
 fs.writeFileSync(configPath, testConfig, 'utf-8');
-process.env.DATABASE_URL = 'file:./dev.db';
+
+// Load config to resolve DATABASE_URL consistently with production (absolute path)
+const { loadConfig } = await import('../src/config.js');
+loadConfig();
 
 const { runMigrations } = await import('../src/migrate.js');
 runMigrations('sqlite');
@@ -49,9 +53,14 @@ beforeEach(async () => {
   await prisma().server.deleteMany();
 });
 
-// Restore clean config (without db section) after all tests
+// Restore the user's real config after all tests (never write a hardcoded
+// clean config — that wipes the production db section and forces re-setup).
 afterAll(() => {
-  fs.writeFileSync(configPath, cleanConfig, 'utf-8');
+  if (realConfigBackup !== null) {
+    fs.writeFileSync(configPath, realConfigBackup, 'utf-8');
+  } else {
+    fs.rmSync(configPath, { force: true });
+  }
 });
 
 export { prisma };

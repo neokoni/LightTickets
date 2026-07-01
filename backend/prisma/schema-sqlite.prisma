@@ -190,6 +190,7 @@ model SetupStatus {
   siteUrl       String?  @map("site_url")
   requireLogin      Boolean  @default(false) @map("require_login")
   allowWebRegister  Boolean  @default(true) @map("allow_web_register")
+  allowMcRegister   Boolean  @default(true) @map("allow_mc_register")
   footerContent     String?  @map("footer_content")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")

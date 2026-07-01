@@ -208,3 +208,198 @@ describe('POST /api/mc/tickets/:id/close', () => {
     expect(res.body.status).toBe('resolved');
   });
 });
+
+describe('POST /api/mc/register', () => {
+  it('creates a user and binds the minecraft account directly', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-reg', apiKey: 'mc-reg-key' },
+    });
+
+    const res = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'mcreg@test.com',
+        password: 'Password123!',
+        username: 'mcreguser',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440010',
+        minecraftName: 'RegPlayer',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toHaveProperty('accessToken');
+    expect(res.body).toHaveProperty('refreshToken');
+    expect(res.body.user.email).toBe('mcreg@test.com');
+    expect(res.body.user.minecraftUuid).toBe('550e8400-e29b-41d4-a716-446655440010');
+    expect(res.body.user.minecraftName).toBe('RegPlayer');
+    expect(res.body.user).not.toHaveProperty('passwordHash');
+
+    // Registered player is directly bound and can create tickets
+    const ticket = await request(app)
+      .post('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440010',
+        title: 'From registered player',
+        body: 'Body',
+        template: 'bug_report',
+      });
+    expect(ticket.status).toBe(201);
+  });
+
+  it('rejects without server key', async () => {
+    const res = await request(app)
+      .post('/api/mc/register')
+      .send({
+        email: 'nokey@test.com',
+        password: 'Password123!',
+        username: 'nokeyuser',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440011',
+        minecraftName: 'NoKey',
+      });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects duplicate email', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-reg-dup', apiKey: 'mc-reg-dup-key' },
+    });
+
+    await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'mcregdup@test.com',
+        password: 'Password123!',
+        username: 'mcregdup1',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440012',
+        minecraftName: 'Dup1',
+      });
+
+    const res = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'mcregdup@test.com',
+        password: 'Password123!',
+        username: 'mcregdup2',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440013',
+        minecraftName: 'Dup2',
+      });
+
+    expect(res.status).toBe(409);
+  });
+
+  it('rejects duplicate username', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-reg-username', apiKey: 'mc-reg-username-key' },
+    });
+
+    await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'mcregun1@test.com',
+        password: 'Password123!',
+        username: 'sharedname',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440014',
+        minecraftName: 'Shared1',
+      });
+
+    const res = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'mcregun2@test.com',
+        password: 'Password123!',
+        username: 'sharedname',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440015',
+        minecraftName: 'Shared2',
+      });
+
+    expect(res.status).toBe(409);
+  });
+
+  it('rejects when minecraft uuid already linked to another account', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-reg-uuid', apiKey: 'mc-reg-uuid-key' },
+    });
+
+    await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'mcuuid1@test.com',
+        password: 'Password123!',
+        username: 'mcuuid1',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440016',
+        minecraftName: 'Uuid1',
+      });
+
+    const res = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'mcuuid2@test.com',
+        password: 'Password123!',
+        username: 'mcuuid2',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440016',
+        minecraftName: 'Uuid1Again',
+      });
+
+    expect(res.status).toBe(409);
+  });
+
+  it('rejects invalid payload', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-reg-invalid', apiKey: 'mc-reg-invalid-key' },
+    });
+
+    const res = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'not-an-email',
+        password: 'short',
+        username: 'x',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440017',
+        minecraftName: 'Invalid',
+      });
+
+    expect([400, 422]).toContain(res.status);
+  });
+
+  it('rejects when allowMcRegister is disabled', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-reg-disabled', apiKey: 'mc-reg-disabled-key' },
+    });
+
+    // Initialize setup so we can update settings (use token from setup response
+    // directly, since /api/auth/login is gated behind platformOnlyMiddleware)
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        admin: { email: 'mcreg-admin@test.com', password: 'admin123', username: 'mcregadmin' },
+      });
+
+    await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.accessToken}`)
+      .send({ allowMcRegister: false });
+
+    const res = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        email: 'mcregdis@test.com',
+        password: 'Password123!',
+        username: 'mcregdis',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440018',
+        minecraftName: 'Disabled',
+      });
+
+    expect(res.status).toBe(403);
+  });
+});

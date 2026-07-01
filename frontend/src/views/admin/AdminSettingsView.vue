@@ -8,6 +8,7 @@ import BaseButton from '@/components/base/BaseButton.vue'
 const ui = useUiStore()
 const requireLogin = ref(false)
 const allowWebRegister = ref(true)
+const allowMcRegister = ref(true)
 const siteName = ref('')
 const siteUrl = ref('')
 const footerContent = ref('')
@@ -22,6 +23,7 @@ onMounted(async () => {
     siteName.value = config.siteName
     siteUrl.value = config.siteUrl ?? ''
     allowWebRegister.value = config.allowWebRegister ?? true
+    allowMcRegister.value = config.allowMcRegister ?? true
     footerContent.value = config.footerContent ?? ''
   } finally {
     loading.value = false
@@ -34,6 +36,7 @@ async function save() {
     const result = await updateSettings({
       requireLogin: requireLogin.value,
       allowWebRegister: allowWebRegister.value,
+      allowMcRegister: allowMcRegister.value,
       siteName: siteName.value,
       siteUrl: siteUrl.value || null,
       footerContent: footerContent.value || null,
@@ -43,6 +46,7 @@ async function save() {
     siteConfig.siteUrl = result.siteUrl
     siteConfig.footerContent = result.footerContent
     siteConfig.allowWebRegister = result.allowWebRegister
+    siteConfig.allowMcRegister = result.allowMcRegister
     ui.toast('设置已保存', 'success')
   } catch (e: any) {
     ui.toast(e.message || '保存失败', 'error')
@@ -109,6 +113,24 @@ async function save() {
           <span
             class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform dark:bg-slate-800"
             :class="allowWebRegister ? 'translate-x-5' : 'translate-x-0'"
+          />
+        </button>
+      </div>
+
+      <!-- Allow MC Register Toggle -->
+      <div class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80">
+        <div>
+          <p class="text-sm font-medium text-slate-900 dark:text-white">允许Minecraft注册</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">关闭后，服务器插件将无法通过API注册新账户</p>
+        </div>
+        <button
+          @click="allowMcRegister = !allowMcRegister"
+          class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition"
+          :class="allowMcRegister ? 'bg-slate-900 dark:bg-slate-200' : 'bg-slate-200 dark:bg-slate-700'"
+        >
+          <span
+            class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform dark:bg-slate-800"
+            :class="allowMcRegister ? 'translate-x-5' : 'translate-x-0'"
           />
         </button>
       </div>

@@ -49,6 +49,7 @@ export default function createSetupRoutes(server?: Server) {
     const schema = z.object({
       requireLogin: z.boolean().optional(),
       allowWebRegister: z.boolean().optional(),
+      allowMcRegister: z.boolean().optional(),
       siteName: z.string().min(1).max(100).optional(),
       siteUrl: z.string().url().nullable().optional(),
       footerContent: z.string().max(2000).nullable().optional(),

@@ -24,6 +24,31 @@ export async function register(email: string, password: string, username: string
   return { user: sanitizeUser(user), ...tokens };
 }
 
+export async function registerFromMinecraft(
+  email: string,
+  password: string,
+  username: string,
+  minecraftUuid: string,
+  minecraftName: string,
+) {
+  const existing = await prisma().user.findFirst({
+    where: { OR: [{ email }, { username }, { minecraftUuid }] },
+  });
+  if (existing) {
+    if (existing.email === email) throw new AppError(409, '该邮箱已被注册');
+    if (existing.username === username) throw new AppError(409, '该用户名已被占用');
+    throw new AppError(409, '该Minecraft账号已绑定到其他账户');
+  }
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const user = await prisma().user.create({
+    data: { email, passwordHash, username, minecraftUuid, minecraftName },
+  });
+
+  const tokens = generateTokens(user.id, user.role);
+  return { user: sanitizeUser(user), ...tokens };
+}
+
 export async function login(emailOrUsername: string, password: string) {
   const isEmail = emailOrUsername.includes('@');
   const user = await prisma().user.findUnique({

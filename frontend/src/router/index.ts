@@ -7,6 +7,7 @@ export const siteConfig = reactive({
   isSetup: null as boolean | null,
   requireLogin: null as boolean | null,
   allowWebRegister: true,
+  allowMcRegister: true,
   siteName: 'LightTickets',
   siteUrl: null as string | null,
   footerContent: null as string | null,
@@ -16,6 +17,7 @@ export function setSiteConfigCache(data: {
   isSetup: boolean;
   requireLogin: boolean;
   allowWebRegister: boolean;
+  allowMcRegister: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
