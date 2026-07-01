@@ -619,6 +619,61 @@ Authorization: Bearer <accessToken>
 
 ## Minecraft服务器接口
 
+### 从Minecraft注册账户
+> `POST /api/mc/register`
+
+需要服务器API密钥
+
+仅在平台设置「允许Minecraft注册」开启时可用（默认开启）。注册成功后，玩家将直接绑定到新建的账户，无需再走绑定码流程。
+
+**请求头:**
+```
+X-Server-Key: server-api-key
+```
+
+**请求体:**
+```json
+{
+  "email": "player@example.com",
+  "password": "password123",
+  "username": "playername",
+  "minecraftUuid": "minecraft-uuid",
+  "minecraftName": "MinecraftName"
+}
+```
+
+**字段要求:**
+- `email`: 有效邮箱
+- `password`: 至少8位
+- `username`: 2-32个字符
+- `minecraftUuid`: Minecraft玩家UUID
+- `minecraftName`: Minecraft玩家名称
+
+**响应 (201):**
+```json
+{
+  "user": {
+    "id": 1,
+    "email": "player@example.com",
+    "username": "playername",
+    "minecraftUuid": "minecraft-uuid",
+    "minecraftName": "MinecraftName",
+    "avatarUrl": null,
+    "role": "player",
+    "createdAt": "2024-01-01T00:00:00.000Z",
+    "updatedAt": "2024-01-01T00:00:00.000Z"
+  },
+  "accessToken": "jwt-access-token",
+  "refreshToken": "jwt-refresh-token"
+}
+```
+
+**错误响应:**
+- `400`: 请求参数错误
+- `401`: 缺少或无效的服务器密钥
+- `403`: Minecraft注册已关闭
+- `409`: 邮箱/用户名已被占用，或该Minecraft账号已绑定到其他账户
+
 ### 生成绑定码
 > `POST /api/mc/link-code`
 
@@ -1116,6 +1171,7 @@ Authorization: Bearer <accessToken>
   "isSetup": true,
   "requireLogin": false,
   "allowWebRegister": true,
+  "allowMcRegister": true,
   "siteName": "LightTickets",
   "siteUrl": null,
   "footerContent": null
@@ -1178,6 +1234,7 @@ Authorization: Bearer <accessToken>
 {
   "requireLogin": true,
   "allowWebRegister": false,
+  "allowMcRegister": false,
   "siteName": "新站点名称",
   "siteUrl": "https://new.example.com",
   "footerContent": "新页脚内容"
