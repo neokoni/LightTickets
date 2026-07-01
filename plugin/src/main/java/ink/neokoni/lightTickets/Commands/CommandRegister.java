@@ -5,8 +5,10 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import ink.neokoni.lightTickets.Commands.Functions.BindAccount;
 import ink.neokoni.lightTickets.Commands.Functions.CreateTicket;
+import ink.neokoni.lightTickets.Commands.Functions.RegisterAccount;
 import ink.neokoni.lightTickets.Commands.Functions.Reload;
 import ink.neokoni.lightTickets.LightTickets;
+import ink.neokoni.lightTickets.Utils.LangUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -38,6 +40,26 @@ public class CommandRegister {
                                 }
                                 return Command.SINGLE_SUCCESS;
                             }))
+                    .then(Commands.literal("register")
+                            .requires(ctx -> ctx.getSender().hasPermission("lighttickets.register")
+                                    || ctx.getSender().hasPermission("lighttickets.player"))
+                            .executes(ctx -> {
+                                ctx.getSource().getSender().sendMessage(LangUtils.getLang("register.usage"));
+                                return Command.SINGLE_SUCCESS;
+                            })
+                            .then(Commands.argument("username", StringArgumentType.string())
+                                    .then(Commands.argument("email", StringArgumentType.string())
+                                            .then(Commands.argument("password", StringArgumentType.string())
+                                                    .executes(ctx -> {
+                                                        if (ctx.getSource().getSender() instanceof Player player) {
+                                                            String name = StringArgumentType.getString(ctx, "username");
+                                                            String mail = StringArgumentType.getString(ctx, "email");
+                                                            String pass = StringArgumentType.getString(ctx, "password");
+                                                            Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
+                                                                    task -> new RegisterAccount(player, name, mail, pass));
+                                                        }
+                                                        return Command.SINGLE_SUCCESS;
+                                                    })))))
                     .then(Commands.literal("ticket")
                             .requires(ctx -> ctx.getSender().hasPermission("lighttickets.ticket.create")
                                     || ctx.getSender().hasPermission("lighttickets.player"))

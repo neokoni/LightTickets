@@ -9,6 +9,12 @@ bind:
   copy_hint: "<gray>点击复制"
   already_code: "<color:#ffdbab>你已生成过绑定码, 请先在网页完成绑定"
   already_bound: "<color:#ffdbab>你已绑定 LightTickets 账号"
+register:
+  invalid_email: "<color:#ff8181>邮箱格式不正确"
+  password_too_short: "<color:#ff8181>密码至少8位"
+  invalid_username: "<color:#ff8181>用户名长度需为2-32个字符"
+  success: "<color:#ffffff>注册成功, 已自动绑定账号 <color:#96bfff>{username}"
+  usage: "<color:#ffdbab>用法: /lit register <用户名> <邮箱> <密码>"
 ticket:
   title_prompt: "<color:#ffdbab>请通过命令提供议题标题, 用法: /lit ticket <标题>"
   created: "<color:#ffffff>议题已创建: <color:#96bfff>#{id} <gray>{title}"

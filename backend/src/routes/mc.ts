@@ -50,7 +50,7 @@ router.post('/register', async (req: Request, res: Response) => {
   const { getSiteConfig } = await import('../services/setup.service.js');
   const siteConfig = await getSiteConfig();
   if (!siteConfig.allowMcRegister) {
-    res.status(403).json({ message: 'Minecraft注册已关闭，请联系管理员' });
+    res.status(403).json({ error: 'Minecraft注册已关闭，请联系管理员' });
     return;
   }
 

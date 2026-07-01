@@ -25,12 +25,16 @@ permissions:
     description: "LightTickets 玩家权限"
     children:
       - lighttickets.bind
+      - lighttickets.register
       - lighttickets.ticket.create
   lighttickets.reload:
     description: "重载插件"
     default: op
   lighttickets.bind:
     description: "绑定 LightTickets 账号"
+    default: true
+  lighttickets.register:
+    description: "通过 Minecraft 注册 LightTickets 账号"
     default: true
   lighttickets.ticket.create:
     description: "创建议题"
