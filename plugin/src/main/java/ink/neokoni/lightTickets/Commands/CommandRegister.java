@@ -64,17 +64,17 @@ public class CommandRegister {
                             .requires(ctx -> ctx.getSender().hasPermission("lighttickets.ticket.create")
                                     || ctx.getSender().hasPermission("lighttickets.player"))
                             .then(Commands.literal("create")
-                                    .then(Commands.argument("title", StringArgumentType.greedyString())
+                                    .executes(ctx -> {
+                                        if (ctx.getSource().getSender() instanceof Player player) {
+                                            new CreateTicket(player);
+                                        }
+                                        return Command.SINGLE_SUCCESS;
+                                    })
+                                    .then(Commands.argument("type", StringArgumentType.string())
                                             .executes(ctx -> {
                                                 if (ctx.getSource().getSender() instanceof Player player) {
-                                                    String title = StringArgumentType.getString(ctx, "title");
-                                                    String world = player.getWorld().getName();
-                                                    int x = player.getLocation().getBlockX();
-                                                    int y = player.getLocation().getBlockY();
-                                                    int z = player.getLocation().getBlockZ();
-                                                    String gameMode = player.getGameMode().name().toLowerCase();
-                                                    Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
-                                                            task -> new CreateTicket(player, title, world, x, y, z, gameMode));
+                                                    String type = StringArgumentType.getString(ctx, "type");
+                                                    new CreateTicket(player, type);
                                                 }
                                                 return Command.SINGLE_SUCCESS;
                                             }))))

@@ -40,6 +40,9 @@ public class Config {
                 "lighttickets",
                 ""
         );
+        @Comment("模板自动刷新间隔 (分钟, 设为 0 则禁用自动刷新)")
+        @Getter
+        private int templateRefreshInterval = 30;
     }
 
     public static void init() {

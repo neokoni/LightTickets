@@ -1,8 +1,11 @@
 package ink.neokoni.lightTickets;
 
 import ink.neokoni.lightTickets.Commands.CommandRegister;
+import ink.neokoni.lightTickets.Configs.Templates;
+import ink.neokoni.lightTickets.Listeners.TicketChatListener;
 import ink.neokoni.lightTickets.Utils.ConfigUtils;
 import lombok.Getter;
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class LightTickets extends JavaPlugin {
@@ -15,7 +18,11 @@ public final class LightTickets extends JavaPlugin {
 
         ConfigUtils.loadAllConfigs();
 
+        Bukkit.getPluginManager().registerEvents(new TicketChatListener(), this);
+
         new CommandRegister();
+
+        Templates.startRefreshTask();
     }
 
     @Override
