@@ -133,7 +133,17 @@ public class CommandRegister {
                                                             task -> new TicketInfo(player, id));
                                                 }
                                                 return Command.SINGLE_SUCCESS;
-                                            }))))
+                                            })
+                                            .then(Commands.argument("commentPage", IntegerArgumentType.integer(1))
+                                                    .executes(ctx -> {
+                                                        if (ctx.getSource().getSender() instanceof Player player) {
+                                                            int id = IntegerArgumentType.getInteger(ctx, "id");
+                                                            int commentPage = IntegerArgumentType.getInteger(ctx, "commentPage");
+                                                            Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
+                                                                    task -> new TicketInfo(player, id, commentPage));
+                                                        }
+                                                        return Command.SINGLE_SUCCESS;
+                                                    })))))
                     .then(Commands.literal("reload")
                             .requires(ctx -> ctx.getSender().hasPermission("lighttickets.reload")
                                     || ctx.getSender().hasPermission("lighttickets.admin"))
