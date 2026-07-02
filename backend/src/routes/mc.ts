@@ -108,14 +108,8 @@ router.post('/tickets', async (req: Request, res: Response) => {
 });
 
 router.get('/tickets/:uuid', async (req: Request, res: Response) => {
-  const user = await prisma().user.findUnique({ where: { minecraftUuid: req.params.uuid } });
-  if (!user) {
-    res.json({ tickets: [], total: 0, page: Number(req.query.page) || 1, pageSize: 10 });
-    return;
-  }
-
   const page = Number(req.query.page) || 1;
-  const result = await ticketService.list({ authorId: user.id, page, pageSize: 10 });
+  const result = await ticketService.list({ page, pageSize: 10 });
   res.json(result);
 });
 
