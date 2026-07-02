@@ -2,6 +2,8 @@ package ink.neokoni.lightTickets.Commands.Functions;
 
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
+import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
+import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
@@ -29,6 +31,12 @@ public class BindAccount {
     }
 
     private void run(Player player) {
+        PlayerBind cached = PlayerData.getPlayerBind(player, true, false);
+        if (cached != null && cached.isBound()) {
+            player.sendMessage(LangUtils.getLang("bind.already_bound"));
+            return;
+        }
+
         String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
         JsonObject body = new JsonObject();
         body.addProperty("minecraftUuid", player.getUniqueId().toString());
@@ -37,22 +45,28 @@ public class BindAccount {
                 "Content-Type", "application/json",
                 "X-Server-Key", Config.getConfig().getServerKey());
 
-        String resp;
+        HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.post(baseUrl + "/api/mc/link-code",
+            resp = HttpUtils.postWithStatus(baseUrl + "/api/mc/link-code",
                     JsonUtils.toJson(body), headers);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
-        if (resp == null || resp.isEmpty()) {
+        if (resp == null || resp.body() == null || resp.body().isEmpty()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
 
-        JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
+        if (resp.status() == 409) {
+            markBound(player);
+            player.sendMessage(LangUtils.getLang("bind.already_bound"));
+            return;
+        }
+
+        JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed == null || !parsed.has("code")) {
             String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
@@ -64,6 +78,12 @@ public class BindAccount {
 
         player.sendMessage(LangUtils.getLang("bind.guide"));
         player.sendMessage(buildCodeMessage(code, expiresAt));
+    }
+
+    private void markBound(Player player) {
+        PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
+        bind.setBound(true);
+        PlayerData.setPlayerBind(player, bind);
     }
 
     private Component buildCodeMessage(String code, String expiresAt) {

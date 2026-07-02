@@ -28,6 +28,31 @@ describe('POST /api/mc/link-code', () => {
 
     expect(res.status).toBe(401);
   });
+
+  it('rejects already-linked player with 409', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'survival-bound', apiKey: 'test-server-key-bound', address: 'mc.example.com' },
+    });
+    const bcrypt = await import('bcrypt');
+    const hash = await bcrypt.default.hash('Password123!', 12);
+    await prisma().user.create({
+      data: {
+        email: 'bound@test.com',
+        passwordHash: hash,
+        username: 'boundplayer',
+        minecraftUuid: '660e8400-e29b-41d4-a716-446655440099',
+        minecraftName: 'BoundSteve',
+      },
+    });
+
+    const res = await request(app)
+      .post('/api/mc/link-code')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: '660e8400-e29b-41d4-a716-446655440099', minecraftName: 'BoundSteve' });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toHaveProperty('error');
+  });
 });
 
 describe('POST /api/mc/tickets', () => {

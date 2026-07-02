@@ -4,7 +4,7 @@ import { getPrisma } from '../db.js';
 import { serverAuthMiddleware } from '../middleware/server-auth.js';
 import { generateLinkCode } from '../utils/link-code.js';
 import { config } from '../config.js';
-import { NotFoundError, ValidationError } from '../utils/errors.js';
+import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
 import * as ticketService from '../services/ticket.service.js';
 import * as commentService from '../services/comment.service.js';
 import * as permissionService from '../services/permission.service.js';
@@ -67,6 +67,9 @@ router.post('/register', async (req: Request, res: Response) => {
 router.post('/link-code', async (req: Request, res: Response) => {
   const parsed = linkCodeSchema.safeParse(req.body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+
+  const existing = await prisma().user.findUnique({ where: { minecraftUuid: parsed.data.minecraftUuid } });
+  if (existing) throw new AppError(409, '该Minecraft账号已绑定到账户');
 
   const code = generateLinkCode();
   const expiresAt = new Date(Date.now() + config.linkCodeExpiry);
