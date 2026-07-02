@@ -114,35 +114,37 @@ function handleLogout() {
             </div>
 
             <nav class="flex flex-col gap-1">
-              <RouterLink
-                to="/"
-                class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
-                active-class="nav-link-active"
-                @click="ui.mobileMenuOpen = false"
-              >
-                议题
-              </RouterLink>
-              <RouterLink
-                v-if="auth.isAdmin"
-                to="/admin"
-                class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
-                active-class="nav-link-active"
-                @click="ui.mobileMenuOpen = false"
-              >
-                管理
-              </RouterLink>
-              <template v-if="auth.isAuthenticated">
-                <div class="my-1 border-t border-slate-200 dark:border-slate-800" />
+              <template v-if="auth.isAuthenticated || !siteConfig.requireLogin">
                 <RouterLink
-                  to="/profile"
+                  to="/"
                   class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                  active-class="nav-link-active"
                   @click="ui.mobileMenuOpen = false"
                 >
-                  个人资料
+                  议题
                 </RouterLink>
-                <button @click="handleLogout" class="w-full rounded-md px-4 py-2.5 text-left text-sm font-medium text-red-600 dark:text-red-400 transition hover:text-red-700 dark:hover:text-red-300">
-                  退出登录
-                </button>
+                <RouterLink
+                  v-if="auth.isAdmin"
+                  to="/admin"
+                  class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                  active-class="nav-link-active"
+                  @click="ui.mobileMenuOpen = false"
+                >
+                  管理
+                </RouterLink>
+                <template v-if="auth.isAuthenticated">
+                  <div class="my-1 border-t border-slate-200 dark:border-slate-800" />
+                  <RouterLink
+                    to="/profile"
+                    class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                    @click="ui.mobileMenuOpen = false"
+                  >
+                    个人资料
+                  </RouterLink>
+                  <button @click="handleLogout" class="w-full rounded-md px-4 py-2.5 text-left text-sm font-medium text-red-600 dark:text-red-400 transition hover:text-red-700 dark:hover:text-red-300">
+                    退出登录
+                  </button>
+                </template>
               </template>
               <template v-else>
                 <RouterLink
