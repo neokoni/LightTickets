@@ -984,6 +984,41 @@ X-Server-Key: server-api-key
 
 **响应 (200):** 更新后的议题对象
 
+### 从Minecraft更改议题状态
+> `POST /api/mc/tickets/:id/status`
+
+需要服务器API密钥
+
+**请求头:**
+```
+X-Server-Key: server-api-key
+```
+
+**请求体:**
+```json
+{
+  "minecraftUuid": "minecraft-uuid",
+  "status": "in_progress"
+}
+```
+
+**字段要求:**
+- `minecraftUuid`: Minecraft玩家UUID
+- `status`: `open` | `in_progress` | `resolved` | `closed`
+
+**权限:**
+- 议题作者可以更改状态
+- 管理员可以更改状态
+- 其他人不可以更改
+
+**响应 (200):** 更新后的议题对象
+
+**错误响应:**
+- `400`: 缺少参数或无效状态
+- `401`: 缺少或无效的服务器密钥
+- `403`: 无权限更改此议题状态
+- `404`: 议题不存在
+
 ## 用户接口
 
 ### 获取用户列表

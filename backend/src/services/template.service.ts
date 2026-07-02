@@ -23,7 +23,7 @@ export interface TemplateField {
 }
 
 export interface CompletionHook {
-  event: 'resolved' | 'closed' | 'rejected';
+  event: 'resolved' | 'closed';
   commands: string[];
 }
 

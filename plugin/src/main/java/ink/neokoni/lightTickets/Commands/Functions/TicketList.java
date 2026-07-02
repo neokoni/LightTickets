@@ -171,7 +171,6 @@ public class TicketList {
             case "in_progress" -> "#facc15";
             case "resolved" -> "#96bfff";
             case "closed" -> "#94a3b8";
-            case "rejected" -> "#ff8181";
             default -> "#ffffff";
         };
     }

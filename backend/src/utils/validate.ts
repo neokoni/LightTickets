@@ -18,7 +18,7 @@ export const paginationSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
-export const ticketStatusSchema = z.enum(['open', 'in_progress', 'resolved', 'closed', 'rejected']);
+export const ticketStatusSchema = z.enum(['open', 'in_progress', 'resolved', 'closed']);
 export const ticketTypeSchema = z.enum(['bug_report', 'permission_request', 'suggestion', 'report']);
 export const prioritySchema = z.enum(['low', 'medium', 'high', 'critical']);
 

@@ -8,6 +8,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import ink.neokoni.lightTickets.Commands.Functions.AccountInfo;
 import ink.neokoni.lightTickets.Commands.Functions.AddComment;
 import ink.neokoni.lightTickets.Commands.Functions.BindAccount;
+import ink.neokoni.lightTickets.Commands.Functions.ChangeStatus;
 import ink.neokoni.lightTickets.Commands.Functions.CreateTicket;
 import ink.neokoni.lightTickets.Commands.Functions.RegisterAccount;
 import ink.neokoni.lightTickets.Commands.Functions.Reload;
@@ -184,6 +185,30 @@ public class CommandRegister {
                                 }))));
 
         ticket.then(comment);
+
+        var status = Commands.literal("status")
+                .requires(ctx -> ctx.getSender().hasPermission("lighttickets.ticket.status")
+                        || ctx.getSender().hasPermission("lighttickets.player"));
+
+        status.then(Commands.argument("id", IntegerArgumentType.integer(1))
+                .executes(ctx -> {
+                    if (ctx.getSource().getSender() instanceof Player player) {
+                        int id = IntegerArgumentType.getInteger(ctx, "id");
+                        new ChangeStatus(player, id);
+                    }
+                    return Command.SINGLE_SUCCESS;
+                })
+                .then(Commands.argument("newStatus", StringArgumentType.string())
+                        .executes(ctx -> {
+                            if (ctx.getSource().getSender() instanceof Player player) {
+                                int id = IntegerArgumentType.getInteger(ctx, "id");
+                                String ns = StringArgumentType.getString(ctx, "newStatus");
+                                new ChangeStatus(player, id, ns);
+                            }
+                            return Command.SINGLE_SUCCESS;
+                        })));
+
+        ticket.then(status);
 
         root.then(ticket);
 

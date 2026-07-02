@@ -120,6 +120,8 @@ public class TicketInfo {
         player.sendMessage(LangUtils.getLang("ticket.info_body",
                 Map.of("{body}", trimmedBody)));
 
+        sendStatusChangeButton(player, id);
+
         Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
                 task -> displayComments(player, id, authorId, commentPage));
     }
@@ -312,13 +314,22 @@ public class TicketInfo {
         player.sendMessage(addComp);
     }
 
+    private void sendStatusChangeButton(Player player, int ticketId) {
+        Component prefixComp = LangUtils.prefixComponent();
+        String raw = LangUtils.getRawLang("ticket.status_change_button");
+        Component btn = prefixComp.append(MiniMessage.miniMessage().deserialize(raw))
+                .clickEvent(ClickEvent.runCommand("/lit ticket status " + ticketId))
+                .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
+                        LangUtils.getRawLang("ticket.status_change_button_hover"))));
+        player.sendMessage(btn);
+    }
+
     private String statusColor(String status) {
         return switch (status) {
             case "open" -> "#4ade80";
             case "in_progress" -> "#facc15";
             case "resolved" -> "#96bfff";
             case "closed" -> "#94a3b8";
-            case "rejected" -> "#ff8181";
             default -> "#ffffff";
         };
     }

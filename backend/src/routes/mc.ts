@@ -179,6 +179,27 @@ router.post('/tickets/:id/reopen', async (req: Request, res: Response) => {
   res.json(ticket);
 });
 
+const statusSchema = z.object({
+  minecraftUuid: z.string(),
+  status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
+});
+
+router.post('/tickets/:id/status', async (req: Request, res: Response) => {
+  const parsed = statusSchema.safeParse(req.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+
+  const user = await prisma().user.findUnique({ where: { minecraftUuid: parsed.data.minecraftUuid } });
+  if (!user) throw new NotFoundError('Player not linked');
+
+  const ticket = await ticketService.update(
+    Number(req.params.id),
+    user.id,
+    user.role,
+    { status: parsed.data.status },
+  );
+  res.json(ticket);
+});
+
 router.post('/unlink', async (req: Request, res: Response) => {
   const { minecraftUuid } = req.body;
   if (!minecraftUuid) throw new ValidationError('minecraftUuid required');
