@@ -114,7 +114,10 @@ onMounted(fetchServers)
         <div class="flex items-center justify-between">
           <div>
             <h3 class="font-medium text-slate-900 dark:text-white">{{ server.name }}</h3>
-            <p v-if="server.address" class="text-xs text-slate-500">{{ server.address }}</p>
+            <div v-if="server.address || server.description" class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+              <span v-if="server.address">{{ server.address }}</span>
+              <span v-if="server.description">{{ server.description }}</span>
+            </div>
           </div>
           <div class="flex gap-1">
             <button @click="startEdit(server)" class="p-1.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" title="重命名">
