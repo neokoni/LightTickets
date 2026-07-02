@@ -1,10 +1,13 @@
 package ink.neokoni.lightTickets.Listeners;
 
+import ink.neokoni.lightTickets.Commands.Functions.AddComment;
 import ink.neokoni.lightTickets.Commands.Functions.CreateTicket;
+import ink.neokoni.lightTickets.Configs.Datas.CommentSession;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateField;
 import ink.neokoni.lightTickets.Configs.Datas.TicketSession;
 import ink.neokoni.lightTickets.Utils.LangUtils;
-import io.papermc.paper.event.player.AsyncChatEvent;import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import io.papermc.paper.event.player.AsyncChatEvent;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -18,6 +21,24 @@ public class TicketChatListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
+
+        CommentSession commentSession = AddComment.getSession(player);
+        if (commentSession != null) {
+            event.setCancelled(true);
+            String input = PlainTextComponentSerializer.plainText().serialize(event.message()).trim();
+            if (input.equalsIgnoreCase("cancel")) {
+                AddComment.removeSession(player);
+                player.sendMessage(LangUtils.getLang("ticket.comment_cancelled"));
+                return;
+            }
+            if (input.isEmpty()) {
+                player.sendMessage(LangUtils.getLang("ticket.comment_empty"));
+                return;
+            }
+            AddComment.submitComment(player, commentSession, input);
+            return;
+        }
+
         TicketSession session = CreateTicket.getSession(player);
         if (session == null) return;
 

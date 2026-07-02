@@ -102,7 +102,6 @@ ticket:
   comments_next: "<color:#96bfff>下一页 >"
   comments_next_hover: "<gray>点击查看下一页评论"
   comments_page_info: "<gray>{page}/{total}"
-  reply_hint: "<gray>[回复]"
   reply_hint_hover: "<gray>点击回复此评论"
   comment_add: "<color:#96bfff>[添加评论]"
   comment_add_hover: "<gray>点击添加评论"
@@ -110,5 +109,7 @@ ticket:
   comment_send_success: "<color:#ffffff>评论发送成功"
   comment_send_failed: "<color:#ff8181>评论发送失败: {message}"
   comment_cancelled: "<color:#ffdbab>已取消评论"
+  comment_empty: "<color:#ff8181>评论内容不能为空"
+  reply_prompt: "<color:#ffdbab>正在回复 <color:#96bfff>{author} <gray>(输入 cancel 取消):"
 system:
   reload_success: "<color:#96bfff>插件已重载"

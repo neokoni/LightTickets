@@ -18,11 +18,14 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class TicketInfo {
     private static final int COMMENTS_PER_PAGE = 5;
+    private static final Map<UUID, List<JsonObject>> playerComments = new ConcurrentHashMap<>();
     private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\((https?://[^\\)]+)\\)");
     private static final Pattern URL_PATTERN = Pattern.compile("(https?://\\S+)");
     private static final Pattern FILE_PATTERN = Pattern.compile("\\[([^\\]]+\\.[a-zA-Z0-9]+)\\]");
@@ -132,6 +135,8 @@ public class TicketInfo {
             commentList.add(el.getAsJsonObject());
         }
 
+        playerComments.put(player.getUniqueId(), commentList);
+
         if (commentList.isEmpty()) {
             player.sendMessage(LangUtils.getLang("ticket.comments_empty"));
             sendCommentAddButton(player, ticketId);
@@ -159,7 +164,7 @@ public class TicketInfo {
             String date = comment.has("createdAt") ? comment.get("createdAt").getAsString() : "";
             String commentBody = comment.has("body") ? comment.get("body").getAsString() : "";
 
-            Component commentComp = buildCommentComponent(author, formatDate(date), commentBody, ticketId);
+            Component commentComp = buildCommentComponent(author, formatDate(date), commentBody, ticketId, i);
             player.sendMessage(commentComp);
         }
 
@@ -191,15 +196,22 @@ public class TicketInfo {
         return null;
     }
 
-    private Component buildCommentComponent(String author, String date, String body, int ticketId) {
+    private Component buildCommentComponent(String author, String date, String body, int ticketId, int commentIndex) {
         Component prefixComp = LangUtils.prefixComponent();
         String headerRaw = LangUtils.getRawLang("ticket.comment_item",
                 Map.of("{author}", author, "{date}", date, "{body}", ""));
 
         Component header = MiniMessage.miniMessage().deserialize(headerRaw);
-        Component content = formatCommentBody(body);
+        Component content = formatCommentBody(body)
+                .clickEvent(ClickEvent.runCommand("/lit ticket comment " + ticketId + " reply " + commentIndex))
+                .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
+                        LangUtils.getRawLang("ticket.reply_hint_hover"))));
 
         return prefixComp.append(header).append(content);
+    }
+
+    public static List<JsonObject> getPlayerComments(UUID playerUuid) {
+        return playerComments.get(playerUuid);
     }
 
     private Component formatCommentBody(String body) {
