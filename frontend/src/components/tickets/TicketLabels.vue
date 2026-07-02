@@ -38,7 +38,7 @@ function onKeydown(e: KeyboardEvent) {
 
 onMounted(() => {
   document.addEventListener('mousedown', onClickOutside)
-  if (!labels.loaded) labels.fetch()
+  if (!labels.loaded) labels.fetch().catch(() => {})
 })
 onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
 

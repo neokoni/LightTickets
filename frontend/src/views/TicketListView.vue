@@ -63,7 +63,7 @@ function setPage(page: number) {
 
 onMounted(async () => {
   syncFromQuery()
-  if (!labels.loaded) labels.fetch()
+  if (!labels.loaded) labels.fetch().catch(() => {})
   await store.fetchList()
 })
 

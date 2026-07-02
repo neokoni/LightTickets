@@ -13,7 +13,7 @@ const createSchema = z.object({
   description: z.string().optional(),
 });
 
-router.get('/', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
   const labels = await labelService.list();
   res.json(labels);
 });

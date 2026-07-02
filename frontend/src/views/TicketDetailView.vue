@@ -438,7 +438,7 @@ async function reopenTicket() {
 
 onMounted(async () => {
   fetchTemplateNames()
-  if (!labels.loaded) labels.fetch()
+  if (!labels.loaded) labels.fetch().catch(() => {})
   await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()])
   if (route.hash && route.hash.startsWith('#comment-')) {
     const commentId = route.hash.slice('#comment-'.length)
