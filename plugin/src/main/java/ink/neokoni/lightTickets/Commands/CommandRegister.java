@@ -11,6 +11,7 @@ import ink.neokoni.lightTickets.Commands.Functions.RegisterAccount;
 import ink.neokoni.lightTickets.Commands.Functions.Reload;
 import ink.neokoni.lightTickets.Commands.Functions.TicketInfo;
 import ink.neokoni.lightTickets.Commands.Functions.TicketList;
+import ink.neokoni.lightTickets.Commands.Functions.UnbindAccount;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -41,6 +42,16 @@ public class CommandRegister {
                                 if (ctx.getSource().getSender() instanceof Player player) {
                                     Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
                                             task -> new BindAccount(player));
+                                }
+                                return Command.SINGLE_SUCCESS;
+                            }))
+                    .then(Commands.literal("unbind")
+                            .requires(ctx -> ctx.getSender().hasPermission("lighttickets.unbind")
+                                    || ctx.getSender().hasPermission("lighttickets.player"))
+                            .executes(ctx -> {
+                                if (ctx.getSource().getSender() instanceof Player player) {
+                                    Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
+                                            task -> new UnbindAccount(player));
                                 }
                                 return Command.SINGLE_SUCCESS;
                             }))

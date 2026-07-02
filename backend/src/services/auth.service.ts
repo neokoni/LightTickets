@@ -2,7 +2,7 @@ import { getPrisma } from '../db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { AppError, UnauthorizedError, ValidationError } from '../utils/errors.js';
+import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
 
 const prisma = () => getPrisma();
@@ -93,6 +93,41 @@ export async function linkMinecraft(userId: number, code: string) {
 
   await prisma().linkCode.update({ where: { id: linkCode.id }, data: { used: true } });
   return { uuid: linkCode.minecraftUuid, name: linkCode.minecraftName };
+}
+
+const userSelect = {
+  id: true,
+  email: true,
+  username: true,
+  minecraftUuid: true,
+  minecraftName: true,
+  avatarUrl: true,
+  role: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
+export async function unlinkMinecraft(userId: number) {
+  const user = await prisma().user.findUnique({ where: { id: userId } });
+  if (!user) throw new NotFoundError('用户不存在');
+  if (!user.minecraftUuid) throw new ValidationError('当前账户未绑定Minecraft账号');
+
+  return prisma().user.update({
+    where: { id: userId },
+    data: { minecraftUuid: null, minecraftName: null },
+    select: userSelect,
+  });
+}
+
+export async function unlinkMinecraftByUuid(minecraftUuid: string) {
+  const user = await prisma().user.findUnique({ where: { minecraftUuid } });
+  if (!user) throw new NotFoundError('Player not linked');
+
+  return prisma().user.update({
+    where: { id: user.id },
+    data: { minecraftUuid: null, minecraftName: null },
+    select: userSelect,
+  });
 }
 
 function sanitizeUser(user: any) {

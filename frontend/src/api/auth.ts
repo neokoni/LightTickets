@@ -29,6 +29,12 @@ export function apiLinkMinecraft(code: string) {
   })
 }
 
+export function apiUnlinkMinecraft() {
+  return apiFetch<User>('/auth/link-minecraft', {
+    method: 'DELETE',
+  })
+}
+
 export function apiUpdateAvatar(avatarUrl: string | null) {
   return apiFetch<User>('/users/me/avatar', {
     method: 'PATCH',

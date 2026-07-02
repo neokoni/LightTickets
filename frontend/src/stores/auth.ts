@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types/user'
-import { apiLogin, apiRegister, apiRefresh, apiLinkMinecraft, apiUpdateAvatar, apiUpdateUsername, apiChangePassword, apiUpdateEmail } from '@/api/auth'
+import { apiLogin, apiRegister, apiRefresh, apiLinkMinecraft, apiUnlinkMinecraft, apiUpdateAvatar, apiUpdateUsername, apiChangePassword, apiUpdateEmail } from '@/api/auth'
 import { setAccessToken } from '@/api/client'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -63,6 +63,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function unlinkMinecraft() {
+    const updated = await apiUnlinkMinecraft()
+    if (user.value) {
+      user.value.minecraftUuid = updated.minecraftUuid ?? undefined
+      user.value.minecraftName = updated.minecraftName ?? undefined
+    }
+  }
+
   async function updateAvatar(avatarUrl: string | null) {
     const updated = await apiUpdateAvatar(avatarUrl)
     if (user.value) {
@@ -88,5 +96,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, loading, isAuthenticated, isStaff, isAdmin, login, register, restore, logout, setTokens, linkMinecraft, updateAvatar, updateUsername, changePassword, updateEmail }
+  return { user, loading, isAuthenticated, isStaff, isAdmin, login, register, restore, logout, setTokens, linkMinecraft, unlinkMinecraft, updateAvatar, updateUsername, changePassword, updateEmail }
 })

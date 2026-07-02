@@ -209,6 +209,73 @@ describe('POST /api/mc/tickets/:id/close', () => {
   });
 });
 
+describe('POST /api/mc/unlink', () => {
+  it('unbinds a linked minecraft account', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-unlink', apiKey: 'mc-unlink-key' },
+    });
+    const bcrypt = await import('bcrypt');
+    const hash = await bcrypt.default.hash('Password123!', 12);
+    await prisma().user.create({
+      data: {
+        email: 'mcunlink@test.com',
+        passwordHash: hash,
+        username: 'mcunlink',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440020',
+        minecraftName: 'Unlinker',
+      },
+    });
+
+    const res = await request(app)
+      .post('/api/mc/unlink')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440020' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.minecraftUuid).toBeNull();
+    expect(res.body.minecraftName).toBeNull();
+    expect(res.body.username).toBe('mcunlink');
+
+    const dbUser = await prisma().user.findUnique({ where: { email: 'mcunlink@test.com' } });
+    expect(dbUser?.minecraftUuid).toBeNull();
+    expect(dbUser?.minecraftName).toBeNull();
+  });
+
+  it('rejects unlinked player', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-unlink-none', apiKey: 'mc-unlink-none-key' },
+    });
+
+    const res = await request(app)
+      .post('/api/mc/unlink')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: '00000000-0000-0000-0000-000000000000' });
+
+    expect(res.status).toBe(404);
+  });
+
+  it('rejects without minecraftUuid', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-unlink-noid', apiKey: 'mc-unlink-noid-key' },
+    });
+
+    const res = await request(app)
+      .post('/api/mc/unlink')
+      .set('X-Server-Key', server.apiKey)
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects without server key', async () => {
+    const res = await request(app)
+      .post('/api/mc/unlink')
+      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440020' });
+
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('POST /api/mc/register', () => {
   it('creates a user and binds the minecraft account directly', async () => {
     const server = await prisma().server.create({

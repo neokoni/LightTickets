@@ -19,6 +19,8 @@ const navItems = [
 
 const mcCode = ref('')
 const linking = ref(false)
+const unlinking = ref(false)
+const confirmUnlink = ref(false)
 
 const avatarInput = ref(auth.user?.avatarUrl || '')
 const savingAvatar = ref(false)
@@ -110,6 +112,19 @@ async function linkMc() {
     ui.toast(e.message || '绑定失败', 'error')
   } finally {
     linking.value = false
+  }
+}
+
+async function unlinkMc() {
+  unlinking.value = true
+  try {
+    await auth.unlinkMinecraft()
+    ui.toast('MC 账号已解绑', 'success')
+    confirmUnlink.value = false
+  } catch (e: any) {
+    ui.toast(e.message || '解绑失败', 'error')
+  } finally {
+    unlinking.value = false
   }
 }
 
@@ -249,12 +264,24 @@ async function changePassword() {
       <template v-if="activeSection === 'minecraft'">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">Minecraft 绑定</h2>
 
-        <div v-if="auth.user?.minecraftName" class="flex items-center gap-3">
-          <Icon icon="lucide:gamepad-2" class="w-5 h-5 text-green-500" />
-          <div>
-            <p class="font-medium text-slate-900 dark:text-white">{{ auth.user.minecraftName }}</p>
-            <p class="text-xs text-slate-500">UUID: {{ auth.user.minecraftUuid }}</p>
+        <div v-if="auth.user?.minecraftName" class="space-y-3 max-w-lg">
+          <div class="flex items-center gap-3">
+            <Icon icon="lucide:gamepad-2" class="w-5 h-5 text-green-500" />
+            <div>
+              <p class="font-medium text-slate-900 dark:text-white">{{ auth.user.minecraftName }}</p>
+              <p class="text-xs text-slate-500">UUID: {{ auth.user.minecraftUuid }}</p>
+            </div>
           </div>
+          <template v-if="!confirmUnlink">
+            <BaseButton size="sm" variant="danger" @click="confirmUnlink = true">解绑</BaseButton>
+          </template>
+          <template v-else>
+            <p class="text-sm text-slate-500 dark:text-slate-400">确定要解绑该 Minecraft 账号吗？解绑后将无法在游戏中操作议题。</p>
+            <div class="flex gap-2">
+              <BaseButton size="sm" variant="danger" :loading="unlinking" @click="unlinkMc">确认解绑</BaseButton>
+              <BaseButton size="sm" :disabled="unlinking" @click="confirmUnlink = false">取消</BaseButton>
+            </div>
+          </template>
         </div>
 
         <div v-else class="space-y-3 max-w-lg">

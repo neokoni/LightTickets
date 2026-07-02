@@ -25,6 +25,7 @@ permissions:
     description: "LightTickets 玩家权限"
     children:
       - lighttickets.bind
+      - lighttickets.unbind
       - lighttickets.register
       - lighttickets.account
       - lighttickets.ticket.create
@@ -35,6 +36,9 @@ permissions:
     default: op
   lighttickets.bind:
     description: "绑定 LightTickets 账号"
+    default: true
+  lighttickets.unbind:
+    description: "解绑 LightTickets 账号"
     default: true
   lighttickets.register:
     description: "通过 Minecraft 注册 LightTickets 账号"

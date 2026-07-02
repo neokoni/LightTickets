@@ -617,6 +617,70 @@ Authorization: Bearer <accessToken>
 
 **响应 (204):** 空响应
 
+## 认证接口
+
+### 绑定Minecraft账号
+> `POST /api/auth/link-minecraft`
+
+需要认证。使用游戏中获取的绑定码，将当前平台账户与Minecraft账号绑定。
+
+**请求头:**
+```
+Authorization: Bearer <accessToken>
+```
+
+**请求体:**
+```json
+{
+  "code": "ABC123"
+}
+```
+
+**字段要求:**
+- `code`: 6位绑定码
+
+**响应 (200):**
+```json
+{
+  "uuid": "minecraft-uuid",
+  "name": "MinecraftName"
+}
+```
+
+**错误响应:**
+- `400`: 缺少绑定码
+- `401`: 未认证
+- `400`: 无效或已过期的绑定码
+
+### 解绑Minecraft账号
+> `DELETE /api/auth/link-minecraft`
+
+需要认证。解除当前平台账户已绑定的Minecraft账号。
+
+**请求头:**
+```
+Authorization: Bearer <accessToken>
+```
+
+**响应 (200):**
+```json
+{
+  "id": 1,
+  "email": "player@example.com",
+  "username": "playername",
+  "minecraftUuid": null,
+  "minecraftName": null,
+  "avatarUrl": null,
+  "role": "player",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**错误响应:**
+- `401`: 未认证
+- `400`: 当前账户未绑定Minecraft账号
+
 ## Minecraft服务器接口
 
 ### 从Minecraft注册账户
@@ -699,6 +763,46 @@ X-Server-Key: server-api-key
   "expiresAt": "2024-01-01T00:10:00.000Z"
 }
 ```
+
+### 从Minecraft解绑账号
+> `POST /api/mc/unlink`
+
+需要服务器API密钥。解除指定Minecraft账号与平台账户的绑定。
+
+**请求头:**
+```
+X-Server-Key: server-api-key
+```
+
+**请求体:**
+```json
+{
+  "minecraftUuid": "minecraft-uuid"
+}
+```
+
+**字段要求:**
+- `minecraftUuid`: Minecraft玩家UUID
+
+**响应 (200):**
+```json
+{
+  "id": 1,
+  "email": "player@example.com",
+  "username": "playername",
+  "minecraftUuid": null,
+  "minecraftName": null,
+  "avatarUrl": null,
+  "role": "player",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "updatedAt": "2024-01-01T00:00:00.000Z"
+}
+```
+
+**错误响应:**
+- `400`: 缺少 `minecraftUuid`
+- `401`: 缺少或无效的服务器密钥
+- `404`: 该Minecraft账号未绑定任何账户
 
 ### 从Minecraft创建议题
 > `POST /api/mc/tickets`

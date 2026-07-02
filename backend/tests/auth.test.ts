@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
+import { prisma } from './setup.js';
 
 const app = createApp();
 
@@ -87,5 +88,83 @@ describe('POST /api/auth/refresh', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('accessToken');
+  });
+});
+
+describe('POST /api/auth/link-minecraft', () => {
+  it('binds a minecraft account using a link code', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'link-srv', apiKey: 'link-srv-key' },
+    });
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'linkmc@test.com', password: 'Password123!', username: 'linkmc' });
+
+    const code = await request(app)
+      .post('/api/mc/link-code')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440030', minecraftName: 'Linker' });
+
+    const res = await request(app)
+      .post('/api/auth/link-minecraft')
+      .set('Authorization', `Bearer ${reg.body.accessToken}`)
+      .send({ code: code.body.code });
+
+    expect(res.status).toBe(200);
+    expect(res.body.uuid).toBe('550e8400-e29b-41d4-a716-446655440030');
+    expect(res.body.name).toBe('Linker');
+  });
+});
+
+describe('DELETE /api/auth/link-minecraft', () => {
+  it('unbinds the current user minecraft account', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'unlink-srv', apiKey: 'unlink-srv-key' },
+    });
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'unlinkmc@test.com', password: 'Password123!', username: 'unlinkmc' });
+
+    const code = await request(app)
+      .post('/api/mc/link-code')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440031', minecraftName: 'Unlinker' });
+
+    await request(app)
+      .post('/api/auth/link-minecraft')
+      .set('Authorization', `Bearer ${reg.body.accessToken}`)
+      .send({ code: code.body.code });
+
+    const res = await request(app)
+      .delete('/api/auth/link-minecraft')
+      .set('Authorization', `Bearer ${reg.body.accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.minecraftUuid).toBeNull();
+    expect(res.body.minecraftName).toBeNull();
+    expect(res.body.username).toBe('unlinkmc');
+
+    const dbUser = await prisma().user.findUnique({ where: { email: 'unlinkmc@test.com' } });
+    expect(dbUser?.minecraftUuid).toBeNull();
+    expect(dbUser?.minecraftName).toBeNull();
+  });
+
+  it('rejects unbind when not bound', async () => {
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'notbound@test.com', password: 'Password123!', username: 'notbound' });
+
+    const res = await request(app)
+      .delete('/api/auth/link-minecraft')
+      .set('Authorization', `Bearer ${reg.body.accessToken}`);
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects without auth token', async () => {
+    const res = await request(app)
+      .delete('/api/auth/link-minecraft');
+
+    expect(res.status).toBe(401);
   });
 });

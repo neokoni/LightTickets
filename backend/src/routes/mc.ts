@@ -176,4 +176,12 @@ router.post('/tickets/:id/reopen', async (req: Request, res: Response) => {
   res.json(ticket);
 });
 
+router.post('/unlink', async (req: Request, res: Response) => {
+  const { minecraftUuid } = req.body;
+  if (!minecraftUuid) throw new ValidationError('minecraftUuid required');
+
+  const user = await authService.unlinkMinecraftByUuid(minecraftUuid);
+  res.json(user);
+});
+
 export default router;
