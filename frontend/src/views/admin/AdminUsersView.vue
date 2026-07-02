@@ -30,9 +30,9 @@ const { totalPages } = usePagination(
 )
 
 const roleOptions = [
-  { value: 'player', label: 'player' },
-  { value: 'staff', label: 'staff' },
-  { value: 'admin', label: 'admin' },
+  { value: 'player', label: '玩家' },
+  { value: 'staff', label: '管理组' },
+  { value: 'admin', label: '管理员' },
 ]
 
 let fetchSeq = 0
