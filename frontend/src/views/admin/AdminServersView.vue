@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
-import { apiGetServers, apiCreateServer, apiRegenerateKey, apiDeleteServer } from '@/api/servers'
+import { apiGetServers, apiCreateServer, apiRegenerateKey, apiUpdateServer, apiDeleteServer } from '@/api/servers'
 import { useUiStore } from '@/stores/ui'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -12,6 +12,9 @@ const ui = useUiStore()
 const servers = ref<Server[]>([])
 const showModal = ref(false)
 const form = ref({ name: '', address: '', description: '' })
+const showEditModal = ref(false)
+const editingServer = ref<Server | null>(null)
+const editForm = ref({ name: '', address: '', description: '' })
 
 async function fetchServers() {
   servers.value = await apiGetServers()
@@ -37,6 +40,34 @@ async function regenerate(id: string) {
     ui.toast('API Key 已重新生成', 'success')
   } catch (e: any) {
     ui.toast(e.message || '操作失败', 'error')
+  }
+}
+
+function startEdit(server: Server) {
+  editingServer.value = server
+  editForm.value = {
+    name: server.name,
+    address: server.address || '',
+    description: server.description || '',
+  }
+  showEditModal.value = true
+}
+
+async function saveEdit() {
+  if (!editingServer.value) return
+  try {
+    const updated = await apiUpdateServer(editingServer.value.id, {
+      name: editForm.value.name.trim(),
+      address: editForm.value.address.trim() || null,
+      description: editForm.value.description.trim() || null,
+    })
+    const idx = servers.value.findIndex(s => s.id === updated.id)
+    if (idx !== -1) servers.value[idx] = updated
+    showEditModal.value = false
+    editingServer.value = null
+    ui.toast('服务器已更新', 'success')
+  } catch (e: any) {
+    ui.toast(e.message || '保存失败', 'error')
   }
 }
 
@@ -86,6 +117,9 @@ onMounted(fetchServers)
             <p v-if="server.address" class="text-xs text-slate-500">{{ server.address }}</p>
           </div>
           <div class="flex gap-1">
+            <button @click="startEdit(server)" class="p-1.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" title="重命名">
+              <Icon icon="lucide:pencil" class="w-4 h-4" />
+            </button>
             <button @click="regenerate(server.id)" class="p-1.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" title="重新生成 Key">
               <Icon icon="lucide:refresh-cw" class="w-4 h-4" />
             </button>
@@ -118,6 +152,17 @@ onMounted(fetchServers)
         </div>
       </form>
     </BaseModal>
+
+    <BaseModal v-model="showEditModal" title="编辑服务器">
+      <form @submit.prevent="saveEdit" class="space-y-4">
+        <BaseInput v-model="editForm.name" label="名称" placeholder="主服务器" />
+        <BaseInput v-model="editForm.address" label="地址（可选）" placeholder="play.example.com" />
+        <BaseInput v-model="editForm.description" label="描述（可选）" />
+        <div class="flex justify-end gap-2">
+          <BaseButton type="button" @click="showEditModal = false">取消</BaseButton>
+          <BaseButton filled type="submit" :disabled="!editForm.name.trim()">保存</BaseButton>
+        </div>
+      </form>
+    </BaseModal>
   </div>
 </template>
-

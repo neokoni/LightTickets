@@ -99,6 +99,70 @@ describe('POST /api/servers/:id/regenerate-key', () => {
   });
 });
 
+describe('PATCH /api/servers/:id', () => {
+  it('renames a server', async () => {
+    const token = await createAdminAndGetToken('admin-rename-srv@test.com');
+    const created = await request(app)
+      .post('/api/servers')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'old-server-name' });
+
+    const res = await request(app)
+      .patch(`/api/servers/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'new-server-name' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('new-server-name');
+    expect(res.body.apiKey).toBe(created.body.apiKey);
+  });
+
+  it('rejects duplicate server name on rename', async () => {
+    const token = await createAdminAndGetToken('admin-rename-dup-srv@test.com');
+    await request(app)
+      .post('/api/servers')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'existing-server-name' });
+    const created = await request(app)
+      .post('/api/servers')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'rename-target-server' });
+
+    const res = await request(app)
+      .patch(`/api/servers/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'existing-server-name' });
+
+    expect(res.status).toBe(409);
+  });
+
+  it('updates and clears server address and description', async () => {
+    const token = await createAdminAndGetToken('admin-update-details-srv@test.com');
+    const created = await request(app)
+      .post('/api/servers')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'details-server', address: 'old.example.com', description: 'Old description' });
+
+    const updated = await request(app)
+      .patch(`/api/servers/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ address: 'new.example.com', description: 'New description' });
+
+    expect(updated.status).toBe(200);
+    expect(updated.body.address).toBe('new.example.com');
+    expect(updated.body.description).toBe('New description');
+
+    const cleared = await request(app)
+      .patch(`/api/servers/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ address: null, description: null });
+
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.address).toBeNull();
+    expect(cleared.body.description).toBeNull();
+  });
+});
+
 describe('DELETE /api/servers/:id', () => {
   it('deletes a server', async () => {
     const token = await createAdminAndGetToken('admin-del-srv@test.com');
