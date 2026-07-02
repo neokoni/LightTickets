@@ -26,7 +26,7 @@ public class TicketList {
                     "Error while listing tickets for " + player.getName(), t);
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", t.getClass().getSimpleName() + ": "
-                            + (t.getMessage() == null ? "no message" : t.getMessage()))));
+                            + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
         }
     }
 
@@ -43,18 +43,18 @@ public class TicketList {
             resp = HttpUtils.get(url, headers);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", e.getMessage() == null ? "unknown" : e.getMessage())));
+                    Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
         if (resp == null || resp.isEmpty()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", "empty response")));
+                    Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
         if (parsed == null || !parsed.has("tickets")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : "invalid response";
+            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", msg)));
             return;
@@ -89,7 +89,6 @@ public class TicketList {
     }
 
     private Component buildTicketLine(int id, String title, String status, String createdAt) {
-        String prefix = LangUtils.prefix();
         String statusColor = statusColor(status);
         String statusText = statusLabel(status);
         String date = createdAt.length() >= 10 ? createdAt.substring(0, 10) : createdAt;
@@ -101,7 +100,7 @@ public class TicketList {
                        "{status}", statusText,
                        "{date}", date));
 
-        Component textComp = MiniMessage.miniMessage().deserialize(prefix + line);
+        Component textComp = LangUtils.prefixComponent().append(MiniMessage.miniMessage().deserialize(line));
         Component hover = MiniMessage.miniMessage().deserialize(
                 LangUtils.getRawLang("ticket.list_item_hover"));
         return textComp
@@ -110,21 +109,23 @@ public class TicketList {
     }
 
     private void sendPagination(Player player, int currentPage, int totalPages) {
-        String prefix = LangUtils.prefix();
+        Component prefixComp = LangUtils.prefixComponent();
         Component line = Component.empty();
         if (currentPage > 1) {
             String prevRaw = LangUtils.getRawLang("ticket.list_prev");
-            line = line.append(MiniMessage.miniMessage().deserialize(prefix + prevRaw)
+            line = line.append(prefixComp.append(MiniMessage.miniMessage().deserialize(prevRaw))
                     .clickEvent(ClickEvent.runCommand("/lit ticket list " + (currentPage - 1)))
                     .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
                             LangUtils.getRawLang("ticket.list_prev_hover")))));
         }
         String infoRaw = LangUtils.getRawLang("ticket.list_page_info",
                 Map.of("{page}", String.valueOf(currentPage), "{total}", String.valueOf(totalPages)));
-        line = line.append(MiniMessage.miniMessage().deserialize(" " + infoRaw + " "));
+        line = line.append(Component.text(" "))
+                .append(MiniMessage.miniMessage().deserialize(infoRaw))
+                .append(Component.text(" "));
         if (currentPage < totalPages) {
             String nextRaw = LangUtils.getRawLang("ticket.list_next");
-            line = line.append(MiniMessage.miniMessage().deserialize(prefix + nextRaw)
+            line = line.append(prefixComp.append(MiniMessage.miniMessage().deserialize(nextRaw))
                     .clickEvent(ClickEvent.runCommand("/lit ticket list " + (currentPage + 1)))
                     .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
                             LangUtils.getRawLang("ticket.list_next_hover")))));

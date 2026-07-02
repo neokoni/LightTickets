@@ -13,7 +13,19 @@ import org.jetbrains.annotations.Nullable;
 public class HttpUtils {
     private static HttpClient httpClient;
 
+    public record Resp(int status, String body) {}
+
     public static String get(String url, @Nullable Map<String, String> headers) {
+        Resp r = getWithStatus(url, headers);
+        return r == null ? null : r.body();
+    }
+
+    public static String post(String url, String body, @Nullable Map<String, String> headers) {
+        Resp r = postWithStatus(url, body, headers);
+        return r == null ? null : r.body();
+    }
+
+    public static Resp getWithStatus(String url, @Nullable Map<String, String> headers) {
         initHttpClient();
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -28,12 +40,12 @@ public class HttpUtils {
             throw new RuntimeException(e);
         }
         if (response != null) {
-            return response.body();
+            return new Resp(response.statusCode(), response.body());
         }
         return null;
     }
 
-    public static String post(String url, String body, @Nullable Map<String, String> headers) {
+    public static Resp postWithStatus(String url, String body, @Nullable Map<String, String> headers) {
         initHttpClient();
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -49,7 +61,7 @@ public class HttpUtils {
             throw new RuntimeException(e);
         }
         if (response != null) {
-            return response.body();
+            return new Resp(response.statusCode(), response.body());
         }
         return null;
     }

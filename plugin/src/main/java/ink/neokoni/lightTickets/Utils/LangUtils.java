@@ -14,7 +14,7 @@ public class LangUtils {
         if (content == null) {
             return Component.empty();
         }
-        return MiniMessage.miniMessage().deserialize(prefix() + content);
+        return prefixComponent().append(MiniMessage.miniMessage().deserialize(content));
     }
 
     @SafeVarargs
@@ -29,7 +29,7 @@ public class LangUtils {
                 replaced = replaced.replace(entry.getKey(), entry.getValue());
             }
         }
-        return MiniMessage.miniMessage().deserialize(prefix() + replaced);
+        return prefixComponent().append(MiniMessage.miniMessage().deserialize(replaced));
     }
 
     public static YamlConfiguration getYaml() {
@@ -57,5 +57,10 @@ public class LangUtils {
         } catch (Throwable ignored) {
             return "";
         }
+    }
+
+    public static Component prefixComponent() {
+        String p = prefix();
+        return p.isEmpty() ? Component.empty() : MiniMessage.miniMessage().deserialize(p);
     }
 }

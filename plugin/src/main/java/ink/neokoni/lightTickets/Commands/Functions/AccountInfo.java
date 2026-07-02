@@ -19,7 +19,7 @@ public class AccountInfo {
                     "Error while fetching account info for " + player.getName(), t);
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", t.getClass().getSimpleName() + ": "
-                            + (t.getMessage() == null ? "no message" : t.getMessage()))));
+                            + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
         }
     }
 
@@ -28,27 +28,28 @@ public class AccountInfo {
         String url = baseUrl + "/api/mc/user/" + player.getUniqueId().toString();
         Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
 
-        String resp;
+        HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.get(url, headers);
+            resp = HttpUtils.getWithStatus(url, headers);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", e.getMessage() == null ? "unknown" : e.getMessage())));
+                    Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
-        if (resp == null || resp.isEmpty()) {
+        if (resp == null || resp.body() == null || resp.body().isEmpty()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", "empty response")));
+                    Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
 
-        JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
+        if (resp.status() == 404) {
+            player.sendMessage(LangUtils.getLang("account.not_bound"));
+            return;
+        }
+
+        JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed == null || !parsed.has("id")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : "invalid response";
-            if (msg.contains("not linked") || msg.contains("不存在")) {
-                player.sendMessage(LangUtils.getLang("account.not_bound"));
-                return;
-            }
+            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", msg)));
             return;

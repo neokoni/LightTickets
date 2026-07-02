@@ -21,7 +21,7 @@ public class UnbindAccount {
                     "Error while unbinding account for " + player.getName(), t);
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", t.getClass().getSimpleName() + ": "
-                            + (t.getMessage() == null ? "no message" : t.getMessage()))));
+                            + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
         }
     }
 
@@ -39,34 +39,34 @@ public class UnbindAccount {
                 "Content-Type", "application/json",
                 "X-Server-Key", Config.getConfig().getServerKey());
 
-        String resp;
+        HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.post(baseUrl + "/api/mc/unlink",
+            resp = HttpUtils.postWithStatus(baseUrl + "/api/mc/unlink",
                     JsonUtils.toJson(body), headers);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", e.getMessage() == null ? "unknown" : e.getMessage())));
+                    Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
-        if (resp == null || resp.isEmpty()) {
+        if (resp == null || resp.body() == null || resp.body().isEmpty()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", "empty response")));
+                    Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
 
-        JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
+        JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed != null && parsed.has("id")) {
             markUnbound(player);
             player.sendMessage(LangUtils.getLang("unbind.success"));
             return;
         }
 
-        String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : "invalid response";
-        if (msg.contains("not linked")) {
+        if (resp.status() == 404) {
             markUnbound(player);
             player.sendMessage(LangUtils.getLang("unbind.not_bound"));
             return;
         }
+        String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
         player.sendMessage(LangUtils.getLang("errors.api_failed",
                 Map.of("{message}", msg)));
     }

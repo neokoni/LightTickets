@@ -46,15 +46,15 @@ public class CreateTicket {
             return;
         }
         player.sendMessage(LangUtils.getLang("ticket.select_template"));
-        String prefix = LangUtils.prefix();
         String hover = LangUtils.getRawLang("ticket.template_hover");
+        Component prefixComp = LangUtils.prefixComponent();
         for (TemplateData t : templates) {
             String raw = LangUtils.getRawLang("ticket.template_item",
                     Map.of("{key}", t.getKey(),
                            "{hover}", hover,
                            "{name}", t.getName(),
                            "{description}", t.getDescription() != null ? t.getDescription() : ""));
-            player.sendMessage(MiniMessage.miniMessage().deserialize(prefix + raw));
+            player.sendMessage(prefixComp.append(MiniMessage.miniMessage().deserialize(raw)));
         }
     }
 
@@ -158,7 +158,7 @@ public class CreateTicket {
                         "Error while submitting ticket for " + player.getName(), t);
                 player.sendMessage(LangUtils.getLang("errors.api_failed",
                         Map.of("{message}", t.getClass().getSimpleName() + ": "
-                                + (t.getMessage() == null ? "no message" : t.getMessage()))));
+                                + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
             }
         });
     }
@@ -202,18 +202,18 @@ public class CreateTicket {
                     JsonUtils.toJson(reqBody), headers);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", e.getMessage() == null ? "unknown" : e.getMessage())));
+                    Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
         if (resp == null || resp.isEmpty()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", "empty response")));
+                    Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
         if (parsed == null || !parsed.has("id")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : "invalid response";
+            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", msg)));
             return;

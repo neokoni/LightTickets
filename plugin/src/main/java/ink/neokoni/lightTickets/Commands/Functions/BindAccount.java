@@ -24,7 +24,7 @@ public class BindAccount {
                     "Error while binding account for " + player.getName(), t);
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", t.getClass().getSimpleName() + ": "
-                            + (t.getMessage() == null ? "no message" : t.getMessage()))));
+                            + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
         }
     }
 
@@ -43,18 +43,18 @@ public class BindAccount {
                     JsonUtils.toJson(body), headers);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", e.getMessage() == null ? "unknown" : e.getMessage())));
+                    Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
         if (resp == null || resp.isEmpty()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", "empty response")));
+                    Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
         if (parsed == null || !parsed.has("code")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : "invalid response";
+            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", msg)));
             return;
@@ -67,7 +67,6 @@ public class BindAccount {
     }
 
     private Component buildCodeMessage(String code, String expiresAt) {
-        String prefix = LangUtils.prefix();
         String raw = LangUtils.getRawLang("bind.code", Map.of("{expiresAt}", expiresAt));
         String placeholder = "{code}";
         int idx = raw.indexOf(placeholder);
@@ -79,11 +78,12 @@ public class BindAccount {
                         MiniMessage.miniMessage().deserialize(LangUtils.getRawLang("bind.copy_hint"))));
 
         if (idx < 0) {
-            return MiniMessage.miniMessage().deserialize(prefix + raw);
+            return LangUtils.prefixComponent().append(MiniMessage.miniMessage().deserialize(raw));
         }
         String before = raw.substring(0, idx);
         String after = raw.substring(idx + placeholder.length());
-        return MiniMessage.miniMessage().deserialize(prefix + before)
+        return LangUtils.prefixComponent()
+                .append(MiniMessage.miniMessage().deserialize(before))
                 .append(codeComp)
                 .append(MiniMessage.miniMessage().deserialize(after));
     }

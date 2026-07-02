@@ -21,7 +21,7 @@ public class RegisterAccount {
                     "Error while registering account for " + player.getName(), t);
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", t.getClass().getSimpleName() + ": "
-                            + (t.getMessage() == null ? "no message" : t.getMessage()))));
+                            + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
         }
     }
 
@@ -57,22 +57,22 @@ public class RegisterAccount {
                 "Content-Type", "application/json",
                 "X-Server-Key", Config.getConfig().getServerKey());
 
-        String resp;
+        HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.post(baseUrl + "/api/mc/register",
+            resp = HttpUtils.postWithStatus(baseUrl + "/api/mc/register",
                     JsonUtils.toJson(body), headers);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", e.getMessage() == null ? "unknown" : e.getMessage())));
+                    Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
-        if (resp == null || resp.isEmpty()) {
+        if (resp == null || resp.body() == null || resp.body().isEmpty()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", "empty response")));
+                    Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
 
-        JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
+        JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed != null && parsed.has("user")) {
             markBound(player);
             JsonObject user = parsed.getAsJsonObject("user");
@@ -87,13 +87,8 @@ public class RegisterAccount {
             if (parsed.has("error")) msg = parsed.get("error").getAsString();
             else if (parsed.has("message")) msg = parsed.get("message").getAsString();
         }
-        if (msg != null && msg.contains("已绑定")) {
-            markBound(player);
-            player.sendMessage(LangUtils.getLang("bind.already_bound"));
-            return;
-        }
         player.sendMessage(LangUtils.getLang("errors.api_failed",
-                Map.of("{message}", msg == null ? "invalid response" : msg)));
+                Map.of("{message}", msg == null ? LangUtils.getRawLang("errors.invalid_response") : msg)));
     }
 
     private void markBound(Player player) {

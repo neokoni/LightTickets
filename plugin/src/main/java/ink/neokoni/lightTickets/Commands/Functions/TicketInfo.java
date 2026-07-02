@@ -7,9 +7,6 @@ import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -23,7 +20,7 @@ public class TicketInfo {
                     "Error while fetching ticket info for " + player.getName(), t);
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", t.getClass().getSimpleName() + ": "
-                            + (t.getMessage() == null ? "no message" : t.getMessage()))));
+                            + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
         }
     }
 
@@ -32,28 +29,29 @@ public class TicketInfo {
         String url = baseUrl + "/api/tickets/" + ticketId;
         Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
 
-        String resp;
+        HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.get(url, headers);
+            resp = HttpUtils.getWithStatus(url, headers);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", e.getMessage() == null ? "unknown" : e.getMessage())));
+                    Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
-        if (resp == null || resp.isEmpty()) {
+        if (resp == null || resp.body() == null || resp.body().isEmpty()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", "empty response")));
+                    Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
 
-        JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
+        if (resp.status() == 404) {
+            player.sendMessage(LangUtils.getLang("ticket.info_not_found",
+                    Map.of("{id}", String.valueOf(ticketId))));
+            return;
+        }
+
+        JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed == null || !parsed.has("id")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : "invalid response";
-            if (msg.contains("不存在") || msg.contains("not found")) {
-                player.sendMessage(LangUtils.getLang("ticket.info_not_found",
-                        Map.of("{id}", String.valueOf(ticketId))));
-                return;
-            }
+            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", msg)));
             return;
