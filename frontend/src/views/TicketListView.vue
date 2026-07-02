@@ -147,6 +147,7 @@ watch(() => store.filters.search, () => {
             </BaseBadge>
           </div>
           <div class="mt-1 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-3">
+            <span>#{{ ticket.id }}</span>
             <span>{{ ticket.author.username }}</span>
             <span>{{ timeAgo(ticket.createdAt) }}</span>
             <span v-if="ticket._count?.comments" class="flex items-center gap-0.5">

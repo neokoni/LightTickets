@@ -493,6 +493,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
     <!-- Header (full width, like GitHub issue title) -->
     <div>
       <div v-if="!editingTitle" class="group flex items-center gap-2">
+        <span class="text-xl font-bold tracking-tight text-slate-400 dark:text-slate-500 sm:text-2xl">#{{ ticket.id }}</span>
         <h1 class="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">{{ ticket.title }}</h1>
         <button
           v-if="ticket.authorId === auth.user?.id || auth.isStaff"
