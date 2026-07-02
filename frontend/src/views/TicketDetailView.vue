@@ -219,6 +219,8 @@ const ticket = computed(() => store.currentTicket)
 
 const ticketBody = computed(() => ticket.value ? renderTicketRefs(ticket.value.body) : '')
 
+const ticketSourceLabel = computed(() => ticket.value?.serverId ? 'Minecraft' : '网页')
+
 const gameModeLabels: Record<string, string> = {
   survival: '生存模式',
   creative: '创造模式',
@@ -812,7 +814,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
           </div>
           <div class="flex justify-between">
             <span class="text-slate-500 dark:text-slate-400">来源</span>
-            <span class="text-slate-700 dark:text-slate-300">{{ ticket.server ? ticket.server.name : (ticket.serverId ? 'Minecraft Unknown' : '网页') }}</span>
+            <span class="text-slate-700 dark:text-slate-300">{{ ticketSourceLabel }}</span>
           </div>
           <div v-if="ticket.assignee" class="flex justify-between">
             <span class="text-slate-500 dark:text-slate-400">负责人</span>
