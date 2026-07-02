@@ -61,7 +61,7 @@ async function setPageSize(s: number) {
   await fetchUsers()
 }
 
-async function changeRole(userId: string, role: Role) {
+async function changeRole(userId: number, role: Role) {
   try {
     await apiFetch(`/users/${userId}/role`, {
       method: 'PATCH',
@@ -75,7 +75,7 @@ async function changeRole(userId: string, role: Role) {
   }
 }
 
-async function deleteUser(userId: string) {
+async function deleteUser(userId: number) {
   if (!confirm('确定要删除该用户吗？此操作不可撤销。')) return
   try {
     await apiFetch(`/users/${userId}`, { method: 'DELETE' })

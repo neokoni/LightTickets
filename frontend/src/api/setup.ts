@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import type { Role } from '@/types/ticket';
 
 export interface SiteConfig {
   isSetup: boolean;
@@ -39,10 +40,15 @@ export interface SetupResult {
     updatedAt: string;
   };
   admin: {
-    id: string;
+    id: number;
     email: string;
     username: string;
-    role: string;
+    role: Role;
+    minecraftUuid?: string;
+    minecraftName?: string;
+    avatarUrl?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
   };
   accessToken: string;
   refreshToken: string;

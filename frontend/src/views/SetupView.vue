@@ -3,7 +3,6 @@ import { ref, computed, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
-import type { User } from '@/types/user'
 import { Icon } from '@iconify/vue'
 import { completeSetup, waitForServerReady, type SetupPayload } from '@/api/setup'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -94,10 +93,18 @@ async function submit() {
       site: payload.site,
       mc: payload.mc?.defaultServerName ? { defaultServerName: payload.mc.defaultServerName } : undefined,
     })
-    auth.setTokens(res.accessToken, res.refreshToken, res.admin as User)
+    auth.setTokens(res.accessToken, res.refreshToken, res.admin)
     step.value = 6
     import('@/router').then((mod) => {
-      mod.setSiteConfigCache({ isSetup: true, requireLogin: false })
+      mod.setSiteConfigCache({
+        isSetup: true,
+        requireLogin: false,
+        allowWebRegister: true,
+        allowMcRegister: true,
+        siteName: res.setup.siteName,
+        siteUrl: res.setup.siteUrl,
+        footerContent: null,
+      })
     })
     // Server restarts after setup — wait for it to come back
     const ready = await waitForServerReady()
