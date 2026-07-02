@@ -43,6 +43,9 @@ public class Config {
         @Comment("模板自动刷新间隔 (分钟, 设为 0 则禁用自动刷新)")
         @Getter
         private int templateRefreshInterval = 30;
+        @Comment("玩家数据自动刷新间隔 (秒, 设为 0 则禁用)")
+        @Getter
+        private int playerRefreshInterval = 300;
     }
 
     public static void init() {

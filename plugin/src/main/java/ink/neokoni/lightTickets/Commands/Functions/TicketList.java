@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
+import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
@@ -11,10 +12,10 @@ import ink.neokoni.lightTickets.Utils.LangUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 
+import java.util.List;
 import java.util.Map;
 
 public class TicketList {
@@ -33,6 +34,37 @@ public class TicketList {
     private void run(Player player, int page) {
         if (page < 1) page = 1;
 
+        List<PlayerData.CachedTicket> cached = PlayerData.getTicketList(player.getUniqueId());
+        if (page == 1 && !cached.isEmpty()) {
+            displayFromCache(player, cached);
+            return;
+        }
+
+        fetchFromApi(player, page);
+    }
+
+    private void displayFromCache(Player player, List<PlayerData.CachedTicket> tickets) {
+        int pageSize = 10;
+        int total = tickets.size();
+        int totalPages = (int) Math.ceil((double) total / pageSize);
+        if (totalPages < 1) totalPages = 1;
+
+        if (tickets.isEmpty()) {
+            player.sendMessage(LangUtils.getLang("ticket.list_empty"));
+            return;
+        }
+
+        player.sendMessage(LangUtils.getLang("ticket.list_header",
+                Map.of("{page}", "1", "{total}", String.valueOf(totalPages))));
+
+        for (PlayerData.CachedTicket t : tickets) {
+            player.sendMessage(buildTicketLine(t.id(), t.title(), t.status(), t.createdAt()));
+        }
+
+        sendPagination(player, 1, totalPages);
+    }
+
+    private void fetchFromApi(Player player, int page) {
         String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
         String url = baseUrl + "/api/mc/tickets/" + player.getUniqueId().toString()
                 + "?page=" + page + "&pageSize=10";

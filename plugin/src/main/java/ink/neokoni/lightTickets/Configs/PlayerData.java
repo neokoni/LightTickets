@@ -7,6 +7,8 @@ import ink.neokoni.lightTickets.Configs.SQL.SQLiteAdapter;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PlayerData {
     private static SQLAdapter sqlAdapter;
     private static Map<UUID, PlayerBind> cachedPlayerBind;
+    private static Map<UUID, List<CachedTicket>> cachedTicketList;
 
     public static void init() {
         String type = Config.getConfig().getStorage().type().toLowerCase();
@@ -23,6 +26,7 @@ public class PlayerData {
             default -> new SQLiteAdapter();
         };
         cachedPlayerBind = new ConcurrentHashMap<>();
+        cachedTicketList = new ConcurrentHashMap<>();
     }
 
     public static void reload() {
@@ -53,4 +57,20 @@ public class PlayerData {
         sqlAdapter.setPlayerBind(player, bind);
         cachedPlayerBind.put(player.getUniqueId(), bind);
     }
+
+    public static List<CachedTicket> getTicketList(UUID playerUuid) {
+        List<CachedTicket> list = cachedTicketList.get(playerUuid);
+        return list != null ? list : new ArrayList<>();
+    }
+
+    public static void setTicketList(UUID playerUuid, List<CachedTicket> tickets) {
+        cachedTicketList.put(playerUuid, tickets);
+    }
+
+    public static void removePlayerData(UUID playerUuid) {
+        cachedPlayerBind.remove(playerUuid);
+        cachedTicketList.remove(playerUuid);
+    }
+
+    public record CachedTicket(int id, String title, String status, String createdAt) {}
 }
