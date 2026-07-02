@@ -40,7 +40,7 @@ function handleLogout() {
         <div class="text-sm font-semibold tracking-[0.06em] text-slate-900 dark:text-slate-100 lg:text-base">{{ siteConfig.siteName || 'LightTickets' }}</div>
       </RouterLink>
 
-      <nav v-if="auth.isAuthenticated" class="hidden items-center gap-1 lg:flex">
+      <nav v-if="auth.isAuthenticated || !siteConfig.requireLogin" class="hidden items-center gap-1 lg:flex">
         <RouterLink to="/" class="nav-link px-2 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 lg:px-2.5 lg:text-base" :class="{ 'nav-link-active': route.path === '/' || route.path.startsWith('/tickets') }">
           <span class="nav-link-text">议题</span>
         </RouterLink>
@@ -114,24 +114,24 @@ function handleLogout() {
             </div>
 
             <nav class="flex flex-col gap-1">
+              <RouterLink
+                to="/"
+                class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                active-class="nav-link-active"
+                @click="ui.mobileMenuOpen = false"
+              >
+                议题
+              </RouterLink>
+              <RouterLink
+                v-if="auth.isAdmin"
+                to="/admin"
+                class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
+                active-class="nav-link-active"
+                @click="ui.mobileMenuOpen = false"
+              >
+                管理
+              </RouterLink>
               <template v-if="auth.isAuthenticated">
-                <RouterLink
-                  to="/"
-                  class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
-                  active-class="nav-link-active"
-                  @click="ui.mobileMenuOpen = false"
-                >
-                  议题
-                </RouterLink>
-                <RouterLink
-                  v-if="auth.isAdmin"
-                  to="/admin"
-                  class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
-                  active-class="nav-link-active"
-                  @click="ui.mobileMenuOpen = false"
-                >
-                  管理
-                </RouterLink>
                 <div class="my-1 border-t border-slate-200 dark:border-slate-800" />
                 <RouterLink
                   to="/profile"
