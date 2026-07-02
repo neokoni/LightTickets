@@ -6,6 +6,10 @@ import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -63,7 +67,7 @@ public class AccountInfo {
                 ? parsed.get("minecraftName").getAsString() : "";
         String createdAt = parsed.has("createdAt") ? parsed.get("createdAt").getAsString() : "";
 
-        player.sendMessage(LangUtils.getLang("account.header"));
+        player.sendMessage(buildHeaderWithUnlink());
         player.sendMessage(LangUtils.getLang("account.id",
                 Map.of("{id}", String.valueOf(id))));
         player.sendMessage(LangUtils.getLang("account.username",
@@ -76,6 +80,15 @@ public class AccountInfo {
                 Map.of("{mc_name}", mcName)));
         player.sendMessage(LangUtils.getLang("account.created_at",
                 Map.of("{date}", formatDate(createdAt))));
+    }
+
+    private Component buildHeaderWithUnlink() {
+        Component header = LangUtils.getLang("account.header");
+        Component unlink = MiniMessage.miniMessage().deserialize(LangUtils.getRawLang("account.unlink_button"))
+                .clickEvent(ClickEvent.suggestCommand("/lit unbind"))
+                .hoverEvent(HoverEvent.showText(
+                        MiniMessage.miniMessage().deserialize(LangUtils.getRawLang("account.unlink_button_hover"))));
+        return header.append(Component.text(" ")).append(unlink);
     }
 
     private String roleLabel(String role) {

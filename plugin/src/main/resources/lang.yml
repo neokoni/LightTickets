@@ -24,6 +24,8 @@ register:
   usage: "<color:#ffdbab>用法: /lit register <用户名> <邮箱> <密码>"
 account:
   header: "<color:#ffdbab>账号信息"
+  unlink_button: "<color:#ff8181>[解绑]"
+  unlink_button_hover: "<gray>点击解绑 LightTickets 账号"
   id: "<white>ID: <color:#96bfff>{id}"
   username: "<white>用户名: <color:#96bfff>{username}"
   email: "<white>邮箱: <color:#96bfff>{email}"
