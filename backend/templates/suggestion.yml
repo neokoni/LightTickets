@@ -11,6 +11,6 @@ body:
       label: "建议内容"
       placeholder: "描述你的改进想法..."
 completion_hooks:
-  - event: resolved
+  - event: closed
     commands:
       - "tell {player_name} 你的建议 #{ticket_id} 已被采纳"

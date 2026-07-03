@@ -257,20 +257,20 @@ function eventLabel(item: AuditLog): string {
       Math.abs(new Date(c.createdAt).getTime() - new Date(item.createdAt).getTime()) < 10000
     )
     const prefix = hasComment ? '评论并' : ''
-    if (item.newValue === 'resolved') {
+    if (item.newValue === 'closed') {
       return item.actor.id === ticket.value?.authorId
         ? prefix + '关闭了此议题'
         : prefix + '关闭了此议题并标记为已完成'
     }
     if (item.newValue === 'open') return prefix + '重新打开了此议题'
     if (item.newValue === 'in_progress') return '开始处理此议题'
-    if (item.newValue === 'closed') return '标记为不做计划'
+    if (item.newValue === 'invalid') return '标记为不做计划'
   }
   const map: Record<string, string> = {
     assign: '变更了负责人',
     priority_change: '变更了优先级',
     permission_approved: '审批通过了权限',
-    permission_rejected: '审批拒绝了权限',
+    permission_invalid: '将权限申请标记为无效',
     label_add: '添加了标签',
     label_remove: '移除了标签',
     title_change: '更改了标题',
@@ -297,7 +297,7 @@ function eventIcon(item: AuditLog): string {
     assign: 'lucide:user-plus',
     priority_change: 'lucide:signal',
     permission_approved: 'lucide:check-check',
-    permission_rejected: 'lucide:x-circle',
+    permission_invalid: 'lucide:x-circle',
     label_add: 'lucide:tag',
     label_remove: 'lucide:tag',
     title_change: 'lucide:type',
@@ -311,9 +311,8 @@ function statusColor(status: string): string {
   const map: Record<string, string> = {
     open: 'text-green-500',
     in_progress: 'text-yellow-500',
-    resolved: 'text-purple-500',
-    closed: 'text-slate-400',
-    rejected: 'text-red-500',
+    closed: 'text-purple-500',
+    invalid: 'text-slate-400',
   }
   return map[status] || 'text-slate-400'
 }
@@ -321,8 +320,8 @@ function statusColor(status: string): string {
 const statusOptions: { key: TicketStatus; label: string; icon: string }[] = [
   { key: 'open', label: '开放', icon: 'lucide:circle-dot' },
   { key: 'in_progress', label: '处理中', icon: 'lucide:loader' },
-  { key: 'resolved', label: '已解决', icon: 'lucide:check-circle-2' },
-  { key: 'closed', label: '无效', icon: 'lucide:ban' },
+  { key: 'closed', label: '已关闭', icon: 'lucide:check-circle-2' },
+  { key: 'invalid', label: '无效', icon: 'lucide:ban' },
 ]
 
 const visibleStatusOptions = computed(() => {
@@ -761,7 +760,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
                 {{ newComment.trim() ? '评论并已完成关闭' : '已完成关闭' }}
               </BaseButton>
               <BaseButton
-                v-if="(ticket.authorId === auth.user?.id && ticket.status === 'resolved') || (auth.isStaff && (ticket.status === 'resolved' || ticket.status === 'closed'))"
+                v-if="(ticket.authorId === auth.user?.id && ticket.status === 'closed') || (auth.isStaff && (ticket.status === 'closed' || ticket.status === 'invalid'))"
                 size="sm"
                 icon="lucide:rotate-ccw"
                 @click="reopenTicket"
@@ -786,8 +785,8 @@ function onBodyFilePaste(e: ClipboardEvent) {
               :class="{
                 'text-green-500': ticket.status === 'open',
                 'text-yellow-500': ticket.status === 'in_progress',
-                'text-purple-500': ticket.status === 'resolved',
-                'text-slate-400': ticket.status === 'closed',
+                'text-purple-500': ticket.status === 'closed',
+                'text-slate-400': ticket.status === 'invalid',
               }"
             />
             <span class="text-sm font-medium text-slate-700 dark:text-slate-300">

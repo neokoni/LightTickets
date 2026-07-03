@@ -230,14 +230,14 @@ describe('POST /api/mc/tickets/:id/close', () => {
       .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440003' });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('resolved');
+    expect(res.body.status).toBe('closed');
   });
 });
 
 describe('POST /api/mc/tickets/:id/status', () => {
-  it('allows linked player to close own ticket as resolved', async () => {
+  it('allows linked player to close own ticket', async () => {
     const server = await prisma().server.create({
-      data: { name: 'mc-status-resolved', apiKey: 'mc-status-resolved-key' },
+      data: { name: 'mc-status-closed', apiKey: 'mc-status-closed-key' },
     });
     const bcrypt = await import('bcrypt');
     const hash = await bcrypt.default.hash('Password123!', 12);
@@ -266,16 +266,16 @@ describe('POST /api/mc/tickets/:id/status', () => {
       .set('X-Server-Key', server.apiKey)
       .send({
         minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
-        status: 'resolved',
+        status: 'closed',
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('resolved');
+    expect(res.body.status).toBe('closed');
   });
 
-  it('rejects linked player changing own ticket to closed invalid state', async () => {
+  it('rejects linked player changing own ticket to invalid state', async () => {
     const server = await prisma().server.create({
-      data: { name: 'mc-status-closed', apiKey: 'mc-status-closed-key' },
+      data: { name: 'mc-status-invalid', apiKey: 'mc-status-invalid-key' },
     });
     const bcrypt = await import('bcrypt');
     const hash = await bcrypt.default.hash('Password123!', 12);
@@ -304,13 +304,13 @@ describe('POST /api/mc/tickets/:id/status', () => {
       .set('X-Server-Key', server.apiKey)
       .send({
         minecraftUuid: '550e8400-e29b-41d4-a716-446655440031',
-        status: 'closed',
+        status: 'invalid',
       });
 
     expect(res.status).toBe(403);
   });
 
-  it('allows linked staff to change ticket to closed invalid state', async () => {
+  it('allows linked staff to change ticket to invalid state', async () => {
     const server = await prisma().server.create({
       data: { name: 'mc-status-staff', apiKey: 'mc-status-staff-key' },
     });
@@ -351,11 +351,11 @@ describe('POST /api/mc/tickets/:id/status', () => {
       .set('X-Server-Key', server.apiKey)
       .send({
         minecraftUuid: '550e8400-e29b-41d4-a716-446655440033',
-        status: 'closed',
+        status: 'invalid',
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('closed');
+    expect(res.body.status).toBe('invalid');
   });
 });
 

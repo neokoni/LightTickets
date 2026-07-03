@@ -175,7 +175,7 @@ router.post('/tickets/:id/reopen', async (req: Request, res: Response) => {
 
 const statusSchema = z.object({
   minecraftUuid: z.string(),
-  status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
+  status: z.enum(['open', 'in_progress', 'closed', 'invalid']),
 });
 
 router.post('/tickets/:id/status', async (req: Request, res: Response) => {

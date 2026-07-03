@@ -27,7 +27,7 @@ function actionLabel(action: string): string {
     assign: '分配',
     priority_change: '优先级变更',
     permission_approved: '权限审批通过',
-    permission_rejected: '权限审批拒绝',
+    permission_invalid: '权限申请无效',
     label_add: '添加标签',
     label_remove: '移除标签',
   }
@@ -69,4 +69,3 @@ onMounted(fetchLogs)
     </div>
   </div>
 </template>
-

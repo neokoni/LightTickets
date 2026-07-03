@@ -8,6 +8,12 @@
 
 ## 议题接口
 
+**议题状态:**
+- `open`: 开放
+- `in_progress`: 处理中
+- `closed`: 已关闭
+- `invalid`: 无效
+
 ### 创建议题
 > `POST /api/tickets`
 
@@ -158,6 +164,11 @@ Authorization: Bearer <accessToken>
 }
 ```
 
+**权限:**
+- 议题作者可以更新自己的状态，但只能设置为 `open` 或 `closed`
+- `staff` / `admin` 可以将状态设置为任意有效值
+- `priority` 和 `assigneeId` 仅 `staff` / `admin` 可更新
+
 **响应 (200):** 更新后的议题对象
 
 ### 更新议题正文
@@ -211,6 +222,8 @@ Authorization: Bearer <accessToken>
 Authorization: Bearer <accessToken>
 ```
 
+将议题状态设置为 `closed`，表示已关闭。
+
 **响应 (200):** 更新后的议题对象
 
 ### 重新打开议题
@@ -222,6 +235,8 @@ Authorization: Bearer <accessToken>
 ```
 Authorization: Bearer <accessToken>
 ```
+
+将议题状态设置为 `open`。议题作者只能重新打开 `closed` 状态的自己的议题；`staff` / `admin` 也可以重新打开 `invalid` 状态的无效议题。
 
 **响应 (200):** 更新后的议题对象
 
@@ -963,6 +978,8 @@ X-Server-Key: server-api-key
 }
 ```
 
+将议题状态设置为 `closed`，表示已关闭。
+
 **响应 (200):** 更新后的议题对象
 
 ### 从Minecraft重新打开议题
@@ -998,17 +1015,17 @@ X-Server-Key: server-api-key
 ```json
 {
   "minecraftUuid": "minecraft-uuid",
-  "status": "in_progress"
+  "status": "closed"
 }
 ```
 
 **字段要求:**
 - `minecraftUuid`: Minecraft玩家UUID
-- `status`: `open` | `in_progress` | `resolved` | `closed`
+- `status`: `open` | `in_progress` | `closed` | `invalid`
 
 **权限:**
-- 议题作者可以更改状态
-- 管理员可以更改状态
+- 议题作者可以更改自己的议题状态，但只能设置为 `open` 或 `closed`
+- `staff` / `admin` 可以将状态设置为任意有效值
 - 其他人不可以更改
 
 **响应 (200):** 更新后的议题对象

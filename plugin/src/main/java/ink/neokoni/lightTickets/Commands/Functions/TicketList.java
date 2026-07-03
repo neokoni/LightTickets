@@ -169,8 +169,8 @@ public class TicketList {
         return switch (status) {
             case "open" -> "#4ade80";
             case "in_progress" -> "#facc15";
-            case "resolved" -> "#96bfff";
-            case "closed" -> "#94a3b8";
+            case "closed" -> "#96bfff";
+            case "invalid" -> "#94a3b8";
             default -> "#ffffff";
         };
     }

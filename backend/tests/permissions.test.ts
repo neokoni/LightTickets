@@ -44,7 +44,7 @@ describe('POST /api/tickets/:id/approve', () => {
       .set('Authorization', `Bearer ${staffToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('resolved');
+    expect(res.body.status).toBe('closed');
     expect(res.body.permissionRequest.executionStatus).toBe('pending');
   });
 
@@ -69,6 +69,6 @@ describe('POST /api/tickets/:id/reject', () => {
       .send({ reason: 'Not enough playtime' });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('rejected');
+    expect(res.body.status).toBe('invalid');
   });
 });

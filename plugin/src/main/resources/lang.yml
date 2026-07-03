@@ -39,8 +39,8 @@ account:
 ticket:
   status_open: "开放"
   status_in_progress: "处理中"
-  status_resolved: "已解决"
-  status_closed: "无效"
+  status_closed: "已关闭"
+  status_invalid: "无效"
   priority_low: "低"
   priority_medium: "中"
   priority_high: "高"

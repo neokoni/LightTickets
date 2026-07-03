@@ -16,12 +16,12 @@ export async function approve(ticketId: number, actorId: number) {
 
   const updated = await prisma().ticket.update({
     where: { id: ticketId },
-    data: { status: 'resolved', closedAt: new Date() },
+    data: { status: 'closed', closedAt: new Date() },
     include: { permissionRequest: true, author: true },
   });
 
   await prisma().auditLog.create({
-    data: { ticketId, actorId, action: 'permission_approved', newValue: 'resolved' },
+    data: { ticketId, actorId, action: 'permission_approved', newValue: 'closed' },
   });
 
   if (ticket.serverId) {
@@ -47,16 +47,16 @@ export async function reject(ticketId: number, actorId: number, reason?: string)
 
   const updated = await prisma().ticket.update({
     where: { id: ticketId },
-    data: { status: 'rejected', closedAt: new Date() },
+    data: { status: 'invalid', closedAt: new Date() },
     include: { permissionRequest: true },
   });
 
   await prisma().auditLog.create({
-    data: { ticketId, actorId, action: 'permission_rejected', newValue: reason || 'rejected' },
+    data: { ticketId, actorId, action: 'permission_invalid', newValue: reason || 'invalid' },
   });
 
   if (ticket.serverId) {
-    emitTicketUpdate(ticket.serverId, 'permission:rejected', {
+    emitTicketUpdate(ticket.serverId, 'permission:invalid', {
       ticketId,
       playerUuid: ticket.author.minecraftUuid,
       reason,

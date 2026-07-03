@@ -17,9 +17,9 @@ body:
       label: "权限节点（选填）"
       placeholder: "如 essentials.fly"
 completion_hooks:
-  - event: resolved
+  - event: closed
     commands:
       - "tell {player_name} 你的权限申请 #{ticket_id} 已通过"
-  - event: rejected
+  - event: invalid
     commands:
       - "tell {player_name} 你的权限申请 #{ticket_id} 已被拒绝"

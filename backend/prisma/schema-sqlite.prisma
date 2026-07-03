@@ -17,9 +17,8 @@ enum Role {
 enum TicketStatus {
   open
   in_progress
-  resolved
   closed
-  rejected
+  invalid
 }
 
 enum Priority {

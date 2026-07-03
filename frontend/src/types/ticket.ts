@@ -1,5 +1,5 @@
 export type Role = 'player' | 'staff' | 'admin'
-export type TicketStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'rejected'
+export type TicketStatus = 'open' | 'in_progress' | 'closed' | 'invalid'
 export type Priority = 'low' | 'medium' | 'high' | 'critical'
 export type CommentSource = 'web' | 'minecraft'
 export type ExecutionStatus = 'pending' | 'executed' | 'failed'

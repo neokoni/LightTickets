@@ -18,8 +18,8 @@ import org.bukkit.entity.Player;
 import java.util.Map;
 
 public class ChangeStatus {
-    private static final String[] STATUSES = {"open", "in_progress", "resolved", "closed"};
-    private static final String[] PLAYER_STATUSES = {"open", "resolved"};
+    private static final String[] STATUSES = {"open", "in_progress", "closed", "invalid"};
+    private static final String[] PLAYER_STATUSES = {"open", "closed"};
 
     public ChangeStatus(Player player, int ticketId) {
         Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(), task -> {
@@ -126,7 +126,7 @@ public class ChangeStatus {
 
     private boolean canUseStatus(Player player, String status) {
         if (isStatusAdmin(player)) return true;
-        return "open".equals(status) || "resolved".equals(status);
+        return "open".equals(status) || "closed".equals(status);
     }
 
     private boolean isStatusAdmin(Player player) {
@@ -168,8 +168,8 @@ public class ChangeStatus {
         return switch (status) {
             case "open" -> "#4ade80";
             case "in_progress" -> "#facc15";
-            case "resolved" -> "#96bfff";
-            case "closed" -> "#94a3b8";
+            case "closed" -> "#96bfff";
+            case "invalid" -> "#94a3b8";
             default -> "#ffffff";
         };
     }

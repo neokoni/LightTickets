@@ -79,7 +79,7 @@
 - 议题的 `type` 必须为以下四类之一：`bug_report`、`permission_request`、`suggestion`、`report`。
 - 议题创建后，`author`（作者）可修改 `status`；`staff`/`admin` 可修改 `priority`、`assignee` 以及 `status`。
 - `permission_request` 类型议题需要关联 `permissionRequest` 数据，否则审批接口会拒绝。
-- 状态变更为 `resolved`/`closed`/`rejected` 时，系统应自动填充 `closedAt`；但 Prisma 中该字段由业务代码写入，不是 `@updatedAt` 的自动行为。
+- 状态变更为 `closed`/`invalid` 时，系统应自动填充 `closedAt`；但 Prisma 中该字段由业务代码写入，不是 `@updatedAt` 的自动行为。
 
 ### 4.4 文件上传
 - 附件上传使用 Multer 写入 `backend/uploads/` 目录。

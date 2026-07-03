@@ -22,8 +22,8 @@ const auth = useAuthStore()
 const statusTabs: { key: TicketStatus | 'all'; label: string; icon: string }[] = [
   { key: 'open', label: '开放', icon: 'lucide:circle-dot' },
   { key: 'in_progress', label: '处理中', icon: 'lucide:loader' },
-  { key: 'resolved', label: '已解决', icon: 'lucide:check-circle-2' },
-  { key: 'closed', label: '无效', icon: 'lucide:ban' },
+  { key: 'closed', label: '已关闭', icon: 'lucide:check-circle-2' },
+  { key: 'invalid', label: '无效', icon: 'lucide:ban' },
   { key: 'all', label: '全部', icon: 'lucide:list' },
 ]
 
@@ -130,12 +130,12 @@ watch(() => store.filters.search, () => {
         class="flex items-center gap-4 px-5 py-4 sm:px-6 hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition"
       >
         <Icon
-          :icon="ticket.status === 'open' ? 'lucide:circle-dot' : ticket.status === 'resolved' ? 'lucide:check-circle-2' : ticket.status === 'closed' ? 'lucide:ban' : ticket.status === 'in_progress' ? 'lucide:loader' : 'lucide:circle'"
+          :icon="ticket.status === 'open' ? 'lucide:circle-dot' : ticket.status === 'closed' ? 'lucide:check-circle-2' : ticket.status === 'invalid' ? 'lucide:ban' : ticket.status === 'in_progress' ? 'lucide:loader' : 'lucide:circle'"
           class="w-5 h-5 shrink-0"
           :class="{
             'text-green-500': ticket.status === 'open',
-            'text-purple-500': ticket.status === 'resolved',
-            'text-slate-400': ticket.status === 'closed',
+            'text-purple-500': ticket.status === 'closed',
+            'text-slate-400': ticket.status === 'invalid',
             'text-yellow-500': ticket.status === 'in_progress',
           }"
         />

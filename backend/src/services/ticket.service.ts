@@ -7,7 +7,7 @@ import { emitTicketUpdate, emitHookExecute } from '../socket/events.js';
 const prisma = () => getPrisma();
 
 const STAFF_ROLES = ['staff', 'admin'];
-const PLAYER_STATUS_TARGETS: TicketStatus[] = ['open', 'resolved'];
+const PLAYER_STATUS_TARGETS: TicketStatus[] = ['open', 'closed'];
 
 function isStaffRole(role: string) {
   return STAFF_ROLES.includes(role);
@@ -129,7 +129,7 @@ export async function update(
     }
 
     updateData.status = data.status;
-    if (data.status === 'closed' || data.status === 'resolved') {
+    if (data.status === 'closed' || data.status === 'invalid') {
       updateData.closedAt = new Date();
     } else {
       updateData.closedAt = null;
@@ -273,17 +273,17 @@ export async function closeTicket(id: number, userId: string, userRole: string) 
 
   await prisma().ticket.update({
     where: { id },
-    data: { status: 'resolved', closedAt: new Date() },
+    data: { status: 'closed', closedAt: new Date() },
   });
 
-  await auditService.create(id, userId, 'status_change', ticket.status, 'resolved');
+  await auditService.create(id, userId, 'status_change', ticket.status, 'closed');
 
   if (ticket.serverId && ticket.author?.minecraftUuid) {
     emitTicketUpdate(ticket.serverId, 'ticket:status_changed', {
       ticketId: ticket.id,
       playerUuid: ticket.author.minecraftUuid,
       oldStatus: ticket.status,
-      newStatus: 'resolved',
+      newStatus: 'closed',
     });
   }
 
@@ -293,7 +293,7 @@ export async function closeTicket(id: number, userId: string, userRole: string) 
       include: { author: { select: { minecraftUuid: true, minecraftName: true } } },
     });
     if (updatedTicket) {
-      emitHookExecute(ticket.serverId, updatedTicket, 'resolved');
+      emitHookExecute(ticket.serverId, updatedTicket, 'closed');
     }
   }
 
@@ -314,8 +314,8 @@ export async function reopenTicket(id: number, userId: string, userRole: string)
   const isStaff = isStaffRole(userRole);
 
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
-  if (ticket.status !== 'resolved' && !(ticket.status === 'closed' && isStaff)) {
-    throw new ForbiddenError('只有已解决的议题可以重新打开');
+  if (ticket.status !== 'closed' && !(ticket.status === 'invalid' && isStaff)) {
+    throw new ForbiddenError('只有已关闭的议题可以重新打开');
   }
 
   await prisma().ticket.update({
