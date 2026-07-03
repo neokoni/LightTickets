@@ -166,6 +166,7 @@ Authorization: Bearer <accessToken>
 
 **权限:**
 - 议题作者可以更新自己的状态，但只能设置为 `open` 或 `closed`
+- 议题作者不能重新打开 `invalid` 状态的无效议题
 - `staff` / `admin` 可以将状态设置为任意有效值
 - `priority` 和 `assigneeId` 仅 `staff` / `admin` 可更新
 
