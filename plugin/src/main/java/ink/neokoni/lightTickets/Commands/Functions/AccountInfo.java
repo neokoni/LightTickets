@@ -2,6 +2,8 @@ package ink.neokoni.lightTickets.Commands.Functions;
 
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
+import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
+import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
@@ -66,6 +68,11 @@ public class AccountInfo {
         String mcName = parsed.has("minecraftName") && !parsed.get("minecraftName").isJsonNull()
                 ? parsed.get("minecraftName").getAsString() : "";
         String createdAt = parsed.has("createdAt") ? parsed.get("createdAt").getAsString() : "";
+
+        PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
+        bind.setBound(true);
+        bind.setRole(role == null || role.isEmpty() ? "player" : role);
+        PlayerData.setPlayerBind(player, bind);
 
         player.sendMessage(buildHeaderWithUnlink());
         player.sendMessage(LangUtils.getLang("account.id",

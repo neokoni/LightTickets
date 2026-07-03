@@ -2,6 +2,8 @@ package ink.neokoni.lightTickets.Commands.Functions;
 
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
+import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
+import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
@@ -17,6 +19,7 @@ import java.util.Map;
 
 public class ChangeStatus {
     private static final String[] STATUSES = {"open", "in_progress", "resolved", "closed"};
+    private static final String[] PLAYER_STATUSES = {"open", "resolved"};
 
     public ChangeStatus(Player player, int ticketId) {
         Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(), task -> {
@@ -49,7 +52,7 @@ public class ChangeStatus {
     private void showStatusPicker(Player player, int ticketId) {
         player.sendMessage(LangUtils.getLang("ticket.status_picker_header"));
         Component prefixComp = LangUtils.prefixComponent();
-        for (String status : STATUSES) {
+        for (String status : allowedStatuses(player)) {
             String label = statusLabel(status);
             String color = statusColor(status);
             String raw = LangUtils.getRawLang("ticket.status_picker_item",
@@ -63,6 +66,11 @@ public class ChangeStatus {
     }
 
     private void doChange(Player player, int ticketId, String newStatus) {
+        if (!canUseStatus(player, newStatus)) {
+            player.sendMessage(LangUtils.getLang("ticket.status_no_permission"));
+            return;
+        }
+
         String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
         String url = baseUrl + "/api/mc/tickets/" + ticketId + "/status";
 
@@ -110,6 +118,50 @@ public class ChangeStatus {
         String label = statusLabel(newStatus);
         player.sendMessage(LangUtils.getLang("ticket.status_changed",
                 Map.of("{status}", label)));
+    }
+
+    private String[] allowedStatuses(Player player) {
+        return isStatusAdmin(player) ? STATUSES : PLAYER_STATUSES;
+    }
+
+    private boolean canUseStatus(Player player, String status) {
+        if (isStatusAdmin(player)) return true;
+        return "open".equals(status) || "resolved".equals(status);
+    }
+
+    private boolean isStatusAdmin(Player player) {
+        String role = resolveAccountRole(player);
+        return "staff".equals(role) || "admin".equals(role);
+    }
+
+    private String resolveAccountRole(Player player) {
+        PlayerBind bind = PlayerData.getPlayerBind(player, true, false);
+        String cachedRole = bind == null || bind.getRole() == null ? "player" : bind.getRole();
+
+        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
+        String url = baseUrl + "/api/mc/user/" + player.getUniqueId().toString();
+        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
+
+        try {
+            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, headers);
+            if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) {
+                return cachedRole;
+            }
+
+            JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
+            if (parsed == null || !parsed.has("role") || parsed.get("role").isJsonNull()) {
+                return cachedRole;
+            }
+
+            String role = parsed.get("role").getAsString();
+            PlayerBind updated = bind == null ? PlayerData.getPlayerBind(player, true, true) : bind;
+            updated.setBound(true);
+            updated.setRole(role == null || role.isEmpty() ? "player" : role);
+            PlayerData.setPlayerBind(player, updated);
+            return updated.getRole();
+        } catch (RuntimeException e) {
+            return cachedRole;
+        }
     }
 
     private String statusColor(String status) {

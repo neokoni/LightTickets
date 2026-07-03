@@ -6,6 +6,13 @@ import { emitTicketUpdate, emitHookExecute } from '../socket/events.js';
 
 const prisma = () => getPrisma();
 
+const STAFF_ROLES = ['staff', 'admin'];
+const PLAYER_STATUS_TARGETS: TicketStatus[] = ['open', 'resolved'];
+
+function isStaffRole(role: string) {
+  return STAFF_ROLES.includes(role);
+}
+
 interface CreateTicketInput {
   title: string;
   body: string;
@@ -111,15 +118,21 @@ export async function update(
   if (!ticket) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
-  const isStaff = userRole === 'staff' || userRole === 'admin';
+  const isStaff = isStaffRole(userRole);
 
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
 
   const updateData: any = {};
   if (data.status) {
+    if (!isStaff && !PLAYER_STATUS_TARGETS.includes(data.status)) {
+      throw new ForbiddenError('玩家只能开启或关闭自己的议题');
+    }
+
     updateData.status = data.status;
     if (data.status === 'closed' || data.status === 'resolved') {
       updateData.closedAt = new Date();
+    } else {
+      updateData.closedAt = null;
     }
   }
   if (data.priority && isStaff) updateData.priority = data.priority;
@@ -179,7 +192,7 @@ export async function updateBody(id: number, userId: string, userRole: string, b
   if (!ticket) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
-  const isStaff = userRole === 'staff' || userRole === 'admin';
+  const isStaff = isStaffRole(userRole);
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
 
   const updated = await prisma().ticket.update({
@@ -207,7 +220,7 @@ export async function updateTitle(id: number, userId: string, userRole: string, 
   if (!ticket) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
-  const isStaff = userRole === 'staff' || userRole === 'admin';
+  const isStaff = isStaffRole(userRole);
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
 
   if (title === ticket.title) {
@@ -251,7 +264,7 @@ export async function closeTicket(id: number, userId: string, userRole: string) 
   if (!ticket) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
-  const isStaff = userRole === 'staff' || userRole === 'admin';
+  const isStaff = isStaffRole(userRole);
 
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
   if (ticket.status !== 'open' && ticket.status !== 'in_progress') {
@@ -298,7 +311,7 @@ export async function reopenTicket(id: number, userId: string, userRole: string)
   if (!ticket) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
-  const isStaff = userRole === 'staff' || userRole === 'admin';
+  const isStaff = isStaffRole(userRole);
 
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
   if (ticket.status !== 'resolved' && !(ticket.status === 'closed' && isStaff)) {

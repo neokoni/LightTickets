@@ -133,13 +133,51 @@ describe('GET /api/tickets/:id', () => {
 });
 
 describe('PATCH /api/tickets/:id', () => {
-  it('allows author to update status', async () => {
+  it('allows author to close own ticket as resolved', async () => {
     const token = await createUserAndGetToken('patcher@test.com');
     const created = await createTicket(token, { title: 'To Close', template: 'suggestion', formData: { description: 'd' } });
 
     const res = await request(app)
       .patch(`/api/tickets/${created.body.id}`)
       .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'resolved' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('resolved');
+  });
+
+  it('rejects author changing status to in_progress', async () => {
+    const token = await createUserAndGetToken('patcher-progress@test.com');
+    const created = await createTicket(token);
+
+    const res = await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'in_progress' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects author changing status to closed invalid state', async () => {
+    const token = await createUserAndGetToken('patcher-closed@test.com');
+    const created = await createTicket(token);
+
+    const res = await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'closed' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('allows staff to change status to closed invalid state', async () => {
+    const token = await createUserAndGetToken('status-author@test.com');
+    const staffToken = await createStaffAndGetToken('status-staff@test.com');
+    const created = await createTicket(token);
+
+    const res = await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${staffToken}`)
       .send({ status: 'closed' });
 
     expect(res.status).toBe(200);

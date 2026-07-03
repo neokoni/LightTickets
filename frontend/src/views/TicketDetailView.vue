@@ -325,6 +325,12 @@ const statusOptions: { key: TicketStatus; label: string; icon: string }[] = [
   { key: 'closed', label: '无效', icon: 'lucide:ban' },
 ]
 
+const visibleStatusOptions = computed(() => {
+  if (!ticket.value) return []
+  if (!auth.isStaff) return []
+  return statusOptions.filter(s => s.key !== ticket.value!.status)
+})
+
 async function fetchComments() {
   const raw = await apiGetComments(id)
   const rawMap: Record<string, string> = {}
@@ -789,10 +795,9 @@ function onBodyFilePaste(e: ClipboardEvent) {
             </span>
           </div>
 
-          <!-- Staff status change buttons -->
-          <div v-if="auth.isStaff" class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
+          <div v-if="visibleStatusOptions.length > 0" class="flex flex-wrap gap-1.5 pt-2 border-t border-slate-200 dark:border-slate-800">
             <BaseButton
-              v-for="opt in statusOptions.filter(s => s.key !== ticket!.status)"
+              v-for="opt in visibleStatusOptions"
               :key="opt.key"
               size="sm"
               @click="changeStatus(opt.key)"

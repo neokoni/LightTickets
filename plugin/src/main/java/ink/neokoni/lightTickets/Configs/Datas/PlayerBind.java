@@ -15,13 +15,15 @@ public class PlayerBind {
     private String bindCode;
     private String codeExpiresAt;
     private boolean bound;
+    private String role;
 
-    public PlayerBind(Player player, UUID uuid, String mcName, String bindCode, String codeExpiresAt, boolean bound) {
+    public PlayerBind(Player player, UUID uuid, String mcName, String bindCode, String codeExpiresAt, boolean bound, String role) {
         this.player = player;
         this.uuid = uuid;
         this.mcName = mcName;
         this.bindCode = bindCode;
         this.codeExpiresAt = codeExpiresAt;
         this.bound = bound;
+        this.role = role;
     }
 }

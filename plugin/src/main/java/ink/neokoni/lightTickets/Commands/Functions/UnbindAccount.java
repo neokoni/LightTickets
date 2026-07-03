@@ -76,6 +76,7 @@ public class UnbindAccount {
         bind.setBound(false);
         bind.setBindCode(null);
         bind.setCodeExpiresAt(null);
+        bind.setRole("player");
         PlayerData.setPlayerBind(player, bind);
     }
 

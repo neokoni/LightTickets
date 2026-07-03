@@ -94,6 +94,7 @@ public class RegisterAccount {
     private void markBound(Player player) {
         PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
         bind.setBound(true);
+        bind.setRole("player");
         PlayerData.setPlayerBind(player, bind);
     }
 

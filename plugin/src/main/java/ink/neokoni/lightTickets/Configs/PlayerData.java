@@ -44,7 +44,7 @@ public class PlayerData {
         PlayerBind bind = sqlAdapter.getPlayerBind(player);
         if (bind == null) {
             if (create) {
-                bind = new PlayerBind(player, uuid, player.getName(), null, null, false);
+                bind = new PlayerBind(player, uuid, player.getName(), null, null, false, "player");
             } else {
                 return null;
             }

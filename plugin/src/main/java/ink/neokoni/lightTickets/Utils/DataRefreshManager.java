@@ -105,7 +105,14 @@ public class DataRefreshManager {
         if (resp == null || resp.body() == null || resp.body().isEmpty()) return;
 
         boolean isBound = resp.status() == 200;
-        updateBindStatus(uuid, isBound);
+        String role = "player";
+        if (isBound) {
+            JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
+            if (parsed != null && parsed.has("role") && !parsed.get("role").isJsonNull()) {
+                role = parsed.get("role").getAsString();
+            }
+        }
+        updateBindStatus(uuid, isBound, role);
     }
 
     private static void refreshTicketList(UUID uuid) {
@@ -134,15 +141,14 @@ public class DataRefreshManager {
         PlayerData.setTicketList(uuid, cached);
     }
 
-    private static void updateBindStatus(UUID uuid, boolean bound) {
+    private static void updateBindStatus(UUID uuid, boolean bound, String role) {
         org.bukkit.entity.Player player = Bukkit.getPlayer(uuid);
         if (player == null) return;
 
         PlayerBind existing = PlayerData.getPlayerBind(player, true, true);
-        if (existing.isBound() != bound) {
-            existing.setBound(bound);
-            PlayerData.setPlayerBind(player, existing);
-        }
+        existing.setBound(bound);
+        existing.setRole(role == null || role.isEmpty() ? "player" : role);
+        PlayerData.setPlayerBind(player, existing);
     }
 
     private static String trimTrailingSlash(String url) {

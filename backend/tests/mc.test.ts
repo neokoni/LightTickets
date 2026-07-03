@@ -234,6 +234,131 @@ describe('POST /api/mc/tickets/:id/close', () => {
   });
 });
 
+describe('POST /api/mc/tickets/:id/status', () => {
+  it('allows linked player to close own ticket as resolved', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-status-resolved', apiKey: 'mc-status-resolved-key' },
+    });
+    const bcrypt = await import('bcrypt');
+    const hash = await bcrypt.default.hash('Password123!', 12);
+    await prisma().user.create({
+      data: {
+        email: 'mcstatusresolved@test.com',
+        passwordHash: hash,
+        username: 'mcstatusresolved',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
+        minecraftName: 'StatusResolved',
+      },
+    });
+
+    const ticket = await request(app)
+      .post('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
+        title: 'MC Status Resolved',
+        body: 'Body',
+        template: 'bug_report',
+      });
+
+    const res = await request(app)
+      .post(`/api/mc/tickets/${ticket.body.id}/status`)
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
+        status: 'resolved',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('resolved');
+  });
+
+  it('rejects linked player changing own ticket to closed invalid state', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-status-closed', apiKey: 'mc-status-closed-key' },
+    });
+    const bcrypt = await import('bcrypt');
+    const hash = await bcrypt.default.hash('Password123!', 12);
+    await prisma().user.create({
+      data: {
+        email: 'mcstatusclosed@test.com',
+        passwordHash: hash,
+        username: 'mcstatusclosed',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440031',
+        minecraftName: 'StatusClosed',
+      },
+    });
+
+    const ticket = await request(app)
+      .post('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440031',
+        title: 'MC Status Closed',
+        body: 'Body',
+        template: 'bug_report',
+      });
+
+    const res = await request(app)
+      .post(`/api/mc/tickets/${ticket.body.id}/status`)
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440031',
+        status: 'closed',
+      });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('allows linked staff to change ticket to closed invalid state', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-status-staff', apiKey: 'mc-status-staff-key' },
+    });
+    const bcrypt = await import('bcrypt');
+    const hash = await bcrypt.default.hash('Password123!', 12);
+    const author = await prisma().user.create({
+      data: {
+        email: 'mcstatusauthor@test.com',
+        passwordHash: hash,
+        username: 'mcstatusauthor',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440032',
+        minecraftName: 'StatusAuthor',
+      },
+    });
+    await prisma().user.create({
+      data: {
+        email: 'mcstatusstaff@test.com',
+        passwordHash: hash,
+        username: 'mcstatusstaff',
+        role: 'staff',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440033',
+        minecraftName: 'StatusStaff',
+      },
+    });
+
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'MC Staff Status',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: author.id,
+        serverId: server.id,
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/mc/tickets/${ticket.id}/status`)
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440033',
+        status: 'closed',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('closed');
+  });
+});
+
 describe('POST /api/mc/unlink', () => {
   it('unbinds a linked minecraft account', async () => {
     const server = await prisma().server.create({
