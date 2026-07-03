@@ -357,6 +357,44 @@ describe('POST /api/mc/tickets/:id/status', () => {
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('invalid');
   });
+
+  it('rejects linked player reopening own invalid ticket through status update', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-invalid-reopen', apiKey: 'mc-invalid-reopen-key' },
+    });
+    const bcrypt = await import('bcrypt');
+    const hash = await bcrypt.default.hash('Password123!', 12);
+    const author = await prisma().user.create({
+      data: {
+        email: 'mcinvalidreopen@test.com',
+        passwordHash: hash,
+        username: 'mcinvalidreopen',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440034',
+        minecraftName: 'InvalidReopen',
+      },
+    });
+
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'MC Invalid Reopen',
+        body: 'Body',
+        template: 'bug_report',
+        status: 'invalid',
+        authorId: author.id,
+        serverId: server.id,
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/mc/tickets/${ticket.id}/status`)
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440034',
+        status: 'open',
+      });
+
+    expect(res.status).toBe(403);
+  });
 });
 
 describe('POST /api/mc/unlink', () => {

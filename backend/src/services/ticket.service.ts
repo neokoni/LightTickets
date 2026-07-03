@@ -13,6 +13,21 @@ function isStaffRole(role: string) {
   return STAFF_ROLES.includes(role);
 }
 
+function assertPlayerStatusTransition(currentStatus: TicketStatus, nextStatus: TicketStatus) {
+  if (!PLAYER_STATUS_TARGETS.includes(nextStatus)) {
+    throw new ForbiddenError('玩家只能开启或关闭自己的议题');
+  }
+  if (currentStatus === 'invalid') {
+    throw new ForbiddenError('无效议题只能由管理员或管理组重新打开');
+  }
+  if (nextStatus === 'open' && currentStatus !== 'closed') {
+    throw new ForbiddenError('只有已关闭的议题可以重新打开');
+  }
+  if (nextStatus === 'closed' && currentStatus !== 'open' && currentStatus !== 'in_progress') {
+    throw new ForbiddenError('只有开放或处理中的议题可以关闭');
+  }
+}
+
 interface CreateTicketInput {
   title: string;
   body: string;
@@ -124,8 +139,8 @@ export async function update(
 
   const updateData: any = {};
   if (data.status) {
-    if (!isStaff && !PLAYER_STATUS_TARGETS.includes(data.status)) {
-      throw new ForbiddenError('玩家只能开启或关闭自己的议题');
+    if (!isStaff) {
+      assertPlayerStatusTransition(ticket.status, data.status);
     }
 
     updateData.status = data.status;

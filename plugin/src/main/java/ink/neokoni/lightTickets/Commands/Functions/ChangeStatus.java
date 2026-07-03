@@ -50,6 +50,11 @@ public class ChangeStatus {
     }
 
     private void showStatusPicker(Player player, int ticketId) {
+        if (!canChangeTicket(player, ticketId, null)) {
+            player.sendMessage(LangUtils.getLang("ticket.status_no_permission"));
+            return;
+        }
+
         player.sendMessage(LangUtils.getLang("ticket.status_picker_header"));
         Component prefixComp = LangUtils.prefixComponent();
         for (String status : allowedStatuses(player)) {
@@ -66,7 +71,7 @@ public class ChangeStatus {
     }
 
     private void doChange(Player player, int ticketId, String newStatus) {
-        if (!canUseStatus(player, newStatus)) {
+        if (!canUseStatus(player, newStatus) || !canChangeTicket(player, ticketId, newStatus)) {
             player.sendMessage(LangUtils.getLang("ticket.status_no_permission"));
             return;
         }
@@ -127,6 +132,59 @@ public class ChangeStatus {
     private boolean canUseStatus(Player player, String status) {
         if (isStatusAdmin(player)) return true;
         return "open".equals(status) || "closed".equals(status);
+    }
+
+    private boolean canChangeTicket(Player player, int ticketId, String nextStatus) {
+        if (isStatusAdmin(player)) return true;
+
+        JsonObject ticket = fetchTicket(ticketId);
+        if (ticket == null) return false;
+
+        String currentStatus = ticket.has("status") && !ticket.get("status").isJsonNull()
+                ? ticket.get("status").getAsString()
+                : "";
+        if ("invalid".equals(currentStatus)) return false;
+        if ("open".equals(nextStatus) && !"closed".equals(currentStatus)) return false;
+        if ("closed".equals(nextStatus)
+                && !"open".equals(currentStatus)
+                && !"in_progress".equals(currentStatus)) {
+            return false;
+        }
+
+        int authorId = -1;
+        if (ticket.has("authorId") && !ticket.get("authorId").isJsonNull()) {
+            authorId = ticket.get("authorId").getAsInt();
+        }
+
+        JsonObject account = fetchAccount(player);
+        return account != null
+                && account.has("id")
+                && !account.get("id").isJsonNull()
+                && account.get("id").getAsInt() == authorId;
+    }
+
+    private JsonObject fetchTicket(int ticketId) {
+        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
+        String url = baseUrl + "/api/tickets/" + ticketId;
+        try {
+            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, Map.of("X-Server-Key", Config.getConfig().getServerKey()));
+            if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) return null;
+            return JsonUtils.fromJson(resp.body(), JsonObject.class);
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    private JsonObject fetchAccount(Player player) {
+        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
+        String url = baseUrl + "/api/mc/user/" + player.getUniqueId().toString();
+        try {
+            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, Map.of("X-Server-Key", Config.getConfig().getServerKey()));
+            if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) return null;
+            return JsonUtils.fromJson(resp.body(), JsonObject.class);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     public static boolean canChangeAnyStatus(Player player) {

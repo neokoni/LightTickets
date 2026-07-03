@@ -184,6 +184,61 @@ describe('PATCH /api/tickets/:id', () => {
     expect(res.body.status).toBe('invalid');
   });
 
+  it('rejects author reopening an invalid ticket through status update', async () => {
+    const token = await createUserAndGetToken('patcher-invalid-open@test.com');
+    const staffToken = await createStaffAndGetToken('patcher-invalid-open-staff@test.com');
+    const created = await createTicket(token);
+
+    await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ status: 'invalid' });
+
+    const res = await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'open' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('rejects author closing an invalid ticket through status update', async () => {
+    const token = await createUserAndGetToken('patcher-invalid-closed@test.com');
+    const staffToken = await createStaffAndGetToken('patcher-invalid-closed-staff@test.com');
+    const created = await createTicket(token);
+
+    await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ status: 'invalid' });
+
+    const res = await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ status: 'closed' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('allows staff to reopen an invalid ticket through status update', async () => {
+    const token = await createUserAndGetToken('staff-invalid-open-author@test.com');
+    const staffToken = await createStaffAndGetToken('staff-invalid-open@test.com');
+    const created = await createTicket(token);
+
+    await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ status: 'invalid' });
+
+    const res = await request(app)
+      .patch(`/api/tickets/${created.body.id}`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ status: 'open' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('open');
+  });
+
   it('allows staff to update priority', async () => {
     const token = await createUserAndGetToken('author2@test.com');
     const staffToken = await createStaffAndGetToken('staff2@test.com');

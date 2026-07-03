@@ -122,7 +122,7 @@ public class TicketInfo {
         player.sendMessage(LangUtils.getLang("ticket.info_body",
                 Map.of("{body}", trimmedBody)));
 
-        if (canChangeTicketStatus(player, authorId)) {
+        if (canChangeTicketStatus(player, authorId, status)) {
             sendStatusChangeButton(player, id);
         }
 
@@ -328,8 +328,9 @@ public class TicketInfo {
         player.sendMessage(btn);
     }
 
-    private boolean canChangeTicketStatus(Player player, int authorId) {
+    private boolean canChangeTicketStatus(Player player, int authorId, String status) {
         if (ChangeStatus.canChangeAnyStatus(player)) return true;
+        if ("invalid".equals(status)) return false;
 
         JsonObject account = fetchAccount(player);
         if (account == null || !account.has("id")) return false;
