@@ -129,12 +129,16 @@ public class ChangeStatus {
         return "open".equals(status) || "closed".equals(status);
     }
 
-    private boolean isStatusAdmin(Player player) {
+    public static boolean canChangeAnyStatus(Player player) {
         String role = resolveAccountRole(player);
         return "staff".equals(role) || "admin".equals(role);
     }
 
-    private String resolveAccountRole(Player player) {
+    private boolean isStatusAdmin(Player player) {
+        return canChangeAnyStatus(player);
+    }
+
+    public static String resolveAccountRole(Player player) {
         PlayerBind bind = PlayerData.getPlayerBind(player, true, false);
         String cachedRole = bind == null || bind.getRole() == null ? "player" : bind.getRole();
 
@@ -181,7 +185,7 @@ public class ChangeStatus {
         return label;
     }
 
-    private String trimTrailingSlash(String url) {
+    private static String trimTrailingSlash(String url) {
         if (url == null) return "";
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }

@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
+import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
+import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
@@ -120,7 +122,9 @@ public class TicketInfo {
         player.sendMessage(LangUtils.getLang("ticket.info_body",
                 Map.of("{body}", trimmedBody)));
 
-        sendStatusChangeButton(player, id);
+        if (canChangeTicketStatus(player, authorId)) {
+            sendStatusChangeButton(player, id);
+        }
 
         Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
                 task -> displayComments(player, id, authorId, commentPage));
@@ -322,6 +326,37 @@ public class TicketInfo {
                 .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
                         LangUtils.getRawLang("ticket.status_change_button_hover"))));
         player.sendMessage(btn);
+    }
+
+    private boolean canChangeTicketStatus(Player player, int authorId) {
+        if (ChangeStatus.canChangeAnyStatus(player)) return true;
+
+        JsonObject account = fetchAccount(player);
+        if (account == null || !account.has("id")) return false;
+        return account.get("id").getAsInt() == authorId;
+    }
+
+    private JsonObject fetchAccount(Player player) {
+        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
+        String url = baseUrl + "/api/mc/user/" + player.getUniqueId().toString();
+        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
+
+        try {
+            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, headers);
+            if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) {
+                return null;
+            }
+            JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
+            if (parsed != null && parsed.has("role") && !parsed.get("role").isJsonNull()) {
+                PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
+                bind.setBound(true);
+                bind.setRole(parsed.get("role").getAsString());
+                PlayerData.setPlayerBind(player, bind);
+            }
+            return parsed;
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private String statusColor(String status) {
