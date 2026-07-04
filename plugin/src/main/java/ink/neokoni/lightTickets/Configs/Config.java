@@ -46,6 +46,28 @@ public class Config {
         @Comment("玩家数据自动刷新间隔 (秒, 设为 0 则禁用)")
         @Getter
         private int playerRefreshInterval = 300;
+        @Comment("议题状态颜色设置")
+        @Getter
+        private TicketStatusColors ticketStatusColors = new TicketStatusColors();
+    }
+
+    @Configuration
+    public static class TicketStatusColors {
+        @Comment("开放状态颜色")
+        @Getter
+        private String open = "#4ade80";
+        @Comment("处理中状态颜色")
+        @Getter
+        private String inProgress = "#facc15";
+        @Comment("已关闭状态颜色")
+        @Getter
+        private String closed = "#96bfff";
+        @Comment("无效状态颜色")
+        @Getter
+        private String invalid = "#94a3b8";
+        @Comment("未知状态颜色")
+        @Getter
+        private String unknown = "#ffffff";
     }
 
     public static void init() {

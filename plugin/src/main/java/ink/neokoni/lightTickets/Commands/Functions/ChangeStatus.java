@@ -8,6 +8,7 @@ import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -18,9 +19,6 @@ import org.bukkit.entity.Player;
 import java.util.Map;
 
 public class ChangeStatus {
-    private static final String[] STATUSES = {"open", "in_progress", "closed", "invalid"};
-    private static final String[] PLAYER_STATUSES = {"open", "closed"};
-
     public ChangeStatus(Player player, int ticketId) {
         Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(), task -> {
             try {
@@ -57,13 +55,13 @@ public class ChangeStatus {
 
         player.sendMessage(LangUtils.getLang("ticket.status_picker_header"));
         Component prefixComp = LangUtils.prefixComponent();
-        for (String status : allowedStatuses(player)) {
-            String label = statusLabel(status);
-            String color = statusColor(status);
+        for (TicketStatus status : allowedStatuses(player)) {
+            String label = status.label();
+            String color = status.color();
             String raw = LangUtils.getRawLang("ticket.status_picker_item",
                     Map.of("{color}", color, "{status}", label));
             Component item = prefixComp.append(MiniMessage.miniMessage().deserialize(raw))
-                    .clickEvent(ClickEvent.runCommand("/lit ticket status " + ticketId + " " + status))
+                    .clickEvent(ClickEvent.runCommand("/lit ticket status " + ticketId + " " + status.key()))
                     .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
                             LangUtils.getRawLang("ticket.status_picker_hover"))));
             player.sendMessage(item);
@@ -71,7 +69,9 @@ public class ChangeStatus {
     }
 
     private void doChange(Player player, int ticketId, String newStatus) {
-        if (!canUseStatus(player, newStatus) || !canChangeTicket(player, ticketId, newStatus)) {
+        TicketStatus targetStatus = TicketStatus.fromKey(newStatus);
+        if (!targetStatus.isKnown() || !canUseStatus(player, targetStatus)
+                || !canChangeTicket(player, ticketId, targetStatus)) {
             player.sendMessage(LangUtils.getLang("ticket.status_no_permission"));
             return;
         }
@@ -81,7 +81,7 @@ public class ChangeStatus {
 
         JsonObject reqBody = new JsonObject();
         reqBody.addProperty("minecraftUuid", player.getUniqueId().toString());
-        reqBody.addProperty("status", newStatus);
+        reqBody.addProperty("status", targetStatus.key());
 
         Map<String, String> headers = Map.of(
                 "Content-Type", "application/json",
@@ -120,34 +120,30 @@ public class ChangeStatus {
             return;
         }
 
-        String label = statusLabel(newStatus);
+        String label = targetStatus.label();
         player.sendMessage(LangUtils.getLang("ticket.status_changed",
                 Map.of("{status}", label)));
     }
 
-    private String[] allowedStatuses(Player player) {
-        return isStatusAdmin(player) ? STATUSES : PLAYER_STATUSES;
+    private TicketStatus[] allowedStatuses(Player player) {
+        return isStatusAdmin(player) ? TicketStatus.selectableByStaff() : TicketStatus.selectableByPlayer();
     }
 
-    private boolean canUseStatus(Player player, String status) {
+    private boolean canUseStatus(Player player, TicketStatus status) {
         if (isStatusAdmin(player)) return true;
-        return "open".equals(status) || "closed".equals(status);
+        return status.isPlayerSelectable();
     }
 
-    private boolean canChangeTicket(Player player, int ticketId, String nextStatus) {
+    private boolean canChangeTicket(Player player, int ticketId, TicketStatus nextStatus) {
         if (isStatusAdmin(player)) return true;
 
         JsonObject ticket = fetchTicket(ticketId);
         if (ticket == null) return false;
 
-        String currentStatus = ticket.has("status") && !ticket.get("status").isJsonNull()
+        TicketStatus currentStatus = TicketStatus.fromKey(ticket.has("status") && !ticket.get("status").isJsonNull()
                 ? ticket.get("status").getAsString()
-                : "";
-        if ("invalid".equals(currentStatus)) return false;
-        if ("open".equals(nextStatus) && !"closed".equals(currentStatus)) return false;
-        if ("closed".equals(nextStatus)
-                && !"open".equals(currentStatus)
-                && !"in_progress".equals(currentStatus)) {
+                : "");
+        if (!nextStatus.canPlayerTransitionFrom(currentStatus)) {
             return false;
         }
 
@@ -224,23 +220,6 @@ public class ChangeStatus {
         } catch (RuntimeException e) {
             return cachedRole;
         }
-    }
-
-    private String statusColor(String status) {
-        return switch (status) {
-            case "open" -> "#4ade80";
-            case "in_progress" -> "#facc15";
-            case "closed" -> "#96bfff";
-            case "invalid" -> "#94a3b8";
-            default -> "#ffffff";
-        };
-    }
-
-    private String statusLabel(String status) {
-        String key = "ticket.status_" + status;
-        String label = LangUtils.getRawLang(key);
-        if (label.isEmpty()) return status;
-        return label;
     }
 
     private static String trimTrailingSlash(String url) {

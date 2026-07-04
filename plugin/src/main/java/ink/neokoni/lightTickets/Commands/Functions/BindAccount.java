@@ -8,10 +8,10 @@ import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 
@@ -92,7 +92,7 @@ public class BindAccount {
         int idx = raw.indexOf(placeholder);
 
         Component codeComp = Component.text(code)
-                .color(TextColor.fromHexString("#96bfff"))
+                .color(TicketStatus.CLOSED.textColor())
                 .clickEvent(ClickEvent.copyToClipboard(code))
                 .hoverEvent(HoverEvent.showText(
                         MiniMessage.miniMessage().deserialize(LangUtils.getRawLang("bind.copy_hint"))));

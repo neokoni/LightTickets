@@ -8,7 +8,6 @@ import io.socket.engineio.client.transports.WebSocket;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.json.JSONArray;
@@ -88,13 +87,11 @@ public class WebSocketClient {
 
         String ticketId = String.valueOf(data.optInt("ticketId", 0));
         String title = data.optString("title", "");
-        String oldStatusKey = data.optString("oldStatus", "");
-        String newStatusKey = data.optString("newStatus", "");
-        String oldStatus = statusText(oldStatusKey);
-        String newStatus = statusText(newStatusKey);
+        TicketStatus oldStatus = TicketStatus.fromKey(data.optString("oldStatus", ""));
+        TicketStatus newStatus = TicketStatus.fromKey(data.optString("newStatus", ""));
         String actor = data.optString("actorName", LangUtils.getRawLang("notifications.unknown_actor"));
 
-        sendToPlayer(playerUuid, statusNotification(ticketId, title, actor, oldStatusKey, oldStatus, newStatusKey, newStatus));
+        sendToPlayer(playerUuid, statusNotification(ticketId, title, actor, oldStatus, newStatus));
     }
 
     private static void handleCommentCreated(Object... args) {
@@ -147,7 +144,7 @@ public class WebSocketClient {
 
     private static Component ticketHeader(String ticketId, String title) {
         return Component.text(LangUtils.getRawLang("notifications.ticket_prefix") + " ")
-                .append(Component.text("#" + ticketId + " ", TextColor.fromHexString("#96bfff")))
+                .append(Component.text("#" + ticketId + " ", TicketStatus.CLOSED.textColor()))
                 .append(Component.text(title + " "));
     }
 
@@ -155,19 +152,17 @@ public class WebSocketClient {
             String ticketId,
             String title,
             String actor,
-            String oldStatusKey,
-            String oldStatus,
-            String newStatusKey,
-            String newStatus) {
+            TicketStatus oldStatus,
+            TicketStatus newStatus) {
         String prefix = LangUtils.getRawLang("notifications.status_action_prefix",
                 Map.of("{actor}", actor));
         String middle = LangUtils.getRawLang("notifications.status_action_middle");
         return baseNotification(ticketId)
                 .append(ticketHeader(ticketId, title))
                 .append(Component.text(prefix))
-                .append(Component.text(oldStatus, statusColor(oldStatusKey)))
+                .append(Component.text(oldStatus.label(), oldStatus.textColor()))
                 .append(Component.text(middle))
-                .append(Component.text(newStatus, statusColor(newStatusKey)));
+                .append(Component.text(newStatus.label(), newStatus.textColor()));
     }
 
     private static Component commentNotification(String ticketId, String title, String author, String content) {
@@ -206,22 +201,6 @@ public class WebSocketClient {
     private static boolean isSameMinecraftUuid(UUID playerUuid, String otherUuid) {
         UUID other = parseUuid(otherUuid);
         return other != null && playerUuid.equals(other);
-    }
-
-    private static String statusText(String status) {
-        String lang = LangUtils.getRawLang("ticket.status_" + status);
-        return lang.isBlank() ? status : lang;
-    }
-
-    private static TextColor statusColor(String status) {
-        String hex = switch (status) {
-            case "open" -> "#4ade80";
-            case "in_progress" -> "#ffdbab";
-            case "closed" -> "#96bfff";
-            case "invalid" -> "#94a3b8";
-            default -> "#ffffff";
-        };
-        return TextColor.fromHexString(hex);
     }
 
     private static String compactText(String value) {

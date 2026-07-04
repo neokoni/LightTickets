@@ -10,6 +10,7 @@ import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -99,8 +100,9 @@ public class TicketInfo {
         }
         final int authorId = rawAuthorId;
 
-        String statusColor = statusColor(status);
-        String statusText = statusLabel(status);
+        TicketStatus ticketStatus = TicketStatus.fromKey(status);
+        String statusColor = ticketStatus.color();
+        String statusText = ticketStatus.label();
         String priorityText = priorityLabel(priority);
 
         player.sendMessage(LangUtils.getLang("ticket.info_title",
@@ -330,7 +332,7 @@ public class TicketInfo {
 
     private boolean canChangeTicketStatus(Player player, int authorId, String status) {
         if (ChangeStatus.canChangeAnyStatus(player)) return true;
-        if ("invalid".equals(status)) return false;
+        if (TicketStatus.fromKey(status) == TicketStatus.INVALID) return false;
 
         JsonObject account = fetchAccount(player);
         if (account == null || !account.has("id")) return false;
@@ -358,25 +360,6 @@ public class TicketInfo {
         } catch (RuntimeException e) {
             return null;
         }
-    }
-
-    private String statusColor(String status) {
-        return switch (status) {
-            case "open" -> "#4ade80";
-            case "in_progress" -> "#facc15";
-            case "closed" -> "#96bfff";
-            case "invalid" -> "#94a3b8";
-            default -> "#ffffff";
-        };
-    }
-
-    private String statusLabel(String status) {
-        String key = "ticket.status_" + status;
-        String label = LangUtils.getRawLang(key);
-        if (label.isEmpty()) {
-            return LangUtils.getRawLang("ticket.status_open");
-        }
-        return label;
     }
 
     private String priorityLabel(String priority) {
