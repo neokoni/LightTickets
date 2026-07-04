@@ -83,15 +83,15 @@ public class DataRefreshManager {
         try {
             refreshAccountInfo(uuid);
         } catch (Exception e) {
-            LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang("data_refresh.account_failed",
-                    Map.of("{uuid}", uuid.toString(), "{message}", exceptionText(e))));
+            LogUtils.warning("data_refresh.account_failed",
+                    Map.of("{uuid}", uuid.toString(), "{message}", LogUtils.exceptionText(e)));
         }
 
         try {
             refreshTicketList(uuid);
         } catch (Exception e) {
-            LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang("data_refresh.tickets_failed",
-                    Map.of("{uuid}", uuid.toString(), "{message}", exceptionText(e))));
+            LogUtils.warning("data_refresh.tickets_failed",
+                    Map.of("{uuid}", uuid.toString(), "{message}", LogUtils.exceptionText(e)));
         }
     }
 
@@ -155,12 +155,4 @@ public class DataRefreshManager {
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
-    private static String exceptionText(Throwable throwable) {
-        if (throwable == null) return "";
-        String message = throwable.getMessage();
-        String text = throwable.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
-        String compacted = text.replace('\n', ' ').replace('\r', ' ').trim();
-        int maxLength = 240;
-        return compacted.length() <= maxLength ? compacted : compacted.substring(0, maxLength);
-    }
 }

@@ -4,10 +4,10 @@ import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
-import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.LogUtils;
 import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -22,11 +22,10 @@ public class BindAccount {
         try {
             run(player);
         } catch (Throwable t) {
-            LightTickets.getInstance().getLogger().log(java.util.logging.Level.SEVERE,
-                    "Error while binding account for " + player.getName(), t);
+            LogUtils.severe("logs.bind_failed",
+                    Map.of("{player}", player.getName(), "{message}", LogUtils.exceptionText(t)));
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", t.getClass().getSimpleName() + ": "
-                            + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
+                    Map.of("{message}", LogUtils.exceptionText(t))));
         }
     }
 

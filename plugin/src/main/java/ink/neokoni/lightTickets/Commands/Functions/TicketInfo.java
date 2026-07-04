@@ -10,6 +10,7 @@ import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.LogUtils;
 import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -41,11 +42,10 @@ public class TicketInfo {
         try {
             run(player, ticketId, commentPage);
         } catch (Throwable t) {
-            LightTickets.getInstance().getLogger().log(java.util.logging.Level.SEVERE,
-                    "Error while fetching ticket info for " + player.getName(), t);
+            LogUtils.severe("logs.ticket_info_failed",
+                    Map.of("{player}", player.getName(), "{message}", LogUtils.exceptionText(t)));
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", t.getClass().getSimpleName() + ": "
-                            + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
+                    Map.of("{message}", LogUtils.exceptionText(t))));
         }
     }
 
@@ -198,8 +198,8 @@ public class TicketInfo {
                 return parsed.getAsJsonArray();
             }
         } catch (Exception e) {
-            LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang("ticket.comments_fetch_failed",
-                    Map.of("{id}", String.valueOf(ticketId), "{message}", exceptionText(e))));
+            LogUtils.warning("ticket.comments_fetch_failed",
+                    Map.of("{id}", String.valueOf(ticketId), "{message}", LogUtils.exceptionText(e)));
         }
         return null;
     }
@@ -383,12 +383,4 @@ public class TicketInfo {
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
-    private String exceptionText(Throwable throwable) {
-        if (throwable == null) return "";
-        String message = throwable.getMessage();
-        String text = throwable.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
-        String compacted = text.replace('\n', ' ').replace('\r', ' ').trim();
-        int maxLength = 240;
-        return compacted.length() <= maxLength ? compacted : compacted.substring(0, maxLength);
-    }
 }

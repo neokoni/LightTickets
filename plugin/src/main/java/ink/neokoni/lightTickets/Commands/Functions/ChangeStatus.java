@@ -8,6 +8,7 @@ import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.LogUtils;
 import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -24,11 +25,10 @@ public class ChangeStatus {
             try {
                 showStatusPicker(player, ticketId);
             } catch (Throwable t) {
-                LightTickets.getInstance().getLogger().log(java.util.logging.Level.SEVERE,
-                        "Error showing status picker for " + player.getName(), t);
+                LogUtils.severe("logs.status_picker_failed",
+                        Map.of("{player}", player.getName(), "{message}", LogUtils.exceptionText(t)));
                 player.sendMessage(LangUtils.getLang("errors.api_failed",
-                        Map.of("{message}", t.getClass().getSimpleName() + ": "
-                                + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
+                        Map.of("{message}", LogUtils.exceptionText(t))));
             }
         });
     }
@@ -38,11 +38,10 @@ public class ChangeStatus {
             try {
                 doChange(player, ticketId, newStatus);
             } catch (Throwable t) {
-                LightTickets.getInstance().getLogger().log(java.util.logging.Level.SEVERE,
-                        "Error changing status for " + player.getName(), t);
+                LogUtils.severe("logs.status_change_failed",
+                        Map.of("{player}", player.getName(), "{message}", LogUtils.exceptionText(t)));
                 player.sendMessage(LangUtils.getLang("errors.api_failed",
-                        Map.of("{message}", t.getClass().getSimpleName() + ": "
-                                + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
+                        Map.of("{message}", LogUtils.exceptionText(t))));
             }
         });
     }

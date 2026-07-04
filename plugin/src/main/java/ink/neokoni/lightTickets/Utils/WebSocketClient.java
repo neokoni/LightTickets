@@ -30,13 +30,13 @@ public class WebSocketClient {
 
         String serverKey = Config.getConfig().getServerKey();
         if (serverKey == null || serverKey.isBlank()) {
-            logWarning("websocket.server_key_empty");
+            LogUtils.warning("websocket.server_key_empty");
             return;
         }
 
         String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
         if (baseUrl.isBlank()) {
-            logWarning("websocket.base_url_empty");
+            LogUtils.warning("websocket.base_url_empty");
             return;
         }
 
@@ -54,23 +54,23 @@ public class WebSocketClient {
         try {
             socket = IO.socket(baseUrl + "/mc", options);
         } catch (URISyntaxException e) {
-            logWarning("websocket.invalid_base_url", Map.of("{message}", exceptionText(e)));
+            LogUtils.warning("websocket.invalid_base_url", Map.of("{message}", LogUtils.exceptionText(e)));
             return;
         }
 
         socket.on(Socket.EVENT_CONNECT, args ->
-                logInfo("websocket.connected"));
+                LogUtils.info("websocket.connected"));
         socket.on(Socket.EVENT_DISCONNECT, args ->
-                logInfo("websocket.disconnected"));
+                LogUtils.info("websocket.disconnected"));
         socket.on(Socket.EVENT_CONNECT_ERROR, args ->
-                logWarning("websocket.connect_failed", Map.of("{message}", firstArgText(args))));
+                LogUtils.warning("websocket.connect_failed", Map.of("{message}", firstArgText(args))));
         socket.on("ticket:status_changed", WebSocketClient::handleStatusChanged);
         socket.on("ticket:comment_created", WebSocketClient::handleCommentCreated);
         socket.on("hook:execute", WebSocketClient::handleHookExecute);
         try {
             socket.connect();
         } catch (Throwable e) {
-            logWarning("websocket.connect_start_failed", Map.of("{message}", exceptionText(e)));
+            LogUtils.warning("websocket.connect_start_failed", Map.of("{message}", LogUtils.exceptionText(e)));
         }
     }
 
@@ -81,7 +81,7 @@ public class WebSocketClient {
             socket.disconnect();
             socket.close();
         } catch (Throwable e) {
-            logWarning("websocket.shutdown_failed", Map.of("{message}", exceptionText(e)));
+            LogUtils.warning("websocket.shutdown_failed", Map.of("{message}", LogUtils.exceptionText(e)));
         }
         socket = null;
     }
@@ -159,8 +159,8 @@ public class WebSocketClient {
             return dispatched ? null : LangUtils.getRawLang("websocket.command_returned_false",
                     Map.of("{command}", command));
         } catch (Throwable e) {
-            String message = exceptionText(e);
-            logWarning("websocket.hook_command_failed",
+            String message = LogUtils.exceptionText(e);
+            LogUtils.warning("websocket.hook_command_failed",
                     Map.of("{command}", command, "{message}", message));
             return message;
         }
@@ -219,8 +219,8 @@ public class WebSocketClient {
                         "Content-Type", "application/json",
                         "X-Server-Key", Config.getConfig().getServerKey()));
             } catch (RuntimeException e) {
-                logWarning("websocket.hook_result_report_failed",
-                        Map.of("{hookId}", hookId, "{message}", exceptionText(e)));
+                LogUtils.warning("websocket.hook_result_report_failed",
+                        Map.of("{hookId}", hookId, "{message}", LogUtils.exceptionText(e)));
             }
         });
     }
@@ -278,7 +278,7 @@ public class WebSocketClient {
         try {
             return new JSONObject(args[0].toString());
         } catch (JSONException e) {
-            logWarning("websocket.invalid_event_payload", Map.of("{message}", exceptionText(e)));
+            LogUtils.warning("websocket.invalid_event_payload", Map.of("{message}", LogUtils.exceptionText(e)));
             return null;
         }
     }
@@ -286,9 +286,9 @@ public class WebSocketClient {
     private static String firstArgText(Object[] args) {
         if (args == null || args.length == 0 || args[0] == null) return "";
         if (args[0] instanceof Throwable throwable) {
-            return exceptionText(throwable);
+            return LogUtils.exceptionText(throwable);
         }
-        return compactLogValue(args[0].toString());
+        return LogUtils.compact(args[0].toString());
     }
 
     private static UUID parseUuid(String raw) {
@@ -315,29 +315,4 @@ public class WebSocketClient {
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
-    private static void logInfo(String key) {
-        LightTickets.getInstance().getLogger().info(LangUtils.getRawLang(key));
-    }
-
-    private static void logWarning(String key) {
-        LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang(key));
-    }
-
-    private static void logWarning(String key, Map<String, String> placeholders) {
-        LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang(key, placeholders));
-    }
-
-    private static String exceptionText(Throwable throwable) {
-        if (throwable == null) return "";
-        String message = throwable.getMessage();
-        String text = throwable.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
-        return compactLogValue(text);
-    }
-
-    private static String compactLogValue(String value) {
-        if (value == null) return "";
-        String compacted = value.replace('\n', ' ').replace('\r', ' ').trim();
-        int maxLength = 240;
-        return compacted.length() <= maxLength ? compacted : compacted.substring(0, maxLength);
-    }
 }

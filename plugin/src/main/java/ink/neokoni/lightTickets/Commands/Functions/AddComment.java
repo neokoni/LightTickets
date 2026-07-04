@@ -7,6 +7,7 @@ import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.LogUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -66,11 +67,10 @@ public class AddComment {
             try {
                 doSubmit(player, session.getTicketId(), body);
             } catch (Throwable t) {
-                LightTickets.getInstance().getLogger().log(java.util.logging.Level.SEVERE,
-                        "Error while submitting comment for " + player.getName(), t);
+                LogUtils.severe("logs.comment_submit_failed",
+                        Map.of("{player}", player.getName(), "{message}", LogUtils.exceptionText(t)));
                 player.sendMessage(LangUtils.getLang("ticket.comment_send_failed",
-                        Map.of("{message}", t.getClass().getSimpleName() + ": "
-                                + (t.getMessage() == null ? LangUtils.getRawLang("errors.no_message") : t.getMessage()))));
+                        Map.of("{message}", LogUtils.exceptionText(t))));
             }
         });
     }

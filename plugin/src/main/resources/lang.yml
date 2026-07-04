@@ -19,6 +19,17 @@ templates:
   loaded: "已从平台加载 {count} 个模板"
   fetch_failed: "获取模板失败: {message}"
   parse_failed: "解析模板 {key} 失败: {message}"
+logs:
+  bind_failed: "绑定账号命令执行失败: {player} ({message})"
+  register_failed: "注册账号命令执行失败: {player} ({message})"
+  unbind_failed: "解绑账号命令执行失败: {player} ({message})"
+  account_info_failed: "获取账号信息命令执行失败: {player} ({message})"
+  ticket_list_failed: "获取议题列表命令执行失败: {player} ({message})"
+  ticket_info_failed: "获取议题详情命令执行失败: {player} ({message})"
+  ticket_create_failed: "创建议题命令执行失败: {player} ({message})"
+  comment_submit_failed: "提交评论命令执行失败: {player} ({message})"
+  status_picker_failed: "显示状态选择命令执行失败: {player} ({message})"
+  status_change_failed: "变更议题状态命令执行失败: {player} ({message})"
 bind:
   guide: "<color:#ffdbab>请前往网页完成绑定, 输入以下绑定码:"
   code: "<color:#ffffff>绑定码: {code} <gray>( {expiresAt} 内有效)"
