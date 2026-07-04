@@ -2,7 +2,7 @@ import { TicketStatus, Priority } from '@prisma/client';
 import { getPrisma } from '../db.js';
 import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 import * as auditService from './audit.service.js';
-import { emitTicketUpdate, emitToAllServers, emitHookExecute } from '../socket/events.js';
+import { emitTicketUpdate, emitToAllServers, emitHookExecute, toHookTicketPayload } from '../socket/events.js';
 
 const prisma = () => getPrisma();
 
@@ -204,10 +204,16 @@ export async function update(
     if (ticket.serverId) {
       const updatedTicket = await prisma().ticket.findUnique({
         where: { id },
-        include: { author: { select: { minecraftUuid: true, minecraftName: true } } },
+        include: {
+          author: { select: { minecraftUuid: true, minecraftName: true } },
+          permissionRequest: true,
+        },
       });
       if (updatedTicket) {
-        emitHookExecute(ticket.serverId, updatedTicket, data.status);
+        emitHookExecute(ticket.serverId, toHookTicketPayload({
+          ...updatedTicket,
+          resultTarget: updatedTicket.permissionRequest,
+        }), data.status);
       }
     }
   }
@@ -332,10 +338,16 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
   if (ticket.serverId) {
     const updatedTicket = await prisma().ticket.findUnique({
       where: { id },
-      include: { author: { select: { minecraftUuid: true, minecraftName: true } } },
+      include: {
+        author: { select: { minecraftUuid: true, minecraftName: true } },
+        permissionRequest: true,
+      },
     });
     if (updatedTicket) {
-      emitHookExecute(ticket.serverId, updatedTicket, 'closed');
+      emitHookExecute(ticket.serverId, toHookTicketPayload({
+        ...updatedTicket,
+        resultTarget: updatedTicket.permissionRequest,
+      }), 'closed');
     }
   }
 

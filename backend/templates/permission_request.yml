@@ -18,8 +18,10 @@ body:
       placeholder: "如 essentials.fly"
 completion_hooks:
   - event: closed
-    commands:
-      - "tell {player_name} 你的权限申请 #{ticket_id} 已通过"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>你的权限申请 </color><color:#96bfff>#{ticket_id}</color><color:#ffffff> 已通过</color>"
   - event: invalid
-    commands:
-      - "tell {player_name} 你的权限申请 #{ticket_id} 已被拒绝"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>你的权限申请 </color><color:#96bfff>#{ticket_id}</color><color:#ff8181> 已被拒绝</color>"

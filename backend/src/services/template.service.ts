@@ -24,7 +24,15 @@ export interface TemplateField {
 
 export interface CompletionHook {
   event: 'closed' | 'invalid';
-  commands: string[];
+  type?: 'command' | 'minimessage';
+  commands?: string[];
+  messages?: string[];
+  message?: string;
+}
+
+export interface ResolvedHook {
+  type: 'command' | 'minimessage';
+  content: string;
 }
 
 export interface TemplateDefinition {
@@ -175,10 +183,16 @@ export function renderBody(def: TemplateDefinition, formData: Record<string, str
   return body || 'No content provided';
 }
 
-export function resolveHooks(def: TemplateDefinition, event: string): string[] {
+export function resolveHooks(def: TemplateDefinition, event: string): ResolvedHook[] {
   return def.completion_hooks
     .filter(h => h.event === event)
-    .flatMap(h => h.commands);
+    .flatMap(h => {
+      const type = h.type ?? (h.commands ? 'command' : 'minimessage');
+      const values = type === 'command'
+        ? (h.commands ?? [])
+        : (h.messages ?? (h.message ? [h.message] : []));
+      return values.map(content => ({ type, content }));
+    });
 }
 
 // --- Admin CRUD functions (async, from DB) ---

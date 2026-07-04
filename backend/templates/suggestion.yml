@@ -12,5 +12,6 @@ body:
       placeholder: "描述你的改进想法..."
 completion_hooks:
   - event: closed
-    commands:
-      - "tell {player_name} 你的建议 #{ticket_id} 已被采纳"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>你的建议 </color><color:#96bfff>#{ticket_id}</color><color:#ffffff> 已被采纳</color>"

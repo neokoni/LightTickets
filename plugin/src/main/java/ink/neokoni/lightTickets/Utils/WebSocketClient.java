@@ -8,6 +8,7 @@ import io.socket.engineio.client.transports.WebSocket;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.json.JSONArray;
@@ -111,17 +112,105 @@ public class WebSocketClient {
 
     private static void handleHookExecute(Object... args) {
         JSONObject data = firstObject(args);
-        if (data == null || !data.has("commands")) return;
+        if (data == null) return;
 
-        JSONArray commands = data.optJSONArray("commands");
-        if (commands == null || commands.length() == 0) return;
+        UUID playerUuid = parseUuid(data.optString("playerUuid", ""));
+        JSONArray hooks = data.optJSONArray("hooks");
+        if (hooks == null) {
+            hooks = legacyCommandHooks(data.optJSONArray("commands"));
+        }
+        if (hooks == null || hooks.length() == 0) return;
+        final JSONArray executableHooks = hooks;
 
         Bukkit.getGlobalRegionScheduler().run(LightTickets.getInstance(), task -> {
-            for (int i = 0; i < commands.length(); i++) {
-                String command = commands.optString(i, "").trim();
-                if (!command.isEmpty()) {
-                    Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+            for (int i = 0; i < executableHooks.length(); i++) {
+                JSONObject hook = executableHooks.optJSONObject(i);
+                if (hook == null) continue;
+                String error = executeHook(hook, playerUuid);
+                if (hook.optBoolean("reportResult", false)) {
+                    reportHookResult(hook, error == null, error);
                 }
+            }
+        });
+    }
+
+    private static String executeHook(JSONObject hook, UUID playerUuid) {
+        String type = hook.optString("type", "command");
+        String content = hook.optString("content", "").trim();
+        if (content.isEmpty()) return null;
+
+        return switch (type) {
+            case "command" -> executeCommandHook(content);
+            case "minimessage" -> executeMiniMessageHook(playerUuid, content);
+            default -> "Unknown hook type: " + type;
+        };
+    }
+
+    private static String executeCommandHook(String command) {
+        try {
+            boolean dispatched = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+            return dispatched ? null : "Command returned false: " + command;
+        } catch (Throwable e) {
+            LightTickets.getInstance().getLogger().log(Level.WARNING,
+                    "[websocket] failed to execute hook command: " + command, e);
+            return e.getClass().getSimpleName() + ": " + (e.getMessage() == null ? "" : e.getMessage());
+        }
+    }
+
+    private static String executeMiniMessageHook(UUID playerUuid, String message) {
+        if (playerUuid == null) return "Missing player UUID for minimessage hook";
+        Player player = Bukkit.getPlayer(playerUuid);
+        if (player == null) return "Player is not online: " + playerUuid;
+
+        Component component = MiniMessage.miniMessage().deserialize(message);
+        player.getScheduler().run(LightTickets.getInstance(),
+                task -> player.sendMessage(component),
+                null);
+        return null;
+    }
+
+    private static JSONArray legacyCommandHooks(JSONArray commands) {
+        if (commands == null) return null;
+        JSONArray hooks = new JSONArray();
+        for (int i = 0; i < commands.length(); i++) {
+            String command = commands.optString(i, "").trim();
+            if (command.isEmpty()) continue;
+            hooks.put(new JSONObject(Map.of(
+                    "hookId", "legacy:" + i + ":" + System.currentTimeMillis(),
+                    "ticketId", 0,
+                    "type", "command",
+                    "content", command,
+                    "reportResult", false)));
+        }
+        return hooks;
+    }
+
+    private static void reportHookResult(JSONObject hook, boolean success, String errorMessage) {
+        String hookId = hook.optString("hookId", "");
+        int ticketId = hook.optInt("ticketId", 0);
+        if (hookId.isBlank() || ticketId <= 0) return;
+
+        Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(), task -> {
+            String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
+            String url = baseUrl + "/api/mc/hook-results";
+
+            com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+            body.addProperty("hookId", hookId);
+            body.addProperty("ticketId", ticketId);
+            body.addProperty("event", hook.optString("event", ""));
+            body.addProperty("type", hook.optString("type", ""));
+            body.addProperty("success", success);
+            if (errorMessage != null && !errorMessage.isBlank()) {
+                body.addProperty("errorMessage", errorMessage);
+            }
+
+            try {
+                HttpUtils.post(url, JsonUtils.toJson(body), Map.of(
+                        "Content-Type", "application/json",
+                        "X-Server-Key", Config.getConfig().getServerKey()));
+            } catch (RuntimeException e) {
+                LightTickets.getInstance().getLogger().log(Level.WARNING,
+                        "[websocket] failed to report hook result " + hookId, e);
             }
         });
     }

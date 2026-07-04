@@ -1,6 +1,6 @@
 import { getPrisma } from '../db.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
-import { emitTicketUpdate } from '../socket/events.js';
+import { emitTicketUpdate, emitHookExecute, toHookTicketPayload } from '../socket/events.js';
 
 const prisma = () => getPrisma();
 
@@ -31,6 +31,10 @@ export async function approve(ticketId: number, actorId: number) {
       permissionNode: ticket.permissionRequest.permissionNode,
       groupName: ticket.permissionRequest.groupName,
     });
+    emitHookExecute(ticket.serverId, toHookTicketPayload({
+      ...ticket,
+      resultTarget: ticket.permissionRequest,
+    }), 'closed');
   }
 
   return updated;
@@ -61,16 +65,11 @@ export async function reject(ticketId: number, actorId: number, reason?: string)
       playerUuid: ticket.author.minecraftUuid,
       reason,
     });
+    emitHookExecute(ticket.serverId, toHookTicketPayload({
+      ...ticket,
+      resultTarget: ticket.permissionRequest,
+    }), 'invalid');
   }
 
   return updated;
-}
-
-export async function reportExecution(ticketId: number, success: boolean, errorMessage?: string) {
-  const status = success ? 'executed' : 'failed';
-
-  await prisma().permissionRequest.update({
-    where: { ticketId },
-    data: { executionStatus: status, executedAt: new Date(), errorMessage },
-  });
 }
