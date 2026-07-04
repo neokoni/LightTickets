@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.logging.Level;
 
 public class WebSocketClient {
     private static Socket socket;
@@ -31,13 +30,13 @@ public class WebSocketClient {
 
         String serverKey = Config.getConfig().getServerKey();
         if (serverKey == null || serverKey.isBlank()) {
-            LightTickets.getInstance().getLogger().warning("[websocket] server key is empty, websocket disabled");
+            logWarning("websocket.server_key_empty");
             return;
         }
 
         String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
         if (baseUrl.isBlank()) {
-            LightTickets.getInstance().getLogger().warning("[websocket] base url is empty, websocket disabled");
+            logWarning("websocket.base_url_empty");
             return;
         }
 
@@ -55,27 +54,35 @@ public class WebSocketClient {
         try {
             socket = IO.socket(baseUrl + "/mc", options);
         } catch (URISyntaxException e) {
-            LightTickets.getInstance().getLogger().log(Level.WARNING, "[websocket] invalid base url", e);
+            logWarning("websocket.invalid_base_url", Map.of("{message}", exceptionText(e)));
             return;
         }
 
         socket.on(Socket.EVENT_CONNECT, args ->
-                LightTickets.getInstance().getLogger().info("[websocket] connected"));
+                logInfo("websocket.connected"));
         socket.on(Socket.EVENT_DISCONNECT, args ->
-                LightTickets.getInstance().getLogger().info("[websocket] disconnected"));
+                logInfo("websocket.disconnected"));
         socket.on(Socket.EVENT_CONNECT_ERROR, args ->
-                LightTickets.getInstance().getLogger().warning("[websocket] connect failed: " + firstArgText(args)));
+                logWarning("websocket.connect_failed", Map.of("{message}", firstArgText(args))));
         socket.on("ticket:status_changed", WebSocketClient::handleStatusChanged);
         socket.on("ticket:comment_created", WebSocketClient::handleCommentCreated);
         socket.on("hook:execute", WebSocketClient::handleHookExecute);
-        socket.connect();
+        try {
+            socket.connect();
+        } catch (Throwable e) {
+            logWarning("websocket.connect_start_failed", Map.of("{message}", exceptionText(e)));
+        }
     }
 
     public static synchronized void shutdown() {
         if (socket == null) return;
-        socket.off();
-        socket.disconnect();
-        socket.close();
+        try {
+            socket.off();
+            socket.disconnect();
+            socket.close();
+        } catch (Throwable e) {
+            logWarning("websocket.shutdown_failed", Map.of("{message}", exceptionText(e)));
+        }
         socket = null;
     }
 
@@ -142,25 +149,28 @@ public class WebSocketClient {
         return switch (type) {
             case "command" -> executeCommandHook(content);
             case "minimessage" -> executeMiniMessageHook(playerUuid, content);
-            default -> "Unknown hook type: " + type;
+            default -> LangUtils.getRawLang("websocket.unknown_hook_type", Map.of("{type}", type));
         };
     }
 
     private static String executeCommandHook(String command) {
         try {
             boolean dispatched = Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
-            return dispatched ? null : "Command returned false: " + command;
+            return dispatched ? null : LangUtils.getRawLang("websocket.command_returned_false",
+                    Map.of("{command}", command));
         } catch (Throwable e) {
-            LightTickets.getInstance().getLogger().log(Level.WARNING,
-                    "[websocket] failed to execute hook command: " + command, e);
-            return e.getClass().getSimpleName() + ": " + (e.getMessage() == null ? "" : e.getMessage());
+            String message = exceptionText(e);
+            logWarning("websocket.hook_command_failed",
+                    Map.of("{command}", command, "{message}", message));
+            return message;
         }
     }
 
     private static String executeMiniMessageHook(UUID playerUuid, String message) {
-        if (playerUuid == null) return "Missing player UUID for minimessage hook";
+        if (playerUuid == null) return LangUtils.getRawLang("websocket.missing_player_uuid");
         Player player = Bukkit.getPlayer(playerUuid);
-        if (player == null) return "Player is not online: " + playerUuid;
+        if (player == null) return LangUtils.getRawLang("websocket.player_not_online",
+                Map.of("{uuid}", playerUuid.toString()));
 
         Component component = MiniMessage.miniMessage().deserialize(message);
         player.getScheduler().run(LightTickets.getInstance(),
@@ -209,8 +219,8 @@ public class WebSocketClient {
                         "Content-Type", "application/json",
                         "X-Server-Key", Config.getConfig().getServerKey()));
             } catch (RuntimeException e) {
-                LightTickets.getInstance().getLogger().log(Level.WARNING,
-                        "[websocket] failed to report hook result " + hookId, e);
+                logWarning("websocket.hook_result_report_failed",
+                        Map.of("{hookId}", hookId, "{message}", exceptionText(e)));
             }
         });
     }
@@ -268,14 +278,17 @@ public class WebSocketClient {
         try {
             return new JSONObject(args[0].toString());
         } catch (JSONException e) {
-            LightTickets.getInstance().getLogger().log(Level.WARNING, "[websocket] invalid event payload", e);
+            logWarning("websocket.invalid_event_payload", Map.of("{message}", exceptionText(e)));
             return null;
         }
     }
 
     private static String firstArgText(Object[] args) {
         if (args == null || args.length == 0 || args[0] == null) return "";
-        return args[0].toString();
+        if (args[0] instanceof Throwable throwable) {
+            return exceptionText(throwable);
+        }
+        return compactLogValue(args[0].toString());
     }
 
     private static UUID parseUuid(String raw) {
@@ -300,5 +313,31 @@ public class WebSocketClient {
     private static String trimTrailingSlash(String url) {
         if (url == null) return "";
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    private static void logInfo(String key) {
+        LightTickets.getInstance().getLogger().info(LangUtils.getRawLang(key));
+    }
+
+    private static void logWarning(String key) {
+        LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang(key));
+    }
+
+    private static void logWarning(String key, Map<String, String> placeholders) {
+        LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang(key, placeholders));
+    }
+
+    private static String exceptionText(Throwable throwable) {
+        if (throwable == null) return "";
+        String message = throwable.getMessage();
+        String text = throwable.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
+        return compactLogValue(text);
+    }
+
+    private static String compactLogValue(String value) {
+        if (value == null) return "";
+        String compacted = value.replace('\n', ' ').replace('\r', ' ').trim();
+        int maxLength = 240;
+        return compacted.length() <= maxLength ? compacted : compacted.substring(0, maxLength);
     }
 }
