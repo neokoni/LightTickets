@@ -55,7 +55,7 @@ router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) =
     pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
     status: req.query.status as any,
     type: req.query.type as any,
-    authorId: req.query.authorId as string,
+    authorId: req.query.authorId ? Number(req.query.authorId) : undefined,
     serverId: req.query.serverId as string,
     labelId: req.query.labelId as string,
     search: req.query.search as string,
