@@ -4,9 +4,15 @@ import { beforeEach, afterAll } from 'vitest';
 
 // Ensure config.yml has db section before any module imports getConfig()
 const configPath = path.resolve('data/config.yml');
+const dataTemplatesPath = path.resolve('data/templates');
+const templatesMarkerPath = path.resolve('data/.templates_initialized');
 // Back up the user's real config so tests never clobber production settings.
 const realConfigBackup = fs.existsSync(configPath)
   ? fs.readFileSync(configPath, 'utf-8')
+  : null;
+const templatesBackupPath = path.resolve('data/templates.test-backup');
+const markerBackup = fs.existsSync(templatesMarkerPath)
+  ? fs.readFileSync(templatesMarkerPath, 'utf-8')
   : null;
 
 const testConfig = `port: 3000
@@ -24,6 +30,11 @@ for (const p of [path.resolve('data', 'dev.db'), path.resolve('prisma', 'dev.db'
   if (fs.existsSync(p)) fs.unlinkSync(p);
 }
 
+fs.rmSync(templatesBackupPath, { recursive: true, force: true });
+if (fs.existsSync(dataTemplatesPath)) fs.cpSync(dataTemplatesPath, templatesBackupPath, { recursive: true });
+fs.rmSync(dataTemplatesPath, { recursive: true, force: true });
+fs.rmSync(templatesMarkerPath, { force: true });
+
 fs.writeFileSync(configPath, testConfig, 'utf-8');
 
 // Load config to resolve DATABASE_URL consistently with production (absolute path)
@@ -39,7 +50,6 @@ initPrisma();
 const prisma = () => getPrisma();
 
 beforeEach(async () => {
-  await prisma().ticketTemplate.deleteMany();
   await prisma().setupStatus.deleteMany();
   await prisma().auditLog.deleteMany();
   await prisma().ticketLabel.deleteMany();
@@ -60,6 +70,17 @@ afterAll(() => {
     fs.writeFileSync(configPath, realConfigBackup, 'utf-8');
   } else {
     fs.rmSync(configPath, { force: true });
+  }
+
+  fs.rmSync(dataTemplatesPath, { recursive: true, force: true });
+  if (fs.existsSync(templatesBackupPath)) {
+    fs.cpSync(templatesBackupPath, dataTemplatesPath, { recursive: true });
+    fs.rmSync(templatesBackupPath, { recursive: true, force: true });
+  }
+  if (markerBackup !== null) {
+    fs.writeFileSync(templatesMarkerPath, markerBackup, 'utf-8');
+  } else {
+    fs.rmSync(templatesMarkerPath, { force: true });
   }
 });
 

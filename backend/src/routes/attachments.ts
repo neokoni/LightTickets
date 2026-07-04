@@ -25,7 +25,7 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req: Reques
 });
 
 router.get('/:id', async (req: Request, res: Response) => {
-  const attachment = await attachmentService.getById(req.params.id);
+  const attachment = await attachmentService.getById(String(req.params.id));
   const filePath = path.resolve(config.uploadDir, attachment.path);
   res.sendFile(filePath);
 });

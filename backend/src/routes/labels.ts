@@ -27,12 +27,12 @@ router.post('/', authMiddleware, requireRole('admin'), async (req: Request, res:
 });
 
 router.patch('/:id', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-  const label = await labelService.update(req.params.id, req.body);
+  const label = await labelService.update(String(req.params.id), req.body);
   res.json(label);
 });
 
 router.delete('/:id', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-  await labelService.remove(req.params.id);
+  await labelService.remove(String(req.params.id));
   res.status(204).end();
 });
 

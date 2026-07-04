@@ -1,7 +1,6 @@
 import { apiFetch } from './client'
 
 export interface AdminTemplate {
-  id: number
   name: string
   nameI18n: string
   description: string
@@ -18,8 +17,8 @@ export function apiGetAdminTemplates() {
   return apiFetch<AdminTemplate[]>('/admin/templates')
 }
 
-export function apiGetAdminTemplate(id: number) {
-  return apiFetch<AdminTemplate>(`/admin/templates/${id}`)
+export function apiGetAdminTemplate(name: string) {
+  return apiFetch<AdminTemplate>(`/admin/templates/${encodeURIComponent(name)}`)
 }
 
 export function apiCreateAdminTemplate(data: {
@@ -38,7 +37,7 @@ export function apiCreateAdminTemplate(data: {
   })
 }
 
-export function apiUpdateAdminTemplate(id: number, data: {
+export function apiUpdateAdminTemplate(name: string, data: {
   nameI18n?: string
   description?: string
   titlePrefix?: string
@@ -47,12 +46,12 @@ export function apiUpdateAdminTemplate(id: number, data: {
   completionHooks?: string
   enabled?: boolean
 }) {
-  return apiFetch<AdminTemplate>(`/admin/templates/${id}`, {
+  return apiFetch<AdminTemplate>(`/admin/templates/${encodeURIComponent(name)}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   })
 }
 
-export function apiDeleteAdminTemplate(id: number) {
-  return apiFetch<void>(`/admin/templates/${id}`, { method: 'DELETE' })
+export function apiDeleteAdminTemplate(name: string) {
+  return apiFetch<void>(`/admin/templates/${encodeURIComponent(name)}`, { method: 'DELETE' })
 }

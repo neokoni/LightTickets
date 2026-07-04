@@ -25,9 +25,9 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json(rows);
 });
 
-// GET /api/admin/templates/:id
-router.get('/:id', async (req: Request, res: Response) => {
-  const row = await templateService.adminGet(Number(req.params.id));
+// GET /api/admin/templates/:name
+router.get('/:name', async (req: Request, res: Response) => {
+  const row = await templateService.adminGet(String(req.params.name));
   res.json(templateService.toAdminEditorResponse(row));
 });
 
@@ -39,15 +39,15 @@ router.post('/', async (req: Request, res: Response) => {
   res.status(201).json(tmpl);
 });
 
-// PATCH /api/admin/templates/:id
-router.patch('/:id', async (req: Request, res: Response) => {
-  const tmpl = await templateService.adminUpdate(Number(req.params.id), req.body);
+// PATCH /api/admin/templates/:name
+router.patch('/:name', async (req: Request, res: Response) => {
+  const tmpl = await templateService.adminUpdate(String(req.params.name), req.body);
   res.json(tmpl);
 });
 
-// DELETE /api/admin/templates/:id
-router.delete('/:id', async (req: Request, res: Response) => {
-  await templateService.adminDelete(Number(req.params.id));
+// DELETE /api/admin/templates/:name
+router.delete('/:name', async (req: Request, res: Response) => {
+  await templateService.adminDelete(String(req.params.name));
   res.status(204).end();
 });
 

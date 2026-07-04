@@ -14,7 +14,7 @@ function parseId(raw: string): number {
 router.use(conditionalAuthMiddleware);
 
 router.get('/', async (req: Request, res: Response) => {
-  const logs = await auditService.listByTicket(parseId(req.params.ticketId));
+  const logs = await auditService.listByTicket(parseId(String(req.params.ticketId)));
   res.json(logs);
 });
 

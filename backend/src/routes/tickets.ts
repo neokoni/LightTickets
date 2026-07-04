@@ -64,12 +64,12 @@ router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) =
 });
 
 router.get('/:id', conditionalAuthMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.getById(parseId(req.params.id));
+  const ticket = await ticketService.getById(parseId(String(req.params.id)));
   res.json(ticket);
 });
 
 router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.update(parseId(req.params.id), req.user!.userId, req.user!.role, req.body);
+  const ticket = await ticketService.update(parseId(String(req.params.id)), req.user!.userId, req.user!.role, req.body);
   res.json(ticket);
 });
 
@@ -81,7 +81,7 @@ router.patch('/:id/body', authMiddleware, async (req: Request, res: Response) =>
   const parsed = updateBodySchema.safeParse(req.body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
 
-  const ticket = await ticketService.updateBody(parseId(req.params.id), req.user!.userId, req.user!.role, parsed.data.body);
+  const ticket = await ticketService.updateBody(parseId(String(req.params.id)), req.user!.userId, req.user!.role, parsed.data.body);
   res.json(ticket);
 });
 
@@ -93,27 +93,27 @@ router.patch('/:id/title', authMiddleware, async (req: Request, res: Response) =
   const parsed = updateTitleSchema.safeParse(req.body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
 
-  const ticket = await ticketService.updateTitle(parseId(req.params.id), req.user!.userId, req.user!.role, parsed.data.title);
+  const ticket = await ticketService.updateTitle(parseId(String(req.params.id)), req.user!.userId, req.user!.role, parsed.data.title);
   res.json(ticket);
 });
 
 router.post('/:id/close', authMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.closeTicket(parseId(req.params.id), req.user!.userId, req.user!.role);
+  const ticket = await ticketService.closeTicket(parseId(String(req.params.id)), req.user!.userId, req.user!.role);
   res.json(ticket);
 });
 
 router.post('/:id/reopen', authMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.reopenTicket(parseId(req.params.id), req.user!.userId, req.user!.role);
+  const ticket = await ticketService.reopenTicket(parseId(String(req.params.id)), req.user!.userId, req.user!.role);
   res.json(ticket);
 });
 
 router.post('/:id/approve', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const ticket = await permissionService.approve(parseId(req.params.id), req.user!.userId);
+  const ticket = await permissionService.approve(parseId(String(req.params.id)), req.user!.userId);
   res.json(ticket);
 });
 
 router.post('/:id/reject', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const ticket = await permissionService.reject(parseId(req.params.id), req.user!.userId, req.body.reason);
+  const ticket = await permissionService.reject(parseId(String(req.params.id)), req.user!.userId, req.body.reason);
   res.json(ticket);
 });
 
@@ -121,19 +121,19 @@ router.post('/:id/reject', authMiddleware, requireRole('staff'), async (req: Req
 router.post('/:id/labels', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
   const { labelId } = req.body;
   if (!labelId) throw new ValidationError('标签ID不能为空');
-  await labelService.addToTicket(parseId(req.params.id), labelId);
+  await labelService.addToTicket(parseId(String(req.params.id)), labelId);
   const label = await labelService.getById(labelId);
   if (label) {
-    await auditService.create(parseId(req.params.id), req.user!.userId, 'label_add', undefined, JSON.stringify({ name: label.name, color: label.color }));
+    await auditService.create(parseId(String(req.params.id)), req.user!.userId, 'label_add', undefined, JSON.stringify({ name: label.name, color: label.color }));
   }
   res.status(201).end();
 });
 
 router.delete('/:id/labels/:labelId', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const label = await labelService.getById(req.params.labelId);
-  await labelService.removeFromTicket(parseId(req.params.id), req.params.labelId);
+  const label = await labelService.getById(String(req.params.labelId));
+  await labelService.removeFromTicket(parseId(String(req.params.id)), String(req.params.labelId));
   if (label) {
-    await auditService.create(parseId(req.params.id), req.user!.userId, 'label_remove', JSON.stringify({ name: label.name, color: label.color }), undefined);
+    await auditService.create(parseId(String(req.params.id)), req.user!.userId, 'label_remove', JSON.stringify({ name: label.name, color: label.color }), undefined);
   }
   res.status(204).end();
 });

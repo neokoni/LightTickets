@@ -116,7 +116,7 @@ router.get('/tickets/:uuid', async (req: Request, res: Response) => {
 
 router.get('/user/:uuid', async (req: Request, res: Response) => {
   const user = await prisma().user.findUnique({
-    where: { minecraftUuid: req.params.uuid },
+    where: { minecraftUuid: String(req.params.uuid) },
     select: {
       id: true,
       email: true,

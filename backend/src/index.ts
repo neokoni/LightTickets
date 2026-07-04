@@ -1,6 +1,7 @@
 import fs from 'fs';
 import yaml from 'js-yaml';
 import path from 'path';
+import type { NextFunction, Request, Response } from 'express';
 
 const configPath = path.resolve('data/config.yml');
 const defaultConfigPath = path.resolve('src/config.default.yml');
@@ -78,7 +79,7 @@ async function startSetupServer() {
   const createSetupRoutes = (await import('./routes/setup.js')).default;
   app.use('/api/setup', createSetupRoutes(server));
 
-  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof AppError) {
       res.status(err.statusCode).json({ error: err.message });
       return;

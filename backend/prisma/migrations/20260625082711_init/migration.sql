@@ -138,21 +138,6 @@ CREATE TABLE "audit_logs" (
     CONSTRAINT "audit_logs_actor_id_fkey" FOREIGN KEY ("actor_id") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
--- CreateTable
-CREATE TABLE "ticket_templates" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "name" TEXT NOT NULL,
-    "name_i18n" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "title_prefix" TEXT,
-    "labels" TEXT NOT NULL DEFAULT '[]',
-    "body" TEXT NOT NULL,
-    "completion_hooks" TEXT NOT NULL DEFAULT '[]',
-    "enabled" BOOLEAN NOT NULL DEFAULT true,
-    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" DATETIME NOT NULL
-);
-
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -176,6 +161,3 @@ CREATE UNIQUE INDEX "permission_requests_ticket_id_key" ON "permission_requests"
 
 -- CreateIndex
 CREATE UNIQUE INDEX "link_codes_code_key" ON "link_codes"("code");
-
--- CreateIndex
-CREATE UNIQUE INDEX "ticket_templates_name_key" ON "ticket_templates"("name");

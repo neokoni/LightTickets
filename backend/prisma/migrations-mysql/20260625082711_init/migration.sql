@@ -152,24 +152,6 @@ CREATE TABLE `audit_logs` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- CreateTable
-CREATE TABLE `ticket_templates` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `name` VARCHAR(191) NOT NULL,
-    `name_i18n` VARCHAR(191) NOT NULL,
-    `description` TEXT NOT NULL,
-    `title_prefix` VARCHAR(191) NULL,
-    `labels` VARCHAR(191) NOT NULL DEFAULT '[]',
-    `body` TEXT NOT NULL,
-    `completion_hooks` VARCHAR(191) NOT NULL DEFAULT '[]',
-    `enabled` BOOLEAN NOT NULL DEFAULT true,
-    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL,
-
-    UNIQUE INDEX `ticket_templates_name_key`(`name`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 -- AddForeignKey
 ALTER TABLE `tickets` ADD CONSTRAINT `tickets_author_id_fkey` FOREIGN KEY (`author_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 

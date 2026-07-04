@@ -1,6 +1,6 @@
 import { getPrisma } from '../db.js';
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import { config } from '../config.js';
 import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
@@ -72,7 +72,7 @@ export async function refresh(refreshToken: string) {
     const accessToken = jwt.sign(
       { userId: user.id, role: user.role },
       config.jwtSecret,
-      { expiresIn: config.accessTokenExpiry },
+      { expiresIn: config.accessTokenExpiry as SignOptions['expiresIn'] },
     );
     return { accessToken, user: sanitizeUser(user) };
   } catch {

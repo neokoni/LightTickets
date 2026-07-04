@@ -13,7 +13,7 @@ const templates = useTemplatesStore()
 const ui = useUiStore()
 
 const showModal = ref(false)
-const editingId = ref<number | null>(null)
+const editingName = ref<string | null>(null)
 const form = ref({
   name: '',
   nameI18n: '',
@@ -26,14 +26,14 @@ const form = ref({
 })
 
 function openCreate() {
-  editingId.value = null
+  editingName.value = null
   form.value = { name: '', nameI18n: '', description: '', titlePrefix: '', labels: '[]', body: '', completionHooks: '[]', enabled: true }
   showModal.value = true
 }
 
 async function openEdit(tmpl: AdminTemplate) {
-  const full = await apiGetAdminTemplate(tmpl.id)
-  editingId.value = full.id
+  const full = await apiGetAdminTemplate(tmpl.name)
+  editingName.value = full.name
   form.value = {
     name: full.name,
     nameI18n: full.nameI18n,
@@ -49,8 +49,8 @@ async function openEdit(tmpl: AdminTemplate) {
 
 async function save() {
   try {
-    if (editingId.value) {
-      await templates.update(editingId.value, {
+    if (editingName.value) {
+      await templates.update(editingName.value, {
         nameI18n: form.value.nameI18n,
         description: form.value.description,
         titlePrefix: form.value.titlePrefix,
@@ -72,17 +72,17 @@ async function save() {
 
 async function toggleEnabled(tmpl: AdminTemplate) {
   try {
-    await templates.update(tmpl.id, { enabled: !tmpl.enabled })
+    await templates.update(tmpl.name, { enabled: !tmpl.enabled })
     ui.toast(tmpl.enabled ? '已禁用模板' : '已启用模板', 'success')
   } catch (e: any) {
     ui.toast(e.message || '操作失败', 'error')
   }
 }
 
-async function remove(id: number) {
+async function remove(name: string) {
   if (!confirm('确定删除此模板？')) return
   try {
-    await templates.remove(id)
+    await templates.remove(name)
     ui.toast('模板已删除', 'success')
   } catch (e: any) {
     ui.toast(e.message || '删除失败', 'error')
@@ -102,7 +102,7 @@ onMounted(() => {
     </div>
 
     <div class="divide-y divide-slate-200 dark:divide-slate-800 border border-slate-200/80 dark:border-slate-800/80 rounded-xl">
-      <div v-for="tmpl in templates.templates" :key="tmpl.id" class="flex items-center justify-between px-4 py-3">
+      <div v-for="tmpl in templates.templates" :key="tmpl.name" class="flex items-center justify-between px-4 py-3">
         <div class="flex items-center gap-3">
           <span class="text-sm font-medium text-slate-900 dark:text-white">{{ tmpl.nameI18n }}</span>
           <span class="text-xs text-slate-400 font-mono">{{ tmpl.name }}</span>
@@ -115,7 +115,7 @@ onMounted(() => {
           <button @click="openEdit(tmpl)" class="p-1.5 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200" title="编辑">
             <Icon icon="lucide:pencil" class="w-4 h-4" />
           </button>
-          <button @click="remove(tmpl.id)" class="p-1.5 rounded text-slate-400 hover:text-red-500" title="删除">
+          <button @click="remove(tmpl.name)" class="p-1.5 rounded text-slate-400 hover:text-red-500" title="删除">
             <Icon icon="lucide:trash-2" class="w-4 h-4" />
           </button>
         </div>
@@ -123,10 +123,10 @@ onMounted(() => {
       <div v-if="!templates.templates.length" class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">暂无模板</div>
     </div>
 
-    <BaseModal v-model="showModal" :title="editingId ? '编辑模板' : '新建模板'">
+    <BaseModal v-model="showModal" :title="editingName ? '编辑模板' : '新建模板'">
       <form @submit.prevent="save" class="space-y-4 max-h-[70vh] overflow-y-auto">
-        <BaseInput v-model="form.name" label="模板 Key" placeholder="bug_report" :disabled="!!editingId" />
-        <p v-if="!!editingId" class="text-xs text-slate-500 -mt-3">模板 Key 创建后不可修改</p>
+        <BaseInput v-model="form.name" label="模板 Key" placeholder="bug_report" :disabled="!!editingName" />
+        <p v-if="!!editingName" class="text-xs text-slate-500 -mt-3">模板 Key 创建后不可修改</p>
         <BaseInput v-model="form.nameI18n" label="显示名称" placeholder="Bug 反馈" />
         <BaseInput v-model="form.description" label="描述" placeholder="报告游戏中遇到的问题" />
         <BaseInput v-model="form.titlePrefix" label="标题前缀（可选）" placeholder="[Bug] " />

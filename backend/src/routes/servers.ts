@@ -38,7 +38,7 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 router.post('/:id/regenerate-key', async (req: Request, res: Response) => {
-  const server = await serverService.regenerateKey(req.params.id);
+  const server = await serverService.regenerateKey(String(req.params.id));
   res.json(server);
 });
 
@@ -46,12 +46,12 @@ router.patch('/:id', async (req: Request, res: Response) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
 
-  const server = await serverService.update(req.params.id, parsed.data);
+  const server = await serverService.update(String(req.params.id), parsed.data);
   res.json(server);
 });
 
 router.delete('/:id', async (req: Request, res: Response) => {
-  await serverService.remove(req.params.id);
+  await serverService.remove(String(req.params.id));
   res.status(204).end();
 });
 

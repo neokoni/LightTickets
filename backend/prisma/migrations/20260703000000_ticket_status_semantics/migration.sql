@@ -26,12 +26,3 @@ WHERE "old_value" IN ('resolved', 'closed', 'rejected')
 UPDATE "audit_logs"
 SET "action" = 'permission_invalid'
 WHERE "action" = 'permission_rejected';
-
-UPDATE "ticket_templates"
-SET "completion_hooks" = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE("completion_hooks",
-  '"event":"closed"', '"event":"invalid"'),
-  '"event": "closed"', '"event": "invalid"'),
-  '"event":"rejected"', '"event":"invalid"'),
-  '"event": "rejected"', '"event": "invalid"'),
-  '"event":"resolved"', '"event":"closed"'),
-  '"event": "resolved"', '"event": "closed"');

@@ -7,7 +7,7 @@ import { prisma } from './setup.js';
 
 const app = createApp();
 
-const templatesDir = path.resolve('templates');
+const templatesDir = path.resolve('data/templates');
 const testTemplateNames = ['custom_test', 'dup_tmpl', 'patch_tmpl', 'delete_tmpl'];
 
 afterEach(() => {
@@ -107,7 +107,7 @@ describe('GET /api/admin/templates/:id', () => {
       .set('Authorization', `Bearer ${token}`);
 
     const res = await request(app)
-      .get(`/api/admin/templates/${list.body[0].id}`)
+      .get(`/api/admin/templates/${list.body[0].name}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
@@ -176,7 +176,7 @@ describe('PATCH /api/admin/templates/:id', () => {
       });
 
     const res = await request(app)
-      .patch(`/api/admin/templates/${created.body.id}`)
+      .patch(`/api/admin/templates/${created.body.name}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ description: 'Updated description' });
 
@@ -200,7 +200,7 @@ describe('DELETE /api/admin/templates/:id', () => {
       });
 
     const res = await request(app)
-      .delete(`/api/admin/templates/${created.body.id}`)
+      .delete(`/api/admin/templates/${created.body.name}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(204);

@@ -5,10 +5,7 @@ dist/
 coverage/
 
 # data directory - all runtime-generated, template is src/config.default.yml
-data/config.yml
-data/data.db
-data/data.db-journal
-data/uploads/
+data/
 
 # generated schema (copied from template during setup)
 prisma/schema.prisma
