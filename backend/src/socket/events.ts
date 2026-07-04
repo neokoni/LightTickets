@@ -19,7 +19,6 @@ export type HookTicketPayload = {
   template: string;
   formData: string | null;
   author?: { minecraftUuid?: string | null; minecraftName?: string | null } | null;
-  resultTarget?: unknown | null;
 };
 
 export function toHookTicketPayload(ticket: HookTicketPayload): HookTicketPayload {
@@ -29,7 +28,6 @@ export function toHookTicketPayload(ticket: HookTicketPayload): HookTicketPayloa
     template: ticket.template,
     formData: ticket.formData,
     author: ticket.author,
-    resultTarget: ticket.resultTarget ?? null,
   };
 }
 
@@ -68,7 +66,6 @@ export function emitHookExecute(serverId: string, ticket: HookTicketPayload, eve
     event,
     type: hook.type,
     content: resolvePlaceholders(hook.content),
-    reportResult: Boolean(ticket.resultTarget),
   }));
   const resolvedCommands = resolvedHooks
     .filter(hook => hook.type === 'command')
@@ -82,6 +79,5 @@ export function emitHookExecute(serverId: string, ticket: HookTicketPayload, eve
     playerUuid: ticket.author?.minecraftUuid || null,
     hooks: resolvedHooks,
     commands: resolvedCommands,
-    reportResult: Boolean(ticket.resultTarget),
   });
 }

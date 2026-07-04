@@ -33,12 +33,6 @@ enum CommentSource {
   minecraft
 }
 
-enum ExecutionStatus {
-  pending
-  executed
-  failed
-}
-
 model User {
   id             Int       @id @default(autoincrement())
   email          String    @unique
@@ -97,10 +91,13 @@ model Ticket {
   comments   Comment[]
   attachments Attachment[]
   auditLogs  AuditLog[]
-  permissionRequest PermissionRequest?
 
   @@map("tickets")
 }
+
+
+
+
 
 model Label {
   id          String        @id @default(cuid())
@@ -153,20 +150,6 @@ model Attachment {
   uploader   User     @relation(fields: [uploadedBy], references: [id])
 
   @@map("attachments")
-}
-
-model PermissionRequest {
-  id              String          @id @default(cuid())
-  ticketId        Int             @unique @map("ticket_id")
-  permissionNode  String?         @map("permission_node")
-  groupName       String?         @map("group_name")
-  executionStatus ExecutionStatus @default(pending) @map("execution_status")
-  executedAt      DateTime?       @map("executed_at")
-  errorMessage    String?         @map("error_message")
-
-  ticket          Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  @@map("permission_requests")
 }
 
 model LinkCode {

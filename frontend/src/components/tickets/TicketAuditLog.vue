@@ -26,8 +26,6 @@ function actionLabel(action: string): string {
     status_change: '状态变更',
     assign: '分配',
     priority_change: '优先级变更',
-    permission_approved: '权限审批通过',
-    permission_invalid: '权限申请无效',
     label_add: '添加标签',
     label_remove: '移除标签',
   }

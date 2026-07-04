@@ -2,7 +2,6 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import * as ticketService from '../services/ticket.service.js';
 import * as labelService from '../services/label.service.js';
-import * as permissionService from '../services/permission.service.js';
 import * as auditService from '../services/audit.service.js';
 import { authMiddleware, conditionalAuthMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
@@ -104,16 +103,6 @@ router.post('/:id/close', authMiddleware, async (req: Request, res: Response) =>
 
 router.post('/:id/reopen', authMiddleware, async (req: Request, res: Response) => {
   const ticket = await ticketService.reopenTicket(parseId(String(req.params.id)), req.user!.userId, req.user!.role);
-  res.json(ticket);
-});
-
-router.post('/:id/approve', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const ticket = await permissionService.approve(parseId(String(req.params.id)), req.user!.userId);
-  res.json(ticket);
-});
-
-router.post('/:id/reject', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const ticket = await permissionService.reject(parseId(String(req.params.id)), req.user!.userId, req.body.reason);
   res.json(ticket);
 });
 

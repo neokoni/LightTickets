@@ -55,7 +55,6 @@ beforeEach(async () => {
   await prisma().ticketLabel.deleteMany();
   await prisma().attachment.deleteMany();
   await prisma().comment.deleteMany();
-  await prisma().permissionRequest.deleteMany();
   await prisma().linkCode.deleteMany();
   await prisma().ticket.deleteMany();
   await prisma().label.deleteMany();

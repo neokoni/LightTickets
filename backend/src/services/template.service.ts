@@ -37,10 +37,10 @@ export interface TemplateDefinition {
   name: string;
   description: string;
   title_prefix?: string;
+  enabled?: boolean;
   labels: string[];
   body: TemplateField[];
   completion_hooks: CompletionHook[];
-  enabled?: boolean;
 }
 
 export interface TemplateSummary {

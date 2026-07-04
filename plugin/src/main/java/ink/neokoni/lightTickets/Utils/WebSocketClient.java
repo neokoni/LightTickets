@@ -133,10 +133,7 @@ public class WebSocketClient {
             for (int i = 0; i < executableHooks.length(); i++) {
                 JSONObject hook = executableHooks.optJSONObject(i);
                 if (hook == null) continue;
-                String error = executeHook(hook, playerUuid);
-                if (hook.optBoolean("reportResult", false)) {
-                    reportHookResult(hook, error == null, error);
-                }
+                executeHook(hook, playerUuid);
             }
         });
     }
@@ -189,40 +186,9 @@ public class WebSocketClient {
                     "hookId", "legacy:" + i + ":" + System.currentTimeMillis(),
                     "ticketId", 0,
                     "type", "command",
-                    "content", command,
-                    "reportResult", false)));
+                    "content", command)));
         }
         return hooks;
-    }
-
-    private static void reportHookResult(JSONObject hook, boolean success, String errorMessage) {
-        String hookId = hook.optString("hookId", "");
-        int ticketId = hook.optInt("ticketId", 0);
-        if (hookId.isBlank() || ticketId <= 0) return;
-
-        Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(), task -> {
-            String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-            String url = baseUrl + "/api/mc/hook-results";
-
-            com.google.gson.JsonObject body = new com.google.gson.JsonObject();
-            body.addProperty("hookId", hookId);
-            body.addProperty("ticketId", ticketId);
-            body.addProperty("event", hook.optString("event", ""));
-            body.addProperty("type", hook.optString("type", ""));
-            body.addProperty("success", success);
-            if (errorMessage != null && !errorMessage.isBlank()) {
-                body.addProperty("errorMessage", errorMessage);
-            }
-
-            try {
-                HttpUtils.post(url, JsonUtils.toJson(body), Map.of(
-                        "Content-Type", "application/json",
-                        "X-Server-Key", Config.getConfig().getServerKey()));
-            } catch (RuntimeException e) {
-                LogUtils.warning("websocket.hook_result_report_failed",
-                        Map.of("{hookId}", hookId, "{message}", LogUtils.exceptionText(e)));
-            }
-        });
     }
 
     private static void sendToPlayer(UUID playerUuid, Component message) {

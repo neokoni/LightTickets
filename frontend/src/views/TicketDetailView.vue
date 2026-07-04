@@ -269,8 +269,6 @@ function eventLabel(item: AuditLog): string {
   const map: Record<string, string> = {
     assign: '变更了负责人',
     priority_change: '变更了优先级',
-    permission_approved: '审批通过了权限',
-    permission_invalid: '将权限申请标记为无效',
     label_add: '添加了标签',
     label_remove: '移除了标签',
     title_change: '更改了标题',
@@ -296,8 +294,6 @@ function eventIcon(item: AuditLog): string {
   const map: Record<string, string> = {
     assign: 'lucide:user-plus',
     priority_change: 'lucide:signal',
-    permission_approved: 'lucide:check-check',
-    permission_invalid: 'lucide:x-circle',
     label_add: 'lucide:tag',
     label_remove: 'lucide:tag',
     title_change: 'lucide:type',
@@ -372,24 +368,6 @@ async function changeStatus(status: TicketStatus) {
   try {
     await store.updateStatus(id, status)
     ui.toast('状态已更新', 'success')
-  } catch (e: any) {
-    ui.toast(e.message || '操作失败', 'error')
-  }
-}
-
-async function approveTicket() {
-  try {
-    await store.approve(id)
-    ui.toast('已批准', 'success')
-  } catch (e: any) {
-    ui.toast(e.message || '操作失败', 'error')
-  }
-}
-
-async function rejectTicket() {
-  try {
-    await store.reject(id)
-    ui.toast('已拒绝', 'success')
   } catch (e: any) {
     ui.toast(e.message || '操作失败', 'error')
   }
@@ -850,21 +828,6 @@ function onBodyFilePaste(e: ClipboardEvent) {
         <!-- Labels -->
         <TicketLabels v-if="ticket" :ticket="ticket" />
 
-        <!-- Permission request actions -->
-        <div v-if="ticket.template === 'permission_request' && ticket.permissionRequest && auth.isStaff" class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3">
-          <h3 class="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400">权限操作</h3>
-          <div class="text-sm text-slate-600 dark:text-slate-400">
-            <span v-if="ticket.permissionRequest.groupName">组: {{ ticket.permissionRequest.groupName }}</span>
-            <span v-if="ticket.permissionRequest.permissionNode">节点: {{ ticket.permissionRequest.permissionNode }}</span>
-          </div>
-          <div v-if="ticket.status === 'open' || ticket.status === 'in_progress'" class="flex gap-2">
-            <BaseButton filled size="sm" @click="approveTicket">批准</BaseButton>
-            <BaseButton size="sm" variant="danger" @click="rejectTicket">拒绝</BaseButton>
-          </div>
-          <div v-else-if="ticket.permissionRequest.executionStatus" class="text-xs text-slate-500">
-            执行状态: {{ ticket.permissionRequest.executionStatus }}
-          </div>
-        </div>
       </aside>
     </div>
 

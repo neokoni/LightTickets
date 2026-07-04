@@ -7,9 +7,7 @@ import { config } from '../config.js';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
 import * as ticketService from '../services/ticket.service.js';
 import * as commentService from '../services/comment.service.js';
-import * as permissionService from '../services/permission.service.js';
 import * as authService from '../services/auth.service.js';
-import * as hookService from '../services/hook.service.js';
 
 const prisma = () => getPrisma();
 const router = Router();
@@ -142,23 +140,6 @@ router.post('/comments', async (req: Request, res: Response) => {
 
   const comment = await commentService.create(Number(ticketId), user.id, body, 'minecraft');
   res.status(201).json(comment);
-});
-
-router.post('/hook-results', async (req: Request, res: Response) => {
-  const { hookId, ticketId, event, type, success, errorMessage } = req.body;
-  if (!hookId || !ticketId || typeof success !== 'boolean') {
-    throw new ValidationError('hookId, ticketId, and success required');
-  }
-
-  const result = await hookService.reportResult({
-    hookId,
-    ticketId: Number(ticketId),
-    event,
-    type,
-    success,
-    errorMessage,
-  });
-  res.json(result);
 });
 
 router.post('/tickets/:id/close', async (req: Request, res: Response) => {

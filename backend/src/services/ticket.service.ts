@@ -149,7 +149,6 @@ export async function getById(id: number) {
       assignee: { select: { id: true, username: true } },
       labels: { include: { label: true } },
       server: { select: { id: true, name: true } },
-      permissionRequest: true,
     },
   });
   if (!ticket) throw new NotFoundError('议题不存在');
@@ -206,14 +205,10 @@ export async function update(
         where: { id },
         include: {
           author: { select: { minecraftUuid: true, minecraftName: true } },
-          permissionRequest: true,
         },
       });
       if (updatedTicket) {
-        emitHookExecute(ticket.serverId, toHookTicketPayload({
-          ...updatedTicket,
-          resultTarget: updatedTicket.permissionRequest,
-        }), data.status);
+        emitHookExecute(ticket.serverId, toHookTicketPayload(updatedTicket), data.status);
       }
     }
   }
@@ -234,7 +229,6 @@ export async function update(
       assignee: { select: { id: true, username: true } },
       labels: { include: { label: true } },
       server: { select: { id: true, name: true } },
-      permissionRequest: true,
     },
   });
 }
@@ -258,7 +252,6 @@ export async function updateBody(id: number, userId: number, userRole: string, b
       assignee: { select: { id: true, username: true } },
       labels: { include: { label: true } },
       server: { select: { id: true, name: true } },
-      permissionRequest: true,
     },
   });
 
@@ -286,7 +279,6 @@ export async function updateTitle(id: number, userId: number, userRole: string, 
         assignee: { select: { id: true, username: true } },
         labels: { include: { label: true } },
         server: { select: { id: true, name: true } },
-        permissionRequest: true,
       },
     });
   }
@@ -299,7 +291,6 @@ export async function updateTitle(id: number, userId: number, userRole: string, 
       assignee: { select: { id: true, username: true } },
       labels: { include: { label: true } },
       server: { select: { id: true, name: true } },
-      permissionRequest: true,
     },
   });
 
@@ -340,14 +331,10 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
       where: { id },
       include: {
         author: { select: { minecraftUuid: true, minecraftName: true } },
-        permissionRequest: true,
       },
     });
     if (updatedTicket) {
-      emitHookExecute(ticket.serverId, toHookTicketPayload({
-        ...updatedTicket,
-        resultTarget: updatedTicket.permissionRequest,
-      }), 'closed');
+      emitHookExecute(ticket.serverId, toHookTicketPayload(updatedTicket), 'closed');
     }
   }
 

@@ -2,8 +2,6 @@ export type Role = 'player' | 'staff' | 'admin'
 export type TicketStatus = 'open' | 'in_progress' | 'closed' | 'invalid'
 export type Priority = 'low' | 'medium' | 'high' | 'critical'
 export type CommentSource = 'web' | 'minecraft'
-export type ExecutionStatus = 'pending' | 'executed' | 'failed'
-
 export interface GameContext {
   world?: string
   x?: number
@@ -35,16 +33,6 @@ export interface Comment {
   author: { id: number; username: string; minecraftName?: string; avatarUrl?: string | null }
 }
 
-export interface PermissionRequest {
-  id: string
-  ticketId: number
-  permissionNode?: string
-  groupName?: string
-  executionStatus: ExecutionStatus
-  executedAt?: string
-  errorMessage?: string
-}
-
 export interface Ticket {
   id: number
   title: string
@@ -63,7 +51,6 @@ export interface Ticket {
   assignee?: { id: number; username: string }
   labels: TicketLabel[]
   server?: { id: string; name: string }
-  permissionRequest?: PermissionRequest
   _count?: { comments: number }
 }
 
