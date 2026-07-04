@@ -7,6 +7,18 @@ errors:
   invalid_response: "无效响应"
   unknown: "未知错误"
   no_message: "无错误信息"
+http:
+  request_failed: "HTTP 请求失败: {method} {url} ({message})"
+  invalid_uri: "HTTP 地址无效: {url} ({message})"
+  interrupted: "HTTP 请求被中断: {method} {url}"
+data_refresh:
+  started: "数据刷新已启动 (interval={interval}s)"
+  account_failed: "刷新玩家账号数据失败: {uuid} ({message})"
+  tickets_failed: "刷新玩家议题数据失败: {uuid} ({message})"
+templates:
+  loaded: "已从平台加载 {count} 个模板"
+  fetch_failed: "获取模板失败: {message}"
+  parse_failed: "解析模板 {key} 失败: {message}"
 bind:
   guide: "<color:#ffdbab>请前往网页完成绑定, 输入以下绑定码:"
   code: "<color:#ffffff>绑定码: {code} <gray>( {expiresAt} 内有效)"
@@ -118,6 +130,7 @@ ticket:
   comment_cancelled: "<color:#ffdbab>已取消评论"
   comment_empty: "<color:#ff8181>评论内容不能为空"
   reply_prompt: "<color:#ffdbab>正在回复 <color:#96bfff>{author} <gray>(输入 cancel 取消):"
+  comments_fetch_failed: "获取议题 #{id} 评论失败: {message}"
 notifications:
   unknown_actor: "未知用户"
   view_ticket_hover: "点击查看议题详情"

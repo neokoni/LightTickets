@@ -27,38 +27,46 @@ public class HttpUtils {
 
     public static Resp getWithStatus(String url, @Nullable Map<String, String> headers) {
         initHttpClient();
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(15))
-                .GET();
-        applyHeaders(requestBuilder, headers);
-        HttpRequest request = requestBuilder.build();
-        HttpResponse<String> response;
         try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(15))
+                    .GET();
+            applyHeaders(requestBuilder, headers);
+            return send("GET", url, requestBuilder.build());
+        } catch (IllegalArgumentException e) {
+            throw requestException("http.invalid_uri",
+                    Map.of("{url}", url, "{message}", exceptionText(e)), e);
         }
-        if (response != null) {
-            return new Resp(response.statusCode(), response.body());
-        }
-        return null;
     }
 
     public static Resp postWithStatus(String url, String body, @Nullable Map<String, String> headers) {
         initHttpClient();
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(15))
-                .POST(BodyPublishers.ofString(body))
-                .header("Content-Type", "application/json");
-        applyHeaders(requestBuilder, headers);
-        HttpRequest request = requestBuilder.build();
+        try {
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .timeout(Duration.ofSeconds(15))
+                    .POST(BodyPublishers.ofString(body))
+                    .header("Content-Type", "application/json");
+            applyHeaders(requestBuilder, headers);
+            return send("POST", url, requestBuilder.build());
+        } catch (IllegalArgumentException e) {
+            throw requestException("http.invalid_uri",
+                    Map.of("{url}", url, "{message}", exceptionText(e)), e);
+        }
+    }
+
+    private static Resp send(String method, String url, HttpRequest request) {
         HttpResponse<String> response;
         try {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw requestException("http.interrupted",
+                    Map.of("{method}", method, "{url}", url), e);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw requestException("http.request_failed",
+                    Map.of("{method}", method, "{url}", url, "{message}", exceptionText(e)), e);
         }
         if (response != null) {
             return new Resp(response.statusCode(), response.body());
@@ -80,5 +88,23 @@ public class HttpUtils {
                     .version(HttpClient.Version.HTTP_1_1)
                     .build();
         }
+    }
+
+    private static RuntimeException requestException(String langKey, Map<String, String> placeholders, Throwable cause) {
+        return new RuntimeException(LangUtils.getRawLang(langKey, placeholders), cause);
+    }
+
+    private static String exceptionText(Throwable throwable) {
+        if (throwable == null) return "";
+        String message = throwable.getMessage();
+        String text = throwable.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
+        return compact(text);
+    }
+
+    private static String compact(String value) {
+        if (value == null) return "";
+        String compacted = value.replace('\n', ' ').replace('\r', ' ').trim();
+        int maxLength = 240;
+        return compacted.length() <= maxLength ? compacted : compacted.substring(0, maxLength);
     }
 }

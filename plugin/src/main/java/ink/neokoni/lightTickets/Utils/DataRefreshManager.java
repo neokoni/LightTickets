@@ -18,7 +18,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
 public class DataRefreshManager {
     private static final Queue<UUID> refreshQueue = new ConcurrentLinkedQueue<>();
@@ -32,8 +31,8 @@ public class DataRefreshManager {
         Bukkit.getAsyncScheduler().runAtFixedRate(LightTickets.getInstance(),
                 task -> processOne(), 3, 3, TimeUnit.SECONDS);
 
-        LightTickets.getInstance().getLogger().info(
-                "[data-refresh] started (interval=" + intervalMinutes + "s)");
+        LightTickets.getInstance().getLogger().info(LangUtils.getRawLang("data_refresh.started",
+                Map.of("{interval}", String.valueOf(intervalMinutes))));
     }
 
     public static void onPlayerJoin(UUID uuid) {
@@ -84,15 +83,15 @@ public class DataRefreshManager {
         try {
             refreshAccountInfo(uuid);
         } catch (Exception e) {
-            LightTickets.getInstance().getLogger().log(Level.WARNING,
-                    "[data-refresh] failed to refresh account for " + uuid, e);
+            LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang("data_refresh.account_failed",
+                    Map.of("{uuid}", uuid.toString(), "{message}", exceptionText(e))));
         }
 
         try {
             refreshTicketList(uuid);
         } catch (Exception e) {
-            LightTickets.getInstance().getLogger().log(Level.WARNING,
-                    "[data-refresh] failed to refresh tickets for " + uuid, e);
+            LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang("data_refresh.tickets_failed",
+                    Map.of("{uuid}", uuid.toString(), "{message}", exceptionText(e))));
         }
     }
 
@@ -154,5 +153,14 @@ public class DataRefreshManager {
     private static String trimTrailingSlash(String url) {
         if (url == null) return "";
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    private static String exceptionText(Throwable throwable) {
+        if (throwable == null) return "";
+        String message = throwable.getMessage();
+        String text = throwable.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
+        String compacted = text.replace('\n', ' ').replace('\r', ' ').trim();
+        int maxLength = 240;
+        return compacted.length() <= maxLength ? compacted : compacted.substring(0, maxLength);
     }
 }

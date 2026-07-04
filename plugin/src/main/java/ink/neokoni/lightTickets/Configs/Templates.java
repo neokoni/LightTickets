@@ -8,6 +8,7 @@ import ink.neokoni.lightTickets.Configs.Datas.TemplateField;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
+import ink.neokoni.lightTickets.Utils.LangUtils;
 import org.bukkit.Bukkit;
 
 import java.util.ArrayList;
@@ -88,12 +89,12 @@ public class Templates {
             if (changed || newTemplates.size() != cachedTemplates.size()) {
                 cachedTemplates = newTemplates;
                 cachedRawJson = newJsonMap;
-                LightTickets.getInstance().getLogger().info(
-                        "[templates] loaded " + cachedTemplates.size() + " templates from platform");
+                LightTickets.getInstance().getLogger().info(LangUtils.getRawLang("templates.loaded",
+                        Map.of("{count}", String.valueOf(cachedTemplates.size()))));
             }
         } catch (Exception e) {
-            LightTickets.getInstance().getLogger().warning(
-                    "[templates] failed to fetch templates: " + e.getMessage());
+            LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang("templates.fetch_failed",
+                    Map.of("{message}", exceptionText(e))));
         }
     }
 
@@ -123,8 +124,8 @@ public class Templates {
 
             return new TemplateData(key, name, description, titlePrefix, labels, fields);
         } catch (Exception e) {
-            LightTickets.getInstance().getLogger().warning(
-                    "[templates] failed to parse template " + key + ": " + e.getMessage());
+            LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang("templates.parse_failed",
+                    Map.of("{key}", key, "{message}", exceptionText(e))));
             return null;
         }
     }
@@ -169,5 +170,14 @@ public class Templates {
     private static String trimTrailingSlash(String url) {
         if (url == null) return "";
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    private static String exceptionText(Throwable throwable) {
+        if (throwable == null) return "";
+        String message = throwable.getMessage();
+        String text = throwable.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
+        String compacted = text.replace('\n', ' ').replace('\r', ' ').trim();
+        int maxLength = 240;
+        return compacted.length() <= maxLength ? compacted : compacted.substring(0, maxLength);
     }
 }

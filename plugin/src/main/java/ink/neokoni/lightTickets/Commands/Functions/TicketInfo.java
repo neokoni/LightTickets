@@ -198,8 +198,8 @@ public class TicketInfo {
                 return parsed.getAsJsonArray();
             }
         } catch (Exception e) {
-            LightTickets.getInstance().getLogger().log(java.util.logging.Level.WARNING,
-                    "Failed to fetch comments for ticket " + ticketId, e);
+            LightTickets.getInstance().getLogger().warning(LangUtils.getRawLang("ticket.comments_fetch_failed",
+                    Map.of("{id}", String.valueOf(ticketId), "{message}", exceptionText(e))));
         }
         return null;
     }
@@ -381,5 +381,14 @@ public class TicketInfo {
     private String trimTrailingSlash(String url) {
         if (url == null) return "";
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    private String exceptionText(Throwable throwable) {
+        if (throwable == null) return "";
+        String message = throwable.getMessage();
+        String text = throwable.getClass().getSimpleName() + (message == null || message.isBlank() ? "" : ": " + message);
+        String compacted = text.replace('\n', ' ').replace('\r', ' ').trim();
+        int maxLength = 240;
+        return compacted.length() <= maxLength ? compacted : compacted.substring(0, maxLength);
     }
 }
