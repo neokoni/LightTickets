@@ -6,6 +6,7 @@ import ink.neokoni.lightTickets.Listeners.PlayerJoinLeaveListener;
 import ink.neokoni.lightTickets.Listeners.TicketChatListener;
 import ink.neokoni.lightTickets.Utils.ConfigUtils;
 import ink.neokoni.lightTickets.Utils.DataRefreshManager;
+import ink.neokoni.lightTickets.Utils.WebSocketClient;
 import lombok.Getter;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -27,10 +28,12 @@ public final class LightTickets extends JavaPlugin {
 
         Templates.startRefreshTask();
         DataRefreshManager.start();
+        WebSocketClient.start();
     }
 
     @Override
     public void onDisable() {
+        WebSocketClient.shutdown();
         DataRefreshManager.shutdown();
     }
 }

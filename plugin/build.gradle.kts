@@ -17,6 +17,7 @@ dependencies {
     compileOnly("com.mysql:mysql-connector-j:9.5.0");
     compileOnly("org.mariadb.jdbc:mariadb-java-client:3.5.6");
     compileOnly("org.xerial:sqlite-jdbc:3.51.2.0")
+    compileOnly("io.socket:socket.io-client:2.1.0")
 
     implementation("de.exlll:configlib-yaml:4.8.1")
 }

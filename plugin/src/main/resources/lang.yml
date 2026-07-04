@@ -118,5 +118,12 @@ ticket:
   comment_cancelled: "<color:#ffdbab>已取消评论"
   comment_empty: "<color:#ff8181>评论内容不能为空"
   reply_prompt: "<color:#ffdbab>正在回复 <color:#96bfff>{author} <gray>(输入 cancel 取消):"
+notifications:
+  unknown_actor: "未知用户"
+  view_ticket_hover: "点击查看议题详情"
+  ticket_prefix: "你的议题"
+  status_action_prefix: "状态被{actor}已由 "
+  status_action_middle: " 变更为 "
+  comment_action: "收到{author}的回复: {content}"
 system:
   reload_success: "<color:#96bfff>插件已重载"

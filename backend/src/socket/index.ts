@@ -6,6 +6,17 @@ const prisma = () => getPrisma();
 
 let io: Server;
 
+function firstString(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function resolveServerKey(socket: Socket) {
+  return firstString(socket.handshake.auth.serverKey as string | string[] | undefined)
+    || firstString(socket.handshake.query.serverKey as string | string[] | undefined)
+    || firstString(socket.handshake.headers['x-server-key'] as string | string[] | undefined);
+}
+
 export function initSocket(httpServer: HttpServer) {
   io = new Server(httpServer, {
     cors: { origin: '*' },
@@ -14,7 +25,7 @@ export function initSocket(httpServer: HttpServer) {
   const mcNamespace = io.of('/mc');
 
   mcNamespace.use(async (socket: Socket, next) => {
-    const apiKey = socket.handshake.auth.serverKey as string;
+    const apiKey = resolveServerKey(socket);
     if (!apiKey) return next(new Error('Missing server key'));
 
     const server = await prisma().server.findUnique({ where: { apiKey } });
@@ -27,9 +38,10 @@ export function initSocket(httpServer: HttpServer) {
 
   mcNamespace.on('connection', (socket: Socket) => {
     socket.join(`server:${socket.data.serverId}`);
+    console.log(`[socket] Minecraft server connected: ${socket.data.serverName} (${socket.data.serverId})`);
 
     socket.on('disconnect', () => {
-      // cleanup if needed
+      console.log(`[socket] Minecraft server disconnected: ${socket.data.serverName} (${socket.data.serverId})`);
     });
   });
 

@@ -2,12 +2,20 @@ import { TicketStatus, Priority } from '@prisma/client';
 import { getPrisma } from '../db.js';
 import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 import * as auditService from './audit.service.js';
-import { emitTicketUpdate, emitHookExecute } from '../socket/events.js';
+import { emitTicketUpdate, emitToAllServers, emitHookExecute } from '../socket/events.js';
 
 const prisma = () => getPrisma();
 
 const STAFF_ROLES = ['staff', 'admin'];
 const PLAYER_STATUS_TARGETS: TicketStatus[] = ['open', 'closed'];
+
+type TicketNotificationTarget = {
+  id: number;
+  title: string;
+  authorId: number;
+  serverId: string | null;
+  author?: { minecraftUuid?: string | null } | null;
+};
 
 function isStaffRole(role: string) {
   return STAFF_ROLES.includes(role);
@@ -28,6 +36,37 @@ function assertPlayerStatusTransition(currentStatus: TicketStatus, nextStatus: T
   }
 }
 
+async function emitStatusChanged(
+  ticket: TicketNotificationTarget,
+  actorUserId: number,
+  oldStatus: TicketStatus,
+  newStatus: TicketStatus,
+) {
+  if (ticket.authorId === actorUserId || !ticket.author?.minecraftUuid) return;
+
+  const actor = await prisma().user.findUnique({
+    where: { id: actorUserId },
+    select: { id: true, username: true, minecraftName: true, minecraftUuid: true },
+  });
+
+  const payload = {
+    ticketId: ticket.id,
+    title: ticket.title,
+    playerUuid: ticket.author.minecraftUuid,
+    oldStatus,
+    newStatus,
+    actorUserId,
+    actorMinecraftUuid: actor?.minecraftUuid ?? null,
+    actorName: actor?.minecraftName || actor?.username || null,
+  };
+
+  if (ticket.serverId) {
+    emitTicketUpdate(ticket.serverId, 'ticket:status_changed', payload);
+  } else {
+    emitToAllServers('ticket:status_changed', payload);
+  }
+}
+
 interface CreateTicketInput {
   title: string;
   body: string;
@@ -35,7 +74,7 @@ interface CreateTicketInput {
   formData?: Record<string, string>;
   priority?: Priority;
   serverId?: string;
-  authorId: string;
+  authorId: number;
   gameContext?: string;
 }
 
@@ -44,7 +83,7 @@ interface ListTicketsInput {
   pageSize?: number;
   status?: TicketStatus;
   type?: string;
-  authorId?: string;
+  authorId?: number;
   serverId?: string;
   labelId?: string;
   search?: string;
@@ -119,9 +158,9 @@ export async function getById(id: number) {
 
 export async function update(
   id: number,
-  userId: string,
+  userId: number,
   userRole: string,
-  data: { status?: TicketStatus; priority?: Priority; assigneeId?: string },
+  data: { status?: TicketStatus; priority?: Priority; assigneeId?: number },
 ) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
@@ -160,14 +199,7 @@ export async function update(
 
   if (data.status && data.status !== ticket.status) {
     await auditService.create(id, userId, 'status_change', ticket.status, data.status);
-    if (ticket.serverId && ticket.author?.minecraftUuid) {
-      emitTicketUpdate(ticket.serverId, 'ticket:status_changed', {
-        ticketId: ticket.id,
-        playerUuid: ticket.author.minecraftUuid,
-        oldStatus: ticket.status,
-        newStatus: data.status,
-      });
-    }
+    await emitStatusChanged(ticket, userId, ticket.status, data.status);
     // Emit completion hooks if template has hooks for this status
     if (ticket.serverId) {
       const updatedTicket = await prisma().ticket.findUnique({
@@ -180,7 +212,9 @@ export async function update(
     }
   }
   if (data.assigneeId && data.assigneeId !== ticket.assigneeId) {
-    await auditService.create(id, userId, 'assign', ticket.assigneeId || 'unassigned', data.assigneeId);
+    await auditService.create(id, userId, 'assign',
+      ticket.assigneeId != null ? String(ticket.assigneeId) : 'unassigned',
+      String(data.assigneeId));
   }
   if (data.priority && data.priority !== ticket.priority) {
     await auditService.create(id, userId, 'priority_change', ticket.priority, data.priority);
@@ -199,7 +233,7 @@ export async function update(
   });
 }
 
-export async function updateBody(id: number, userId: string, userRole: string, body: string) {
+export async function updateBody(id: number, userId: number, userRole: string, body: string) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
     include: { author: { select: { id: true } } },
@@ -227,7 +261,7 @@ export async function updateBody(id: number, userId: string, userRole: string, b
   return updated;
 }
 
-export async function updateTitle(id: number, userId: string, userRole: string, title: string) {
+export async function updateTitle(id: number, userId: number, userRole: string, title: string) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
     include: { author: { select: { id: true } } },
@@ -268,7 +302,7 @@ export async function updateTitle(id: number, userId: string, userRole: string, 
   return updated;
 }
 
-export async function closeTicket(id: number, userId: string, userRole: string) {
+export async function closeTicket(id: number, userId: number, userRole: string) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
     include: {
@@ -293,14 +327,7 @@ export async function closeTicket(id: number, userId: string, userRole: string) 
 
   await auditService.create(id, userId, 'status_change', ticket.status, 'closed');
 
-  if (ticket.serverId && ticket.author?.minecraftUuid) {
-    emitTicketUpdate(ticket.serverId, 'ticket:status_changed', {
-      ticketId: ticket.id,
-      playerUuid: ticket.author.minecraftUuid,
-      oldStatus: ticket.status,
-      newStatus: 'closed',
-    });
-  }
+  await emitStatusChanged(ticket, userId, ticket.status, 'closed');
 
   if (ticket.serverId) {
     const updatedTicket = await prisma().ticket.findUnique({
@@ -315,7 +342,7 @@ export async function closeTicket(id: number, userId: string, userRole: string) 
   return getById(id);
 }
 
-export async function reopenTicket(id: number, userId: string, userRole: string) {
+export async function reopenTicket(id: number, userId: number, userRole: string) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
     include: {
@@ -340,14 +367,7 @@ export async function reopenTicket(id: number, userId: string, userRole: string)
 
   await auditService.create(id, userId, 'status_change', ticket.status, 'open');
 
-  if (ticket.serverId && ticket.author?.minecraftUuid) {
-    emitTicketUpdate(ticket.serverId, 'ticket:status_changed', {
-      ticketId: ticket.id,
-      playerUuid: ticket.author.minecraftUuid,
-      oldStatus: ticket.status,
-      newStatus: 'open',
-    });
-  }
+  await emitStatusChanged(ticket, userId, ticket.status, 'open');
 
   return getById(id);
 }
