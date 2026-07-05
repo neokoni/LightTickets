@@ -20,11 +20,11 @@ const labels = useLabelsStore()
 const auth = useAuthStore()
 
 const statusTabs: { key: TicketStatus | 'all'; label: string; icon: string }[] = [
+  { key: 'all', label: '全部', icon: 'lucide:list' },
   { key: 'open', label: '开放', icon: 'lucide:circle-dot' },
   { key: 'in_progress', label: '处理中', icon: 'lucide:loader' },
   { key: 'closed', label: '已关闭', icon: 'lucide:check-circle-2' },
   { key: 'invalid', label: '无效', icon: 'lucide:ban' },
-  { key: 'all', label: '全部', icon: 'lucide:list' },
 ]
 
 const { totalPages } = usePagination(
