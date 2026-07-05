@@ -20,7 +20,6 @@ const createSchema = z.object({
   title: z.string().min(1).max(200),
   template: z.string().min(1),
   formData: z.record(z.string(), z.string()),
-  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
   serverId: z.string().optional(),
 });
 

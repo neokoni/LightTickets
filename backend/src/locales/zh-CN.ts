@@ -41,7 +41,4 @@ export const Errors = {
   Server_NameExists: '服务器名称已存在',
   Server_NotFound: '服务器不存在',
 
-  // 权限申请 (permission)
-  Permission_NotRequest: '该议题不是权限申请类型',
-  Permission_NoRequestData: '该权限申请缺少必要数据',
 } as const;

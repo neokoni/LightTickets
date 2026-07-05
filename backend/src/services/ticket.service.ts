@@ -1,4 +1,4 @@
-import { TicketStatus, Priority } from '@prisma/client';
+import { TicketStatus } from '@prisma/client';
 import { getPrisma } from '../db.js';
 import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 import * as auditService from './audit.service.js';
@@ -72,7 +72,6 @@ interface CreateTicketInput {
   body: string;
   template: string;
   formData?: Record<string, string>;
-  priority?: Priority;
   serverId?: string;
   authorId: number;
   gameContext?: string;
@@ -97,7 +96,6 @@ export async function create(input: CreateTicketInput) {
       template: input.template,
       formData: input.formData ? JSON.stringify(input.formData) : null,
       gameContext: input.gameContext ?? null,
-      priority: input.priority || 'medium',
       authorId: input.authorId,
       serverId: input.serverId,
     },
@@ -159,7 +157,7 @@ export async function update(
   id: number,
   userId: number,
   userRole: string,
-  data: { status?: TicketStatus; priority?: Priority; assigneeId?: number },
+  data: { status?: TicketStatus; assigneeId?: number },
 ) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
@@ -188,7 +186,6 @@ export async function update(
       updateData.closedAt = null;
     }
   }
-  if (data.priority && isStaff) updateData.priority = data.priority;
   if (data.assigneeId && isStaff) updateData.assigneeId = data.assigneeId;
 
   await prisma().ticket.update({
@@ -216,9 +213,6 @@ export async function update(
     await auditService.create(id, userId, 'assign',
       ticket.assigneeId != null ? String(ticket.assigneeId) : 'unassigned',
       String(data.assigneeId));
-  }
-  if (data.priority && data.priority !== ticket.priority) {
-    await auditService.create(id, userId, 'priority_change', ticket.priority, data.priority);
   }
 
   return prisma().ticket.update({

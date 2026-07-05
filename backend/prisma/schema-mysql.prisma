@@ -21,13 +21,6 @@ enum TicketStatus {
   invalid
 }
 
-enum Priority {
-  low
-  medium
-  high
-  critical
-}
-
 enum CommentSource {
   web
   minecraft
@@ -76,7 +69,6 @@ model Ticket {
   formData   String?      @map("form_data")
   gameContext String?     @map("game_context") @db.LongText
   status     TicketStatus @default(open)
-  priority   Priority     @default(medium)
   authorId   Int          @map("author_id")
   serverId   String?      @map("server_id")
   assigneeId Int?         @map("assignee_id")

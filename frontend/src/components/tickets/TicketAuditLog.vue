@@ -25,7 +25,6 @@ function actionLabel(action: string): string {
   const map: Record<string, string> = {
     status_change: '状态变更',
     assign: '分配',
-    priority_change: '优先级变更',
     label_add: '添加标签',
     label_remove: '移除标签',
   }

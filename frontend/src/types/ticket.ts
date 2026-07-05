@@ -1,6 +1,5 @@
 export type Role = 'player' | 'staff' | 'admin'
 export type TicketStatus = 'open' | 'in_progress' | 'closed' | 'invalid'
-export type Priority = 'low' | 'medium' | 'high' | 'critical'
 export type CommentSource = 'web' | 'minecraft'
 export interface GameContext {
   world?: string
@@ -39,7 +38,6 @@ export interface Ticket {
   body: string
   template: string
   status: TicketStatus
-  priority: Priority
   authorId: number
   serverId?: string
   gameContext?: string | null

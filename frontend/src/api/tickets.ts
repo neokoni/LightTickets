@@ -26,14 +26,14 @@ export function apiGetTicket(id: number) {
   return apiFetch<Ticket>(`/tickets/${id}`)
 }
 
-export function apiCreateTicket(data: { title: string; template: string; formData: Record<string, string>; priority?: string; serverId?: string }) {
+export function apiCreateTicket(data: { title: string; template: string; formData: Record<string, string>; serverId?: string }) {
   return apiFetch<Ticket>('/tickets', {
     method: 'POST',
     body: JSON.stringify(data),
   })
 }
 
-export function apiUpdateTicket(id: number, data: { status?: TicketStatus; priority?: string; assigneeId?: string }) {
+export function apiUpdateTicket(id: number, data: { status?: TicketStatus; assigneeId?: string }) {
   return apiFetch<Ticket>(`/tickets/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),

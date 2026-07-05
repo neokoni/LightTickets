@@ -87,7 +87,6 @@ public class TicketInfo {
         String status = parsed.has("status") ? parsed.get("status").getAsString() : "";
         String body = parsed.has("body") ? parsed.get("body").getAsString() : "";
         String template = parsed.has("template") ? parsed.get("template").getAsString() : "";
-        String priority = parsed.has("priority") ? parsed.get("priority").getAsString() : "";
         String createdAt = parsed.has("createdAt") ? parsed.get("createdAt").getAsString() : "";
         String updatedAt = parsed.has("updatedAt") ? parsed.get("updatedAt").getAsString() : "";
 
@@ -103,14 +102,11 @@ public class TicketInfo {
         TicketStatus ticketStatus = TicketStatus.fromKey(status);
         String statusColor = ticketStatus.color();
         String statusText = ticketStatus.label();
-        String priorityText = priorityLabel(priority);
 
         player.sendMessage(LangUtils.getLang("ticket.info_title",
                 Map.of("{id}", String.valueOf(id), "{title}", title)));
         player.sendMessage(LangUtils.getLang("ticket.info_status",
                 Map.of("{status_color}", statusColor, "{status}", statusText)));
-        player.sendMessage(LangUtils.getLang("ticket.info_priority",
-                Map.of("{priority}", priorityText)));
         player.sendMessage(LangUtils.getLang("ticket.info_template",
                 Map.of("{template}", template)));
         player.sendMessage(LangUtils.getLang("ticket.info_author",
@@ -360,15 +356,6 @@ public class TicketInfo {
         } catch (RuntimeException e) {
             return null;
         }
-    }
-
-    private String priorityLabel(String priority) {
-        String key = "ticket.priority_" + priority;
-        String label = LangUtils.getRawLang(key);
-        if (label.isEmpty()) {
-            return LangUtils.getRawLang("ticket.priority_medium");
-        }
-        return label;
     }
 
     private String formatDate(String iso) {

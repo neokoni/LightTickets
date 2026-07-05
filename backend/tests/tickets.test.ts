@@ -239,20 +239,6 @@ describe('PATCH /api/tickets/:id', () => {
     expect(res.body.status).toBe('open');
   });
 
-  it('allows staff to update priority', async () => {
-    const token = await createUserAndGetToken('author2@test.com');
-    const staffToken = await createStaffAndGetToken('staff2@test.com');
-    const created = await createTicket(token);
-
-    const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
-      .set('Authorization', `Bearer ${staffToken}`)
-      .send({ priority: 'high' });
-
-    expect(res.status).toBe(200);
-    expect(res.body.priority).toBe('high');
-  });
-
   it('rejects non-author non-staff update', async () => {
     const authorToken = await createUserAndGetToken('author3@test.com');
     const otherToken = await createUserAndGetToken('other3@test.com');

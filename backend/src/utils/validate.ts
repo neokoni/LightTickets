@@ -19,22 +19,6 @@ export const paginationSchema = z.object({
 });
 
 export const ticketStatusSchema = z.enum(['open', 'in_progress', 'closed', 'invalid']);
-export const ticketTypeSchema = z.enum(['bug_report', 'permission_request', 'suggestion', 'report']);
-export const prioritySchema = z.enum(['low', 'medium', 'high', 'critical']);
-
-export const createTicketSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(200, 'Title too long'),
-  body: z.string().min(1, 'Body is required'),
-  type: ticketTypeSchema,
-  priority: prioritySchema.optional(),
-  serverId: z.string().optional(),
-});
-
-export const updateTicketSchema = z.object({
-  status: ticketStatusSchema.optional(),
-  priority: prioritySchema.optional(),
-  assigneeId: z.number().int().optional(),
-});
 
 export const createLabelSchema = z.object({
   name: z.string().min(1, 'Name is required').max(50, 'Name too long'),

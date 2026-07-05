@@ -17,18 +17,11 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
 import TicketLabels from '@/components/tickets/TicketLabels.vue'
-import type { Comment, AuditLog, TicketStatus, Priority, GameContext } from '@/types/ticket'
+import type { Comment, AuditLog, TicketStatus, GameContext } from '@/types/ticket'
 import { apiGetTemplates } from '@/api/tickets'
 import { diffLines } from 'diff'
 
 const templateMap = ref<Record<string, string>>({})
-
-const priorityLabels: Record<Priority, string> = {
-  low: '低',
-  medium: '中',
-  high: '高',
-  critical: '紧急',
-}
 
 async function fetchTemplateNames() {
   try {
@@ -268,7 +261,6 @@ function eventLabel(item: AuditLog): string {
   }
   const map: Record<string, string> = {
     assign: '变更了负责人',
-    priority_change: '变更了优先级',
     label_add: '添加了标签',
     label_remove: '移除了标签',
     title_change: '更改了标题',
@@ -293,7 +285,6 @@ function eventIcon(item: AuditLog): string {
   }
   const map: Record<string, string> = {
     assign: 'lucide:user-plus',
-    priority_change: 'lucide:signal',
     label_add: 'lucide:tag',
     label_remove: 'lucide:tag',
     title_change: 'lucide:type',
@@ -789,10 +780,6 @@ function onBodyFilePaste(e: ClipboardEvent) {
           <div class="flex justify-between">
             <span class="text-slate-500 dark:text-slate-400">类型</span>
             <span class="text-slate-700 dark:text-slate-300">{{ templateName(ticket.template) }}</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500 dark:text-slate-400">优先级</span>
-            <span class="text-slate-700 dark:text-slate-300">{{ priorityLabels[ticket.priority] }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-slate-500 dark:text-slate-400">来源</span>
