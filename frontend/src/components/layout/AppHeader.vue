@@ -53,18 +53,18 @@ function handleLogout() {
       <div class="ml-auto flex items-center gap-2">
         <button
           @click="ui.toggleTheme()"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100 lg:h-11 lg:w-11"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100"
           :aria-label="ui.theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'"
         >
           <Transition name="theme-icon" mode="out-in">
-            <Icon :key="ui.theme" :icon="ui.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" class="h-5 w-5" />
+            <Icon :key="ui.theme" :icon="ui.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" class="h-4 w-4" />
           </Transition>
         </button>
 
         <template v-if="auth.isAuthenticated">
-          <div class="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 lg:h-11 lg:w-11" ref="profileMenuRef">
+          <div class="relative inline-flex items-center justify-center rounded-full border border-slate-200 dark:border-slate-800" ref="profileMenuRef">
             <button @click="profileMenuOpen = !profileMenuOpen" class="hover:opacity-80">
-              <div class="w-10 h-10 lg:w-11 lg:h-11 shrink-0">
+              <div class="w-9 h-9 shrink-0">
                 <UserAvatar :username="auth.user?.username || '?'" :avatar-url="auth.user?.avatarUrl" />
               </div>
             </button>
@@ -81,7 +81,7 @@ function handleLogout() {
 
         <button
           @click="ui.mobileMenuOpen = !ui.mobileMenuOpen"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100 lg:hidden"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100 lg:hidden"
           aria-label="菜单"
         >
           <Icon :icon="ui.mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="h-5 w-5" />
