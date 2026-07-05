@@ -37,7 +37,8 @@ const searchInput = ref<HTMLInputElement | null>(null)
 const cursorPos = ref(0)
 const suggestions = ref<SuggestionResult | null>(null)
 const selectedSuggestionIdx = ref(0)
-const skipSearchWatch = ref(false)
+
+const tabStatus = ref<TicketStatus | undefined>()
 
 const tokens = computed(() => tokenize(searchRaw.value))
 const filterTokens = computed(() => tokens.value.filter(t => t.type === 'filter' && !t.error))
@@ -61,8 +62,9 @@ const { totalPages } = usePagination(
 function syncFromQuery() {
   const q = route.query
   if (q.statuses) {
-    const arr = Array.isArray(q.statuses) ? q.statuses : [q.statuses]
-    store.filters.statuses = arr as TicketStatus[]
+    const raw = (Array.isArray(q.statuses) ? q.statuses[0] : q.statuses) as string
+    const arr = (raw || '').split(',').filter(Boolean) as TicketStatus[]
+    if (arr.length === 1) tabStatus.value = arr[0]
   }
   if (q.type) store.filters.type = q.type as string
   if (q.labelId) store.filters.labelId = q.labelId as string
@@ -72,17 +74,13 @@ function syncFromQuery() {
   if (q.page) store.filters.page = Number(q.page)
   if (q.search) {
     searchRaw.value = q.search as string
-  } else if (q.statuses || q.type || q.labelId || q.serverId || q.hasServer !== undefined || q.authorName) {
+  } else if (q.type || q.labelId || q.serverId || q.hasServer !== undefined || q.authorName) {
     searchRaw.value = buildSearchFromQuery(q)
   }
 }
 
 function buildSearchFromQuery(q: Record<string, any>): string {
   const parts: string[] = []
-  if (q.statuses) {
-    const arr = Array.isArray(q.statuses) ? q.statuses : [q.statuses]
-    arr.forEach((s: string) => parts.push(`status:${s}`))
-  }
   if (q.type) parts.push(`type:${q.type}`)
   if (q.labelId) {
     const label = labelsStore.labels.find(l => l.id === q.labelId)
@@ -113,7 +111,12 @@ function syncToQuery() {
   router.replace({ query })
 }
 
-function applySearch() {
+function setStatus(status: TicketStatus | 'all') {
+  tabStatus.value = status === 'all' ? undefined : status
+  applyFilters()
+}
+
+function applyFilters() {
   const parsed = parseQuery(
     searchRaw.value,
     labelsStore.labels,
@@ -121,38 +124,19 @@ function applySearch() {
     servers.value,
   )
 
-  store.filters.statuses = parsed.statuses
+  const searchStatuses = parsed.statuses
+  if (tabStatus.value && searchStatuses) {
+    store.filters.statuses = searchStatuses.filter(s => s === tabStatus.value)
+  } else {
+    store.filters.statuses = tabStatus.value ? [tabStatus.value] : searchStatuses
+  }
+
   store.filters.type = parsed.type
   store.filters.labelId = parsed.labelId
   store.filters.serverId = parsed.serverId
   store.filters.hasServer = parsed.hasServer
   store.filters.authorName = parsed.authorName
   store.filters.search = parsed.search
-  store.filters.page = 1
-  syncToQuery()
-  store.fetchList()
-}
-
-function setStatus(status: TicketStatus | 'all') {
-  if (status === 'all') {
-    store.filters.statuses = undefined
-    skipSearchWatch.value = true
-    searchRaw.value = removeFilterToken(searchRaw.value, 'status')
-  } else {
-    const current = store.filters.statuses || []
-    if (current.includes(status)) {
-      const next = current.filter(s => s !== status)
-      store.filters.statuses = next.length > 0 ? next : undefined
-    } else {
-      store.filters.statuses = [...current, status]
-    }
-    skipSearchWatch.value = true
-    searchRaw.value = removeFilterToken(searchRaw.value, 'status')
-    if (store.filters.statuses) {
-      if (searchRaw.value) searchRaw.value += ' '
-      searchRaw.value += store.filters.statuses.map(s => `status:${s}`).join(' ')
-    }
-  }
   store.filters.page = 1
   syncToQuery()
   store.fetchList()
@@ -250,7 +234,7 @@ function clickSuggestion(item: { value: string; label: string }) {
 function removeFilter(token: SearchToken) {
   if (!token.key) return
   searchRaw.value = removeFilterToken(searchRaw.value, token.key, token.value)
-  applySearch()
+  applyFilters()
 }
 
 function getFilterLabel(token: SearchToken): string {
@@ -276,7 +260,7 @@ onMounted(async () => {
     servers.value = await apiGetServers()
   } catch { /* ignore */ }
   if (searchRaw.value) {
-    applySearch()
+    applyFilters()
   } else {
     await store.fetchList()
   }
@@ -285,12 +269,7 @@ onMounted(async () => {
 usePolling(() => store.fetchList(), 30000)
 
 watch(searchRaw, () => {
-  if (skipSearchWatch.value) {
-    skipSearchWatch.value = false
-    return
-  }
-  store.filters.page = 1
-  applySearch()
+  applyFilters()
 })
 
 watch(() => labelsStore.labels, () => {
@@ -313,11 +292,9 @@ watch(() => labelsStore.labels, () => {
         :key="tab.key"
         @click="setStatus(tab.key)"
         class="nav-link -mb-px px-3 py-2 text-sm font-medium transition whitespace-nowrap shrink-0"
-        :class="(!store.filters.statuses || store.filters.statuses.length === 0) && tab.key === 'all'
+        :class="(!tabStatus && tab.key === 'all') || tabStatus === tab.key
           ? 'nav-link-active'
-          : store.filters.statuses && tab.key !== 'all' && store.filters.statuses.includes(tab.key)
-            ? 'nav-link-active'
-            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
       >
         <span class="nav-link-text inline-flex items-center gap-1.5">
           <Icon :icon="tab.icon" class="w-4 h-4" />
