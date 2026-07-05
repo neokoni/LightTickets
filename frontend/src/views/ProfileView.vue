@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -179,16 +180,7 @@ async function changePassword() {
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">账号信息</h2>
 
         <div class="flex items-start gap-4">
-          <img
-            v-if="auth.user?.avatarUrl"
-            :src="auth.user.avatarUrl"
-            class="w-16 h-16 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
-            alt="avatar"
-            @error="auth.user.avatarUrl = null"
-          />
-          <div v-else class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xl font-medium text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
-            {{ auth.user?.username?.charAt(0).toUpperCase() }}
-          </div>
+          <UserAvatar size="lg" :username="auth.user?.username || '?'" :avatar-url="auth.user?.avatarUrl" />
           <div class="space-y-0.5 flex-1 min-w-0">
             <template v-if="!editingUsername">
               <div class="flex items-center gap-2">

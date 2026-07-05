@@ -16,6 +16,7 @@ import BaseBadge from '@/components/base/BaseBadge.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseModal from '@/components/base/BaseModal.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
 import TicketLabels from '@/components/tickets/TicketLabels.vue'
 import type { Comment, AuditLog, TicketStatus, GameContext } from '@/types/ticket'
@@ -637,16 +638,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
           <div v-for="item in timeline" :key="item.id + ('body' in item ? '-comment' : '-audit')">
             <!-- Comment -->
             <div v-if="isComment(item)" :id="`comment-${item.id}`" class="group flex gap-3 mb-4 scroll-mt-24">
-              <img
-                v-if="item.author.avatarUrl"
-                :src="item.author.avatarUrl"
-                class="w-8 h-8 rounded-full object-cover shrink-0"
-                alt="avatar"
-                @error="item.author.avatarUrl = null"
-              />
-              <div v-else class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-600 dark:text-slate-300 shrink-0">
-                {{ item.author.username.charAt(0).toUpperCase() }}
-              </div>
+              <UserAvatar size="xs" :username="item.author.username" :avatar-url="item.author.avatarUrl" />
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2 text-sm">
@@ -884,15 +876,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
               :key="a.userId"
               class="flex items-center gap-2"
             >
-              <img
-                v-if="a.user.avatarUrl"
-                :src="a.user.avatarUrl"
-                class="w-6 h-6 rounded-full object-cover"
-              />
-              <div
-                v-else
-                class="w-6 h-6 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400"
-              >{{ a.user.username[0].toUpperCase() }}</div>
+              <UserAvatar size="sm" :username="a.user.username" :avatar-url="a.user.avatarUrl" />
               <span class="text-sm text-slate-700 dark:text-slate-300">{{ a.user.username }}</span>
             </div>
           </div>
@@ -933,15 +917,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
                   @change="toggleAssignee(u.id)"
                   class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-slate-900/20"
                 />
-                <img
-                  v-if="u.avatarUrl"
-                  :src="u.avatarUrl"
-                  class="w-7 h-7 rounded-full object-cover"
-                />
-                <div
-                  v-else
-                  class="w-7 h-7 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0"
-                >{{ u.username[0].toUpperCase() }}</div>
+                  <UserAvatar size="md" :username="u.username" :avatar-url="u.avatarUrl" />
                 <div class="flex-1 min-w-0">
                   <div class="text-sm text-slate-900 dark:text-white truncate">{{ u.username }}</div>
                   <div class="text-[11px] text-slate-400 dark:text-slate-500">{{ u.role === 'admin' ? '管理员' : u.role === 'staff' ? '工作人员' : '玩家' }}</div>

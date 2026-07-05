@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { usePagination } from '@/composables/usePagination'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BasePagination from '@/components/base/BasePagination.vue'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 import type { User } from '@/types/user'
 import type { Role } from '@/types/ticket'
 
@@ -111,16 +112,7 @@ onMounted(fetchUsers)
         <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
           <td class="px-4 py-3">
             <div class="flex items-center gap-2">
-              <img
-                v-if="user.avatarUrl"
-                :src="user.avatarUrl"
-                class="w-7 h-7 rounded-full object-cover"
-                alt="avatar"
-                @error="user.avatarUrl = null"
-              />
-              <div v-else class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-700 dark:text-slate-300">
-                {{ user.username.charAt(0).toUpperCase() }}
-              </div>
+              <UserAvatar size="md" :username="user.username" :avatar-url="user.avatarUrl" />
               <span class="font-medium text-slate-900 dark:text-white">{{ user.username }}</span>
             </div>
           </td>

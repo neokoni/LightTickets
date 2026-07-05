@@ -5,6 +5,7 @@ import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { siteConfig } from '@/router'
+import UserAvatar from '@/components/base/UserAvatar.vue'
 
 const auth = useAuthStore()
 const ui = useUiStore()
@@ -63,16 +64,7 @@ function handleLogout() {
         <template v-if="auth.isAuthenticated">
           <div class="relative" ref="profileMenuRef">
             <button @click="profileMenuOpen = !profileMenuOpen" class="flex items-center gap-2 p-1.5 rounded-full border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition">
-              <img
-                v-if="auth.user?.avatarUrl"
-                :src="auth.user.avatarUrl"
-                class="w-7 h-7 rounded-full object-cover"
-                alt="avatar"
-                @error="auth.user.avatarUrl = null"
-              />
-              <div v-else class="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-xs font-medium text-slate-700 dark:text-slate-300">
-                {{ auth.user?.username?.charAt(0).toUpperCase() }}
-              </div>
+              <UserAvatar size="md" :username="auth.user?.username || '?'" :avatar-url="auth.user?.avatarUrl" />
             </button>
             <div v-if="profileMenuOpen" class="absolute right-0 top-full mt-1 w-48 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
               <RouterLink to="/profile" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100" @click="profileMenuOpen = false">个人资料</RouterLink>
