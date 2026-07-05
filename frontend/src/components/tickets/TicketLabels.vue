@@ -64,11 +64,13 @@ async function removeLabel(labelId: string) {
 </script>
 
 <template>
-  <div class="space-y-2">
-    <div class="flex items-center justify-between">
-      <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">标签</span>
-    </div>
-    <div class="flex flex-wrap gap-1.5">
+  <div
+    v-if="ticket.labels.length > 0 || auth.isStaff"
+    class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3"
+  >
+    <h3 class="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400">标签</h3>
+
+    <div v-if="ticket.labels.length" class="flex flex-wrap gap-1.5">
       <span
         v-for="tl in ticket.labels"
         :key="tl.labelId"
@@ -81,8 +83,9 @@ async function removeLabel(labelId: string) {
         {{ tl.label.name }}
       </span>
     </div>
-    <!-- Label selector for staff -->
-    <div v-if="auth.isStaff" class="pt-1 relative" ref="dropdownEl">
+    <div v-else-if="auth.isStaff" class="text-sm text-slate-400 dark:text-slate-500">暂无标签</div>
+
+    <div v-if="auth.isStaff" class="relative" ref="dropdownEl">
       <button
         type="button"
         @click="dropdownOpen = !dropdownOpen"

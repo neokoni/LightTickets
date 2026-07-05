@@ -1012,7 +1012,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
         </div>
 
         <!-- Labels -->
-        <TicketLabels v-if="ticket" :ticket="ticket" />
+        <TicketLabels :ticket="ticket" />
 
       </aside>
     </div>
