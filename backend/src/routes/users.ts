@@ -14,6 +14,11 @@ router.get('/', authMiddleware, requireRole('admin'), async (req: Request, res: 
   res.json(result);
 });
 
+router.get('/assignable', authMiddleware, requireRole('staff'), async (_req: Request, res: Response) => {
+  const users = await userService.listAssignableUsers();
+  res.json(users);
+});
+
 const avatarSchema = z.object({
   avatarUrl: z.string().url().nullable().or(z.literal('')),
 });

@@ -29,6 +29,21 @@ export async function listUsers(page = 1, pageSize = 20) {
   return { users, total, page, pageSize };
 }
 
+export async function listAssignableUsers() {
+  return prisma().user.findMany({
+    where: {
+      role: { in: ['player', 'staff', 'admin'] },
+    },
+    select: {
+      id: true,
+      username: true,
+      avatarUrl: true,
+      role: true,
+    },
+    orderBy: { username: 'asc' },
+  });
+}
+
 export async function changeRole(userId: number, role: Role) {
   const user = await prisma().user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('用户不存在');

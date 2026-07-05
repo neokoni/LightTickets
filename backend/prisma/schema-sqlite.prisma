@@ -40,6 +40,7 @@ model User {
 
   tickets         Ticket[]  @relation("author")
   assignedTickets Ticket[]  @relation("assignee")
+  ticketAssignees TicketAssignee[]
   comments        Comment[]
   attachments     Attachment[]
   auditLogs       AuditLog[]
@@ -79,6 +80,7 @@ model Ticket {
   author     User         @relation("author", fields: [authorId], references: [id])
   server     Server?      @relation(fields: [serverId], references: [id])
   assignee   User?        @relation("assignee", fields: [assigneeId], references: [id])
+  assignees  TicketAssignee[]
   labels     TicketLabel[]
   comments   Comment[]
   attachments Attachment[]
@@ -109,6 +111,16 @@ model TicketLabel {
 
   @@id([ticketId, labelId])
   @@map("ticket_labels")
+}
+
+model TicketAssignee {
+  ticketId Int    @map("ticket_id")
+  userId   Int    @map("user_id")
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([ticketId, userId])
+  @@map("ticket_assignees")
 }
 
 model Comment {

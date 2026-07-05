@@ -114,6 +114,23 @@ router.post('/:id/reopen', authMiddleware, async (req: Request, res: Response) =
   res.json(ticket);
 });
 
+// Assignees
+const assigneesSchema = z.object({
+  assigneeIds: z.array(z.number().int()),
+});
+
+router.put('/:id/assignees', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
+  const parsed = assigneesSchema.safeParse(req.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+
+  const ticket = await ticketService.setAssignees(
+    parseId(String(req.params.id)),
+    req.user!.userId,
+    parsed.data.assigneeIds,
+  );
+  res.json(ticket);
+});
+
 // Labels
 router.post('/:id/labels', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
   const { labelId } = req.body;

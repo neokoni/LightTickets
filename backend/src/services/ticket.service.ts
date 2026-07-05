@@ -133,6 +133,7 @@ export async function list(input: ListTicketsInput) {
       orderBy: { createdAt: 'desc' },
       include: {
         author: { select: { id: true, username: true, minecraftName: true } },
+        assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } },
         labels: { include: { label: true } },
         _count: { select: { comments: true } },
       },
@@ -149,6 +150,7 @@ export async function getById(id: number) {
     include: {
       author: { select: { id: true, username: true, minecraftName: true } },
       assignee: { select: { id: true, username: true } },
+      assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } },
       labels: { include: { label: true } },
       server: { select: { id: true, name: true } },
     },
@@ -365,6 +367,35 @@ export async function reopenTicket(id: number, userId: number, userRole: string)
   await auditService.create(id, userId, 'status_change', ticket.status, 'open');
 
   await emitStatusChanged(ticket, userId, ticket.status, 'open');
+
+  return getById(id);
+}
+
+export async function setAssignees(id: number, userId: number, assigneeIds: number[]) {
+  const ticket = await prisma().ticket.findUnique({
+    where: { id },
+    include: { assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } } },
+  });
+  if (!ticket) throw new NotFoundError('议题不存在');
+
+  const oldIds = ticket.assignees.map(a => a.user.id);
+  const toAdd = assigneeIds.filter(aid => !oldIds.includes(aid));
+  const toRemove = oldIds.filter(oid => !assigneeIds.includes(oid));
+
+  await prisma().$transaction([
+    ...toRemove.map(uid =>
+      prisma().ticketAssignee.delete({ where: { ticketId_userId: { ticketId: id, userId: uid } } })
+    ),
+    ...toAdd.map(uid =>
+      prisma().ticketAssignee.create({ data: { ticketId: id, userId: uid } })
+    ),
+  ]);
+
+  if (toAdd.length > 0 || toRemove.length > 0) {
+    await auditService.create(id, userId, 'assignees_change',
+      JSON.stringify(oldIds),
+      JSON.stringify(assigneeIds));
+  }
 
   return getById(id);
 }

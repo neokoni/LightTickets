@@ -53,6 +53,7 @@ export interface Ticket {
   serverId?: string
   gameContext?: string | null
   assigneeId?: number
+  assignees?: TicketAssignee[]
   createdAt: string
   updatedAt: string
   closedAt?: string
@@ -61,6 +62,12 @@ export interface Ticket {
   labels: TicketLabel[]
   server?: { id: string; name: string }
   _count?: { comments: number }
+}
+
+export interface TicketAssignee {
+  ticketId: number
+  userId: number
+  user: { id: number; username: string; avatarUrl?: string | null }
 }
 
 export interface AuditLog {

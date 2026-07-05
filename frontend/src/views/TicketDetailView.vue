@@ -19,7 +19,8 @@ import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
 import TicketLabels from '@/components/tickets/TicketLabels.vue'
 import type { Comment, AuditLog, TicketStatus, GameContext } from '@/types/ticket'
 import { STATUS_META } from '@/types/ticket'
-import { apiGetTemplates } from '@/api/tickets'
+import { apiGetTemplates, apiSetAssignees } from '@/api/tickets'
+import { apiGetAssignableUsers, type AssignableUser } from '@/api/users'
 import { diffLines } from 'diff'
 
 const templateMap = ref<Record<string, string>>({})
@@ -49,6 +50,57 @@ const newComment = ref('')
 const submitting = ref(false)
 const commentTextareaRef = ref<InstanceType<typeof BaseTextarea> | null>(null)
 const mdUpload = useMarkdownUpload()
+
+const assignableUsers = ref<AssignableUser[]>([])
+const showAssignPicker = ref(false)
+const assignSearch = ref('')
+const selectedAssigneeIds = ref<number[]>([])
+const assigning = ref(false)
+
+const filteredAssignableUsers = computed(() => {
+  if (!assignSearch.value) return assignableUsers.value
+  const q = assignSearch.value.toLowerCase()
+  return assignableUsers.value.filter(u => u.username.toLowerCase().includes(q))
+})
+
+async function fetchAssignableUsers() {
+  if (!auth.isStaff) return
+  try {
+    assignableUsers.value = await apiGetAssignableUsers()
+  } catch { /* ignore */ }
+}
+
+function openAssignPicker() {
+  if (ticket.value?.assignees) {
+    selectedAssigneeIds.value = ticket.value.assignees.map(a => a.userId)
+  } else {
+    selectedAssigneeIds.value = []
+  }
+  assignSearch.value = ''
+  showAssignPicker.value = true
+  if (!assignableUsers.value.length) fetchAssignableUsers()
+}
+
+function toggleAssignee(userId: number) {
+  const idx = selectedAssigneeIds.value.indexOf(userId)
+  if (idx >= 0) {
+    selectedAssigneeIds.value.splice(idx, 1)
+  } else {
+    selectedAssigneeIds.value.push(userId)
+  }
+}
+
+async function saveAssignees() {
+  if (!ticket.value) return
+  assigning.value = true
+  try {
+    const updated = await apiSetAssignees(ticket.value.id, selectedAssigneeIds.value)
+    store.currentTicket = updated
+    showAssignPicker.value = false
+  } finally {
+    assigning.value = false
+  }
+}
 
 const editingTitle = ref(false)
 const editTitleValue = ref('')
@@ -244,6 +296,19 @@ const timeline = computed<(Comment | AuditLog)[]>(() => {
   return items
 })
 
+function parseUserIds(json: string | undefined): string[] {
+  if (!json) return []
+  try {
+    const ids: number[] = JSON.parse(json)
+    return ids.map(id => {
+      const current = ticket.value?.assignees?.find(a => a.userId === id)
+      if (current) return current.user.username
+      const loaded = assignableUsers.value.find(a => a.id === id)
+      return loaded ? loaded.username : `#${id}`
+    })
+  } catch { return [] }
+}
+
 function eventLabel(item: AuditLog): string {
   if (item.action === 'status_change') {
     const hasComment = comments.value.some(c =>
@@ -260,8 +325,22 @@ function eventLabel(item: AuditLog): string {
     if (item.newValue === 'in_progress') return '开始处理此议题'
     if (item.newValue === 'invalid') return '标记为不做计划'
   }
+  if (item.action === 'assignees_change') {
+    const oldNames = parseUserIds(item.oldValue)
+    const newNames = parseUserIds(item.newValue)
+    if (newNames.length === 0) return '取消了所有受理人'
+    if (newNames.length === 1 && oldNames.length === 0 && newNames[0] === item.actor.username) return '分配给了自己'
+    const added = newNames.filter(n => !oldNames.includes(n))
+    const removed = oldNames.filter(n => !newNames.includes(n))
+    const parts: string[] = []
+    if (added.length) parts.push(`添加了 ${added.join('、')}`)
+    if (removed.length) parts.push(`移除了 ${removed.join('、')}`)
+    if (parts.length) return `分配给了 ${newNames.join('、')}（${parts.join('，')}）`
+    return `分配给了 ${newNames.join('、')}`
+  }
   const map: Record<string, string> = {
-    assign: '变更了负责人',
+    assign: '变更了受理人',
+    assignees_change: '变更了受理人',
     label_add: '添加了标签',
     label_remove: '移除了标签',
     title_change: '更改了标题',
@@ -286,6 +365,7 @@ function eventIcon(item: AuditLog): string {
   }
   const map: Record<string, string> = {
     assign: 'lucide:user-plus',
+    assignees_change: 'lucide:user-plus',
     label_add: 'lucide:tag',
     label_remove: 'lucide:tag',
     title_change: 'lucide:type',
@@ -415,6 +495,7 @@ async function reopenTicket() {
 
 onMounted(async () => {
   fetchTemplateNames()
+  fetchAssignableUsers()
   if (!labels.loaded) labels.fetch().catch(() => {})
   await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()])
   if (route.hash && route.hash.startsWith('#comment-')) {
@@ -679,7 +760,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
                 </div>
               </div>
               <!-- Other actions: old → new inline -->
-              <div v-else-if="item.action !== 'status_change' && item.action !== 'label_add' && item.action !== 'label_remove' && (item.oldValue || item.newValue)" class="ml-5.5 mt-1 flex items-center gap-1">
+              <div v-else-if="item.action !== 'status_change' && item.action !== 'label_add' && item.action !== 'label_remove' && item.action !== 'assignees_change' && (item.oldValue || item.newValue)" class="ml-5.5 mt-1 flex items-center gap-1">
                 <span v-if="item.oldValue" class="line-through opacity-60">{{ item.oldValue }}</span>
                 <Icon v-if="item.oldValue && item.newValue" icon="lucide:arrow-right" class="w-3 h-3" />
                 <span v-if="item.newValue">{{ item.newValue }}</span>
@@ -786,15 +867,132 @@ function onBodyFilePaste(e: ClipboardEvent) {
             <span class="text-slate-500 dark:text-slate-400">来源</span>
             <span class="text-slate-700 dark:text-slate-300">{{ ticketSourceLabel }}</span>
           </div>
-          <div v-if="ticket.assignee" class="flex justify-between">
-            <span class="text-slate-500 dark:text-slate-400">负责人</span>
-            <span class="text-slate-700 dark:text-slate-300">{{ ticket.assignee.username }}</span>
-          </div>
           <div v-if="ticket.server" class="flex justify-between">
             <span class="text-slate-500 dark:text-slate-400">服务器</span>
             <span class="text-slate-700 dark:text-slate-300">{{ ticket.server.name }}</span>
           </div>
         </div>
+
+        <!-- Assignees -->
+        <div class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3">
+          <h3 class="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400">受理人</h3>
+
+          <div v-if="ticket.assignees?.length" class="flex flex-wrap gap-2">
+            <div
+              v-for="a in ticket.assignees"
+              :key="a.userId"
+              class="flex items-center gap-2"
+            >
+              <img
+                v-if="a.user.avatarUrl"
+                :src="a.user.avatarUrl"
+                class="w-6 h-6 rounded-full object-cover"
+              />
+              <div
+                v-else
+                class="w-6 h-6 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400"
+              >{{ a.user.username[0].toUpperCase() }}</div>
+              <span class="text-sm text-slate-700 dark:text-slate-300">{{ a.user.username }}</span>
+            </div>
+          </div>
+          <div v-else class="text-sm text-slate-400 dark:text-slate-500">未分配</div>
+
+          <button
+            v-if="auth.isStaff"
+            @click="openAssignPicker"
+            class="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition"
+          >
+            <Icon icon="lucide:user-plus" class="w-3.5 h-3.5" />
+            {{ ticket.assignees?.length ? '管理受理人' : '分配受理人' }}
+          </button>
+        </div>
+
+        <!-- Assign picker modal -->
+        <Teleport to="body">
+          <Transition
+            enter-active-class="transition duration-150 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition duration-100 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+          >
+            <div
+              v-if="showAssignPicker"
+              class="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
+              @click.self="showAssignPicker = false"
+            >
+              <div
+                class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+              >
+                <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <h3 class="text-sm font-semibold text-slate-900 dark:text-white">分配受理人</h3>
+                  <button @click="showAssignPicker = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">
+                    <Icon icon="lucide:x" class="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div class="p-4">
+                  <div class="relative mb-3">
+                    <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <input
+                      v-model="assignSearch"
+                      type="text"
+                      placeholder="搜索用户..."
+                      class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
+                    />
+                  </div>
+
+                  <div class="max-h-64 overflow-y-auto space-y-0.5">
+                    <label
+                      v-for="u in filteredAssignableUsers"
+                      :key="u.id"
+                      class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="selectedAssigneeIds.includes(u.id)"
+                        @change="toggleAssignee(u.id)"
+                        class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                      />
+                      <img
+                        v-if="u.avatarUrl"
+                        :src="u.avatarUrl"
+                        class="w-7 h-7 rounded-full object-cover"
+                      />
+                      <div
+                        v-else
+                        class="w-7 h-7 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0"
+                      >{{ u.username[0].toUpperCase() }}</div>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-sm text-slate-900 dark:text-white truncate">{{ u.username }}</div>
+                        <div class="text-[11px] text-slate-400 dark:text-slate-500">{{ u.role === 'admin' ? '管理员' : u.role === 'staff' ? '工作人员' : '玩家' }}</div>
+                      </div>
+                    </label>
+                    <div v-if="!filteredAssignableUsers.length" class="py-4 text-center text-sm text-slate-400">
+                      无匹配用户
+                    </div>
+                  </div>
+                </div>
+
+                <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <span class="text-xs text-slate-400 dark:text-slate-500">已选 {{ selectedAssigneeIds.length }} 人</span>
+                  <div class="flex gap-2">
+                    <button
+                      @click="showAssignPicker = false"
+                      class="px-4 py-1.5 text-sm rounded-md border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
+                    >取消</button>
+                    <button
+                      @click="saveAssignees"
+                      :disabled="assigning"
+                      class="px-4 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
+                    >{{ assigning ? '保存中...' : '确认' }}</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Transition>
+        </Teleport>
 
         <!-- 附加信息 (Game Context) -->
         <div v-if="gameContext" class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3 text-sm">

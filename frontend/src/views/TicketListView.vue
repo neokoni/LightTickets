@@ -446,6 +446,23 @@ watch(() => labelsStore.labels, () => {
             </span>
           </div>
         </div>
+
+        <!-- Assignees stack -->
+        <div v-if="ticket.assignees?.length" class="flex items-center shrink-0 ml-6 -space-x-2">
+          <template v-for="a in ticket.assignees" :key="a.userId">
+            <img
+              v-if="a.user.avatarUrl"
+              :src="a.user.avatarUrl"
+              :title="a.user.username"
+              class="w-6 h-6 rounded-full object-cover ring-2 ring-white dark:ring-slate-900"
+            />
+            <div
+              v-else
+              :title="a.user.username"
+              class="w-6 h-6 rounded-full bg-slate-300 dark:bg-slate-600 ring-2 ring-white dark:ring-slate-900 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400"
+            >{{ a.user.username[0].toUpperCase() }}</div>
+          </template>
+        </div>
       </RouterLink>
     </div>
 

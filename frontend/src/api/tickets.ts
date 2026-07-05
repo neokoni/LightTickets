@@ -47,6 +47,13 @@ export function apiUpdateTicket(id: number, data: { status?: TicketStatus; assig
   })
 }
 
+export function apiSetAssignees(id: number, assigneeIds: number[]) {
+  return apiFetch<Ticket>(`/tickets/${id}/assignees`, {
+    method: 'PUT',
+    body: JSON.stringify({ assigneeIds }),
+  })
+}
+
 export function apiCloseTicket(id: number) {
   return apiFetch<Ticket>(`/tickets/${id}/close`, { method: 'POST' })
 }
