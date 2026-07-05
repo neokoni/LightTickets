@@ -112,7 +112,9 @@ onMounted(fetchUsers)
         <tr v-for="user in users" :key="user.id" class="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
           <td class="px-4 py-3">
             <div class="flex items-center gap-2">
-              <UserAvatar size="md" :username="user.username" :avatar-url="user.avatarUrl" />
+              <div class="w-7 h-7 shrink-0">
+                <UserAvatar :username="user.username" :avatar-url="user.avatarUrl" />
+              </div>
               <span class="font-medium text-slate-900 dark:text-white">{{ user.username }}</span>
             </div>
           </td>

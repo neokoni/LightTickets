@@ -427,14 +427,13 @@ watch(() => labelsStore.labels, () => {
 
         <!-- Assignees stack -->
         <div v-if="ticket.assignees?.length" class="flex items-center shrink-0 ml-6 -space-x-2">
-          <UserAvatar
+          <div
             v-for="a in ticket.assignees"
             :key="a.userId"
-            size="sm"
-            ring
-            :username="a.user.username"
-            :avatar-url="a.user.avatarUrl"
-          />
+            class="w-6 h-6 shrink-0 -ml-2 first:ml-0"
+          >
+            <UserAvatar :username="a.user.username" :avatar-url="a.user.avatarUrl" />
+          </div>
         </div>
       </RouterLink>
     </div>

@@ -180,7 +180,9 @@ async function changePassword() {
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">账号信息</h2>
 
         <div class="flex items-start gap-4">
-          <UserAvatar size="lg" :username="auth.user?.username || '?'" :avatar-url="auth.user?.avatarUrl" />
+          <div class="w-16 h-16 shrink-0">
+            <UserAvatar :username="auth.user?.username || '?'" :avatar-url="auth.user?.avatarUrl" />
+          </div>
           <div class="space-y-0.5 flex-1 min-w-0">
             <template v-if="!editingUsername">
               <div class="flex items-center gap-2">

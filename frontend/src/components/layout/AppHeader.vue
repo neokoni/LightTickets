@@ -62,9 +62,11 @@ function handleLogout() {
         </button>
 
         <template v-if="auth.isAuthenticated">
-          <div class="relative" ref="profileMenuRef">
-            <button @click="profileMenuOpen = !profileMenuOpen" class="flex items-center gap-2 p-1.5 rounded-full border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition">
-              <UserAvatar size="md" :username="auth.user?.username || '?'" :avatar-url="auth.user?.avatarUrl" />
+          <div class="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 lg:h-11 lg:w-11" ref="profileMenuRef">
+            <button @click="profileMenuOpen = !profileMenuOpen" class="hover:opacity-80">
+              <div class="w-10 h-10 lg:w-11 lg:h-11 shrink-0">
+                <UserAvatar :username="auth.user?.username || '?'" :avatar-url="auth.user?.avatarUrl" />
+              </div>
             </button>
             <div v-if="profileMenuOpen" class="absolute right-0 top-full mt-1 w-48 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg">
               <RouterLink to="/profile" class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100" @click="profileMenuOpen = false">个人资料</RouterLink>
