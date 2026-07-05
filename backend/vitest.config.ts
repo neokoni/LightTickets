@@ -8,7 +8,7 @@ export default defineConfig({
     fileParallelism: false,
     sequence: { concurrent: false },
     env: {
-      DATABASE_URL: 'file:./data/data.db',
+      DATABASE_URL: 'file:./dev.db',
     },
   },
 });
