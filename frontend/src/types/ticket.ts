@@ -1,6 +1,17 @@
 export type Role = 'player' | 'staff' | 'admin'
 export type TicketStatus = 'open' | 'in_progress' | 'closed' | 'invalid'
 export type CommentSource = 'web' | 'minecraft'
+
+export const STATUS_META: Record<TicketStatus, { label: string; icon: string }> = {
+  open: { label: '开放', icon: 'lucide:circle-dot' },
+  in_progress: { label: '处理中', icon: 'lucide:loader' },
+  closed: { label: '已关闭', icon: 'lucide:check-circle-2' },
+  invalid: { label: '无效', icon: 'lucide:ban' },
+}
+
+export const STATUS_ALIASES: Record<string, TicketStatus> = Object.fromEntries(
+  Object.entries(STATUS_META).flatMap(([key, { label }]) => [[key, key], [label, key]])
+) as Record<string, TicketStatus>
 export interface GameContext {
   world?: string
   x?: number

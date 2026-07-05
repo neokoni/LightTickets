@@ -5,10 +5,12 @@ import type { PaginatedResponse } from '@/types/api'
 export interface TicketFilters {
   page?: number
   pageSize?: number
-  status?: TicketStatus
+  statuses?: TicketStatus[]
   type?: string
   authorId?: string
+  authorName?: string
   serverId?: string
+  hasServer?: boolean | string
   labelId?: string
   search?: string
 }
@@ -16,7 +18,12 @@ export interface TicketFilters {
 export function apiGetTickets(filters: TicketFilters = {}) {
   const params = new URLSearchParams()
   Object.entries(filters).forEach(([key, val]) => {
-    if (val !== undefined && val !== '') params.set(key, String(val))
+    if (val === undefined || val === '') return
+    if (Array.isArray(val)) {
+      val.forEach(v => params.append(key, String(v)))
+    } else {
+      params.set(key, String(val))
+    }
   })
   const qs = params.toString()
   return apiFetch<PaginatedResponse<Ticket>>(`/tickets${qs ? '?' + qs : ''}`)

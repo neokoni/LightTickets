@@ -48,13 +48,22 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
 });
 
 router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) => {
+  const hasServer = req.query.hasServer !== undefined
+    ? req.query.hasServer === 'true'
+    : undefined;
+  const statusesParam = req.query.statuses as string | string[] | undefined;
+  const statuses: any = statusesParam
+    ? (Array.isArray(statusesParam) ? statusesParam : statusesParam.split(','))
+    : undefined;
   const result = await ticketService.list({
     page: req.query.page ? Number(req.query.page) : undefined,
     pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
-    status: req.query.status as any,
+    statuses,
     type: req.query.type as any,
     authorId: req.query.authorId ? Number(req.query.authorId) : undefined,
+    authorName: req.query.authorName as string,
     serverId: req.query.serverId as string,
+    hasServer,
     labelId: req.query.labelId as string,
     search: req.query.search as string,
   });

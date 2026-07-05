@@ -13,8 +13,12 @@ export const useTicketsStore = defineStore('tickets', () => {
   const filters = reactive<TicketFilters>({
     page: 1,
     pageSize: 20,
-    status: undefined,
+    statuses: undefined,
     type: undefined,
+    labelId: undefined,
+    serverId: undefined,
+    hasServer: undefined,
+    authorName: undefined,
     search: '',
   })
 

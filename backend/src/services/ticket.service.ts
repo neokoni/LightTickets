@@ -80,10 +80,12 @@ interface CreateTicketInput {
 interface ListTicketsInput {
   page?: number;
   pageSize?: number;
-  status?: TicketStatus;
+  statuses?: TicketStatus[];
   type?: string;
   authorId?: number;
+  authorName?: string;
   serverId?: string;
+  hasServer?: boolean;
   labelId?: string;
   search?: string;
 }
@@ -111,10 +113,12 @@ export async function list(input: ListTicketsInput) {
   const pageSize = input.pageSize || 20;
   const where: any = {};
 
-  if (input.status) where.status = input.status;
+  if (input.statuses && input.statuses.length > 0) where.status = { in: input.statuses };
   if (input.type) where.template = input.type;
   if (input.authorId) where.authorId = input.authorId;
+  if (input.authorName) where.author = { username: { contains: input.authorName } };
   if (input.serverId) where.serverId = input.serverId;
+  if (input.hasServer !== undefined) where.serverId = input.hasServer ? { not: null } : null;
   if (input.labelId) where.labels = { some: { labelId: input.labelId } };
   if (input.search) where.OR = [
     { title: { contains: input.search } },

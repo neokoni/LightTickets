@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useTicketsStore } from '@/stores/tickets'
@@ -8,23 +8,48 @@ import { useLabelsStore } from '@/stores/labels'
 import { usePolling } from '@/composables/usePolling'
 import { usePagination } from '@/composables/usePagination'
 import { timeAgo } from '@/utils/date'
+import { apiGetTemplates } from '@/api/tickets'
+import { apiGetServers } from '@/api/servers'
+import {
+  tokenize, parseQuery, getSuggestions, applySuggestion,
+  removeFilterToken, getFilterValuePreview,
+  FILTER_COLORS, type SearchToken, type SuggestionResult,
+} from '@/composables/useTicketSearch'
+import type { TemplateSummary } from '@/types/ticket'
+import type { Server } from '@/types/user'
+import type { TicketStatus } from '@/types/ticket'
+import { STATUS_META } from '@/types/ticket'
 import BasePagination from '@/components/base/BasePagination.vue'
 import BaseBadge from '@/components/base/BaseBadge.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
-import type { TicketStatus } from '@/types/ticket'
 
 const router = useRouter()
 const route = useRoute()
 const store = useTicketsStore()
-const labels = useLabelsStore()
+const labelsStore = useLabelsStore()
 const auth = useAuthStore()
+
+const templates = ref<TemplateSummary[]>([])
+const servers = ref<Server[]>([])
+
+const searchRaw = ref('')
+const searchInput = ref<HTMLInputElement | null>(null)
+const cursorPos = ref(0)
+const suggestions = ref<SuggestionResult | null>(null)
+const selectedSuggestionIdx = ref(0)
+const skipSearchWatch = ref(false)
+
+const tokens = computed(() => tokenize(searchRaw.value))
+const filterTokens = computed(() => tokens.value.filter(t => t.type === 'filter' && !t.error))
+const hasActiveFilters = computed(() => filterTokens.value.length > 0)
 
 const statusTabs: { key: TicketStatus | 'all'; label: string; icon: string }[] = [
   { key: 'all', label: '全部', icon: 'lucide:list' },
-  { key: 'open', label: '开放', icon: 'lucide:circle-dot' },
-  { key: 'in_progress', label: '处理中', icon: 'lucide:loader' },
-  { key: 'closed', label: '已关闭', icon: 'lucide:check-circle-2' },
-  { key: 'invalid', label: '无效', icon: 'lucide:ban' },
+  ...Object.entries(STATUS_META).map(([key, { label, icon }]) => ({
+    key: key as TicketStatus,
+    label,
+    icon,
+  })),
 ]
 
 const { totalPages } = usePagination(
@@ -35,21 +60,99 @@ const { totalPages } = usePagination(
 
 function syncFromQuery() {
   const q = route.query
-  if (q.status) store.filters.status = q.status as TicketStatus
+  if (q.statuses) {
+    const arr = Array.isArray(q.statuses) ? q.statuses : [q.statuses]
+    store.filters.statuses = arr as TicketStatus[]
+  }
+  if (q.type) store.filters.type = q.type as string
+  if (q.labelId) store.filters.labelId = q.labelId as string
+  if (q.serverId) store.filters.serverId = q.serverId as string
+  if (q.hasServer !== undefined) store.filters.hasServer = q.hasServer as any
+  if (q.authorName) store.filters.authorName = q.authorName as string
   if (q.page) store.filters.page = Number(q.page)
-  if (q.search) store.filters.search = q.search as string
+  if (q.search) {
+    searchRaw.value = q.search as string
+  } else if (q.statuses || q.type || q.labelId || q.serverId || q.hasServer !== undefined || q.authorName) {
+    searchRaw.value = buildSearchFromQuery(q)
+  }
+}
+
+function buildSearchFromQuery(q: Record<string, any>): string {
+  const parts: string[] = []
+  if (q.statuses) {
+    const arr = Array.isArray(q.statuses) ? q.statuses : [q.statuses]
+    arr.forEach((s: string) => parts.push(`status:${s}`))
+  }
+  if (q.type) parts.push(`type:${q.type}`)
+  if (q.labelId) {
+    const label = labelsStore.labels.find(l => l.id === q.labelId)
+    if (label) parts.push(`label:${label.name}`)
+  }
+  if (q.serverId) {
+    const server = servers.value.find(s => s.id === q.serverId)
+    if (server) parts.push(`from:minecraft:${server.name}`)
+  } else if (q.hasServer === 'true') {
+    parts.push('from:minecraft')
+  } else if (q.hasServer === 'false') {
+    parts.push('from:web')
+  }
+  if (q.authorName) parts.push(`author:${q.authorName}`)
+  return parts.join(' ')
 }
 
 function syncToQuery() {
   const query: Record<string, string> = {}
-  if (store.filters.status) query.status = store.filters.status
+  if (store.filters.statuses && store.filters.statuses.length > 0) query.statuses = store.filters.statuses.join(',')
+  if (store.filters.type) query.type = store.filters.type
+  if (store.filters.labelId) query.labelId = store.filters.labelId
+  if (store.filters.serverId) query.serverId = store.filters.serverId
+  if (store.filters.hasServer !== undefined) query.hasServer = String(store.filters.hasServer)
+  if (store.filters.authorName) query.authorName = store.filters.authorName
   if (store.filters.page && store.filters.page > 1) query.page = String(store.filters.page)
-  if (store.filters.search) query.search = store.filters.search
+  if (searchRaw.value) query.search = searchRaw.value
   router.replace({ query })
 }
 
+function applySearch() {
+  const parsed = parseQuery(
+    searchRaw.value,
+    labelsStore.labels,
+    templates.value,
+    servers.value,
+  )
+
+  store.filters.statuses = parsed.statuses
+  store.filters.type = parsed.type
+  store.filters.labelId = parsed.labelId
+  store.filters.serverId = parsed.serverId
+  store.filters.hasServer = parsed.hasServer
+  store.filters.authorName = parsed.authorName
+  store.filters.search = parsed.search
+  store.filters.page = 1
+  syncToQuery()
+  store.fetchList()
+}
+
 function setStatus(status: TicketStatus | 'all') {
-  store.filters.status = status === 'all' ? undefined : status
+  if (status === 'all') {
+    store.filters.statuses = undefined
+    skipSearchWatch.value = true
+    searchRaw.value = removeFilterToken(searchRaw.value, 'status')
+  } else {
+    const current = store.filters.statuses || []
+    if (current.includes(status)) {
+      const next = current.filter(s => s !== status)
+      store.filters.statuses = next.length > 0 ? next : undefined
+    } else {
+      store.filters.statuses = [...current, status]
+    }
+    skipSearchWatch.value = true
+    searchRaw.value = removeFilterToken(searchRaw.value, 'status')
+    if (store.filters.statuses) {
+      if (searchRaw.value) searchRaw.value += ' '
+      searchRaw.value += store.filters.statuses.map(s => `status:${s}`).join(' ')
+    }
+  }
   store.filters.page = 1
   syncToQuery()
   store.fetchList()
@@ -61,19 +164,138 @@ function setPage(page: number) {
   store.fetchList()
 }
 
+function onSearchInput(e: Event) {
+  const input = e.target as HTMLInputElement
+  cursorPos.value = input.selectionStart ?? 0
+  updateSuggestions()
+}
+
+function onSearchKeydown(e: KeyboardEvent) {
+  if (e.key === 'Tab' && suggestions.value && suggestions.value.items.length > 0) {
+    e.preventDefault()
+    const idx = selectedSuggestionIdx.value
+    const item = suggestions.value.items[idx]
+    if (item) {
+      const result = applySuggestion(
+        searchRaw.value,
+        cursorPos.value,
+        item.value,
+        suggestions.value.type,
+      )
+      searchRaw.value = result.text
+      cursorPos.value = result.cursorPos
+      suggestions.value = null
+      nextTick(() => {
+        if (searchInput.value) {
+          searchInput.value.selectionStart = result.cursorPos
+          searchInput.value.selectionEnd = result.cursorPos
+          searchInput.value.focus()
+        }
+        updateSuggestions()
+      })
+    }
+  } else if (e.key === 'ArrowDown' && suggestions.value) {
+    e.preventDefault()
+    selectedSuggestionIdx.value = Math.min(
+      selectedSuggestionIdx.value + 1,
+      suggestions.value.items.length - 1,
+    )
+  } else if (e.key === 'ArrowUp' && suggestions.value) {
+    e.preventDefault()
+    selectedSuggestionIdx.value = Math.max(selectedSuggestionIdx.value - 1, 0)
+  } else if (e.key === 'Escape') {
+    suggestions.value = null
+  } else if (e.key === 'Enter') {
+    suggestions.value = null
+  }
+}
+
+function updateSuggestions() {
+  selectedSuggestionIdx.value = 0
+  suggestions.value = getSuggestions(
+    searchRaw.value,
+    cursorPos.value,
+    labelsStore.labels,
+    templates.value,
+    servers.value,
+  )
+}
+
+function onSearchBlur() {
+  setTimeout(() => {
+    suggestions.value = null
+  }, 150)
+}
+
+function clickSuggestion(item: { value: string; label: string }) {
+  if (!suggestions.value) return
+  const result = applySuggestion(
+    searchRaw.value,
+    cursorPos.value,
+    item.value,
+    suggestions.value.type,
+  )
+  searchRaw.value = result.text
+  cursorPos.value = result.cursorPos
+  suggestions.value = null
+  nextTick(() => {
+    if (searchInput.value) {
+      searchInput.value.selectionStart = result.cursorPos
+      searchInput.value.selectionEnd = result.cursorPos
+      searchInput.value.focus()
+    }
+  })
+}
+
+function removeFilter(token: SearchToken) {
+  if (!token.key) return
+  searchRaw.value = removeFilterToken(searchRaw.value, token.key, token.value)
+  applySearch()
+}
+
+function getFilterLabel(token: SearchToken): string {
+  if (!token.key || !token.value) return token.raw
+  const label = getFilterValuePreview(
+    token.key,
+    token.value,
+    labelsStore.labels,
+    templates.value,
+    servers.value,
+  )
+  const keyLabel: Record<string, string> = { status: '状态', type: '类型', label: '标签', from: '来源', author: '作者' }
+  return `${keyLabel[token.key] || token.key}: ${label}`
+}
+
 onMounted(async () => {
   syncFromQuery()
-  if (!labels.loaded) labels.fetch().catch(() => {})
-  await store.fetchList()
+  if (!labelsStore.loaded) labelsStore.fetch().catch(() => {})
+  try {
+    templates.value = await apiGetTemplates()
+  } catch { /* ignore */ }
+  try {
+    servers.value = await apiGetServers()
+  } catch { /* ignore */ }
+  if (searchRaw.value) {
+    applySearch()
+  } else {
+    await store.fetchList()
+  }
 })
 
 usePolling(() => store.fetchList(), 30000)
 
-watch(() => store.filters.search, () => {
+watch(searchRaw, () => {
+  if (skipSearchWatch.value) {
+    skipSearchWatch.value = false
+    return
+  }
   store.filters.page = 1
-  syncToQuery()
-  store.fetchList()
+  applySearch()
 })
+
+watch(() => labelsStore.labels, () => {
+  updateSuggestions()
+}, { deep: true })
 </script>
 
 <template>
@@ -91,9 +313,11 @@ watch(() => store.filters.search, () => {
         :key="tab.key"
         @click="setStatus(tab.key)"
         class="nav-link -mb-px px-3 py-2 text-sm font-medium transition whitespace-nowrap shrink-0"
-        :class="(!store.filters.status && tab.key === 'all') || store.filters.status === tab.key
+        :class="(!store.filters.statuses || store.filters.statuses.length === 0) && tab.key === 'all'
           ? 'nav-link-active'
-          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
+          : store.filters.statuses && tab.key !== 'all' && store.filters.statuses.includes(tab.key)
+            ? 'nav-link-active'
+            : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'"
       >
         <span class="nav-link-text inline-flex items-center gap-1.5">
           <Icon :icon="tab.icon" class="w-4 h-4" />
@@ -102,15 +326,81 @@ watch(() => store.filters.search, () => {
       </button>
     </div>
 
-    <!-- Search -->
-    <div class="relative">
-      <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-      <input
-        v-model="store.filters.search"
-        type="text"
-        placeholder="搜索议题..."
-        class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:border-slate-400 dark:focus:ring-slate-100/20 dark:focus:border-slate-600 transition"
-      />
+    <!-- Search with filter chips -->
+    <div class="space-y-2">
+      <!-- Filter chips -->
+      <div v-if="filterTokens.length" class="flex items-center gap-1.5 flex-wrap">
+        <span
+          v-for="token in filterTokens"
+          :key="token.raw"
+          :class="[
+            'inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-md border',
+            (FILTER_COLORS[token.filterType || 'status'] || FILTER_COLORS.status).bg,
+            (FILTER_COLORS[token.filterType || 'status'] || FILTER_COLORS.status).text,
+            (FILTER_COLORS[token.filterType || 'status'] || FILTER_COLORS.status).border,
+          ]"
+        >
+          {{ getFilterLabel(token) }}
+          <button @click="removeFilter(token)" class="ml-0.5 hover:opacity-70">
+            <Icon icon="lucide:x" class="w-3 h-3" />
+          </button>
+        </span>
+      </div>
+
+      <!-- Search input -->
+      <div class="relative">
+        <Icon
+          icon="lucide:search"
+          class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+          :class="hasActiveFilters ? 'text-blue-500 dark:text-blue-400' : 'text-slate-400'"
+        />
+        <input
+          ref="searchInput"
+          v-model="searchRaw"
+          type="text"
+          placeholder="搜索议题..."
+          class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:border-slate-400 dark:focus:ring-slate-100/20 dark:focus:border-slate-600 transition"
+          :class="hasActiveFilters ? 'ring-1 ring-blue-500/30 border-blue-300 dark:border-blue-700' : ''"
+          @input="onSearchInput"
+          @keydown="onSearchKeydown"
+          @blur="onSearchBlur"
+          @click="onSearchInput"
+        />
+
+        <!-- Suggestions dropdown -->
+        <Transition
+          enter-active-class="transition duration-100 ease-out"
+          enter-from-class="opacity-0 -translate-y-1"
+          enter-to-class="opacity-100 translate-y-0"
+          leave-active-class="transition duration-75 ease-in"
+          leave-from-class="opacity-100 translate-y-0"
+          leave-to-class="opacity-0 -translate-y-1"
+        >
+          <div
+            v-if="suggestions && suggestions.items.length"
+            class="absolute z-50 top-full mt-1 left-0 right-0 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg overflow-hidden"
+          >
+            <div class="text-[11px] px-3 py-1.5 text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800">
+              {{ suggestions.type === 'key' ? '筛选条件' : suggestions.key ? `筛选: ${suggestions.key}` : '' }}
+            </div>
+            <div class="py-1 max-h-48 overflow-y-auto">
+              <button
+                v-for="(item, idx) in suggestions.items"
+                :key="item.value"
+                type="button"
+                @mousedown.prevent="clickSuggestion(item)"
+                class="w-full px-3 py-1.5 text-sm text-left transition cursor-pointer flex items-center gap-2"
+                :class="idx === selectedSuggestionIdx
+                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
+                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'"
+              >
+                <span class="text-slate-400 dark:text-slate-500 text-xs w-10 shrink-0 text-right">{{ suggestions.type === 'key' ? 'key' : 'value' }}</span>
+                <span>{{ item.label }}</span>
+              </button>
+            </div>
+          </div>
+        </Transition>
+      </div>
     </div>
 
     <!-- Ticket list -->

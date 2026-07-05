@@ -18,6 +18,7 @@ import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
 import TicketLabels from '@/components/tickets/TicketLabels.vue'
 import type { Comment, AuditLog, TicketStatus, GameContext } from '@/types/ticket'
+import { STATUS_META } from '@/types/ticket'
 import { apiGetTemplates } from '@/api/tickets'
 import { diffLines } from 'diff'
 
@@ -304,12 +305,12 @@ function statusColor(status: string): string {
   return map[status] || 'text-slate-400'
 }
 
-const statusOptions: { key: TicketStatus; label: string; icon: string }[] = [
-  { key: 'open', label: '开放', icon: 'lucide:circle-dot' },
-  { key: 'in_progress', label: '处理中', icon: 'lucide:loader' },
-  { key: 'closed', label: '已关闭', icon: 'lucide:check-circle-2' },
-  { key: 'invalid', label: '无效', icon: 'lucide:ban' },
-]
+const statusOptions: { key: TicketStatus; label: string; icon: string }[] =
+  Object.entries(STATUS_META).map(([key, { label, icon }]) => ({
+    key: key as TicketStatus,
+    label,
+    icon,
+  }))
 
 const visibleStatusOptions = computed(() => {
   if (!ticket.value) return []
