@@ -14,6 +14,7 @@ import { timeAgo, formatDate } from '@/utils/date'
 import { apiFetch } from '@/api/client'
 import BaseBadge from '@/components/base/BaseBadge.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseModal from '@/components/base/BaseModal.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
 import TicketLabels from '@/components/tickets/TicketLabels.vue'
@@ -908,91 +909,56 @@ function onBodyFilePaste(e: ClipboardEvent) {
         </div>
 
         <!-- Assign picker modal -->
-        <Teleport to="body">
-          <Transition
-            enter-active-class="transition duration-150 ease-out"
-            enter-from-class="opacity-0"
-            enter-to-class="opacity-100"
-            leave-active-class="transition duration-100 ease-in"
-            leave-from-class="opacity-100"
-            leave-to-class="opacity-0"
-          >
-            <div
-              v-if="showAssignPicker"
-              class="fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm flex items-center justify-center p-4"
-              @click.self="showAssignPicker = false"
-            >
-              <div
-                class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
+        <BaseModal v-model="showAssignPicker" title="分配受理人">
+          <div class="space-y-3">
+            <div class="relative">
+              <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                v-model="assignSearch"
+                type="text"
+                placeholder="搜索用户..."
+                class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:border-slate-400 dark:focus:ring-slate-100/20 dark:focus:border-slate-600 transition"
+              />
+            </div>
+
+            <div class="max-h-64 overflow-y-auto space-y-0.5 -mx-1">
+              <label
+                v-for="u in filteredAssignableUsers"
+                :key="u.id"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition"
               >
-                <div class="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <h3 class="text-sm font-semibold text-slate-900 dark:text-white">分配受理人</h3>
-                  <button @click="showAssignPicker = false" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">
-                    <Icon icon="lucide:x" class="w-5 h-5" />
-                  </button>
+                <input
+                  type="checkbox"
+                  :checked="selectedAssigneeIds.includes(u.id)"
+                  @change="toggleAssignee(u.id)"
+                  class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-slate-900/20"
+                />
+                <img
+                  v-if="u.avatarUrl"
+                  :src="u.avatarUrl"
+                  class="w-7 h-7 rounded-full object-cover"
+                />
+                <div
+                  v-else
+                  class="w-7 h-7 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0"
+                >{{ u.username[0].toUpperCase() }}</div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm text-slate-900 dark:text-white truncate">{{ u.username }}</div>
+                  <div class="text-[11px] text-slate-400 dark:text-slate-500">{{ u.role === 'admin' ? '管理员' : u.role === 'staff' ? '工作人员' : '玩家' }}</div>
                 </div>
-
-                <div class="p-4">
-                  <div class="relative mb-3">
-                    <Icon icon="lucide:search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                    <input
-                      v-model="assignSearch"
-                      type="text"
-                      placeholder="搜索用户..."
-                      class="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition"
-                    />
-                  </div>
-
-                  <div class="max-h-64 overflow-y-auto space-y-0.5">
-                    <label
-                      v-for="u in filteredAssignableUsers"
-                      :key="u.id"
-                      class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition"
-                    >
-                      <input
-                        type="checkbox"
-                        :checked="selectedAssigneeIds.includes(u.id)"
-                        @change="toggleAssignee(u.id)"
-                        class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
-                      />
-                      <img
-                        v-if="u.avatarUrl"
-                        :src="u.avatarUrl"
-                        class="w-7 h-7 rounded-full object-cover"
-                      />
-                      <div
-                        v-else
-                        class="w-7 h-7 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0"
-                      >{{ u.username[0].toUpperCase() }}</div>
-                      <div class="flex-1 min-w-0">
-                        <div class="text-sm text-slate-900 dark:text-white truncate">{{ u.username }}</div>
-                        <div class="text-[11px] text-slate-400 dark:text-slate-500">{{ u.role === 'admin' ? '管理员' : u.role === 'staff' ? '工作人员' : '玩家' }}</div>
-                      </div>
-                    </label>
-                    <div v-if="!filteredAssignableUsers.length" class="py-4 text-center text-sm text-slate-400">
-                      无匹配用户
-                    </div>
-                  </div>
-                </div>
-
-                <div class="px-5 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                  <span class="text-xs text-slate-400 dark:text-slate-500">已选 {{ selectedAssigneeIds.length }} 人</span>
-                  <div class="flex gap-2">
-                    <button
-                      @click="showAssignPicker = false"
-                      class="px-4 py-1.5 text-sm rounded-md border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition"
-                    >取消</button>
-                    <button
-                      @click="saveAssignees"
-                      :disabled="assigning"
-                      class="px-4 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
-                    >{{ assigning ? '保存中...' : '确认' }}</button>
-                  </div>
-                </div>
+              </label>
+              <div v-if="!filteredAssignableUsers.length" class="py-4 text-center text-sm text-slate-400">
+                无匹配用户
               </div>
             </div>
-          </Transition>
-        </Teleport>
+          </div>
+
+          <template #footer>
+            <span class="text-xs text-slate-400 dark:text-slate-500 mr-auto self-center">已选 {{ selectedAssigneeIds.length }} 人</span>
+            <BaseButton size="sm" @click="showAssignPicker = false">取消</BaseButton>
+            <BaseButton size="sm" :loading="assigning" @click="saveAssignees">确认</BaseButton>
+          </template>
+        </BaseModal>
 
         <!-- 附加信息 (Game Context) -->
         <div v-if="gameContext" class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3 text-sm">
