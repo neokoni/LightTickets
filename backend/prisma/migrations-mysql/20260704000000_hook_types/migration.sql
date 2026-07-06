@@ -1,1 +1,0 @@
--- Template hook defaults are now stored in data/templates YAML files.

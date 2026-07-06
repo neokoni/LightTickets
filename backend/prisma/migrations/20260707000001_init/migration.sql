@@ -29,6 +29,7 @@ CREATE TABLE "tickets" (
     "body" TEXT NOT NULL,
     "template" TEXT NOT NULL DEFAULT '',
     "form_data" TEXT,
+    "game_context" TEXT,
     "status" TEXT NOT NULL DEFAULT 'open',
     "priority" TEXT NOT NULL DEFAULT 'medium',
     "author_id" INTEGER NOT NULL,
@@ -61,6 +62,16 @@ CREATE TABLE "ticket_labels" (
 );
 
 -- CreateTable
+CREATE TABLE "ticket_assignees" (
+    "ticket_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
+
+    PRIMARY KEY ("ticket_id", "user_id"),
+    CONSTRAINT "ticket_assignees_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "ticket_assignees_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
 CREATE TABLE "comments" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "ticket_id" INTEGER NOT NULL,
@@ -81,23 +92,12 @@ CREATE TABLE "attachments" (
     "path" TEXT NOT NULL,
     "mime_type" TEXT NOT NULL,
     "size" INTEGER NOT NULL,
+    "storage_type" TEXT NOT NULL DEFAULT 'local',
     "uploaded_by" INTEGER NOT NULL,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "attachments_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "attachments_comment_id_fkey" FOREIGN KEY ("comment_id") REFERENCES "comments" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "attachments_uploaded_by_fkey" FOREIGN KEY ("uploaded_by") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
--- CreateTable
-CREATE TABLE "permission_requests" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "ticket_id" INTEGER NOT NULL,
-    "permission_node" TEXT,
-    "group_name" TEXT,
-    "execution_status" TEXT NOT NULL DEFAULT 'pending',
-    "executed_at" DATETIME,
-    "error_message" TEXT,
-    CONSTRAINT "permission_requests_ticket_id_fkey" FOREIGN KEY ("ticket_id") REFERENCES "tickets" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateTable
@@ -120,6 +120,7 @@ CREATE TABLE "setup_status" (
     "site_url" TEXT,
     "require_login" BOOLEAN NOT NULL DEFAULT false,
     "allow_web_register" BOOLEAN NOT NULL DEFAULT true,
+    "allow_mc_register" BOOLEAN NOT NULL DEFAULT true,
     "footer_content" TEXT,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" DATETIME NOT NULL
@@ -155,9 +156,6 @@ CREATE UNIQUE INDEX "servers_api_key_key" ON "servers"("api_key");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "labels_name_key" ON "labels"("name");
-
--- CreateIndex
-CREATE UNIQUE INDEX "permission_requests_ticket_id_key" ON "permission_requests"("ticket_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "link_codes_code_key" ON "link_codes"("code");

@@ -38,6 +38,7 @@ CREATE TABLE `tickets` (
     `body` TEXT NOT NULL,
     `template` VARCHAR(191) NOT NULL DEFAULT '',
     `form_data` TEXT NULL,
+    `game_context` LONGTEXT NULL,
     `status` VARCHAR(191) NOT NULL DEFAULT 'open',
     `priority` VARCHAR(191) NOT NULL DEFAULT 'medium',
     `author_id` INTEGER NOT NULL,
@@ -70,6 +71,14 @@ CREATE TABLE `ticket_labels` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `ticket_assignees` (
+    `ticket_id` INTEGER NOT NULL,
+    `user_id` INTEGER NOT NULL,
+
+    PRIMARY KEY (`ticket_id`, `user_id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `comments` (
     `id` VARCHAR(191) NOT NULL,
     `ticket_id` INTEGER NOT NULL,
@@ -90,23 +99,10 @@ CREATE TABLE `attachments` (
     `path` VARCHAR(191) NOT NULL,
     `mime_type` VARCHAR(191) NOT NULL,
     `size` INTEGER NOT NULL,
+    `storage_type` VARCHAR(191) NOT NULL DEFAULT 'local',
     `uploaded_by` INTEGER NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `permission_requests` (
-    `id` VARCHAR(191) NOT NULL,
-    `ticket_id` INTEGER NOT NULL,
-    `permission_node` VARCHAR(191) NULL,
-    `group_name` VARCHAR(191) NULL,
-    `execution_status` VARCHAR(191) NOT NULL DEFAULT 'pending',
-    `executed_at` DATETIME(3) NULL,
-    `error_message` VARCHAR(191) NULL,
-
-    UNIQUE INDEX `permission_requests_ticket_id_key`(`ticket_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -132,6 +128,7 @@ CREATE TABLE `setup_status` (
     `site_url` VARCHAR(191) NULL,
     `require_login` BOOLEAN NOT NULL DEFAULT false,
     `allow_web_register` BOOLEAN NOT NULL DEFAULT true,
+    `allow_mc_register` BOOLEAN NOT NULL DEFAULT true,
     `footer_content` TEXT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
@@ -168,6 +165,12 @@ ALTER TABLE `ticket_labels` ADD CONSTRAINT `ticket_labels_ticket_id_fkey` FOREIG
 ALTER TABLE `ticket_labels` ADD CONSTRAINT `ticket_labels_label_id_fkey` FOREIGN KEY (`label_id`) REFERENCES `labels`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `ticket_assignees` ADD CONSTRAINT `ticket_assignees_ticket_id_fkey` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ticket_assignees` ADD CONSTRAINT `ticket_assignees_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `comments` ADD CONSTRAINT `comments_ticket_id_fkey` FOREIGN KEY (`ticket_id`) REFERENCES `tickets`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -181,9 +184,6 @@ ALTER TABLE `attachments` ADD CONSTRAINT `attachments_comment_id_fkey` FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE `attachments` ADD CONSTRAINT `attachments_uploaded_by_fkey` FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `permission_requests` ADD CONSTRAINT `permission_requests_ticket_id_fkey` FOREIGN KEY (`ticket_id`) REFERENCES `tickets`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `link_codes` ADD CONSTRAINT `link_codes_server_id_fkey` FOREIGN KEY (`server_id`) REFERENCES `servers`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
