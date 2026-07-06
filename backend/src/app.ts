@@ -2,7 +2,7 @@ import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
-import { AppError } from './utils/errors.js';
+import { AppError, normalizeError } from './utils/errors.js';
 import { getConfig } from './config.js';
 import createSetupRoutes from './routes/setup.js';
 import authRoutes from './routes/auth.js';
@@ -15,6 +15,7 @@ import mcRoutes from './routes/mc.js';
 import auditRoutes from './routes/audit.js';
 import templateRoutes from './routes/templates.js';
 import adminTemplateRoutes from './routes/admin-templates.js';
+import adminStorageRoutes from './routes/admin-storage.js';
 import userRoutes from './routes/users.js';
 import { initTemplates } from './services/template.service.js';
 
@@ -26,8 +27,10 @@ export function createApp() {
   app.use(cors());
   app.use(express.json());
 
-  if (!fs.existsSync(getConfig().uploadDir)) {
-    fs.mkdirSync(getConfig().uploadDir, { recursive: true });
+  if (getConfig().storage.driver === 'local') {
+    if (!fs.existsSync(getConfig().storage.uploadDir)) {
+      fs.mkdirSync(getConfig().storage.uploadDir, { recursive: true });
+    }
   }
 
   app.get('/api/health', (_req, res) => {
@@ -38,6 +41,7 @@ export function createApp() {
   app.use('/api/auth', authRoutes);
   app.use('/api/templates', templateRoutes);
   app.use('/api/admin/templates', adminTemplateRoutes);
+  app.use('/api/admin/storage', adminStorageRoutes);
   app.use('/api/tickets', ticketRoutes);
   app.use('/api/tickets/:id/comments', commentRoutes);
   app.use('/api/tickets/:ticketId/audit', auditRoutes);
@@ -49,11 +53,12 @@ export function createApp() {
 
   // Error handler
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    if (err instanceof AppError) {
-      res.status(err.statusCode).json({ error: err.message });
+    const normalized = normalizeError(err);
+    if (normalized instanceof AppError) {
+      res.status(normalized.statusCode).json({ error: normalized.message });
       return;
     }
-    console.error(err);
+    console.error(normalized);
     res.status(500).json({ error: 'Internal server error' });
   });
 

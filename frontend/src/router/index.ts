@@ -85,6 +85,7 @@ const router = createRouter({
         { path: 'templates', name: 'admin-templates', component: () => import('@/views/admin/AdminTemplatesView.vue') },
         { path: 'users', name: 'admin-users', component: () => import('@/views/admin/AdminUsersView.vue') },
         { path: 'settings', name: 'admin-settings', component: () => import('@/views/admin/AdminSettingsView.vue') },
+        { path: 'storage', name: 'admin-storage', component: () => import('@/views/admin/AdminStorageView.vue') },
       ],
     },
   ],

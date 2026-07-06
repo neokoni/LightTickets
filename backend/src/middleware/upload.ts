@@ -1,16 +1,7 @@
 import multer from 'multer';
-import path from 'path';
-import crypto from 'crypto';
-import { config } from '../config.js';
+import { ValidationError } from '../utils/errors.js';
 
-const storage = multer.diskStorage({
-  destination: config.uploadDir,
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const name = crypto.randomUUID() + ext;
-    cb(null, name);
-  },
-});
+const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage,
@@ -20,7 +11,8 @@ export const upload = multer({
     if (allowed.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('File type not allowed'));
+      cb(new ValidationError('不支持的文件类型'));
     }
   },
 });
+

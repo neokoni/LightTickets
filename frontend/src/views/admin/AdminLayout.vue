@@ -10,6 +10,7 @@ const navItems = [
   { to: '/admin/templates', label: '模板', icon: 'lucide:layout-template' },
   { to: '/admin/users', label: '用户', icon: 'lucide:users' },
   { to: '/admin/settings', label: '设置', icon: 'lucide:settings' },
+  { to: '/admin/storage', label: '存储', icon: 'lucide:database' },
 ]
 </script>
 

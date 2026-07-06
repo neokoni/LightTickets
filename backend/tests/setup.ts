@@ -21,6 +21,9 @@ jwtRefreshSecret: ""
 db:
   provider: "sqlite"
   databaseUrl: "file:./dev.db"
+storage:
+  driver: local
+  uploadDir: data/uploads
 `;
 
 // Delete stale test DBs so migrations always start fresh.

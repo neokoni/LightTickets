@@ -146,6 +146,7 @@ model Attachment {
   path       String
   mimeType   String   @map("mime_type")
   size       Int
+  storageType String  @default("local") @map("storage_type")
   uploadedBy Int      @map("uploaded_by")
   createdAt  DateTime @default(now()) @map("created_at")
 

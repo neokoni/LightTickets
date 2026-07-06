@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as ticketService from '../services/ticket.service.js';
 import * as labelService from '../services/label.service.js';
 import * as auditService from '../services/audit.service.js';
+import * as attachmentService from '../services/attachment.service.js';
 import { authMiddleware, conditionalAuthMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { ValidationError } from '../utils/errors.js';
@@ -73,6 +74,11 @@ router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) =
 router.get('/:id', conditionalAuthMiddleware, async (req: Request, res: Response) => {
   const ticket = await ticketService.getById(parseId(String(req.params.id)));
   res.json(ticket);
+});
+
+router.get('/:id/attachments', authMiddleware, async (req: Request, res: Response) => {
+  const list = await attachmentService.listByTicket(parseId(String(req.params.id)));
+  res.json(list.map((a) => ({ ...a, url: `/api/attachments/${a.id}` })));
 });
 
 router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {

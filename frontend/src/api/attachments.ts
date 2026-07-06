@@ -25,6 +25,6 @@ export function apiUploadAttachment(file: File, opts?: { ticketId?: number; comm
   })
 }
 
-export function apiDeleteAttachment(ticketId: number, attachmentId: string) {
-  return apiFetch<void>(`/tickets/${ticketId}/attachments/${attachmentId}`, { method: 'DELETE' })
+export function apiDeleteAttachment(attachmentId: string) {
+  return apiFetch<void>(`/attachments/${attachmentId}`, { method: 'DELETE' })
 }
