@@ -786,6 +786,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
             <div class="flex justify-end items-center gap-1.5">
               <BaseButton
                 v-if="ticket.authorId === auth.user?.id && (ticket.status === 'open' || ticket.status === 'in_progress')"
+                type="button"
                 size="sm"
                 icon="lucide:check-circle-2"
                 @click="closeTicket"
@@ -794,6 +795,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
               </BaseButton>
               <BaseButton
                 v-if="auth.isStaff && (ticket.status === 'open' || ticket.status === 'in_progress') && ticket.authorId !== auth.user?.id"
+                type="button"
                 size="sm"
                 icon="lucide:check-circle-2"
                 @click="closeTicket"
@@ -802,6 +804,7 @@ function onBodyFilePaste(e: ClipboardEvent) {
               </BaseButton>
               <BaseButton
                 v-if="(ticket.authorId === auth.user?.id && ticket.status === 'closed') || (auth.isStaff && (ticket.status === 'closed' || ticket.status === 'invalid'))"
+                type="button"
                 size="sm"
                 icon="lucide:rotate-ccw"
                 @click="reopenTicket"
