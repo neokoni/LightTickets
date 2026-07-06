@@ -37,7 +37,8 @@ function handleLogout() {
 <template>
   <header class="sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/45 dark:bg-slate-950/45 backdrop-blur-xl">
     <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:py-5">
-      <RouterLink to="/" class="inline-flex w-fit shrink-0 items-center gap-3">
+      <RouterLink to="/" class="inline-flex w-fit shrink-0 items-center gap-2.5">
+        <img src="/icons/lighttickets.svg" alt="LightTickets" class="h-6 w-6 lg:h-7 lg:w-7" />
         <div class="text-sm font-semibold tracking-[0.06em] text-slate-900 dark:text-slate-100 lg:text-base">{{ siteConfig.siteName || 'LightTickets' }}</div>
       </RouterLink>
 
@@ -96,7 +97,10 @@ function handleLogout() {
       <Transition name="mobile-menu" appear>
         <div class="w-full max-w-xl rounded-xl border border-slate-200 bg-white/95 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/95" @click.stop>
             <div class="mb-5 flex items-center justify-between">
-              <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ siteConfig.siteName || 'LightTickets' }}</div>
+              <div class="flex items-center gap-2.5">
+                <img src="/icons/lighttickets.svg" alt="LightTickets" class="h-6 w-6" />
+                <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">{{ siteConfig.siteName || 'LightTickets' }}</div>
+              </div>
               <button
                 type="button"
                 class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 dark:border-slate-800 dark:text-slate-200"

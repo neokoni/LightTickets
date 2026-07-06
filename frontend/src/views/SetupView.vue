@@ -149,9 +149,7 @@ async function submit() {
       <!-- Step 1: Welcome -->
       <div v-if="step === 1">
         <div class="text-center py-6">
-          <div class="w-16 h-16 rounded-2xl bg-slate-900 dark:bg-slate-200 mx-auto mb-4 flex items-center justify-center text-white dark:text-slate-900 text-2xl font-bold">
-            LT
-          </div>
+          <img src="/icons/lighttickets.svg" alt="LightTickets" class="w-16 h-16 mx-auto mb-4" />
           <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">欢迎使用 LightTickets</h2>
           <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed max-w-xs mx-auto">
             本向导将帮助你完成站点初始化：数据库配置、管理员账户创建和基本站点设置。
