@@ -10,6 +10,7 @@ import { useMarkdownUpload } from '@/composables/useMarkdownUpload'
 import BaseInput from '@/components/base/BaseInput.vue'
 import BaseTextarea from '@/components/base/BaseTextarea.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue'
 
 const router = useRouter()
@@ -193,25 +194,14 @@ async function submit() {
         </fieldset>
 
         <!-- dropdown -->
-        <div v-else-if="field.type === 'dropdown'" class="space-y-1">
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            {{ field.attributes.label }}
-          </label>
-          <select
-            :value="formValues[field.id || ''] || ''"
-            @change="setFieldValue(field.id || '', ($event.target as HTMLSelectElement).value)"
-            class="w-full px-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:border-slate-400 transition"
-          >
-            <option value="" disabled>请选择...</option>
-            <option
-              v-for="opt in field.attributes.options"
-              :key="typeof opt === 'string' ? opt : opt.toString()"
-              :value="typeof opt === 'string' ? opt : opt.toString()"
-            >
-              {{ typeof opt === 'string' ? opt : opt.toString() }}
-            </option>
-          </select>
-        </div>
+        <BaseSelect
+          v-else-if="field.type === 'dropdown'"
+          :label="field.attributes.label"
+          :placeholder="field.attributes.placeholder || '请选择...'"
+          :model-value="formValues[field.id || ''] || ''"
+          @update:model-value="setFieldValue(field.id || '', $event)"
+          :options="(field.attributes.options || []).map(opt => ({ value: typeof opt === 'string' ? opt : opt.label, label: typeof opt === 'string' ? opt : opt.label }))"
+        />
       </div>
 
       <div class="flex justify-end">
