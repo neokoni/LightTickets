@@ -420,14 +420,11 @@ async function submitComment() {
   if (!newComment.value.trim()) return
   submitting.value = true
   try {
-    const comment = await apiCreateComment(id, newComment.value)
-
+    let body = newComment.value
     if (mdUpload.pendingFiles.value.size > 0) {
-      const updatedBody = await mdUpload.uploadForComment(comment.body, id, comment.id)
-      await apiUpdateCommentBody(id, comment.id, updatedBody)
-      comment.body = updatedBody
+      body = await mdUpload.uploadAndReplace(body, id)
     }
-
+    const comment = await apiCreateComment(id, body)
     commentRawBodies.value[comment.id] = comment.body
     comments.value.push({ ...comment, body: renderTicketRefs(comment.body) })
     newComment.value = ''
@@ -451,12 +448,11 @@ async function closeTicket() {
   submitting.value = true
   try {
     if (newComment.value.trim()) {
-      const comment = await apiCreateComment(id, newComment.value)
+      let body = newComment.value
       if (mdUpload.pendingFiles.value.size > 0) {
-        const updatedBody = await mdUpload.uploadForComment(comment.body, id, comment.id)
-        await apiUpdateCommentBody(id, comment.id, updatedBody)
-        comment.body = updatedBody
+        body = await mdUpload.uploadAndReplace(body, id)
       }
+      const comment = await apiCreateComment(id, body)
       commentRawBodies.value[comment.id] = comment.body
       comments.value.push({ ...comment, body: renderTicketRefs(comment.body) })
       newComment.value = ''
@@ -475,12 +471,11 @@ async function reopenTicket() {
   submitting.value = true
   try {
     if (newComment.value.trim()) {
-      const comment = await apiCreateComment(id, newComment.value)
+      let body = newComment.value
       if (mdUpload.pendingFiles.value.size > 0) {
-        const updatedBody = await mdUpload.uploadForComment(comment.body, id, comment.id)
-        await apiUpdateCommentBody(id, comment.id, updatedBody)
-        comment.body = updatedBody
+        body = await mdUpload.uploadAndReplace(body, id)
       }
+      const comment = await apiCreateComment(id, body)
       commentRawBodies.value[comment.id] = comment.body
       comments.value.push({ ...comment, body: renderTicketRefs(comment.body) })
       newComment.value = ''

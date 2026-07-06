@@ -82,21 +82,6 @@ export function useMarkdownUpload() {
     return result
   }
 
-  async function uploadForComment(text: string, ticketId: number, commentId: string): Promise<string> {
-    let result = text
-    const entries = Array.from(pendingFiles.value.entries())
-
-    const uploads = entries.map(async ([objectUrl, file]) => {
-      const attachment = await apiUploadAttachment(file, { ticketId, commentId })
-      result = result.replaceAll(objectUrl, `/api/attachments/${attachment.id}`)
-      URL.revokeObjectURL(objectUrl)
-    })
-
-    await Promise.all(uploads)
-    pendingFiles.value.clear()
-    return result
-  }
-
   function syncPending(text: string) {
     for (const [url] of pendingFiles.value) {
       if (!text.includes(url)) {
@@ -120,7 +105,6 @@ export function useMarkdownUpload() {
     handlePaste,
     removePending,
     uploadAndReplace,
-    uploadForComment,
     syncPending,
     cleanup,
   }
