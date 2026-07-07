@@ -702,6 +702,23 @@ const registerSetupRoutes = () => {
         .object({ siteName: z.string().optional(), siteUrl: z.string().optional() })
         .optional(),
       mc: z.object({ defaultServerName: z.string().optional() }).optional(),
+      storage: z
+        .object({
+          driver: z.enum(['local', 's3']),
+          uploadDir: z.string().optional(),
+          s3: z
+            .object({
+              endpoint: z.string().optional(),
+              region: z.string().optional(),
+              bucket: z.string().optional(),
+              accessKeyId: z.string().optional(),
+              secretAccessKey: z.string().optional(),
+              forcePathStyle: z.boolean().optional(),
+              presignExpiry: z.number().int().positive().optional(),
+            })
+            .optional(),
+        })
+        .optional(),
     }),
   });
   registerRoute({

@@ -93,6 +93,10 @@
   },
   "mc": {
     "defaultServerName": "主服务器"
+  },
+  "storage": {
+    "driver": "local",
+    "uploadDir": "data/uploads"
   }
 }
 ```
@@ -112,7 +116,26 @@ MySQL 可使用字段模式：
 }
 ```
 
-成功后创建管理员、初始化模板和默认 AppConfig，并返回 `accessToken`；同时设置 refresh cookie。
+文件存储可在初始化阶段选择本地或 S3 兼容存储。S3 示例：
+
+```json
+{
+  "storage": {
+    "driver": "s3",
+    "s3": {
+      "endpoint": "http://localhost:9000",
+      "region": "us-east-1",
+      "bucket": "lighttickets",
+      "accessKeyId": "minioadmin",
+      "secretAccessKey": "minioadmin",
+      "forcePathStyle": true,
+      "presignExpiry": 300
+    }
+  }
+}
+```
+
+成功后创建管理员、初始化模板和 AppConfig，并返回 `accessToken`；同时设置 refresh cookie。
 
 ### 注册
 

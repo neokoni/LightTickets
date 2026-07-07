@@ -11,6 +11,11 @@ vi.mock('../src/config.js', () => ({
     return configPath;
   },
   isDatabaseConfigured: vi.fn(() => false),
+  validateS3Config: vi.fn((s3: Record<string, unknown>) => {
+    for (const key of ['endpoint', 'bucket', 'accessKeyId', 'secretAccessKey']) {
+      if (!s3[key]) throw new Error(`storage.s3 缺少必填字段: ${key}`);
+    }
+  }),
   reloadConfig: vi.fn(() => ({
     security: { jwtSecret: 'jwt', jwtRefreshSecret: 'refresh' },
     accessTokenExpiry: '2h',

@@ -9,6 +9,7 @@ import type { SetupPayload } from '@/types/site';
 import { setSiteConfigCache } from '@/stores/site';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
+import BaseToggle from '@/components/base/BaseToggle.vue';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -20,6 +21,8 @@ const themeButtonClass =
   '!h-10 !w-10 !px-0 !py-0 rounded-full border border-slate-200 bg-transparent text-slate-700 hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100';
 const providerButtonClass =
   '!flex-1 !py-3 rounded-xl border text-sm font-medium data-[active=true]:bg-slate-900 data-[active=true]:text-white data-[active=true]:border-slate-900 data-[active=true]:dark:bg-slate-200 data-[active=true]:dark:text-slate-900 data-[active=true]:dark:border-slate-200 data-[active=false]:bg-white/95 data-[active=false]:dark:bg-slate-900/95 data-[active=false]:text-slate-700 data-[active=false]:dark:text-slate-300 data-[active=false]:border-slate-200/80 data-[active=false]:dark:border-slate-800/80 data-[active=false]:backdrop-blur';
+const storageButtonClass =
+  '!flex-1 !justify-start !px-4 !py-3 border text-sm transition data-[active=true]:border-slate-900 data-[active=true]:dark:border-slate-200 data-[active=true]:bg-slate-50 data-[active=true]:dark:bg-slate-800 data-[active=true]:text-slate-900 data-[active=true]:dark:text-white data-[active=true]:font-medium data-[active=false]:border-slate-200 data-[active=false]:dark:border-slate-700 data-[active=false]:text-slate-600 data-[active=false]:dark:text-slate-400 data-[active=false]:hover:border-slate-400';
 
 const payload = reactive<SetupPayload>({
   db: {
@@ -37,6 +40,19 @@ const payload = reactive<SetupPayload>({
   },
   mc: {
     defaultServerName: '',
+  },
+  storage: {
+    driver: 'local',
+    uploadDir: 'data/uploads',
+    s3: {
+      endpoint: '',
+      region: 'us-east-1',
+      bucket: '',
+      accessKeyId: '',
+      secretAccessKey: '',
+      forcePathStyle: true,
+      presignExpiry: 300,
+    },
   },
 });
 
@@ -59,7 +75,7 @@ function buildMysqlUrl() {
   return url;
 }
 
-const totalSteps = 5;
+const totalSteps = 6;
 
 const canNext = computed(() => {
   switch (step.value) {
@@ -67,12 +83,20 @@ const canNext = computed(() => {
       if (payload.db.provider === 'sqlite') return true;
       return !!(mysqlFields.host && mysqlFields.port && mysqlFields.user && mysqlFields.database);
     case 3:
+      if (payload.storage?.driver === 'local') return !!payload.storage.uploadDir?.trim();
+      return !!(
+        payload.storage?.s3?.endpoint?.trim() &&
+        payload.storage.s3.bucket?.trim() &&
+        payload.storage.s3.accessKeyId?.trim() &&
+        payload.storage.s3.secretAccessKey?.trim()
+      );
+    case 4:
       return (
         payload.admin.email &&
         payload.admin.password.length >= 6 &&
         payload.admin.username.length >= 2
       );
-    case 4:
+    case 5:
       return !!payload.site!.siteName;
     default:
       return true;
@@ -104,9 +128,20 @@ async function submit() {
       mc: payload.mc?.defaultServerName
         ? { defaultServerName: payload.mc.defaultServerName }
         : undefined,
+      storage:
+        payload.storage?.driver === 's3'
+          ? {
+              driver: 's3',
+              uploadDir: payload.storage.uploadDir,
+              s3: payload.storage.s3,
+            }
+          : {
+              driver: 'local',
+              uploadDir: payload.storage?.uploadDir,
+            },
     });
     auth.setTokens(res.accessToken, res.admin);
-    step.value = 6;
+    step.value = 7;
     setSiteConfigCache({
       isSetup: true,
       requireLogin: false,
@@ -236,8 +271,91 @@ async function submit() {
         </div>
       </div>
 
-      <!-- Step 3: Admin Account -->
+      <!-- Step 3: Storage -->
       <div v-else-if="step === 3" class="space-y-5">
+        <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+          文件存储
+        </h2>
+        <div class="flex gap-3">
+          <BaseButton
+            :class="storageButtonClass"
+            :data-active="payload.storage?.driver === 'local'"
+            @click="payload.storage!.driver = 'local'"
+          >
+            <Icon icon="lucide:hard-drive" class="w-4 h-4" />
+            本地存储
+          </BaseButton>
+          <BaseButton
+            :class="storageButtonClass"
+            :data-active="payload.storage?.driver === 's3'"
+            @click="payload.storage!.driver = 's3'"
+          >
+            <Icon icon="lucide:cloud" class="w-4 h-4" />
+            S3 兼容存储
+          </BaseButton>
+        </div>
+
+        <BaseInput
+          v-if="payload.storage?.driver === 'local'"
+          v-model="payload.storage!.uploadDir"
+          label="上传目录"
+          placeholder="data/uploads"
+        />
+
+        <div v-else class="space-y-4">
+          <BaseInput
+            v-model="payload.storage!.s3!.endpoint"
+            label="Endpoint *"
+            placeholder="http://localhost:9000"
+          />
+          <BaseInput
+            v-model="payload.storage!.s3!.bucket"
+            label="Bucket *"
+            placeholder="lighttickets"
+          />
+          <div class="grid grid-cols-2 gap-3">
+            <BaseInput
+              v-model="payload.storage!.s3!.accessKeyId"
+              label="Access Key ID *"
+              placeholder="minioadmin"
+            />
+            <BaseInput
+              v-model="payload.storage!.s3!.secretAccessKey"
+              label="Secret Access Key *"
+              type="password"
+              placeholder="minioadmin"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <BaseInput
+              v-model="payload.storage!.s3!.region"
+              label="Region"
+              placeholder="us-east-1"
+            />
+            <BaseInput
+              v-model.number="payload.storage!.s3!.presignExpiry"
+              label="预签名过期（秒）"
+              type="number"
+              min="60"
+              placeholder="300"
+            />
+          </div>
+          <div
+            class="flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200/80 dark:border-slate-800/80"
+          >
+            <div>
+              <p class="text-sm font-medium text-slate-900 dark:text-white">Path Style 寻址</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                MinIO 等自建 S3 兼容存储通常需要开启
+              </p>
+            </div>
+            <BaseToggle v-model="payload.storage!.s3!.forcePathStyle" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Admin Account -->
+      <div v-else-if="step === 4" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
           管理员账户
         </h2>
@@ -256,8 +374,8 @@ async function submit() {
         />
       </div>
 
-      <!-- Step 4: Site Settings -->
-      <div v-else-if="step === 4" class="space-y-5">
+      <!-- Step 5: Site Settings -->
+      <div v-else-if="step === 5" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
           站点设置
         </h2>
@@ -269,8 +387,8 @@ async function submit() {
         />
       </div>
 
-      <!-- Step 5: Optional Default Server -->
-      <div v-else-if="step === 5" class="space-y-5">
+      <!-- Step 6: Optional Default Server -->
+      <div v-else-if="step === 6" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
           Minecraft 服务器（可选）
         </h2>
@@ -282,8 +400,8 @@ async function submit() {
         <p class="text-xs text-slate-400">留空可跳过。之后可在「管理 › 服务器」中添加服务器。</p>
       </div>
 
-      <!-- Step 6: Complete -->
-      <div v-else-if="step === 6" class="text-center py-10 space-y-4">
+      <!-- Complete -->
+      <div v-else-if="step === 7" class="text-center py-10 space-y-4">
         <div
           class="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 mx-auto flex items-center justify-center text-2xl"
         >

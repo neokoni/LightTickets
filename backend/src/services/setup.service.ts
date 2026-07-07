@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 import { AppError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
 import { ROLE } from '../constants/roles.js';
-import { CONFIG_PATH, isDatabaseConfigured } from '../config.js';
+import { CONFIG_PATH, isDatabaseConfigured, validateS3Config, type S3Config } from '../config.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[] };
@@ -59,6 +59,43 @@ export interface SetupInput {
   site?: SiteConfigInput;
   mc?: {
     defaultServerName?: string;
+  };
+  storage?: {
+    driver: 'local' | 's3';
+    uploadDir?: string;
+    s3?: Partial<S3Config>;
+  };
+}
+
+function buildStorageConfig(input: SetupInput['storage']) {
+  if (!input || input.driver === 'local') {
+    return {
+      storageDriver: 'local',
+      uploadDir: input?.uploadDir?.trim() || 'data/uploads',
+      s3Config: null,
+    };
+  }
+
+  const s3: Partial<S3Config> = {
+    endpoint: input.s3?.endpoint,
+    region: input.s3?.region || 'us-east-1',
+    bucket: input.s3?.bucket,
+    accessKeyId: input.s3?.accessKeyId,
+    secretAccessKey: input.s3?.secretAccessKey,
+    forcePathStyle: input.s3?.forcePathStyle !== false,
+    presignExpiry: Number(input.s3?.presignExpiry) || 300,
+  };
+
+  try {
+    validateS3Config(s3);
+  } catch (err: unknown) {
+    throw new ValidationError(err instanceof Error ? err.message : 'S3 配置无效');
+  }
+
+  return {
+    storageDriver: 's3',
+    uploadDir: input.uploadDir?.trim() || 'data/uploads',
+    s3Config: JSON.stringify(s3),
   };
 }
 
@@ -168,6 +205,8 @@ export async function completeSetup(input: SetupInput) {
     throw new ValidationError('管理员密码长度不能低于 6 位');
   }
 
+  const storageConfig = buildStorageConfig(input.storage);
+
   const configData: Required<SetupConfigFile> = {
     server: {
       port: 3000,
@@ -244,7 +283,7 @@ export async function completeSetup(input: SetupInput) {
   });
 
   await prisma.appConfig.create({
-    data: {},
+    data: storageConfig,
   });
 
   if (input.mc?.defaultServerName) {

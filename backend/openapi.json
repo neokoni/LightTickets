@@ -2592,6 +2592,124 @@
         }
       }
     },
+    "/api/tickets/{id}/comments/{commentId}": {
+      "delete": {
+        "summary": "删除评论",
+        "tags": [
+          "Comments"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [
+                        400
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [
+                        401
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [
+                        500
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/labels": {
       "get": {
         "summary": "获取标签列表",
@@ -8136,6 +8254,52 @@
                         "type": "string"
                       }
                     }
+                  },
+                  "storage": {
+                    "type": "object",
+                    "properties": {
+                      "driver": {
+                        "type": "string",
+                        "enum": [
+                          "local",
+                          "s3"
+                        ]
+                      },
+                      "uploadDir": {
+                        "type": "string"
+                      },
+                      "s3": {
+                        "type": "object",
+                        "properties": {
+                          "endpoint": {
+                            "type": "string"
+                          },
+                          "region": {
+                            "type": "string"
+                          },
+                          "bucket": {
+                            "type": "string"
+                          },
+                          "accessKeyId": {
+                            "type": "string"
+                          },
+                          "secretAccessKey": {
+                            "type": "string"
+                          },
+                          "forcePathStyle": {
+                            "type": "boolean"
+                          },
+                          "presignExpiry": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true
+                          }
+                        }
+                      }
+                    },
+                    "required": [
+                      "driver"
+                    ]
                   }
                 },
                 "required": [

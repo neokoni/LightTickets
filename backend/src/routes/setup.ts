@@ -37,6 +37,32 @@ const setupSchema = z.object({
       defaultServerName: z.string().optional(),
     })
     .optional(),
+  storage: z
+    .object({
+      driver: z.enum(['local', 's3']),
+      uploadDir: z.string().optional(),
+      s3: z
+        .object({
+          endpoint: z.string().optional(),
+          region: z.string().optional(),
+          bucket: z.string().optional(),
+          accessKeyId: z.string().optional(),
+          secretAccessKey: z.string().optional(),
+          forcePathStyle: z.boolean().optional(),
+          presignExpiry: z.number().int().positive().optional(),
+        })
+        .optional(),
+    })
+    .superRefine((data, ctx) => {
+      if (data.driver === 's3' && !data.s3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'driver 为 s3 时必须提供 s3 配置',
+          path: ['s3'],
+        });
+      }
+    })
+    .optional(),
 });
 
 export default function createSetupRoutes(options: SetupRouteOptions = {}) {

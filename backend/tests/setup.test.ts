@@ -59,6 +59,50 @@ describe('POST /api/setup', () => {
     expect(status.body.data.isSetup).toBe(true);
   });
 
+  it('persists local storage settings during setup', async () => {
+    const res = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: { email: 'local-storage@example.com', password: 'admin123', username: 'localstore' },
+        storage: { driver: 'local', uploadDir: 'data/setup-uploads' },
+      });
+
+    expect(res.status).toBe(201);
+    const config = await prisma().appConfig.findFirst();
+    expect(config!.storageDriver).toBe('local');
+    expect(config!.uploadDir).toBe('data/setup-uploads');
+    expect(config!.s3Config).toBeNull();
+  });
+
+  it('persists s3 storage settings during setup', async () => {
+    const res = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: { email: 's3-storage@example.com', password: 'admin123', username: 's3store' },
+        storage: {
+          driver: 's3',
+          s3: {
+            endpoint: 'http://localhost:9000',
+            bucket: 'lighttickets',
+            accessKeyId: 'minioadmin',
+            secretAccessKey: 'minioadmin',
+            forcePathStyle: true,
+            presignExpiry: 600,
+          },
+        },
+      });
+
+    expect(res.status).toBe(201);
+    const config = await prisma().appConfig.findFirst();
+    expect(config!.storageDriver).toBe('s3');
+    const s3 = JSON.parse(config!.s3Config!);
+    expect(s3.bucket).toBe('lighttickets');
+    expect(s3.region).toBe('us-east-1');
+    expect(s3.presignExpiry).toBe(600);
+  });
+
   it('rejects invalid payload', async () => {
     const res = await request(app)
       .post('/api/setup')

@@ -27,6 +27,19 @@ export interface SetupPayload {
   mc?: {
     defaultServerName?: string;
   };
+  storage?: {
+    driver: 'local' | 's3';
+    uploadDir?: string;
+    s3?: {
+      endpoint?: string;
+      region?: string;
+      bucket?: string;
+      accessKeyId?: string;
+      secretAccessKey?: string;
+      forcePathStyle: boolean;
+      presignExpiry: number;
+    };
+  };
 }
 
 export interface SetupResult {
