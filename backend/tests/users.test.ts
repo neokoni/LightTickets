@@ -7,15 +7,13 @@ const app = createApp();
 
 async function createAdminAndGetToken(email = 'admin@test.com') {
   const username = email.split('@')[0];
-  await request(app)
-    .post('/api/auth/register')
-    .send({ email, password: 'Password123!', username });
+  await request(app).post('/api/auth/register').send({ email, password: 'Password123!', username });
   const user = await prisma().user.findUnique({ where: { email } });
   if (user) await prisma().user.update({ where: { id: user.id }, data: { role: 'admin' } });
   const loginRes = await request(app)
     .post('/api/auth/login')
     .send({ emailOrUsername: email, password: 'Password123!' });
-  return loginRes.body.accessToken;
+  return loginRes.body.data.accessToken;
 }
 
 async function createUserAndGetToken(email = 'user@test.com') {
@@ -23,7 +21,7 @@ async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username });
-  return { token: res.body.accessToken, user: res.body.user };
+  return { token: res.body.data.accessToken, user: res.body.data.user };
 }
 
 describe('GET /api/users', () => {
@@ -31,23 +29,19 @@ describe('GET /api/users', () => {
     const token = await createAdminAndGetToken('admin-users@test.com');
     await createUserAndGetToken('user1-users@test.com');
 
-    const res = await request(app)
-      .get('/api/users')
-      .set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/api/users').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.users).toBeInstanceOf(Array);
-    expect(res.body.users.length).toBeGreaterThanOrEqual(2);
-    expect(res.body).toHaveProperty('total');
-    expect(res.body).toHaveProperty('page');
+    expect(res.body.data.users).toBeInstanceOf(Array);
+    expect(res.body.data.users.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.data).toHaveProperty('total');
+    expect(res.body.data).toHaveProperty('page');
   });
 
   it('rejects non-admin user', async () => {
     const { token } = await createUserAndGetToken('player-users@test.com');
 
-    const res = await request(app)
-      .get('/api/users')
-      .set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/api/users').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(403);
   });
@@ -63,7 +57,7 @@ describe('PATCH /api/users/me/avatar', () => {
       .send({ avatarUrl: 'https://example.com/avatar.png' });
 
     expect(res.status).toBe(200);
-    expect(res.body.avatarUrl).toBe('https://example.com/avatar.png');
+    expect(res.body.data.avatarUrl).toBe('https://example.com/avatar.png');
   });
 
   it('clears avatar with empty string', async () => {
@@ -79,7 +73,7 @@ describe('PATCH /api/users/me/avatar', () => {
       .send({ avatarUrl: '' });
 
     expect(res.status).toBe(200);
-    expect(res.body.avatarUrl).toBeNull();
+    expect(res.body.data.avatarUrl).toBeNull();
   });
 
   it('rejects invalid URL', async () => {
@@ -105,7 +99,7 @@ describe('PATCH /api/users/:id/role', () => {
       .send({ role: 'staff' });
 
     expect(res.status).toBe(200);
-    expect(res.body.role).toBe('staff');
+    expect(res.body.data.role).toBe('staff');
   });
 
   it('rejects invalid role', async () => {
@@ -158,7 +152,7 @@ describe('PATCH /api/users/me/username', () => {
       .send({ username: 'newname' });
 
     expect(res.status).toBe(200);
-    expect(res.body.username).toBe('newname');
+    expect(res.body.data.username).toBe('newname');
   });
 
   it('rejects duplicate username', async () => {
@@ -193,7 +187,7 @@ describe('PATCH /api/users/me/username', () => {
       .send({ username: 'changed' });
 
     expect(res.status).toBe(200);
-    expect(res.body.username).toBe('changed');
-    expect(res.body.id).toBe(user.id);
+    expect(res.body.data.username).toBe('changed');
+    expect(res.body.data.id).toBe(user.id);
   });
 });

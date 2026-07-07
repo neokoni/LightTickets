@@ -65,7 +65,7 @@ describe('S3StorageAdapter', () => {
     const adapter = new S3StorageAdapter(s3Config);
 
     const redirect = vi.fn();
-    const res = { redirect } as any;
+    const res = { redirect } as unknown as Parameters<typeof adapter.serve>[0];
 
     await adapter.serve(res, 'k.png', 'file.png');
 

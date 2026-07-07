@@ -1,11 +1,11 @@
-import { getPrisma } from '../db.js';
+import { prisma } from '../db.js';
 import bcrypt from 'bcrypt';
 import jwt, { type SignOptions } from 'jsonwebtoken';
-import { config } from '../config.js';
+import type { User } from '@prisma/client';
+import { getConfig } from '../config.js';
 import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
-
-const prisma = () => getPrisma();
+import { USER_PUBLIC_SELECT } from './constants.js';
 
 export async function register(email: string, password: string, username: string) {
   const existing = await prisma().user.findFirst({
@@ -65,15 +65,17 @@ export async function login(emailOrUsername: string, password: string) {
 
 export async function refresh(refreshToken: string) {
   try {
-    const payload = jwt.verify(refreshToken, config.jwtRefreshSecret) as { userId: number; role: string };
+    const config = getConfig();
+    const payload = jwt.verify(refreshToken, config.security.jwtRefreshSecret) as {
+      userId: number;
+      role: string;
+    };
     const user = await prisma().user.findUnique({ where: { id: payload.userId } });
     if (!user) throw new UnauthorizedError();
 
-    const accessToken = jwt.sign(
-      { userId: user.id, role: user.role },
-      config.jwtSecret,
-      { expiresIn: config.accessTokenExpiry as SignOptions['expiresIn'] },
-    );
+    const accessToken = jwt.sign({ userId: user.id, role: user.role }, config.security.jwtSecret, {
+      expiresIn: config.accessTokenExpiry as SignOptions['expiresIn'],
+    });
     return { accessToken, user: sanitizeUser(user) };
   } catch {
     throw new UnauthorizedError('刷新令牌无效或已过期');
@@ -95,18 +97,6 @@ export async function linkMinecraft(userId: number, code: string) {
   return { uuid: linkCode.minecraftUuid, name: linkCode.minecraftName };
 }
 
-const userSelect = {
-  id: true,
-  email: true,
-  username: true,
-  minecraftUuid: true,
-  minecraftName: true,
-  avatarUrl: true,
-  role: true,
-  createdAt: true,
-  updatedAt: true,
-};
-
 export async function unlinkMinecraft(userId: number) {
   const user = await prisma().user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('用户不存在');
@@ -115,22 +105,22 @@ export async function unlinkMinecraft(userId: number) {
   return prisma().user.update({
     where: { id: userId },
     data: { minecraftUuid: null, minecraftName: null },
-    select: userSelect,
+    select: USER_PUBLIC_SELECT,
   });
 }
 
 export async function unlinkMinecraftByUuid(minecraftUuid: string) {
   const user = await prisma().user.findUnique({ where: { minecraftUuid } });
-  if (!user) throw new NotFoundError('Player not linked');
+  if (!user) throw new NotFoundError('该 Minecraft 账号未绑定');
 
   return prisma().user.update({
     where: { id: user.id },
     data: { minecraftUuid: null, minecraftName: null },
-    select: userSelect,
+    select: USER_PUBLIC_SELECT,
   });
 }
 
-function sanitizeUser(user: any) {
-  const { passwordHash, ...safe } = user;
+function sanitizeUser(user: User) {
+  const { passwordHash: _passwordHash, ...safe } = user;
   return safe;
 }

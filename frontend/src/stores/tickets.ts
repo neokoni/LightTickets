@@ -1,14 +1,22 @@
-import { defineStore } from 'pinia'
-import { ref, reactive } from 'vue'
-import type { Ticket, TicketStatus } from '@/types/ticket'
-import type { PaginatedResponse } from '@/types/api'
-import { apiGetTickets, apiGetTicket, apiUpdateTicket, apiCloseTicket, apiReopenTicket, apiUpdateTicketTitle, apiUpdateTicketBody, type TicketFilters } from '@/api/tickets'
+import { defineStore } from 'pinia';
+import { ref, reactive } from 'vue';
+import type { Ticket, TicketStatus, TicketFilters } from '@/types/ticket';
+import type { PaginatedResponse } from '@/types/api';
+import {
+  apiGetTickets,
+  apiGetTicket,
+  apiUpdateTicket,
+  apiCloseTicket,
+  apiReopenTicket,
+  apiUpdateTicketTitle,
+  apiUpdateTicketBody,
+} from '@/api/tickets';
 
 export const useTicketsStore = defineStore('tickets', () => {
-  const tickets = ref<Ticket[]>([])
-  const total = ref(0)
-  const currentTicket = ref<Ticket | null>(null)
-  const loading = ref(false)
+  const tickets = ref<Ticket[]>([]);
+  const total = ref(0);
+  const currentTicket = ref<Ticket | null>(null);
+  const loading = ref(false);
 
   const filters = reactive<TicketFilters>({
     page: 1,
@@ -20,60 +28,68 @@ export const useTicketsStore = defineStore('tickets', () => {
     hasServer: undefined,
     authorName: undefined,
     search: '',
-  })
+  });
 
   async function fetchList() {
-    loading.value = true
+    loading.value = true;
     try {
-      const res: PaginatedResponse<Ticket> = await apiGetTickets(filters)
-      tickets.value = res.tickets
-      total.value = res.total
+      const res: PaginatedResponse<Ticket> = await apiGetTickets(filters);
+      tickets.value = res.tickets;
+      total.value = res.total;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   async function fetchDetail(id: number) {
-    currentTicket.value = await apiGetTicket(id)
+    currentTicket.value = await apiGetTicket(id);
+  }
+
+  function syncTicketUpdate(updated: Ticket) {
+    if (currentTicket.value?.id === updated.id) currentTicket.value = updated;
+    const idx = tickets.value.findIndex((t) => t.id === updated.id);
+    if (idx !== -1) tickets.value[idx] = updated;
   }
 
   async function updateStatus(id: number, status: TicketStatus) {
-    const updated = await apiUpdateTicket(id, { status })
-    if (currentTicket.value?.id === id) currentTicket.value = updated
-    const idx = tickets.value.findIndex(t => t.id === id)
-    if (idx !== -1) tickets.value[idx] = updated
+    syncTicketUpdate(await apiUpdateTicket(id, { status }));
   }
 
   async function closeTicket(id: number) {
-    const updated = await apiCloseTicket(id)
-    if (currentTicket.value?.id === id) currentTicket.value = updated
-    const idx = tickets.value.findIndex(t => t.id === id)
-    if (idx !== -1) tickets.value[idx] = updated
+    syncTicketUpdate(await apiCloseTicket(id));
   }
 
   async function reopenTicket(id: number) {
-    const updated = await apiReopenTicket(id)
-    if (currentTicket.value?.id === id) currentTicket.value = updated
-    const idx = tickets.value.findIndex(t => t.id === id)
-    if (idx !== -1) tickets.value[idx] = updated
+    syncTicketUpdate(await apiReopenTicket(id));
   }
 
   async function updateTitle(id: number, title: string) {
-    const updated = await apiUpdateTicketTitle(id, title)
-    if (currentTicket.value?.id === id) currentTicket.value = updated
-    const idx = tickets.value.findIndex(t => t.id === id)
-    if (idx !== -1) tickets.value[idx] = updated
+    syncTicketUpdate(await apiUpdateTicketTitle(id, title));
   }
 
   async function updateBody(id: number, body: string) {
-    const updated = await apiUpdateTicketBody(id, body)
-    if (currentTicket.value?.id === id) currentTicket.value = updated
+    const updated = await apiUpdateTicketBody(id, body);
+    if (currentTicket.value?.id === id) currentTicket.value = updated;
   }
 
   function setFilter(key: keyof TicketFilters, value: string | number | undefined) {
-    ;(filters as Record<string, unknown>)[key] = value
-    filters.page = 1
+    (filters as Record<string, unknown>)[key] = value;
+    filters.page = 1;
   }
 
-  return { tickets, total, currentTicket, loading, filters, fetchList, fetchDetail, updateStatus, closeTicket, reopenTicket, updateTitle, updateBody, setFilter }
-})
+  return {
+    tickets,
+    total,
+    currentTicket,
+    loading,
+    filters,
+    fetchList,
+    fetchDetail,
+    updateStatus,
+    closeTicket,
+    reopenTicket,
+    updateTitle,
+    updateBody,
+    setFilter,
+  };
+});

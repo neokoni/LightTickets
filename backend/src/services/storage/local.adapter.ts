@@ -7,7 +7,11 @@ import { NotFoundError } from '../../utils/errors.js';
 export class LocalStorageAdapter implements IStorageAdapter {
   readonly type = 'local' as const;
 
-  constructor(private uploadDir: string) {}
+  constructor(private uploadDir: string) {
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+  }
 
   async save(input: SaveInput): Promise<void> {
     const filePath = path.resolve(this.uploadDir, input.key);
@@ -18,8 +22,8 @@ export class LocalStorageAdapter implements IStorageAdapter {
     const filePath = path.resolve(this.uploadDir, key);
     try {
       await fs.promises.unlink(filePath);
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') throw err;
+    } catch (err: unknown) {
+      if (!(err instanceof Error) || !('code' in err) || err.code !== 'ENOENT') throw err;
     }
   }
 

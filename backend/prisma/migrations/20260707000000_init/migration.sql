@@ -31,7 +31,6 @@ CREATE TABLE "tickets" (
     "form_data" TEXT,
     "game_context" TEXT,
     "status" TEXT NOT NULL DEFAULT 'open',
-    "priority" TEXT NOT NULL DEFAULT 'medium',
     "author_id" INTEGER NOT NULL,
     "server_id" TEXT,
     "assignee_id" INTEGER,
@@ -123,6 +122,15 @@ CREATE TABLE "setup_status" (
     "allow_mc_register" BOOLEAN NOT NULL DEFAULT true,
     "footer_content" TEXT,
     "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "app_config" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "storage_driver" TEXT NOT NULL DEFAULT 'local',
+    "upload_dir" TEXT NOT NULL DEFAULT 'data/uploads',
+    "s3_config" TEXT,
     "updated_at" DATETIME NOT NULL
 );
 

@@ -1,9 +1,13 @@
 import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import fs from 'fs';
-import { AppError, normalizeError } from './utils/errors.js';
+import path from 'path';
 import { getConfig } from './config.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { globalLimiter } from './middleware/rate-limit.js';
+import { responseEnvelope } from './middleware/response-envelope.js';
 import createSetupRoutes from './routes/setup.js';
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js';
@@ -24,17 +28,37 @@ export function createApp() {
 
   initTemplates();
 
-  app.use(cors());
+  const config = getConfig();
+  app.use(globalLimiter);
+  app.use(helmet());
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        if (!origin || config.corsOrigins.includes(origin)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+    }),
+  );
   app.use(express.json());
-
-  if (getConfig().storage.driver === 'local') {
-    if (!fs.existsSync(getConfig().storage.uploadDir)) {
-      fs.mkdirSync(getConfig().storage.uploadDir, { recursive: true });
-    }
-  }
+  app.use(responseEnvelope);
 
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok' });
+  });
+
+  app.get('/api/docs/openapi.json', (_req, res) => {
+    const openapiPath = path.resolve('openapi.json');
+    if (fs.existsSync(openapiPath)) {
+      res.json(JSON.parse(fs.readFileSync(openapiPath, 'utf-8')));
+    } else {
+      res
+        .status(404)
+        .json({ success: false, statusCode: 404, message: 'OpenAPI spec not generated' });
+    }
   });
 
   app.use('/api/setup', createSetupRoutes());
@@ -52,15 +76,7 @@ export function createApp() {
   app.use('/api/users', userRoutes);
 
   // Error handler
-  app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-    const normalized = normalizeError(err);
-    if (normalized instanceof AppError) {
-      res.status(normalized.statusCode).json({ error: normalized.message });
-      return;
-    }
-    console.error(normalized);
-    res.status(500).json({ error: 'Internal server error' });
-  });
+  app.use(errorHandler);
 
   return app;
 }

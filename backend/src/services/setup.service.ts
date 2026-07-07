@@ -5,12 +5,25 @@ import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { AppError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
+import { ROLE } from '../constants/roles.js';
+import { CONFIG_PATH, isDatabaseConfigured } from '../config.js';
 
-const CONFIG_PATH = path.resolve('data/config.yml');
+type SetupConfigFile = {
+  server?: { port?: number; corsOrigins?: string[] };
+  database?: {
+    provider?: 'sqlite' | 'mysql';
+    host?: string;
+    port?: number;
+    username?: string;
+    password?: string;
+    database?: string;
+  };
+  security?: { jwtSecret?: string; jwtRefreshSecret?: string };
+};
 
-function readYaml(filePath: string): Record<string, any> {
+function readYaml(filePath: string): SetupConfigFile {
   const raw = yaml.load(fs.readFileSync(filePath, 'utf-8'));
-  return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw as Record<string, any> : {};
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as SetupConfigFile) : {};
 }
 
 export interface SiteConfig {
@@ -23,18 +36,21 @@ export interface SiteConfig {
   footerContent: string | null;
 }
 
-export interface DbConfig {
-  provider: 'sqlite' | 'mysql';
-  databaseUrl: string;
-}
-
 export interface SiteConfigInput {
   siteName?: string;
   siteUrl?: string;
 }
 
 export interface SetupInput {
-  db: DbConfig;
+  db: {
+    provider: 'sqlite' | 'mysql';
+    databaseUrl?: string;
+    host?: string;
+    port?: number;
+    username?: string;
+    password?: string;
+    database?: string;
+  };
   admin: {
     email: string;
     password: string;
@@ -47,13 +63,16 @@ export interface SetupInput {
 }
 
 export async function getSiteConfig(): Promise<SiteConfig> {
-  if (!fs.existsSync(CONFIG_PATH)) {
-    return { isSetup: false, requireLogin: false, allowWebRegister: true, allowMcRegister: true, siteName: 'LightTickets', siteUrl: null, footerContent: null };
-  }
-
-  const raw = readYaml(CONFIG_PATH);
-  if (!raw.db?.databaseUrl || !raw.db?.provider) {
-    return { isSetup: false, requireLogin: false, allowWebRegister: true, allowMcRegister: true, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
+  if (!isDatabaseConfigured()) {
+    return {
+      isSetup: false,
+      requireLogin: false,
+      allowWebRegister: true,
+      allowMcRegister: true,
+      siteName: 'LightTickets',
+      siteUrl: null,
+      footerContent: null,
+    };
   }
 
   try {
@@ -65,20 +84,26 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       requireLogin: status?.requireLogin ?? false,
       allowWebRegister: status?.allowWebRegister ?? true,
       allowMcRegister: status?.allowMcRegister ?? true,
-      siteName: status?.siteName || raw.siteName || 'LightTickets',
+      siteName: status?.siteName || 'LightTickets',
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
     };
-  } catch (e: any) {
-    // Only treat actual DB connection / missing-table errors as "not initialized".
-    // PrismaClientValidationError means the schema is out of sync — re-throw so
-    // the caller sees a real error instead of silently falling back to setup mode.
-    const msg = e?.message || '';
-    if (e?.name === 'PrismaClientValidationError' || msg.includes('Unknown argument')) {
+  } catch (e: unknown) {
+    const error = e instanceof Error ? e : new Error(String(e));
+    const msg = error.message || '';
+    if (error.name === 'PrismaClientValidationError' || msg.includes('Unknown argument')) {
       throw e;
     }
     console.warn('[setup] Could not query setup status:', msg);
-    return { isSetup: false, requireLogin: false, allowWebRegister: true, allowMcRegister: true, siteName: raw.siteName || 'LightTickets', siteUrl: null, footerContent: null };
+    return {
+      isSetup: false,
+      requireLogin: false,
+      allowWebRegister: true,
+      allowMcRegister: true,
+      siteName: 'LightTickets',
+      siteUrl: null,
+      footerContent: null,
+    };
   }
 }
 
@@ -118,45 +143,24 @@ export async function updateSettings(data: {
   };
 }
 
-export async function getSetupStatus() {
-  const { getPrisma } = await import('../db.js');
-  const prisma = getPrisma();
-
-  const status = await prisma.setupStatus.findFirst();
-  return {
-    isSetup: status?.isSetup ?? false,
-    siteName: status?.siteName ?? 'LightTickets',
-  };
-}
-
 export async function completeSetup(input: SetupInput) {
-  // Guard: check if already set up
-  if (fs.existsSync(CONFIG_PATH)) {
-    const raw = readYaml(CONFIG_PATH);
-    if (raw.db?.databaseUrl && raw.db?.provider) {
-      try {
-        const { getPrisma } = await import('../db.js');
-        const prisma = getPrisma();
-        const existing = await prisma.setupStatus.findFirst();
-        if (existing) {
-          throw new AppError(409, '站点已完成初始化，无法重复设置');
-        }
-      } catch (e) {
-        if (e instanceof AppError) throw e;
-        // DB not initialized, proceed with setup
+  if (isDatabaseConfigured()) {
+    try {
+      const { getPrisma } = await import('../db.js');
+      const prisma = getPrisma();
+      const existing = await prisma.setupStatus.findFirst();
+      if (existing) {
+        throw new AppError(409, '站点已完成初始化，无法重复设置');
       }
+    } catch (e) {
+      if (e instanceof AppError) throw e;
     }
   }
 
-  // 1. Validate DB config
   if (!input.db.provider || !['sqlite', 'mysql'].includes(input.db.provider)) {
     throw new ValidationError('无效的数据库类型，仅支持 sqlite 或 mysql');
   }
-  if (!input.db.databaseUrl) {
-    throw new ValidationError('数据库连接地址不能为空');
-  }
 
-  // 2. Validate admin
   if (!input.admin.email || !input.admin.password || !input.admin.username) {
     throw new ValidationError('管理员邮箱、密码和用户名均为必填项');
   }
@@ -164,33 +168,48 @@ export async function completeSetup(input: SetupInput) {
     throw new ValidationError('管理员密码长度不能低于 6 位');
   }
 
-  // 3. Write config.yml
-  const configData: Record<string, any> = {
-    port: 3000,
-    jwtSecret: crypto.randomBytes(32).toString('hex'),
-    jwtRefreshSecret: crypto.randomBytes(32).toString('hex'),
-    db: {
+  const configData: Required<SetupConfigFile> = {
+    server: {
+      port: 3000,
+      corsOrigins: ['http://localhost:5173'],
+    },
+    database: {
       provider: input.db.provider,
-      databaseUrl: input.db.databaseUrl,
+    },
+    security: {
+      jwtSecret: crypto.randomBytes(32).toString('hex'),
+      jwtRefreshSecret: crypto.randomBytes(32).toString('hex'),
     },
   };
 
-  if (fs.existsSync(CONFIG_PATH)) {
-    const existing = readYaml(CONFIG_PATH);
-    if (existing.port) configData.port = existing.port;
-    if (existing.jwtSecret) configData.jwtSecret = existing.jwtSecret;
-    if (existing.jwtRefreshSecret) configData.jwtRefreshSecret = existing.jwtRefreshSecret;
+  if (input.db.provider === 'mysql') {
+    configData.database.host = input.db.host || 'localhost';
+    configData.database.port = input.db.port || 3306;
+    configData.database.username = input.db.username || '';
+    configData.database.password = input.db.password || '';
+    configData.database.database = input.db.database || 'lighttickets';
   }
 
+  if (fs.existsSync(CONFIG_PATH)) {
+    const existing = readYaml(CONFIG_PATH);
+    if (existing.server?.port) configData.server.port = existing.server.port;
+    if (existing.server?.corsOrigins) configData.server.corsOrigins = existing.server.corsOrigins;
+    if (existing.security?.jwtSecret) configData.security.jwtSecret = existing.security.jwtSecret;
+    if (existing.security?.jwtRefreshSecret)
+      configData.security.jwtRefreshSecret = existing.security.jwtRefreshSecret;
+  }
+
+  fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
   fs.writeFileSync(CONFIG_PATH, yaml.dump(configData, { lineWidth: -1 }), 'utf-8');
+  try {
+    fs.chmodSync(CONFIG_PATH, 0o600);
+  } catch {
+    // non-fatal
+  }
 
-  // 4. Load config to resolve DATABASE_URL consistently (loadConfig resolves
-  //    sqlite file: URLs to absolute paths relative to data/, matching what
-  //    startFullApp uses on restart — so setup and runtime share the same DB).
-  const { loadConfig } = await import('../config.js');
-  loadConfig();
+  const { reloadConfig } = await import('../config.js');
+  reloadConfig();
 
-  // Run migrations with the resolved DATABASE_URL, then init prisma
   const { runMigrations } = await import('../migrate.js');
   runMigrations(input.db.provider);
 
@@ -198,7 +217,6 @@ export async function completeSetup(input: SetupInput) {
   initPrisma();
   const prisma = getPrisma();
 
-  // 5. Create admin user
   const existingUser = await prisma.user.findFirst({
     where: { OR: [{ email: input.admin.email }, { username: input.admin.username }] },
   });
@@ -212,11 +230,10 @@ export async function completeSetup(input: SetupInput) {
       email: input.admin.email,
       passwordHash,
       username: input.admin.username,
-      role: 'admin',
+      role: ROLE.ADMIN,
     },
   });
 
-  // 6. Create setup status record
   const siteConfig = input.site || {};
   const setupRecord = await prisma.setupStatus.create({
     data: {
@@ -226,7 +243,10 @@ export async function completeSetup(input: SetupInput) {
     },
   });
 
-  // 7. Optionally create a default server
+  await prisma.appConfig.create({
+    data: {},
+  });
+
   if (input.mc?.defaultServerName) {
     const apiKey = `lt_${crypto.randomBytes(24).toString('hex')}`;
     await prisma.server.create({
@@ -237,9 +257,8 @@ export async function completeSetup(input: SetupInput) {
     });
   }
 
-  // 8. Seed templates
-  const { seedTemplatesFromFiles } = await import('./template.service.js');
-  await seedTemplatesFromFiles();
+  const { initTemplates } = await import('./template.service.js');
+  await initTemplates();
 
   const tokens = generateTokens(admin.id, admin.role);
   return {
@@ -247,29 +266,4 @@ export async function completeSetup(input: SetupInput) {
     admin: { id: admin.id, email: admin.email, username: admin.username, role: admin.role },
     ...tokens,
   };
-}
-
-export async function startFullAppAfterSetup(setupServer: import('http').Server): Promise<void> {
-  const { loadConfig } = await import('../config.js');
-  const config = loadConfig();
-
-  const { initPrisma } = await import('../db.js');
-  initPrisma();
-
-  const { initTemplates } = await import('./template.service.js');
-  await initTemplates();
-
-  const { createApp } = await import('../app.js');
-  const { createServer } = await import('http');
-  const { initSocket } = await import('../socket/index.js');
-
-  const app = createApp();
-  const server = createServer(app);
-  initSocket(server);
-
-  setupServer.close(() => {
-    server.listen(config.port, () => {
-      console.log(`LightTickets API running on port ${config.port}`);
-    });
-  });
 }

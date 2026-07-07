@@ -1,8 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
-import { getPrisma } from '../db.js';
+import type { Request, Response, NextFunction } from 'express';
+import { prisma } from '../db.js';
 import { UnauthorizedError } from '../utils/errors.js';
-
-const prisma = () => getPrisma();
 
 declare global {
   namespace Express {

@@ -7,7 +7,7 @@ CREATE TABLE `users` (
     `minecraft_uuid` VARCHAR(191) NULL,
     `minecraft_name` VARCHAR(191) NULL,
     `avatar_url` VARCHAR(191) NULL,
-    `role` VARCHAR(191) NOT NULL DEFAULT 'player',
+    `role` ENUM('player', 'staff', 'admin') NOT NULL DEFAULT 'player',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 
@@ -35,12 +35,11 @@ CREATE TABLE `servers` (
 CREATE TABLE `tickets` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `title` VARCHAR(191) NOT NULL,
-    `body` TEXT NOT NULL,
+    `body` VARCHAR(191) NOT NULL,
     `template` VARCHAR(191) NOT NULL DEFAULT '',
-    `form_data` TEXT NULL,
-    `game_context` LONGTEXT NULL,
-    `status` VARCHAR(191) NOT NULL DEFAULT 'open',
-    `priority` VARCHAR(191) NOT NULL DEFAULT 'medium',
+    `form_data` VARCHAR(191) NULL,
+    `game_context` VARCHAR(191) NULL,
+    `status` ENUM('open', 'in_progress', 'closed', 'invalid') NOT NULL DEFAULT 'open',
     `author_id` INTEGER NOT NULL,
     `server_id` VARCHAR(191) NULL,
     `assignee_id` INTEGER NULL,
@@ -83,8 +82,8 @@ CREATE TABLE `comments` (
     `id` VARCHAR(191) NOT NULL,
     `ticket_id` INTEGER NOT NULL,
     `author_id` INTEGER NOT NULL,
-    `body` TEXT NOT NULL,
-    `source` VARCHAR(191) NOT NULL DEFAULT 'web',
+    `body` VARCHAR(191) NOT NULL,
+    `source` ENUM('web', 'minecraft') NOT NULL DEFAULT 'web',
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (`id`)
@@ -129,8 +128,19 @@ CREATE TABLE `setup_status` (
     `require_login` BOOLEAN NOT NULL DEFAULT false,
     `allow_web_register` BOOLEAN NOT NULL DEFAULT true,
     `allow_mc_register` BOOLEAN NOT NULL DEFAULT true,
-    `footer_content` TEXT NULL,
+    `footer_content` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updated_at` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `app_config` (
+    `id` VARCHAR(191) NOT NULL,
+    `storage_driver` VARCHAR(191) NOT NULL DEFAULT 'local',
+    `upload_dir` VARCHAR(191) NOT NULL DEFAULT 'data/uploads',
+    `s3_config` VARCHAR(191) NULL,
     `updated_at` DATETIME(3) NOT NULL,
 
     PRIMARY KEY (`id`)
@@ -142,8 +152,8 @@ CREATE TABLE `audit_logs` (
     `ticket_id` INTEGER NOT NULL,
     `actor_id` INTEGER NOT NULL,
     `action` VARCHAR(191) NOT NULL,
-    `old_value` TEXT NULL,
-    `new_value` TEXT NULL,
+    `old_value` VARCHAR(191) NULL,
+    `new_value` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     PRIMARY KEY (`id`)
@@ -165,10 +175,10 @@ ALTER TABLE `ticket_labels` ADD CONSTRAINT `ticket_labels_ticket_id_fkey` FOREIG
 ALTER TABLE `ticket_labels` ADD CONSTRAINT `ticket_labels_label_id_fkey` FOREIGN KEY (`label_id`) REFERENCES `labels`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `ticket_assignees` ADD CONSTRAINT `ticket_assignees_ticket_id_fkey` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `ticket_assignees` ADD CONSTRAINT `ticket_assignees_ticket_id_fkey` FOREIGN KEY (`ticket_id`) REFERENCES `tickets`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `ticket_assignees` ADD CONSTRAINT `ticket_assignees_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE `ticket_assignees` ADD CONSTRAINT `ticket_assignees_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `comments` ADD CONSTRAINT `comments_ticket_id_fkey` FOREIGN KEY (`ticket_id`) REFERENCES `tickets`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

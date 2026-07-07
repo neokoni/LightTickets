@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { prisma } from './setup.js';
 
 const app = createApp();
 
@@ -9,7 +8,7 @@ async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username: email.split('@')[0] });
-  return res.body.accessToken;
+  return res.body.data.accessToken;
 }
 
 async function createTicket(token: string) {
@@ -29,31 +28,31 @@ describe('PATCH /api/tickets/:id/comments/:commentId/body', () => {
     const ticket = await createTicket(token);
 
     const comment = await request(app)
-      .post(`/api/tickets/${ticket.body.id}/comments`)
+      .post(`/api/tickets/${ticket.body.data.id}/comments`)
       .set('Authorization', `Bearer ${token}`)
       .send({ body: 'Original comment' });
 
     const res = await request(app)
-      .patch(`/api/tickets/${ticket.body.id}/comments/${comment.body.id}/body`)
+      .patch(`/api/tickets/${ticket.body.data.id}/comments/${comment.body.data.id}/body`)
       .set('Authorization', `Bearer ${token}`)
       .send({ body: 'Edited comment' });
 
     expect(res.status).toBe(200);
-    expect(res.body.body).toBe('Edited comment');
+    expect(res.body.data.body).toBe('Edited comment');
   });
 
-  it('rejects editing another user\'s comment', async () => {
+  it("rejects editing another user's comment", async () => {
     const authorToken = await createUserAndGetToken('comment-author@test.com');
     const otherToken = await createUserAndGetToken('comment-other@test.com');
     const ticket = await createTicket(authorToken);
 
     const comment = await request(app)
-      .post(`/api/tickets/${ticket.body.id}/comments`)
+      .post(`/api/tickets/${ticket.body.data.id}/comments`)
       .set('Authorization', `Bearer ${authorToken}`)
       .send({ body: 'Not yours' });
 
     const res = await request(app)
-      .patch(`/api/tickets/${ticket.body.id}/comments/${comment.body.id}/body`)
+      .patch(`/api/tickets/${ticket.body.data.id}/comments/${comment.body.data.id}/body`)
       .set('Authorization', `Bearer ${otherToken}`)
       .send({ body: 'Trying to edit' });
 
@@ -65,12 +64,12 @@ describe('PATCH /api/tickets/:id/comments/:commentId/body', () => {
     const ticket = await createTicket(token);
 
     const comment = await request(app)
-      .post(`/api/tickets/${ticket.body.id}/comments`)
+      .post(`/api/tickets/${ticket.body.data.id}/comments`)
       .set('Authorization', `Bearer ${token}`)
       .send({ body: 'A comment' });
 
     const res = await request(app)
-      .patch(`/api/tickets/${ticket.body.id}/comments/${comment.body.id}/body`)
+      .patch(`/api/tickets/${ticket.body.data.id}/comments/${comment.body.data.id}/body`)
       .set('Authorization', `Bearer ${token}`)
       .send({ body: '' });
 

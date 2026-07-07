@@ -1,13 +1,44 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { z } from 'zod';
 import * as authService from '../services/auth.service.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { platformOnlyMiddleware } from '../middleware/platform.js';
-import { ValidationError } from '../utils/errors.js';
+import { authLimiter } from '../middleware/rate-limit.js';
+import { ForbiddenError, ValidationError } from '../utils/errors.js';
+import { validate } from '../utils/validate.js';
 
 const router = Router();
+const REFRESH_COOKIE_NAME = 'lt_refresh_token';
 
-router.use(platformOnlyMiddleware);
+function parseCookies(header: string | undefined): Record<string, string> {
+  if (!header) return {};
+  return Object.fromEntries(
+    header
+      .split(';')
+      .map((part) => part.trim().split('='))
+      .filter(([key, value]) => key && value)
+      .map(([key, value]) => [key, decodeURIComponent(value)]),
+  );
+}
+
+function setRefreshCookie(res: Response, refreshToken: string): void {
+  res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/auth',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+}
+
+function clearRefreshCookie(res: Response): void {
+  res.clearCookie(REFRESH_COOKIE_NAME, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/auth',
+  });
+}
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -20,35 +51,40 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
-router.post('/register', async (req: Request, res: Response) => {
-  const parsed = registerSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+router.post('/register', authLimiter, async (req: Request, res: Response) => {
+  const data = validate(registerSchema, req.body);
 
   const { getSiteConfig } = await import('../services/setup.service.js');
   const config = await getSiteConfig();
   if (!config.allowWebRegister) {
-    res.status(403).json({ message: '网页注册已关闭，请联系管理员' });
-    return;
+    throw new ForbiddenError('网页注册已关闭，请联系管理员');
   }
 
-  const result = await authService.register(parsed.data.email, parsed.data.password, parsed.data.username);
+  const result = await authService.register(data.email, data.password, data.username);
+  setRefreshCookie(res, result.refreshToken);
   res.status(201).json(result);
 });
 
-router.post('/login', async (req: Request, res: Response) => {
-  const parsed = loginSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+router.post('/login', authLimiter, async (req: Request, res: Response) => {
+  const data = validate(loginSchema, req.body);
 
-  const result = await authService.login(parsed.data.emailOrUsername, parsed.data.password);
+  const result = await authService.login(data.emailOrUsername, data.password);
+  setRefreshCookie(res, result.refreshToken);
   res.json(result);
 });
 
-router.post('/refresh', async (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
+router.post('/refresh', authLimiter, async (req: Request, res: Response) => {
+  const cookies = parseCookies(req.headers.cookie);
+  const refreshToken = cookies[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
   if (!refreshToken) throw new ValidationError('refreshToken required');
 
   const result = await authService.refresh(refreshToken);
   res.json(result);
+});
+
+router.post('/logout', authMiddleware, async (_req: Request, res: Response) => {
+  clearRefreshCookie(res);
+  res.status(204).end();
 });
 
 router.post('/link-minecraft', authMiddleware, async (req: Request, res: Response) => {

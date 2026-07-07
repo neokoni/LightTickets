@@ -1,67 +1,5 @@
 import { apiFetch } from './client';
-import type { Role } from '@/types/ticket';
-
-export interface SiteConfig {
-  isSetup: boolean;
-  requireLogin: boolean;
-  allowWebRegister: boolean;
-  allowMcRegister: boolean;
-  siteName: string;
-  siteUrl: string | null;
-  footerContent: string | null;
-}
-
-export interface SetupPayload {
-  db: {
-    provider: 'sqlite' | 'mysql';
-    databaseUrl: string;
-  };
-  admin: {
-    email: string;
-    password: string;
-    username: string;
-  };
-  site?: {
-    siteName?: string;
-    siteUrl?: string;
-  };
-  mc?: {
-    defaultServerName?: string;
-  };
-}
-
-export interface SetupResult {
-  setup: {
-    id: number;
-    isSetup: boolean;
-    siteName: string;
-    siteUrl: string | null;
-    createdAt: string;
-    updatedAt: string;
-  };
-  admin: {
-    id: number;
-    email: string;
-    username: string;
-    role: Role;
-    minecraftUuid?: string;
-    minecraftName?: string;
-    avatarUrl?: string | null;
-    createdAt?: string;
-    updatedAt?: string;
-  };
-  accessToken: string;
-  refreshToken: string;
-}
-
-export interface SettingsResult {
-  requireLogin: boolean;
-  allowWebRegister: boolean;
-  allowMcRegister: boolean;
-  siteName: string;
-  siteUrl: string | null;
-  footerContent: string | null;
-}
+import type { SiteConfig, SetupPayload, SetupResult, SettingsResult } from '@/types/site';
 
 export async function getSiteConfig(): Promise<SiteConfig> {
   return apiFetch<SiteConfig>('/setup/site-config', { method: 'GET' });
@@ -96,7 +34,7 @@ export async function waitForServerReady(maxAttempts = 30, intervalMs = 1000): P
     } catch {
       // Server not ready yet
     }
-    await new Promise(r => setTimeout(r, intervalMs));
+    await new Promise((r) => setTimeout(r, intervalMs));
   }
   return false;
 }

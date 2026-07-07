@@ -1,7 +1,7 @@
-import { getPrisma } from '../db.js';
+import { prisma } from '../db.js';
 import { NotFoundError } from '../utils/errors.js';
-
-const prisma = () => getPrisma();
+import type { AuditAction } from '../constants/audit-actions.js';
+import { USER_BRIEF_SELECT } from './constants.js';
 
 export async function listByTicket(ticketId: number) {
   const ticket = await prisma().ticket.findUnique({ where: { id: ticketId } });
@@ -11,7 +11,7 @@ export async function listByTicket(ticketId: number) {
     where: { ticketId },
     orderBy: { createdAt: 'asc' },
     include: {
-      actor: { select: { id: true, username: true, minecraftName: true } },
+      actor: { select: USER_BRIEF_SELECT },
     },
   });
 }
@@ -19,14 +19,14 @@ export async function listByTicket(ticketId: number) {
 export async function create(
   ticketId: number,
   actorId: number,
-  action: string,
+  action: AuditAction,
   oldValue?: string,
   newValue?: string,
 ) {
   return prisma().auditLog.create({
     data: { ticketId, actorId, action, oldValue, newValue },
     include: {
-      actor: { select: { id: true, username: true, minecraftName: true } },
+      actor: { select: USER_BRIEF_SELECT },
     },
   });
 }

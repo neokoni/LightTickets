@@ -1,13 +1,13 @@
 import { getIO } from './index.js';
 import { getDefinition, resolveHooks } from '../services/template.service.js';
 
-export function emitTicketUpdate(serverId: string, event: string, data: any) {
+export function emitTicketUpdate(serverId: string, event: string, data: unknown) {
   const io = getIO();
   if (!io) return;
   io.of('/mc').to(`server:${serverId}`).emit(event, data);
 }
 
-export function emitToAllServers(event: string, data: any) {
+export function emitToAllServers(event: string, data: unknown) {
   const io = getIO();
   if (!io) return;
   io.of('/mc').emit(event, data);
@@ -54,30 +54,28 @@ export function emitHookExecute(serverId: string, ticket: HookTicketPayload, eve
       .replace(/\{player_uuid\}/g, ticket.author?.minecraftUuid || 'unknown')
       .replace(/\{field\.(\w+)\}/g, (_, id: string) => formData[id] || '');
 
-  const resolvedHooks = hooks.map(hook => ({
-    hookId: [
-      'hook',
-      ticket.id,
-      event,
-      Date.now(),
-      Math.random().toString(36).slice(2, 10),
-    ].join(':'),
+  const resolvedHooks = hooks.map((hook) => ({
+    hookId: ['hook', ticket.id, event, Date.now(), Math.random().toString(36).slice(2, 10)].join(
+      ':',
+    ),
     ticketId: ticket.id,
     event,
     type: hook.type,
     content: resolvePlaceholders(hook.content),
   }));
   const resolvedCommands = resolvedHooks
-    .filter(hook => hook.type === 'command')
-    .map(hook => hook.content);
+    .filter((hook) => hook.type === 'command')
+    .map((hook) => hook.content);
 
   const io = getIO();
   if (!io) return;
-  io.of('/mc').to(`server:${serverId}`).emit('hook:execute', {
-    ticketId: ticket.id,
-    event,
-    playerUuid: ticket.author?.minecraftUuid || null,
-    hooks: resolvedHooks,
-    commands: resolvedCommands,
-  });
+  io.of('/mc')
+    .to(`server:${serverId}`)
+    .emit('hook:execute', {
+      ticketId: ticket.id,
+      event,
+      playerUuid: ticket.author?.minecraftUuid || null,
+      hooks: resolvedHooks,
+      commands: resolvedCommands,
+    });
 }

@@ -20,25 +20,23 @@ async function createAdminAndGetToken(email = 'admin@test.com') {
   const loginRes = await request(app)
     .post('/api/auth/login')
     .send({ emailOrUsername: email, password: 'Password123!' });
-  return loginRes.body.accessToken;
+  return loginRes.body.data.accessToken;
 }
 
 async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username: email.split('@')[0] });
-  return res.body.accessToken;
+  return res.body.data.accessToken;
 }
 
 describe('GET /api/labels', () => {
   it('returns all labels', async () => {
     const token = await createUserAndGetToken();
-    const res = await request(app)
-      .get('/api/labels')
-      .set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/api/labels').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toBeInstanceOf(Array);
+    expect(res.body.data).toBeInstanceOf(Array);
   });
 });
 
@@ -51,8 +49,8 @@ describe('POST /api/labels', () => {
       .send({ name: 'bug', color: '#ef4444', description: 'Bug reports' });
 
     expect(res.status).toBe(201);
-    expect(res.body.name).toBe('bug');
-    expect(res.body.color).toBe('#ef4444');
+    expect(res.body.data.name).toBe('bug');
+    expect(res.body.data.color).toBe('#ef4444');
   });
 
   it('rejects invalid color format', async () => {
@@ -85,7 +83,7 @@ describe('PATCH /api/labels/:id', () => {
       .send({ name: 'patch-me', color: '#ef4444', description: 'Original' });
 
     const res = await request(app)
-      .patch(`/api/labels/${created.body.id}`)
+      .patch(`/api/labels/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ description: 'Updated desc' });
 
@@ -102,7 +100,7 @@ describe('DELETE /api/labels/:id', () => {
       .send({ name: 'delete-me', color: '#ef4444' });
 
     const res = await request(app)
-      .delete(`/api/labels/${created.body.id}`)
+      .delete(`/api/labels/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(204);

@@ -1,0 +1,8 @@
+dist/
+node_modules/
+prisma/migrations*/
+*.lock
+package-lock.json
+backend/data/
+backend/dist/
+frontend/dist/

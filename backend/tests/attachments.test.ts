@@ -1,18 +1,29 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
 import { createApp } from '../src/app.js';
-import { getConfig } from '../src/config.js';
 import { prisma } from './setup.js';
+import { reinitStorageAdapter } from '../src/services/storage/index.js';
 
 const app = createApp();
+
+async function getUploadDir() {
+  const config = await prisma().appConfig.findFirst();
+  return config!.uploadDir;
+}
+
+beforeEach(async () => {
+  await prisma().appConfig.deleteMany();
+  await prisma().appConfig.create({ data: {} });
+  reinitStorageAdapter();
+});
 
 async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username: email.split('@')[0] });
-  return res.body.accessToken;
+  return res.body.data.accessToken;
 }
 
 async function getAdminToken(email: string) {
@@ -26,7 +37,7 @@ async function getAdminToken(email: string) {
   const loginRes = await request(app)
     .post('/api/auth/login')
     .send({ emailOrUsername: email, password: 'Password123!' });
-  return loginRes.body.accessToken;
+  return loginRes.body.data.accessToken;
 }
 
 async function createTicket(token: string) {
@@ -54,16 +65,16 @@ describe('POST /api/attachments/upload', () => {
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${token}`)
       .attach('file', PNG_1x1, 'test.png')
-      .field('ticketId', String(ticket.body.id));
+      .field('ticketId', String(ticket.body.data.id));
 
     expect(res.status).toBe(201);
-    expect(res.body.id).toBeDefined();
-    expect(res.body.filename).toBe('test.png');
-    expect(res.body.mimeType).toBe('image/png');
-    expect(res.body.storageType).toBe('local');
-    expect(res.body.size).toBe(PNG_1x1.length);
+    expect(res.body.data.id).toBeDefined();
+    expect(res.body.data.filename).toBe('test.png');
+    expect(res.body.data.mimeType).toBe('image/png');
+    expect(res.body.data.storageType).toBe('local');
+    expect(res.body.data.size).toBe(PNG_1x1.length);
 
-    const filePath = path.resolve(getConfig().storage.uploadDir, res.body.path);
+    const filePath = path.resolve(await getUploadDir(), res.body.data.path);
     expect(fs.existsSync(filePath)).toBe(true);
   });
 
@@ -99,7 +110,7 @@ describe('GET /api/attachments/:id', () => {
       .set('Authorization', `Bearer ${token}`)
       .attach('file', PNG_1x1, 'test.png');
 
-    const res = await request(app).get(`/api/attachments/${upload.body.id}`);
+    const res = await request(app).get(`/api/attachments/${upload.body.data.id}`);
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(PNG_1x1);
@@ -120,17 +131,17 @@ describe('DELETE /api/attachments/:id', () => {
       .set('Authorization', `Bearer ${token}`)
       .attach('file', PNG_1x1, 'test.png');
 
-    const filePath = path.resolve(getConfig().storage.uploadDir, upload.body.path);
+    const filePath = path.resolve(await getUploadDir(), upload.body.data.path);
     expect(fs.existsSync(filePath)).toBe(true);
 
     const res = await request(app)
-      .delete(`/api/attachments/${upload.body.id}`)
+      .delete(`/api/attachments/${upload.body.data.id}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(204);
     expect(fs.existsSync(filePath)).toBe(false);
 
-    const row = await prisma().attachment.findUnique({ where: { id: upload.body.id } });
+    const row = await prisma().attachment.findUnique({ where: { id: upload.body.data.id } });
     expect(row).toBeNull();
   });
 
@@ -143,12 +154,12 @@ describe('DELETE /api/attachments/:id', () => {
       .attach('file', PNG_1x1, 'test.png');
 
     const res = await request(app)
-      .delete(`/api/attachments/${upload.body.id}`)
+      .delete(`/api/attachments/${upload.body.data.id}`)
       .set('Authorization', `Bearer ${otherToken}`);
 
     expect(res.status).toBe(403);
 
-    const row = await prisma().attachment.findUnique({ where: { id: upload.body.id } });
+    const row = await prisma().attachment.findUnique({ where: { id: upload.body.data.id } });
     expect(row).not.toBeNull();
   });
 
@@ -161,11 +172,11 @@ describe('DELETE /api/attachments/:id', () => {
       .attach('file', PNG_1x1, 'test.png');
 
     const res = await request(app)
-      .delete(`/api/attachments/${upload.body.id}`)
+      .delete(`/api/attachments/${upload.body.data.id}`)
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(res.status).toBe(204);
-    const row = await prisma().attachment.findUnique({ where: { id: upload.body.id } });
+    const row = await prisma().attachment.findUnique({ where: { id: upload.body.data.id } });
     expect(row).toBeNull();
   });
 
@@ -188,19 +199,19 @@ describe('GET /api/tickets/:id/attachments', () => {
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${token}`)
       .attach('file', PNG_1x1, 'a.png')
-      .field('ticketId', String(ticket.body.id));
+      .field('ticketId', String(ticket.body.data.id));
     await request(app)
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${token}`)
       .attach('file', PNG_1x1, 'b.png')
-      .field('ticketId', String(ticket.body.id));
+      .field('ticketId', String(ticket.body.data.id));
 
     const res = await request(app)
-      .get(`/api/tickets/${ticket.body.id}/attachments`)
+      .get(`/api/tickets/${ticket.body.data.id}/attachments`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveLength(2);
-    expect(res.body[0].url).toBe(`/api/attachments/${res.body[0].id}`);
+    expect(res.body.data).toHaveLength(2);
+    expect(res.body.data[0].url).toBe(`/api/attachments/${res.body.data[0].id}`);
   });
 });

@@ -1,13 +1,24 @@
-import { TicketStatus } from '@prisma/client';
-import { getPrisma } from '../db.js';
-import { NotFoundError, ForbiddenError } from '../utils/errors.js';
-import * as auditService from './audit.service.js';
-import { emitTicketUpdate, emitToAllServers, emitHookExecute, toHookTicketPayload } from '../socket/events.js';
+import type { TicketStatus, Prisma } from '@prisma/client';
+import { prisma } from '../db.js';
+import { NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.js';
+import * as templateService from './template.service.js';
+import { TICKET_INCLUDE_BASE, TICKET_INCLUDE_DETAIL, USER_BRIEF_SELECT } from './constants.js';
+import { AUDIT_ACTION } from '../constants/audit-actions.js';
+import { isStaffRole } from '../constants/roles.js';
+import { TICKET_STATUS } from '../constants/ticket-status.js';
+import {
+  emitTicketUpdate,
+  emitToAllServers,
+  emitHookExecute,
+  toHookTicketPayload,
+} from '../socket/events.js';
 
-const prisma = () => getPrisma();
+type PrismaTx = Omit<
+  ReturnType<typeof prisma>,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
 
-const STAFF_ROLES = ['staff', 'admin'];
-const PLAYER_STATUS_TARGETS: TicketStatus[] = ['open', 'closed'];
+const PLAYER_STATUS_TARGETS: TicketStatus[] = [TICKET_STATUS.OPEN, TICKET_STATUS.CLOSED];
 
 type TicketNotificationTarget = {
   id: number;
@@ -17,21 +28,21 @@ type TicketNotificationTarget = {
   author?: { minecraftUuid?: string | null } | null;
 };
 
-function isStaffRole(role: string) {
-  return STAFF_ROLES.includes(role);
-}
-
 function assertPlayerStatusTransition(currentStatus: TicketStatus, nextStatus: TicketStatus) {
   if (!PLAYER_STATUS_TARGETS.includes(nextStatus)) {
     throw new ForbiddenError('玩家只能开启或关闭自己的议题');
   }
-  if (currentStatus === 'invalid') {
+  if (currentStatus === TICKET_STATUS.INVALID) {
     throw new ForbiddenError('无效议题只能由管理员或管理组重新打开');
   }
-  if (nextStatus === 'open' && currentStatus !== 'closed') {
+  if (nextStatus === TICKET_STATUS.OPEN && currentStatus !== TICKET_STATUS.CLOSED) {
     throw new ForbiddenError('只有已关闭的议题可以重新打开');
   }
-  if (nextStatus === 'closed' && currentStatus !== 'open' && currentStatus !== 'in_progress') {
+  if (
+    nextStatus === TICKET_STATUS.CLOSED &&
+    currentStatus !== TICKET_STATUS.OPEN &&
+    currentStatus !== TICKET_STATUS.IN_PROGRESS
+  ) {
     throw new ForbiddenError('只有开放或处理中的议题可以关闭');
   }
 }
@@ -67,9 +78,22 @@ async function emitStatusChanged(
   }
 }
 
+function createAudit(
+  tx: PrismaTx,
+  ticketId: number,
+  actorId: number,
+  action: (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION],
+  oldValue?: string,
+  newValue?: string,
+) {
+  return tx.auditLog.create({
+    data: { ticketId, actorId, action, oldValue, newValue },
+  });
+}
+
 interface CreateTicketInput {
   title: string;
-  body: string;
+  body?: string;
   template: string;
   formData?: Record<string, string>;
   serverId?: string;
@@ -91,27 +115,37 @@ interface ListTicketsInput {
 }
 
 export async function create(input: CreateTicketInput) {
+  let title = input.title;
+  let body = input.body;
+
+  if (body === undefined) {
+    const def = templateService.getDefinition(input.template);
+    if (!def) throw new ValidationError('无效的模板');
+
+    body = templateService.renderBody(def, input.formData || {});
+    if (def.title_prefix && !title.startsWith(def.title_prefix)) {
+      title = def.title_prefix + title;
+    }
+  }
+
   return prisma().ticket.create({
     data: {
-      title: input.title,
-      body: input.body,
+      title,
+      body,
       template: input.template,
       formData: input.formData ? JSON.stringify(input.formData) : null,
       gameContext: input.gameContext ?? null,
       authorId: input.authorId,
       serverId: input.serverId,
     },
-    include: {
-      author: { select: { id: true, username: true, minecraftName: true } },
-      labels: { include: { label: true } },
-    },
+    include: TICKET_INCLUDE_BASE,
   });
 }
 
 export async function list(input: ListTicketsInput) {
   const page = input.page || 1;
   const pageSize = input.pageSize || 20;
-  const where: any = {};
+  const where: Prisma.TicketWhereInput = {};
 
   if (input.statuses && input.statuses.length > 0) where.status = { in: input.statuses };
   if (input.type) where.template = input.type;
@@ -120,10 +154,8 @@ export async function list(input: ListTicketsInput) {
   if (input.serverId) where.serverId = input.serverId;
   if (input.hasServer !== undefined) where.serverId = input.hasServer ? { not: null } : null;
   if (input.labelId) where.labels = { some: { labelId: input.labelId } };
-  if (input.search) where.OR = [
-    { title: { contains: input.search } },
-    { body: { contains: input.search } },
-  ];
+  if (input.search)
+    where.OR = [{ title: { contains: input.search } }, { body: { contains: input.search } }];
 
   const [tickets, total] = await Promise.all([
     prisma().ticket.findMany({
@@ -131,12 +163,7 @@ export async function list(input: ListTicketsInput) {
       skip: (page - 1) * pageSize,
       take: pageSize,
       orderBy: { createdAt: 'desc' },
-      include: {
-        author: { select: { id: true, username: true, minecraftName: true } },
-        assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } },
-        labels: { include: { label: true } },
-        _count: { select: { comments: true } },
-      },
+      include: TICKET_INCLUDE_DETAIL,
     }),
     prisma().ticket.count({ where }),
   ]);
@@ -148,8 +175,7 @@ export async function getById(id: number) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
     include: {
-      author: { select: { id: true, username: true, minecraftName: true } },
-      assignee: { select: { id: true, username: true } },
+      author: { select: USER_BRIEF_SELECT },
       assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } },
       labels: { include: { label: true } },
       server: { select: { id: true, name: true } },
@@ -179,14 +205,14 @@ export async function update(
 
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
 
-  const updateData: any = {};
+  const updateData: Prisma.TicketUncheckedUpdateInput = {};
   if (data.status) {
     if (!isStaff) {
       assertPlayerStatusTransition(ticket.status, data.status);
     }
 
     updateData.status = data.status;
-    if (data.status === 'closed' || data.status === 'invalid') {
+    if (data.status === TICKET_STATUS.CLOSED || data.status === TICKET_STATUS.INVALID) {
       updateData.closedAt = new Date();
     } else {
       updateData.closedAt = null;
@@ -194,43 +220,55 @@ export async function update(
   }
   if (data.assigneeId && isStaff) updateData.assigneeId = data.assigneeId;
 
-  await prisma().ticket.update({
-    where: { id },
-    data: updateData,
+  const nextStatus = data.status;
+  const nextAssigneeId = data.assigneeId;
+  const statusChanged = nextStatus !== undefined && nextStatus !== ticket.status;
+  const assigneeChanged = nextAssigneeId !== undefined && nextAssigneeId !== ticket.assigneeId;
+
+  const updated = await prisma().$transaction(async (tx) => {
+    const updatedTicket = await tx.ticket.update({
+      where: { id },
+      data: updateData,
+      include: {
+        author: { select: USER_BRIEF_SELECT },
+        labels: { include: { label: true } },
+        server: { select: { id: true, name: true } },
+      },
+    });
+
+    if (statusChanged) {
+      await createAudit(tx, id, userId, AUDIT_ACTION.STATUS_CHANGE, ticket.status, nextStatus);
+    }
+    if (assigneeChanged) {
+      await createAudit(
+        tx,
+        id,
+        userId,
+        AUDIT_ACTION.ASSIGN,
+        ticket.assigneeId != null ? String(ticket.assigneeId) : 'unassigned',
+        String(nextAssigneeId),
+      );
+    }
+
+    return updatedTicket;
   });
 
-  if (data.status && data.status !== ticket.status) {
-    await auditService.create(id, userId, 'status_change', ticket.status, data.status);
-    await emitStatusChanged(ticket, userId, ticket.status, data.status);
-    // Emit completion hooks if template has hooks for this status
+  if (statusChanged) {
+    await emitStatusChanged(ticket, userId, ticket.status, nextStatus);
     if (ticket.serverId) {
-      const updatedTicket = await prisma().ticket.findUnique({
+      const hookTicket = await prisma().ticket.findUnique({
         where: { id },
         include: {
           author: { select: { minecraftUuid: true, minecraftName: true } },
         },
       });
-      if (updatedTicket) {
-        emitHookExecute(ticket.serverId, toHookTicketPayload(updatedTicket), data.status);
+      if (hookTicket) {
+        emitHookExecute(ticket.serverId, toHookTicketPayload(hookTicket), nextStatus);
       }
     }
   }
-  if (data.assigneeId && data.assigneeId !== ticket.assigneeId) {
-    await auditService.create(id, userId, 'assign',
-      ticket.assigneeId != null ? String(ticket.assigneeId) : 'unassigned',
-      String(data.assigneeId));
-  }
 
-  return prisma().ticket.update({
-    where: { id },
-    data: updateData,
-    include: {
-      author: { select: { id: true, username: true, minecraftName: true } },
-      assignee: { select: { id: true, username: true } },
-      labels: { include: { label: true } },
-      server: { select: { id: true, name: true } },
-    },
-  });
+  return updated;
 }
 
 export async function updateBody(id: number, userId: number, userRole: string, body: string) {
@@ -244,20 +282,20 @@ export async function updateBody(id: number, userId: number, userRole: string, b
   const isStaff = isStaffRole(userRole);
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
 
-  const updated = await prisma().ticket.update({
-    where: { id },
-    data: { body },
-    include: {
-      author: { select: { id: true, username: true, minecraftName: true } },
-      assignee: { select: { id: true, username: true } },
-      labels: { include: { label: true } },
-      server: { select: { id: true, name: true } },
-    },
+  return prisma().$transaction(async (tx) => {
+    const updated = await tx.ticket.update({
+      where: { id },
+      data: { body },
+      include: {
+        author: { select: USER_BRIEF_SELECT },
+        labels: { include: { label: true } },
+        server: { select: { id: true, name: true } },
+      },
+    });
+
+    await createAudit(tx, id, userId, AUDIT_ACTION.BODY_CHANGE, ticket.body, body);
+    return updated;
   });
-
-  await auditService.create(id, userId, 'body_change', ticket.body, body);
-
-  return updated;
 }
 
 export async function updateTitle(id: number, userId: number, userRole: string, title: string) {
@@ -275,28 +313,27 @@ export async function updateTitle(id: number, userId: number, userRole: string, 
     return prisma().ticket.findUnique({
       where: { id },
       include: {
-        author: { select: { id: true, username: true, minecraftName: true } },
-        assignee: { select: { id: true, username: true } },
+        author: { select: USER_BRIEF_SELECT },
         labels: { include: { label: true } },
         server: { select: { id: true, name: true } },
       },
     });
   }
 
-  const updated = await prisma().ticket.update({
-    where: { id },
-    data: { title },
-    include: {
-      author: { select: { id: true, username: true, minecraftName: true } },
-      assignee: { select: { id: true, username: true } },
-      labels: { include: { label: true } },
-      server: { select: { id: true, name: true } },
-    },
+  return prisma().$transaction(async (tx) => {
+    const updated = await tx.ticket.update({
+      where: { id },
+      data: { title },
+      include: {
+        author: { select: USER_BRIEF_SELECT },
+        labels: { include: { label: true } },
+        server: { select: { id: true, name: true } },
+      },
+    });
+
+    await createAudit(tx, id, userId, AUDIT_ACTION.TITLE_CHANGE, ticket.title, title);
+    return updated;
   });
-
-  await auditService.create(id, userId, 'title_change', ticket.title, title);
-
-  return updated;
 }
 
 export async function closeTicket(id: number, userId: number, userRole: string) {
@@ -313,18 +350,26 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
   const isStaff = isStaffRole(userRole);
 
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
-  if (ticket.status !== 'open' && ticket.status !== 'in_progress') {
+  if (ticket.status !== TICKET_STATUS.OPEN && ticket.status !== TICKET_STATUS.IN_PROGRESS) {
     throw new ForbiddenError('只有开放或处理中的议题可以关闭');
   }
 
-  await prisma().ticket.update({
-    where: { id },
-    data: { status: 'closed', closedAt: new Date() },
+  await prisma().$transaction(async (tx) => {
+    await tx.ticket.update({
+      where: { id },
+      data: { status: TICKET_STATUS.CLOSED, closedAt: new Date() },
+    });
+    await createAudit(
+      tx,
+      id,
+      userId,
+      AUDIT_ACTION.STATUS_CHANGE,
+      ticket.status,
+      TICKET_STATUS.CLOSED,
+    );
   });
 
-  await auditService.create(id, userId, 'status_change', ticket.status, 'closed');
-
-  await emitStatusChanged(ticket, userId, ticket.status, 'closed');
+  await emitStatusChanged(ticket, userId, ticket.status, TICKET_STATUS.CLOSED);
 
   if (ticket.serverId) {
     const updatedTicket = await prisma().ticket.findUnique({
@@ -334,7 +379,7 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
       },
     });
     if (updatedTicket) {
-      emitHookExecute(ticket.serverId, toHookTicketPayload(updatedTicket), 'closed');
+      emitHookExecute(ticket.serverId, toHookTicketPayload(updatedTicket), TICKET_STATUS.CLOSED);
     }
   }
 
@@ -355,18 +400,29 @@ export async function reopenTicket(id: number, userId: number, userRole: string)
   const isStaff = isStaffRole(userRole);
 
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权操作此议题');
-  if (ticket.status !== 'closed' && !(ticket.status === 'invalid' && isStaff)) {
+  if (
+    ticket.status !== TICKET_STATUS.CLOSED &&
+    !(ticket.status === TICKET_STATUS.INVALID && isStaff)
+  ) {
     throw new ForbiddenError('只有已关闭的议题可以重新打开');
   }
 
-  await prisma().ticket.update({
-    where: { id },
-    data: { status: 'open', closedAt: null },
+  await prisma().$transaction(async (tx) => {
+    await tx.ticket.update({
+      where: { id },
+      data: { status: TICKET_STATUS.OPEN, closedAt: null },
+    });
+    await createAudit(
+      tx,
+      id,
+      userId,
+      AUDIT_ACTION.STATUS_CHANGE,
+      ticket.status,
+      TICKET_STATUS.OPEN,
+    );
   });
 
-  await auditService.create(id, userId, 'status_change', ticket.status, 'open');
-
-  await emitStatusChanged(ticket, userId, ticket.status, 'open');
+  await emitStatusChanged(ticket, userId, ticket.status, TICKET_STATUS.OPEN);
 
   return getById(id);
 }
@@ -374,28 +430,35 @@ export async function reopenTicket(id: number, userId: number, userRole: string)
 export async function setAssignees(id: number, userId: number, assigneeIds: number[]) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
-    include: { assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } } },
+    include: {
+      assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } },
+    },
   });
   if (!ticket) throw new NotFoundError('议题不存在');
 
-  const oldIds = ticket.assignees.map(a => a.user.id);
-  const toAdd = assigneeIds.filter(aid => !oldIds.includes(aid));
-  const toRemove = oldIds.filter(oid => !assigneeIds.includes(oid));
+  const oldIds = ticket.assignees.map((a) => a.user.id);
+  const toAdd = assigneeIds.filter((aid) => !oldIds.includes(aid));
+  const toRemove = oldIds.filter((oid) => !assigneeIds.includes(oid));
 
-  await prisma().$transaction([
-    ...toRemove.map(uid =>
-      prisma().ticketAssignee.delete({ where: { ticketId_userId: { ticketId: id, userId: uid } } })
-    ),
-    ...toAdd.map(uid =>
-      prisma().ticketAssignee.create({ data: { ticketId: id, userId: uid } })
-    ),
-  ]);
+  await prisma().$transaction(async (tx) => {
+    await Promise.all([
+      ...toRemove.map((uid) =>
+        tx.ticketAssignee.delete({ where: { ticketId_userId: { ticketId: id, userId: uid } } }),
+      ),
+      ...toAdd.map((uid) => tx.ticketAssignee.create({ data: { ticketId: id, userId: uid } })),
+    ]);
 
-  if (toAdd.length > 0 || toRemove.length > 0) {
-    await auditService.create(id, userId, 'assignees_change',
-      JSON.stringify(oldIds),
-      JSON.stringify(assigneeIds));
-  }
+    if (toAdd.length > 0 || toRemove.length > 0) {
+      await createAudit(
+        tx,
+        id,
+        userId,
+        AUDIT_ACTION.ASSIGNEES_CHANGE,
+        JSON.stringify(oldIds),
+        JSON.stringify(assigneeIds),
+      );
+    }
+  });
 
   return getById(id);
 }

@@ -1,14 +1,20 @@
-port: 3000
-jwtSecret: ""
-jwtRefreshSecret: ""
-storage:
-  driver: local
-  uploadDir: data/uploads
-  # s3:
-  #   endpoint: http://localhost:9000
-  #   region: us-east-1
-  #   bucket: lighttickets
-  #   accessKeyId: minioadmin
-  #   secretAccessKey: minioadmin
-  #   forcePathStyle: true
-  #   presignExpiry: 300
+server:
+  port: 3000
+  corsOrigins:
+    - http://localhost:5173
+
+database:
+  # provider 缺失时进入 setup 模式；setup 完成后回写 sqlite 或 mysql。
+  # provider: sqlite
+  # sqlite 时不写下方字段，路径代码写死 file:./data/data.db
+  # mysql 时写入：
+  # host: localhost
+  # port: 3306
+  # username: root
+  # password: xxx
+  # database: lighttickets
+
+security:
+  # 空值仅用于 setup 模式；setup 完成后自动生成并回写。
+  jwtSecret: ""
+  jwtRefreshSecret: ""

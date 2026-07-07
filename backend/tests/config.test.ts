@@ -4,25 +4,22 @@ import path from 'path';
 
 const configPath = path.resolve('data/config.yml');
 
-const minimalConfig = `port: 3000
-jwtSecret: ""
-jwtRefreshSecret: ""
-db:
-  provider: "sqlite"
-  databaseUrl: "file:./dev.db"
-storage:
-  driver: local
-  uploadDir: data/uploads
+const minimalConfig = `server:
+  port: 3000
+  corsOrigins:
+    - http://localhost:5173
+database:
+  provider: sqlite
+security:
+  jwtSecret: "test-jwt-secret"
+  jwtRefreshSecret: "test-refresh-secret"
 `;
 
 describe('config', () => {
-  const originalContent = fs.existsSync(configPath)
-    ? fs.readFileSync(configPath, 'utf-8')
-    : null;
+  const originalContent = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf-8') : null;
 
   beforeEach(() => {
     vi.resetModules();
-    // Ensure config has db section for loadConfig tests
     fs.writeFileSync(configPath, minimalConfig, 'utf-8');
   });
 
@@ -36,102 +33,83 @@ describe('config', () => {
     const { loadConfig } = await import('../src/config.js');
     const config = loadConfig();
     expect(config.port).toBe(3000);
-    expect(config.jwtSecret.length).toBeGreaterThanOrEqual(32);
-    expect(config.db.provider).toBe('sqlite');
+    expect(config.security.jwtSecret).toBe('test-jwt-secret');
+    expect(config.database.provider).toBe('sqlite');
   });
 
   it('loadConfig sets process.env.DATABASE_URL', async () => {
     const { loadConfig } = await import('../src/config.js');
     loadConfig();
     expect(process.env.DATABASE_URL).toBeDefined();
+    expect(process.env.DATABASE_URL).toContain('data.db');
   });
 
-  it('loadConfig generates JWT secrets when empty', async () => {
+  it('loadConfig rejects empty JWT secrets', async () => {
+    fs.writeFileSync(
+      configPath,
+      `server:
+  port: 3000
+database:
+  provider: sqlite
+security:
+  jwtSecret: ""
+  jwtRefreshSecret: ""
+`,
+      'utf-8',
+    );
     const { loadConfig } = await import('../src/config.js');
-    const config = loadConfig();
-    expect(config.jwtSecret.length).toBeGreaterThanOrEqual(32);
-    expect(config.jwtRefreshSecret.length).toBeGreaterThanOrEqual(32);
+    expect(() => loadConfig()).toThrow(/security\.jwtSecret/);
   });
 
   it('loadConfig preserves existing JWT secrets', async () => {
-    const testConfig = `port: 3000
-jwtSecret: "existing-secret-value-1234567890"
-jwtRefreshSecret: "existing-refresh-value-1234567890"
-db:
-  provider: "sqlite"
-  databaseUrl: "file:./dev.db"
+    const testConfig = `server:
+  port: 3000
+  corsOrigins:
+    - http://localhost:5173
+database:
+  provider: sqlite
+security:
+  jwtSecret: "existing-secret-value-1234567890"
+  jwtRefreshSecret: "existing-refresh-value-1234567890"
 `;
     fs.writeFileSync(configPath, testConfig, 'utf-8');
 
     const { loadConfig } = await import('../src/config.js');
     const config = loadConfig();
-    expect(config.jwtSecret).toBe('existing-secret-value-1234567890');
-    expect(config.jwtRefreshSecret).toBe('existing-refresh-value-1234567890');
+    expect(config.security.jwtSecret).toBe('existing-secret-value-1234567890');
+    expect(config.security.jwtRefreshSecret).toBe('existing-refresh-value-1234567890');
   });
 
-  it('loadConfig defaults storage.driver to local when omitted', async () => {
-    const testConfig = `port: 3000
-jwtSecret: ""
-jwtRefreshSecret: ""
-db:
-  provider: "sqlite"
-  databaseUrl: "file:./dev.db"
+  it('loadConfig resolves mysql database URL from fields', async () => {
+    const testConfig = `server:
+  port: 3000
+database:
+  provider: mysql
+  host: localhost
+  port: 3306
+  username: root
+  password: secret
+  database: lighttickets
+security:
+  jwtSecret: "test"
+  jwtRefreshSecret: "test"
 `;
     fs.writeFileSync(configPath, testConfig, 'utf-8');
 
     const { loadConfig } = await import('../src/config.js');
-    const config = loadConfig();
-    expect(config.storage.driver).toBe('local');
-    expect(config.storage.uploadDir).toBeDefined();
-    expect(config.storage.s3).toBeUndefined();
+    loadConfig();
+    expect(process.env.DATABASE_URL).toBe('mysql://root:secret@localhost:3306/lighttickets');
   });
 
-  it('loadConfig parses s3 driver with full config', async () => {
-    const testConfig = `port: 3000
-jwtSecret: ""
-jwtRefreshSecret: ""
-db:
-  provider: "sqlite"
-  databaseUrl: "file:./dev.db"
-storage:
-  driver: s3
-  uploadDir: data/uploads
-  s3:
-    endpoint: http://localhost:9000
-    region: us-east-1
-    bucket: lighttickets
-    accessKeyId: minioadmin
-    secretAccessKey: minioadmin
-    forcePathStyle: true
-    presignExpiry: 600
+  it('loadConfig throws when database.provider missing', async () => {
+    const testConfig = `server:
+  port: 3000
+security:
+  jwtSecret: "test"
 `;
     fs.writeFileSync(configPath, testConfig, 'utf-8');
 
     const { loadConfig } = await import('../src/config.js');
-    const config = loadConfig();
-    expect(config.storage.driver).toBe('s3');
-    expect(config.storage.s3).toBeDefined();
-    expect(config.storage.s3!.bucket).toBe('lighttickets');
-    expect(config.storage.s3!.forcePathStyle).toBe(true);
-    expect(config.storage.s3!.presignExpiry).toBe(600);
-  });
-
-  it('loadConfig throws when s3 driver missing required fields', async () => {
-    const testConfig = `port: 3000
-jwtSecret: ""
-jwtRefreshSecret: ""
-db:
-  provider: "sqlite"
-  databaseUrl: "file:./dev.db"
-storage:
-  driver: s3
-  uploadDir: data/uploads
-  s3:
-    endpoint: http://localhost:9000
-`;
-    fs.writeFileSync(configPath, testConfig, 'utf-8');
-
-    const { loadConfig } = await import('../src/config.js');
-    expect(() => loadConfig()).toThrow(/storage\.s3/);
+    expect(() => loadConfig()).toThrow(/database\.provider/);
   });
 });

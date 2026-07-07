@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { prisma } from './setup.js';
 
 const app = createApp();
 
@@ -9,7 +8,7 @@ async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username: email.split('@')[0] });
-  return res.body.accessToken;
+  return res.body.data.accessToken;
 }
 
 async function createTicket(token: string) {
@@ -30,23 +29,23 @@ describe('GET /api/tickets/:ticketId/audit', () => {
 
     // Generate some audit events
     await request(app)
-      .patch(`/api/tickets/${ticket.body.id}/title`)
+      .patch(`/api/tickets/${ticket.body.data.id}/title`)
       .set('Authorization', `Bearer ${token}`)
       .send({ title: 'Renamed Ticket' });
 
     await request(app)
-      .post(`/api/tickets/${ticket.body.id}/close`)
+      .post(`/api/tickets/${ticket.body.data.id}/close`)
       .set('Authorization', `Bearer ${token}`);
 
     const res = await request(app)
-      .get(`/api/tickets/${ticket.body.id}/audit`)
+      .get(`/api/tickets/${ticket.body.data.id}/audit`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toBeInstanceOf(Array);
-    expect(res.body.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.data).toBeInstanceOf(Array);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(2);
 
-    const actions = res.body.map((log: any) => log.action);
+    const actions = (res.body.data as { action: string }[]).map((log) => log.action);
     expect(actions).toContain('title_change');
     expect(actions).toContain('status_change');
   });
@@ -56,21 +55,20 @@ describe('GET /api/tickets/:ticketId/audit', () => {
     const ticket = await createTicket(token);
 
     const res = await request(app)
-      .get(`/api/tickets/${ticket.body.id}/audit`)
+      .get(`/api/tickets/${ticket.body.data.id}/audit`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
+    expect(res.body.data).toEqual([]);
   });
 
   it('allows unauthenticated request when requireLogin is false', async () => {
     const token = await createUserAndGetToken('audit-auth@test.com');
     const ticket = await createTicket(token);
 
-    const res = await request(app)
-      .get(`/api/tickets/${ticket.body.id}/audit`);
+    const res = await request(app).get(`/api/tickets/${ticket.body.data.id}/audit`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toBeInstanceOf(Array);
+    expect(res.body.data).toBeInstanceOf(Array);
   });
 });

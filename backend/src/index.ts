@@ -1,41 +1,28 @@
 import fs from 'fs';
 import yaml from 'js-yaml';
-import path from 'path';
-import type { NextFunction, Request, Response } from 'express';
+import type { Server } from 'http';
 
-const configPath = path.resolve('data/config.yml');
-const defaultConfigPath = path.resolve('src/config.default.yml');
+import { CONFIG_PATH, isDatabaseConfigured, getConfig } from './config.js';
 
-// Ensure data/config.yml exists by copying from source template
-if (!fs.existsSync(configPath)) {
-  const dataDir = path.dirname(configPath);
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
-  }
-  fs.copyFileSync(defaultConfigPath, configPath);
+function loadSetupServerConfig(): { port?: number; corsOrigins?: string[] } {
+  if (!fs.existsSync(CONFIG_PATH)) return {};
+  const setupConfig = yaml.load(fs.readFileSync(CONFIG_PATH, 'utf-8')) as {
+    server?: { port?: number; corsOrigins?: string[] };
+  } | null;
+  return setupConfig?.server || {};
 }
 
-let raw: Record<string, any> = {};
-try {
-  raw = (yaml.load(fs.readFileSync(configPath, 'utf-8')) as Record<string, any>) ?? {};
-} catch {
-  // config.yml malformed — start in setup-only mode
-}
-const port = parseInt(raw?.port || '3000', 10);
-const dbConfigured = raw.db?.databaseUrl && raw.db?.provider;
-
-if (dbConfigured) {
+if (isDatabaseConfigured()) {
   startFullApp();
 } else {
   startSetupServer();
 }
 
 async function startFullApp() {
-  const { loadConfig } = await import('./config.js');
-  const config = loadConfig();
+  const config = getConfig();
 
   const { runMigrations } = await import('./migrate.js');
-  runMigrations(raw.db.provider);
+  runMigrations(config.database.provider);
 
   const { initPrisma } = await import('./db.js');
   initPrisma();
@@ -51,19 +38,38 @@ async function startFullApp() {
   const server = createServer(app);
   initSocket(server);
 
-  server.listen(port, () => {
-    console.log(`LightTickets API running on port ${port}`);
+  server.listen(config.port, () => {
+    console.log(`LightTickets API running on port ${config.port}`);
   });
 }
 
 async function startSetupServer() {
   const express = (await import('express')).default;
   const cors = (await import('cors')).default;
-  const { AppError } = await import('./utils/errors.js');
+  const helmet = (await import('helmet')).default;
+  const { errorHandler } = await import('./middleware/error-handler.js');
+  const { globalLimiter } = await import('./middleware/rate-limit.js');
+  const { responseEnvelope } = await import('./middleware/response-envelope.js');
 
   const app = express();
-  app.use(cors());
+  app.use(globalLimiter);
+  app.use(helmet());
+  const setupConfig = loadSetupServerConfig();
+  const corsOrigins = setupConfig.corsOrigins || ['http://localhost:5173'];
+  app.use(
+    cors({
+      origin: (origin, cb) => {
+        if (!origin || corsOrigins.includes(origin)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true,
+    }),
+  );
   app.use(express.json());
+  app.use(responseEnvelope);
 
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok' });
@@ -77,19 +83,41 @@ async function startSetupServer() {
   const server = createServer(app);
 
   const createSetupRoutes = (await import('./routes/setup.js')).default;
-  app.use('/api/setup', createSetupRoutes(server));
+  app.use(
+    '/api/setup',
+    createSetupRoutes({ onSetupComplete: () => startFullAppAfterSetup(server) }),
+  );
 
-  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    if (err instanceof AppError) {
-      res.status(err.statusCode).json({ error: err.message });
-      return;
-    }
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error' });
-  });
+  app.use(errorHandler);
+
+  const port = parseInt(String(setupConfig.port ?? '3000'), 10);
 
   server.listen(port, () => {
     console.log(`LightTickets setup server running on port ${port}`);
     console.log('Complete setup at the web interface to initialize the database.');
+  });
+}
+
+async function startFullAppAfterSetup(setupServer: Server): Promise<void> {
+  const config = getConfig();
+
+  const { initPrisma } = await import('./db.js');
+  initPrisma();
+
+  const { initTemplates } = await import('./services/template.service.js');
+  await initTemplates();
+
+  const { createApp } = await import('./app.js');
+  const { createServer } = await import('http');
+  const { initSocket } = await import('./socket/index.js');
+
+  const app = createApp();
+  const server = createServer(app);
+  initSocket(server);
+
+  setupServer.close(() => {
+    server.listen(config.port, () => {
+      console.log(`LightTickets API running on port ${config.port}`);
+    });
   });
 }

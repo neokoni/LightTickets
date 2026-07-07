@@ -1,21 +1,17 @@
-import { Router, Request, Response } from 'express';
+import type { TicketStatus } from '@prisma/client';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { z } from 'zod';
 import * as ticketService from '../services/ticket.service.js';
 import * as labelService from '../services/label.service.js';
-import * as auditService from '../services/audit.service.js';
 import * as attachmentService from '../services/attachment.service.js';
 import { authMiddleware, conditionalAuthMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { ValidationError } from '../utils/errors.js';
-import { getDefinition, renderBody } from '../services/template.service.js';
+import { validate, parseId, parsePagination } from '../utils/validate.js';
+import { ROLE } from '../constants/roles.js';
 
 const router = Router();
-
-function parseId(raw: string): number {
-  const id = Number(raw);
-  if (isNaN(id)) throw new ValidationError('无效的议题ID');
-  return id;
-}
 
 const createSchema = z.object({
   title: z.string().min(1).max(200),
@@ -25,42 +21,29 @@ const createSchema = z.object({
 });
 
 router.post('/', authMiddleware, async (req: Request, res: Response) => {
-  const parsed = createSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
-
-  const { template, formData, title: userTitle, ...rest } = parsed.data;
-  const def = getDefinition(template);
-  if (!def) throw new ValidationError('无效的模板');
-
-  const body = renderBody(def, formData);
-  const title = def.title_prefix && !userTitle.startsWith(def.title_prefix)
-    ? def.title_prefix + userTitle
-    : userTitle;
+  const data = validate(createSchema, req.body);
 
   const ticket = await ticketService.create({
-    ...rest,
-    title,
-    body,
-    template,
-    formData,
+    ...data,
     authorId: req.user!.userId,
   });
   res.status(201).json(ticket);
 });
 
 router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) => {
-  const hasServer = req.query.hasServer !== undefined
-    ? req.query.hasServer === 'true'
-    : undefined;
+  const hasServer = req.query.hasServer !== undefined ? req.query.hasServer === 'true' : undefined;
   const statusesParam = req.query.statuses as string | string[] | undefined;
-  const statuses: any = statusesParam
-    ? (Array.isArray(statusesParam) ? statusesParam : statusesParam.split(','))
+  const statuses: TicketStatus[] | undefined = statusesParam
+    ? Array.isArray(statusesParam)
+      ? (statusesParam as TicketStatus[])
+      : (statusesParam.split(',') as TicketStatus[])
     : undefined;
+  const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
   const result = await ticketService.list({
-    page: req.query.page ? Number(req.query.page) : undefined,
-    pageSize: req.query.pageSize ? Number(req.query.pageSize) : undefined,
+    page,
+    pageSize,
     statuses,
-    type: req.query.type as any,
+    type: req.query.type as string | undefined,
     authorId: req.query.authorId ? Number(req.query.authorId) : undefined,
     authorName: req.query.authorName as string,
     serverId: req.query.serverId as string,
@@ -82,7 +65,12 @@ router.get('/:id/attachments', authMiddleware, async (req: Request, res: Respons
 });
 
 router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.update(parseId(String(req.params.id)), req.user!.userId, req.user!.role, req.body);
+  const ticket = await ticketService.update(
+    parseId(String(req.params.id)),
+    req.user!.userId,
+    req.user!.role,
+    req.body,
+  );
   res.json(ticket);
 });
 
@@ -91,10 +79,14 @@ const updateBodySchema = z.object({
 });
 
 router.patch('/:id/body', authMiddleware, async (req: Request, res: Response) => {
-  const parsed = updateBodySchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+  const data = validate(updateBodySchema, req.body);
 
-  const ticket = await ticketService.updateBody(parseId(String(req.params.id)), req.user!.userId, req.user!.role, parsed.data.body);
+  const ticket = await ticketService.updateBody(
+    parseId(String(req.params.id)),
+    req.user!.userId,
+    req.user!.role,
+    data.body,
+  );
   res.json(ticket);
 });
 
@@ -103,20 +95,32 @@ const updateTitleSchema = z.object({
 });
 
 router.patch('/:id/title', authMiddleware, async (req: Request, res: Response) => {
-  const parsed = updateTitleSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+  const data = validate(updateTitleSchema, req.body);
 
-  const ticket = await ticketService.updateTitle(parseId(String(req.params.id)), req.user!.userId, req.user!.role, parsed.data.title);
+  const ticket = await ticketService.updateTitle(
+    parseId(String(req.params.id)),
+    req.user!.userId,
+    req.user!.role,
+    data.title,
+  );
   res.json(ticket);
 });
 
 router.post('/:id/close', authMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.closeTicket(parseId(String(req.params.id)), req.user!.userId, req.user!.role);
+  const ticket = await ticketService.closeTicket(
+    parseId(String(req.params.id)),
+    req.user!.userId,
+    req.user!.role,
+  );
   res.json(ticket);
 });
 
 router.post('/:id/reopen', authMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.reopenTicket(parseId(String(req.params.id)), req.user!.userId, req.user!.role);
+  const ticket = await ticketService.reopenTicket(
+    parseId(String(req.params.id)),
+    req.user!.userId,
+    req.user!.role,
+  );
   res.json(ticket);
 });
 
@@ -125,37 +129,51 @@ const assigneesSchema = z.object({
   assigneeIds: z.array(z.number().int()),
 });
 
-router.put('/:id/assignees', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const parsed = assigneesSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+router.put(
+  '/:id/assignees',
+  authMiddleware,
+  requireRole(ROLE.STAFF),
+  async (req: Request, res: Response) => {
+    const data = validate(assigneesSchema, req.body);
 
-  const ticket = await ticketService.setAssignees(
-    parseId(String(req.params.id)),
-    req.user!.userId,
-    parsed.data.assigneeIds,
-  );
-  res.json(ticket);
-});
+    const ticket = await ticketService.setAssignees(
+      parseId(String(req.params.id)),
+      req.user!.userId,
+      data.assigneeIds,
+    );
+    res.json(ticket);
+  },
+);
 
 // Labels
-router.post('/:id/labels', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const { labelId } = req.body;
-  if (!labelId) throw new ValidationError('标签ID不能为空');
-  await labelService.addToTicket(parseId(String(req.params.id)), labelId);
-  const label = await labelService.getById(labelId);
-  if (label) {
-    await auditService.create(parseId(String(req.params.id)), req.user!.userId, 'label_add', undefined, JSON.stringify({ name: label.name, color: label.color }));
-  }
-  res.status(201).end();
-});
+router.post(
+  '/:id/labels',
+  authMiddleware,
+  requireRole(ROLE.STAFF),
+  async (req: Request, res: Response) => {
+    const { labelId } = req.body;
+    if (!labelId) throw new ValidationError('标签ID不能为空');
+    await labelService.addToTicketWithAudit(
+      parseId(String(req.params.id)),
+      labelId,
+      req.user!.userId,
+    );
+    res.status(201).end();
+  },
+);
 
-router.delete('/:id/labels/:labelId', authMiddleware, requireRole('staff'), async (req: Request, res: Response) => {
-  const label = await labelService.getById(String(req.params.labelId));
-  await labelService.removeFromTicket(parseId(String(req.params.id)), String(req.params.labelId));
-  if (label) {
-    await auditService.create(parseId(String(req.params.id)), req.user!.userId, 'label_remove', JSON.stringify({ name: label.name, color: label.color }), undefined);
-  }
-  res.status(204).end();
-});
+router.delete(
+  '/:id/labels/:labelId',
+  authMiddleware,
+  requireRole(ROLE.STAFF),
+  async (req: Request, res: Response) => {
+    await labelService.removeFromTicketWithAudit(
+      parseId(String(req.params.id)),
+      String(req.params.labelId),
+      req.user!.userId,
+    );
+    res.status(204).end();
+  },
+);
 
 export default router;

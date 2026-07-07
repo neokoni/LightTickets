@@ -1,0 +1,15 @@
+{
+  "name": "lighttickets",
+  "private": true,
+  "scripts": {
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "backend/src/**/*.ts": ["backend/node_modules/.bin/eslint --fix", "backend/node_modules/.bin/prettier --write"],
+    "frontend/src/**/*.{ts,vue}": ["frontend/node_modules/.bin/eslint --fix", "frontend/node_modules/.bin/prettier --write"]
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8"
+  }
+}

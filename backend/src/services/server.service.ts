@@ -1,8 +1,6 @@
-import { getPrisma } from '../db.js';
+import { prisma } from '../db.js';
 import crypto from 'crypto';
 import { AppError, NotFoundError } from '../utils/errors.js';
-
-const prisma = () => getPrisma();
 
 export async function create(name: string, address?: string, description?: string) {
   const existing = await prisma().server.findUnique({ where: { name } });
@@ -27,7 +25,10 @@ export async function regenerateKey(id: string) {
   return prisma().server.update({ where: { id }, data: { apiKey } });
 }
 
-export async function update(id: string, data: { name?: string; address?: string | null; description?: string | null }) {
+export async function update(
+  id: string,
+  data: { name?: string; address?: string | null; description?: string | null },
+) {
   const server = await prisma().server.findUnique({ where: { id } });
   if (!server) throw new NotFoundError('服务器不存在');
 

@@ -1,9 +1,11 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { z } from 'zod';
 import * as labelService from '../services/label.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
-import { ValidationError } from '../utils/errors.js';
+import { ROLE } from '../constants/roles.js';
+import { validate } from '../utils/validate.js';
 
 const router = Router();
 
@@ -18,22 +20,31 @@ router.get('/', async (_req: Request, res: Response) => {
   res.json(labels);
 });
 
-router.post('/', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-  const parsed = createSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+router.post('/', authMiddleware, requireRole(ROLE.ADMIN), async (req: Request, res: Response) => {
+  const data = validate(createSchema, req.body);
 
-  const label = await labelService.create(parsed.data.name, parsed.data.color, parsed.data.description);
+  const label = await labelService.create(data.name, data.color, data.description);
   res.status(201).json(label);
 });
 
-router.patch('/:id', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-  const label = await labelService.update(String(req.params.id), req.body);
-  res.json(label);
-});
+router.patch(
+  '/:id',
+  authMiddleware,
+  requireRole(ROLE.ADMIN),
+  async (req: Request, res: Response) => {
+    const label = await labelService.update(String(req.params.id), req.body);
+    res.json(label);
+  },
+);
 
-router.delete('/:id', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-  await labelService.remove(String(req.params.id));
-  res.status(204).end();
-});
+router.delete(
+  '/:id',
+  authMiddleware,
+  requireRole(ROLE.ADMIN),
+  async (req: Request, res: Response) => {
+    await labelService.remove(String(req.params.id));
+    res.status(204).end();
+  },
+);
 
 export default router;

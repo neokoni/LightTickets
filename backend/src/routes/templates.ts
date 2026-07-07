@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { list, get } from '../services/template.service.js';
 import { NotFoundError } from '../utils/errors.js';
 

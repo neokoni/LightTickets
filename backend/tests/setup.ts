@@ -7,42 +7,44 @@ const configPath = path.resolve('data/config.yml');
 const dataTemplatesPath = path.resolve('data/templates');
 const templatesMarkerPath = path.resolve('data/.templates_initialized');
 // Back up the user's real config so tests never clobber production settings.
-const realConfigBackup = fs.existsSync(configPath)
-  ? fs.readFileSync(configPath, 'utf-8')
-  : null;
+const realConfigBackup = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf-8') : null;
 const templatesBackupPath = path.resolve('data/templates.test-backup');
 const markerBackup = fs.existsSync(templatesMarkerPath)
   ? fs.readFileSync(templatesMarkerPath, 'utf-8')
   : null;
 
-const testConfig = `port: 3000
-jwtSecret: ""
-jwtRefreshSecret: ""
-db:
-  provider: "sqlite"
-  databaseUrl: "file:./dev.db"
-storage:
-  driver: local
-  uploadDir: data/uploads
+const testConfig = `server:
+  port: 3000
+  corsOrigins:
+    - http://localhost:5173
+database:
+  provider: sqlite
+security:
+  jwtSecret: "test-jwt-secret"
+  jwtRefreshSecret: "test-refresh-secret"
 `;
 
 // Delete stale test DBs so migrations always start fresh.
-// loadConfig resolves file:./dev.db to data/dev.db (relative to data/ dir),
-// matching the path completeSetup and startFullApp use in production.
-for (const p of [path.resolve('data', 'dev.db'), path.resolve('prisma', 'dev.db')]) {
+for (const p of [
+  path.resolve('data', 'dev.db'),
+  path.resolve('data', 'data.db'),
+  path.resolve('prisma', 'dev.db'),
+]) {
   if (fs.existsSync(p)) fs.unlinkSync(p);
 }
 
 fs.rmSync(templatesBackupPath, { recursive: true, force: true });
-if (fs.existsSync(dataTemplatesPath)) fs.cpSync(dataTemplatesPath, templatesBackupPath, { recursive: true });
+if (fs.existsSync(dataTemplatesPath))
+  fs.cpSync(dataTemplatesPath, templatesBackupPath, { recursive: true });
 fs.rmSync(dataTemplatesPath, { recursive: true, force: true });
 fs.rmSync(templatesMarkerPath, { force: true });
 
+fs.mkdirSync(path.dirname(configPath), { recursive: true });
 fs.writeFileSync(configPath, testConfig, 'utf-8');
 
 // Load config to resolve DATABASE_URL consistently with production (absolute path)
-const { loadConfig } = await import('../src/config.js');
-loadConfig();
+const { getConfig } = await import('../src/config.js');
+getConfig();
 
 const { runMigrations } = await import('../src/migrate.js');
 runMigrations('sqlite');
@@ -54,6 +56,7 @@ const prisma = () => getPrisma();
 
 beforeEach(async () => {
   await prisma().setupStatus.deleteMany();
+  await prisma().appConfig.deleteMany();
   await prisma().auditLog.deleteMany();
   await prisma().ticketLabel.deleteMany();
   await prisma().attachment.deleteMany();
@@ -69,6 +72,7 @@ beforeEach(async () => {
 // clean config — that wipes the production db section and forces re-setup).
 afterAll(() => {
   if (realConfigBackup !== null) {
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
     fs.writeFileSync(configPath, realConfigBackup, 'utf-8');
   } else {
     fs.rmSync(configPath, { force: true });

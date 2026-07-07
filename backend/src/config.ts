@@ -1,14 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
-import crypto from 'crypto';
 
 export const CONFIG_PATH = path.resolve('data/config.yml');
-
-interface DbConfig {
-  provider: 'sqlite' | 'mysql';
-  databaseUrl: string;
-}
 
 export interface S3Config {
   endpoint: string;
@@ -20,23 +14,45 @@ export interface S3Config {
   presignExpiry: number;
 }
 
-interface StorageConfig {
+export interface StorageConfig {
   driver: 'local' | 's3';
   uploadDir: string;
   s3?: S3Config;
 }
 
-export type { StorageConfig };
+interface ConfigFile {
+  server?: Partial<ServerConfig>;
+  database?: Partial<DatabaseConfig>;
+  security?: Partial<SecurityConfig>;
+}
 
-interface AppConfig {
+interface ServerConfig {
   port: number;
+  corsOrigins: string[];
+}
+
+interface DatabaseConfig {
+  provider: 'sqlite' | 'mysql';
+  host?: string;
+  port?: number;
+  username?: string;
+  password?: string;
+  database?: string;
+}
+
+interface SecurityConfig {
   jwtSecret: string;
   jwtRefreshSecret: string;
-  db: DbConfig;
+}
+
+export interface AppConfig {
+  port: number;
+  corsOrigins: string[];
+  database: DatabaseConfig;
+  security: SecurityConfig;
   accessTokenExpiry: string;
   refreshTokenExpiry: string;
   linkCodeExpiry: number;
-  storage: StorageConfig;
 }
 
 const S3_REQUIRED_FIELDS = ['endpoint', 'bucket', 'accessKeyId', 'secretAccessKey'] as const;
@@ -48,91 +64,65 @@ export function validateS3Config(s3: Partial<S3Config>): void {
   }
 }
 
+export function isDatabaseConfigured(): boolean {
+  if (!fs.existsSync(CONFIG_PATH)) return false;
+  try {
+    const raw = (yaml.load(fs.readFileSync(CONFIG_PATH, 'utf-8')) as ConfigFile | null) ?? {};
+    return !!raw.database?.provider;
+  } catch {
+    return false;
+  }
+}
+
+function resolveDatabaseUrl(db: DatabaseConfig): string {
+  if (db.provider === 'sqlite') {
+    return `file:${path.resolve('data', 'data.db')}`;
+  }
+  return `mysql://${db.username}:${db.password}@${db.host}:${db.port}/${db.database}`;
+}
+
 export function loadConfig(): AppConfig {
   if (!fs.existsSync(CONFIG_PATH)) {
     throw new Error(`配置文件不存在: ${CONFIG_PATH}`);
   }
 
-  const raw = yaml.load(fs.readFileSync(CONFIG_PATH, 'utf-8')) as Record<string, any>;
+  const raw = (yaml.load(fs.readFileSync(CONFIG_PATH, 'utf-8')) as ConfigFile | null) ?? {};
 
-  const db = raw.db || {};
-  if (!db.provider || !db.databaseUrl) {
-    throw new Error('config.yml 缺少 db.provider 或 db.databaseUrl');
+  const server = raw.server || {};
+  const database = raw.database || {};
+  const security = raw.security || {};
+
+  if (!database.provider) {
+    throw new Error('config.yml 缺少 database.provider');
   }
 
-  // Build DATABASE_URL for Prisma
-  let databaseUrl = db.databaseUrl;
-  if (db.provider === 'sqlite') {
-    // Resolve relative file path against data/ directory
-    if (databaseUrl.startsWith('file:')) {
-      const relPath = databaseUrl.slice(5); // remove 'file:'
-      const absPath = path.resolve('data', relPath);
-      databaseUrl = `file:${absPath}`;
-    }
+  process.env.DATABASE_URL = resolveDatabaseUrl(database as DatabaseConfig);
+
+  const jwtSecret = security.jwtSecret || '';
+  const jwtRefreshSecret = security.jwtRefreshSecret || '';
+
+  if (!jwtSecret || !jwtRefreshSecret) {
+    throw new Error('config.yml 缺少 security.jwtSecret 或 security.jwtRefreshSecret');
   }
-  process.env.DATABASE_URL = databaseUrl;
-
-  // Auto-generate JWT secrets if empty
-  let jwtSecret = raw.jwtSecret || '';
-  let jwtRefreshSecret = raw.jwtRefreshSecret || '';
-  let secretsChanged = false;
-
-  if (!jwtSecret) {
-    jwtSecret = crypto.randomBytes(32).toString('hex');
-    secretsChanged = true;
-  }
-  if (!jwtRefreshSecret) {
-    jwtRefreshSecret = crypto.randomBytes(32).toString('hex');
-    secretsChanged = true;
-  }
-
-  if (secretsChanged) {
-    const updated = yaml.dump({
-      ...raw,
-      jwtSecret,
-      jwtRefreshSecret,
-    }, { lineWidth: -1 });
-    fs.writeFileSync(CONFIG_PATH, updated, 'utf-8');
-  }
-
-  // Parse storage config
-  const rawStorage = (raw.storage || {}) as Record<string, any>;
-  const driver: 'local' | 's3' = rawStorage.driver === 's3' ? 's3' : 'local';
-  const uploadDir = rawStorage.uploadDir
-    ? path.resolve(rawStorage.uploadDir)
-    : path.resolve('data', 'uploads');
-
-  let s3: S3Config | undefined;
-  if (driver === 's3') {
-    const rawS3 = rawStorage.s3 || {};
-    const parsed: S3Config = {
-      endpoint: rawS3.endpoint,
-      region: rawS3.region || 'us-east-1',
-      bucket: rawS3.bucket,
-      accessKeyId: rawS3.accessKeyId,
-      secretAccessKey: rawS3.secretAccessKey,
-      forcePathStyle: rawS3.forcePathStyle !== false,
-      presignExpiry: Number(rawS3.presignExpiry) || 300,
-    };
-    validateS3Config(parsed);
-    s3 = parsed;
-  }
-
-  const storage: StorageConfig = { driver, uploadDir, s3 };
 
   return {
-    port: parseInt(raw.port || '3000', 10),
-    jwtSecret,
-    jwtRefreshSecret,
-    db: { provider: db.provider, databaseUrl: db.databaseUrl },
+    port: parseInt(String(server.port ?? '3000'), 10),
+    corsOrigins: server.corsOrigins || ['http://localhost:5173'],
+    database: {
+      provider: database.provider,
+      host: database.host,
+      port: database.port,
+      username: database.username,
+      password: database.password,
+      database: database.database,
+    },
+    security: { jwtSecret, jwtRefreshSecret },
     accessTokenExpiry: '2h',
     refreshTokenExpiry: '7d',
     linkCodeExpiry: 5 * 60 * 1000,
-    storage,
   };
 }
 
-// Singleton
 let _config: AppConfig | null = null;
 
 export function getConfig(): AppConfig {
@@ -144,10 +134,3 @@ export function reloadConfig(): AppConfig {
   _config = loadConfig();
   return _config;
 }
-
-// Backward-compatible export
-export const config = new Proxy({} as AppConfig, {
-  get(_, prop) {
-    return (getConfig() as any)[prop];
-  },
-});

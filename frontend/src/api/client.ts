@@ -1,87 +1,58 @@
-import type { ApiError } from '@/types/api'
-import { getFrontendConfig } from '@/config'
+import { ApiError } from '@/types/api';
+import { frontendConfig } from '@/config';
+
+type ApiEnvelope<T> = { success: true; data: T };
 
 function getBaseUrl(): string {
-  try {
-    return getFrontendConfig().backendUrl;
-  } catch {
-    return import.meta.env.VITE_API_URL || '/api';
-  }
+  return frontendConfig.backendUrl;
 }
 
-let accessToken: string | null = null
-let refreshPromise: Promise<string | null> | null = null
+let accessToken: string | null = null;
 
 export function setAccessToken(token: string | null) {
-  accessToken = token
-}
-
-export function getAccessToken() {
-  return accessToken
-}
-
-async function refreshToken(): Promise<string | null> {
-  const stored = localStorage.getItem('lt-refresh-token')
-  if (!stored) return null
-
-  const res = await fetch(`${getBaseUrl()}/auth/refresh`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Platform-Internal': 'true',
-    },
-    body: JSON.stringify({ refreshToken: stored }),
-  })
-
-  if (!res.ok) {
-    localStorage.removeItem('lt-refresh-token')
-    accessToken = null
-    return null
-  }
-
-  const data = await res.json()
-  accessToken = data.accessToken
-  return data.accessToken
+  accessToken = token;
 }
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
-    'X-Platform-Internal': 'true',
-    ...(options.headers as Record<string, string> || {}),
-  }
+    ...((options.headers as Record<string, string>) || {}),
+  };
 
   if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json'
+    headers['Content-Type'] = 'application/json';
   }
 
   if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`
+    headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
-  let res = await fetch(`${getBaseUrl()}${path}`, { ...options, headers })
+  const res = await fetch(`${getBaseUrl()}${path}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
 
   if (res.status === 401 && accessToken) {
-    if (!refreshPromise) {
-      refreshPromise = refreshToken()
-    }
-    const newToken = await refreshPromise
-    refreshPromise = null
-
-    if (newToken) {
-      headers['Authorization'] = `Bearer ${newToken}`
-      res = await fetch(`${getBaseUrl()}${path}`, { ...options, headers })
-    } else {
-      accessToken = null
-      localStorage.removeItem('lt-refresh-token')
-      throw new Error('Session expired')
-    }
+    accessToken = null;
   }
 
   if (!res.ok) {
-    const err: ApiError = await res.json().catch(() => ({ error: 'Request failed' }))
-    throw new Error(err.error)
+    const err: { error?: string; message?: string } = await res
+      .json()
+      .catch(() => ({ error: 'Request failed' }));
+    throw new ApiError(res.status, err.message || err.error || 'Request failed');
   }
 
-  if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T
-  return res.json()
+  if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
+  const payload = (await res.json()) as T | ApiEnvelope<T>;
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'success' in payload &&
+    (payload as { success?: unknown }).success === true &&
+    'data' in payload
+  ) {
+    return (payload as ApiEnvelope<T>).data;
+  }
+  return payload as T;
 }

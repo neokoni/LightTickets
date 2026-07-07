@@ -1,15 +1,10 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import * as auditService from '../services/audit.service.js';
 import { conditionalAuthMiddleware } from '../middleware/auth.js';
-import { ValidationError } from '../utils/errors.js';
+import { parseId } from '../utils/validate.js';
 
 const router = Router({ mergeParams: true });
-
-function parseId(raw: string): number {
-  const id = Number(raw);
-  if (isNaN(id)) throw new ValidationError('无效的议题ID');
-  return id;
-}
 
 router.use(conditionalAuthMiddleware);
 

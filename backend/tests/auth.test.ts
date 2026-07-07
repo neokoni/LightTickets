@@ -12,10 +12,10 @@ describe('POST /api/auth/register', () => {
       .send({ email: 'test@example.com', password: 'Password123!', username: 'testuser' });
 
     expect(res.status).toBe(201);
-    expect(res.body).toHaveProperty('accessToken');
-    expect(res.body).toHaveProperty('refreshToken');
-    expect(res.body.user.email).toBe('test@example.com');
-    expect(res.body.user).not.toHaveProperty('passwordHash');
+    expect(res.body.data).toHaveProperty('accessToken');
+    expect(res.body.data).toHaveProperty('refreshToken');
+    expect(res.body.data.user.email).toBe('test@example.com');
+    expect(res.body.data.user).not.toHaveProperty('passwordHash');
   });
 
   it('rejects duplicate email', async () => {
@@ -42,7 +42,7 @@ describe('POST /api/auth/login', () => {
       .send({ emailOrUsername: 'login@example.com', password: 'Password123!' });
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('accessToken');
+    expect(res.body.data).toHaveProperty('accessToken');
   });
 
   it('returns tokens for valid username credentials', async () => {
@@ -55,8 +55,8 @@ describe('POST /api/auth/login', () => {
       .send({ emailOrUsername: 'userlogin', password: 'Password123!' });
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('accessToken');
-    expect(res.body.user.username).toBe('userlogin');
+    expect(res.body.data).toHaveProperty('accessToken');
+    expect(res.body.data.user.username).toBe('userlogin');
   });
 
   it('rejects invalid password', async () => {
@@ -84,10 +84,10 @@ describe('POST /api/auth/refresh', () => {
 
     const res = await request(app)
       .post('/api/auth/refresh')
-      .send({ refreshToken: reg.body.refreshToken });
+      .send({ refreshToken: reg.body.data.refreshToken });
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('accessToken');
+    expect(res.body.data).toHaveProperty('accessToken');
   });
 });
 
@@ -107,12 +107,12 @@ describe('POST /api/auth/link-minecraft', () => {
 
     const res = await request(app)
       .post('/api/auth/link-minecraft')
-      .set('Authorization', `Bearer ${reg.body.accessToken}`)
-      .send({ code: code.body.code });
+      .set('Authorization', `Bearer ${reg.body.data.accessToken}`)
+      .send({ code: code.body.data.code });
 
     expect(res.status).toBe(200);
-    expect(res.body.uuid).toBe('550e8400-e29b-41d4-a716-446655440030');
-    expect(res.body.name).toBe('Linker');
+    expect(res.body.data.uuid).toBe('550e8400-e29b-41d4-a716-446655440030');
+    expect(res.body.data.name).toBe('Linker');
   });
 });
 
@@ -132,17 +132,17 @@ describe('DELETE /api/auth/link-minecraft', () => {
 
     await request(app)
       .post('/api/auth/link-minecraft')
-      .set('Authorization', `Bearer ${reg.body.accessToken}`)
-      .send({ code: code.body.code });
+      .set('Authorization', `Bearer ${reg.body.data.accessToken}`)
+      .send({ code: code.body.data.code });
 
     const res = await request(app)
       .delete('/api/auth/link-minecraft')
-      .set('Authorization', `Bearer ${reg.body.accessToken}`);
+      .set('Authorization', `Bearer ${reg.body.data.accessToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.minecraftUuid).toBeNull();
-    expect(res.body.minecraftName).toBeNull();
-    expect(res.body.username).toBe('unlinkmc');
+    expect(res.body.data.minecraftUuid).toBeNull();
+    expect(res.body.data.minecraftName).toBeNull();
+    expect(res.body.data.username).toBe('unlinkmc');
 
     const dbUser = await prisma().user.findUnique({ where: { email: 'unlinkmc@test.com' } });
     expect(dbUser?.minecraftUuid).toBeNull();
@@ -156,14 +156,13 @@ describe('DELETE /api/auth/link-minecraft', () => {
 
     const res = await request(app)
       .delete('/api/auth/link-minecraft')
-      .set('Authorization', `Bearer ${reg.body.accessToken}`);
+      .set('Authorization', `Bearer ${reg.body.data.accessToken}`);
 
     expect(res.status).toBe(400);
   });
 
   it('rejects without auth token', async () => {
-    const res = await request(app)
-      .delete('/api/auth/link-minecraft');
+    const res = await request(app).delete('/api/auth/link-minecraft');
 
     expect(res.status).toBe(401);
   });

@@ -1,9 +1,5 @@
 import type { Response } from 'express';
-import {
-  PutObjectCommand,
-  DeleteObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
+import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { IStorageAdapter, SaveInput } from './types.js';
 import type { S3Config } from '../../config.js';
@@ -34,9 +30,7 @@ export class S3StorageAdapter implements IStorageAdapter {
   }
 
   async delete(key: string): Promise<void> {
-    await this.client.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
-    );
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 
   async serve(res: Response, key: string, _filename?: string): Promise<void> {

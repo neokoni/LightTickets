@@ -17,8 +17,8 @@ describe('POST /api/mc/link-code', () => {
       .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440000', minecraftName: 'Steve' });
 
     expect(res.status).toBe(201);
-    expect(res.body.code).toMatch(/^\d{6}$/);
-    expect(res.body).toHaveProperty('expiresAt');
+    expect(res.body.data.code).toMatch(/^\d{6}$/);
+    expect(res.body.data).toHaveProperty('expiresAt');
   });
 
   it('rejects without server key', async () => {
@@ -51,7 +51,7 @@ describe('POST /api/mc/link-code', () => {
       .send({ minecraftUuid: '660e8400-e29b-41d4-a716-446655440099', minecraftName: 'BoundSteve' });
 
     expect(res.status).toBe(409);
-    expect(res.body).toHaveProperty('error');
+    expect(res.body).toHaveProperty('message');
   });
 });
 
@@ -85,7 +85,7 @@ describe('POST /api/mc/tickets', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.title).toBe('Block glitch');
+    expect(res.body.data.title).toBe('Block glitch');
   });
 
   it('rejects unlinked player', async () => {
@@ -93,15 +93,12 @@ describe('POST /api/mc/tickets', () => {
       data: { name: 'mc-srv2', apiKey: 'mc-key-789' },
     });
 
-    const res = await request(app)
-      .post('/api/mc/tickets')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: 'unknown-uuid',
-        title: 'Test',
-        body: 'Body',
-        template: 'bug_report',
-      });
+    const res = await request(app).post('/api/mc/tickets').set('X-Server-Key', server.apiKey).send({
+      minecraftUuid: 'unknown-uuid',
+      title: 'Test',
+      body: 'Body',
+      template: 'bug_report',
+    });
 
     expect(res.status).toBe(404);
   });
@@ -124,22 +121,19 @@ describe('GET /api/mc/tickets/:uuid', () => {
       },
     });
 
-    await request(app)
-      .post('/api/mc/tickets')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440001',
-        title: 'MC Ticket',
-        body: 'From game',
-        template: 'bug_report',
-      });
+    await request(app).post('/api/mc/tickets').set('X-Server-Key', server.apiKey).send({
+      minecraftUuid: '550e8400-e29b-41d4-a716-446655440001',
+      title: 'MC Ticket',
+      body: 'From game',
+      template: 'bug_report',
+    });
 
     const res = await request(app)
       .get('/api/mc/tickets/550e8400-e29b-41d4-a716-446655440001')
       .set('X-Server-Key', server.apiKey);
 
     expect(res.status).toBe(200);
-    expect(res.body.tickets.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.tickets.length).toBeGreaterThanOrEqual(1);
   });
 
   it('returns empty array for unknown uuid', async () => {
@@ -152,7 +146,7 @@ describe('GET /api/mc/tickets/:uuid', () => {
       .set('X-Server-Key', server.apiKey);
 
     expect(res.status).toBe(200);
-    expect(res.body.tickets).toEqual([]);
+    expect(res.body.data.tickets).toEqual([]);
   });
 });
 
@@ -188,12 +182,12 @@ describe('POST /api/mc/comments', () => {
       .set('X-Server-Key', server.apiKey)
       .send({
         minecraftUuid: '550e8400-e29b-41d4-a716-446655440002',
-        ticketId: ticket.body.id,
+        ticketId: ticket.body.data.id,
         body: 'Comment from game',
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.body).toBe('Comment from game');
+    expect(res.body.data.body).toBe('Comment from game');
   });
 });
 
@@ -225,12 +219,12 @@ describe('POST /api/mc/tickets/:id/close', () => {
       });
 
     const res = await request(app)
-      .post(`/api/mc/tickets/${ticket.body.id}/close`)
+      .post(`/api/mc/tickets/${ticket.body.data.id}/close`)
       .set('X-Server-Key', server.apiKey)
       .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440003' });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('closed');
+    expect(res.body.data.status).toBe('closed');
   });
 });
 
@@ -262,7 +256,7 @@ describe('POST /api/mc/tickets/:id/status', () => {
       });
 
     const res = await request(app)
-      .post(`/api/mc/tickets/${ticket.body.id}/status`)
+      .post(`/api/mc/tickets/${ticket.body.data.id}/status`)
       .set('X-Server-Key', server.apiKey)
       .send({
         minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
@@ -270,7 +264,7 @@ describe('POST /api/mc/tickets/:id/status', () => {
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('closed');
+    expect(res.body.data.status).toBe('closed');
   });
 
   it('rejects linked player changing own ticket to invalid state', async () => {
@@ -300,7 +294,7 @@ describe('POST /api/mc/tickets/:id/status', () => {
       });
 
     const res = await request(app)
-      .post(`/api/mc/tickets/${ticket.body.id}/status`)
+      .post(`/api/mc/tickets/${ticket.body.data.id}/status`)
       .set('X-Server-Key', server.apiKey)
       .send({
         minecraftUuid: '550e8400-e29b-41d4-a716-446655440031',
@@ -355,7 +349,7 @@ describe('POST /api/mc/tickets/:id/status', () => {
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('invalid');
+    expect(res.body.data.status).toBe('invalid');
   });
 
   it('rejects linked player reopening own invalid ticket through status update', async () => {
@@ -420,9 +414,9 @@ describe('POST /api/mc/unlink', () => {
       .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440020' });
 
     expect(res.status).toBe(200);
-    expect(res.body.minecraftUuid).toBeNull();
-    expect(res.body.minecraftName).toBeNull();
-    expect(res.body.username).toBe('mcunlink');
+    expect(res.body.data.minecraftUuid).toBeNull();
+    expect(res.body.data.minecraftName).toBeNull();
+    expect(res.body.data.username).toBe('mcunlink');
 
     const dbUser = await prisma().user.findUnique({ where: { email: 'mcunlink@test.com' } });
     expect(dbUser?.minecraftUuid).toBeNull();
@@ -482,12 +476,12 @@ describe('POST /api/mc/register', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body).toHaveProperty('accessToken');
-    expect(res.body).toHaveProperty('refreshToken');
-    expect(res.body.user.email).toBe('mcreg@test.com');
-    expect(res.body.user.minecraftUuid).toBe('550e8400-e29b-41d4-a716-446655440010');
-    expect(res.body.user.minecraftName).toBe('RegPlayer');
-    expect(res.body.user).not.toHaveProperty('passwordHash');
+    expect(res.body.data).toHaveProperty('accessToken');
+    expect(res.body.data).toHaveProperty('refreshToken');
+    expect(res.body.data.user.email).toBe('mcreg@test.com');
+    expect(res.body.data.user.minecraftUuid).toBe('550e8400-e29b-41d4-a716-446655440010');
+    expect(res.body.data.user.minecraftName).toBe('RegPlayer');
+    expect(res.body.data.user).not.toHaveProperty('passwordHash');
 
     // Registered player is directly bound and can create tickets
     const ticket = await request(app)
@@ -503,15 +497,13 @@ describe('POST /api/mc/register', () => {
   });
 
   it('rejects without server key', async () => {
-    const res = await request(app)
-      .post('/api/mc/register')
-      .send({
-        email: 'nokey@test.com',
-        password: 'Password123!',
-        username: 'nokeyuser',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440011',
-        minecraftName: 'NoKey',
-      });
+    const res = await request(app).post('/api/mc/register').send({
+      email: 'nokey@test.com',
+      password: 'Password123!',
+      username: 'nokeyuser',
+      minecraftUuid: '550e8400-e29b-41d4-a716-446655440011',
+      minecraftName: 'NoKey',
+    });
 
     expect(res.status).toBe(401);
   });
@@ -521,16 +513,13 @@ describe('POST /api/mc/register', () => {
       data: { name: 'mc-reg-dup', apiKey: 'mc-reg-dup-key' },
     });
 
-    await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'mcregdup@test.com',
-        password: 'Password123!',
-        username: 'mcregdup1',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440012',
-        minecraftName: 'Dup1',
-      });
+    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send({
+      email: 'mcregdup@test.com',
+      password: 'Password123!',
+      username: 'mcregdup1',
+      minecraftUuid: '550e8400-e29b-41d4-a716-446655440012',
+      minecraftName: 'Dup1',
+    });
 
     const res = await request(app)
       .post('/api/mc/register')
@@ -551,16 +540,13 @@ describe('POST /api/mc/register', () => {
       data: { name: 'mc-reg-username', apiKey: 'mc-reg-username-key' },
     });
 
-    await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'mcregun1@test.com',
-        password: 'Password123!',
-        username: 'sharedname',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440014',
-        minecraftName: 'Shared1',
-      });
+    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send({
+      email: 'mcregun1@test.com',
+      password: 'Password123!',
+      username: 'sharedname',
+      minecraftUuid: '550e8400-e29b-41d4-a716-446655440014',
+      minecraftName: 'Shared1',
+    });
 
     const res = await request(app)
       .post('/api/mc/register')
@@ -581,16 +567,13 @@ describe('POST /api/mc/register', () => {
       data: { name: 'mc-reg-uuid', apiKey: 'mc-reg-uuid-key' },
     });
 
-    await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'mcuuid1@test.com',
-        password: 'Password123!',
-        username: 'mcuuid1',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440016',
-        minecraftName: 'Uuid1',
-      });
+    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send({
+      email: 'mcuuid1@test.com',
+      password: 'Password123!',
+      username: 'mcuuid1',
+      minecraftUuid: '550e8400-e29b-41d4-a716-446655440016',
+      minecraftName: 'Uuid1',
+    });
 
     const res = await request(app)
       .post('/api/mc/register')
@@ -635,13 +618,13 @@ describe('POST /api/mc/register', () => {
     const setupRes = await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        db: { provider: 'sqlite' },
         admin: { email: 'mcreg-admin@test.com', password: 'admin123', username: 'mcregadmin' },
       });
 
     await request(app)
       .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${setupRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
       .send({ allowMcRegister: false });
 
     const res = await request(app)

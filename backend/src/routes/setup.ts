@@ -1,31 +1,45 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { z } from 'zod';
-import type { Server } from 'http';
 import * as setupService from '../services/setup.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
-import { ValidationError } from '../utils/errors.js';
+import { validate } from '../utils/validate.js';
+import { ROLE } from '../constants/roles.js';
+
+interface SetupRouteOptions {
+  onSetupComplete?: () => void | Promise<void>;
+}
 
 const setupSchema = z.object({
   db: z.object({
     provider: z.enum(['sqlite', 'mysql']),
-    databaseUrl: z.string().min(1),
+    databaseUrl: z.string().optional(),
+    host: z.string().optional(),
+    port: z.number().int().positive().optional(),
+    username: z.string().optional(),
+    password: z.string().optional(),
+    database: z.string().optional(),
   }),
   admin: z.object({
     email: z.string().email(),
     password: z.string().min(6),
     username: z.string().min(2).max(30),
   }),
-  site: z.object({
-    siteName: z.string().optional(),
-    siteUrl: z.string().optional(),
-  }).optional(),
-  mc: z.object({
-    defaultServerName: z.string().optional(),
-  }).optional(),
+  site: z
+    .object({
+      siteName: z.string().optional(),
+      siteUrl: z.string().optional(),
+    })
+    .optional(),
+  mc: z
+    .object({
+      defaultServerName: z.string().optional(),
+    })
+    .optional(),
 });
 
-export default function createSetupRoutes(server?: Server) {
+export default function createSetupRoutes(options: SetupRouteOptions = {}) {
   const router = Router();
 
   // GET /api/setup/site-config - public, no auth required
@@ -36,30 +50,33 @@ export default function createSetupRoutes(server?: Server) {
 
   // POST /api/setup - perform initial setup
   router.post('/', async (req: Request, res: Response) => {
-    const parsed = setupSchema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+    const data = validate(setupSchema, req.body);
 
-    const result = await setupService.completeSetup(parsed.data);
+    const result = await setupService.completeSetup(data);
     res.status(201).json(result);
-    if (server) setupService.startFullAppAfterSetup(server);
+    await options.onSetupComplete?.();
   });
 
   // PATCH /api/setup/settings - admin only
-  router.patch('/settings', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-    const schema = z.object({
-      requireLogin: z.boolean().optional(),
-      allowWebRegister: z.boolean().optional(),
-      allowMcRegister: z.boolean().optional(),
-      siteName: z.string().min(1).max(100).optional(),
-      siteUrl: z.string().url().nullable().optional(),
-      footerContent: z.string().max(2000).nullable().optional(),
-    });
-    const parsed = schema.safeParse(req.body);
-    if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+  router.patch(
+    '/settings',
+    authMiddleware,
+    requireRole(ROLE.ADMIN),
+    async (req: Request, res: Response) => {
+      const schema = z.object({
+        requireLogin: z.boolean().optional(),
+        allowWebRegister: z.boolean().optional(),
+        allowMcRegister: z.boolean().optional(),
+        siteName: z.string().min(1).max(100).optional(),
+        siteUrl: z.string().url().nullable().optional(),
+        footerContent: z.string().max(2000).nullable().optional(),
+      });
+      const data = validate(schema, req.body);
 
-    const result = await setupService.updateSettings(parsed.data);
-    res.json(result);
-  });
+      const result = await setupService.updateSettings(data);
+      res.json(result);
+    },
+  );
 
   return router;
 }

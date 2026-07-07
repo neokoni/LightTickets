@@ -1,8 +1,7 @@
-import { Server as HttpServer } from 'http';
-import { Server, Socket } from 'socket.io';
-import { getPrisma } from '../db.js';
-
-const prisma = () => getPrisma();
+import type { Server as HttpServer } from 'http';
+import type { Socket } from 'socket.io';
+import { Server } from 'socket.io';
+import { prisma } from '../db.js';
 
 let io: Server;
 
@@ -12,9 +11,11 @@ function firstString(value: string | string[] | undefined) {
 }
 
 function resolveServerKey(socket: Socket) {
-  return firstString(socket.handshake.auth.serverKey as string | string[] | undefined)
-    || firstString(socket.handshake.query.serverKey as string | string[] | undefined)
-    || firstString(socket.handshake.headers['x-server-key'] as string | string[] | undefined);
+  return (
+    firstString(socket.handshake.auth.serverKey as string | string[] | undefined) ||
+    firstString(socket.handshake.query.serverKey as string | string[] | undefined) ||
+    firstString(socket.handshake.headers['x-server-key'] as string | string[] | undefined)
+  );
 }
 
 export function initSocket(httpServer: HttpServer) {
@@ -38,10 +39,14 @@ export function initSocket(httpServer: HttpServer) {
 
   mcNamespace.on('connection', (socket: Socket) => {
     socket.join(`server:${socket.data.serverId}`);
-    console.log(`[socket] Minecraft server connected: ${socket.data.serverName} (${socket.data.serverId})`);
+    console.log(
+      `[socket] Minecraft server connected: ${socket.data.serverName} (${socket.data.serverId})`,
+    );
 
     socket.on('disconnect', () => {
-      console.log(`[socket] Minecraft server disconnected: ${socket.data.serverName} (${socket.data.serverId})`);
+      console.log(
+        `[socket] Minecraft server disconnected: ${socket.data.serverName} (${socket.data.serverId})`,
+      );
     });
   });
 

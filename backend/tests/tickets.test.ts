@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
+import * as ticketService from '../src/services/ticket.service.js';
+import * as templateService from '../src/services/template.service.js';
 
 const app = createApp();
 
@@ -9,7 +11,7 @@ async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username: email.split('@')[0] });
-  return res.body.accessToken;
+  return res.body.data.accessToken;
 }
 
 async function createAdminAndGetToken(email = 'admin@test.com') {
@@ -21,7 +23,7 @@ async function createAdminAndGetToken(email = 'admin@test.com') {
   const loginRes = await request(app)
     .post('/api/auth/login')
     .send({ emailOrUsername: email, password: 'Password123!' });
-  return loginRes.body.accessToken;
+  return loginRes.body.data.accessToken;
 }
 
 async function createStaffAndGetToken(email = 'staff@test.com') {
@@ -33,7 +35,7 @@ async function createStaffAndGetToken(email = 'staff@test.com') {
   const loginRes = await request(app)
     .post('/api/auth/login')
     .send({ emailOrUsername: email, password: 'Password123!' });
-  return loginRes.body.accessToken;
+  return loginRes.body.data.accessToken;
 }
 
 async function createTicket(token: string, overrides: Record<string, unknown> = {}) {
@@ -54,15 +56,19 @@ describe('POST /api/tickets', () => {
     const res = await createTicket(token);
 
     expect(res.status).toBe(201);
-    expect(res.body.title).toBe('[Bug] Test Bug');
-    expect(res.body.status).toBe('open');
-    expect(res.body.template).toBe('bug_report');
+    expect(res.body.data.title).toBe('[Bug] Test Bug');
+    expect(res.body.data.status).toBe('open');
+    expect(res.body.data.template).toBe('bug_report');
   });
 
   it('rejects unauthenticated request', async () => {
     const res = await request(app)
       .post('/api/tickets')
-      .send({ title: 'Test', template: 'bug_report', formData: { description: 'x', reproduce: 'y' } });
+      .send({
+        title: 'Test',
+        template: 'bug_report',
+        formData: { description: 'x', reproduce: 'y' },
+      });
 
     expect(res.status).toBe(401);
   });
@@ -88,20 +94,48 @@ describe('POST /api/tickets', () => {
   });
 });
 
+describe('ticketService.create', () => {
+  it('renders template title and body inside the service', async () => {
+    await templateService.initTemplates();
+    const user = await prisma().user.create({
+      data: { email: 'service-create@test.com', passwordHash: 'x', username: 'service-create' },
+    });
+
+    const ticket = await ticketService.create({
+      title: 'Service Bug',
+      template: 'bug_report',
+      formData: { description: 'Something broke', reproduce: 'Step 1' },
+      authorId: user.id,
+    });
+
+    expect(ticket.title).toBe('[Bug] Service Bug');
+    expect(ticket.body).toContain('Something broke');
+    expect(ticket.body).toContain('Step 1');
+  });
+});
+
 describe('GET /api/tickets', () => {
   it('returns paginated tickets with filters', async () => {
     const token = await createUserAndGetToken('filter@test.com');
-    await createTicket(token, { title: 'Bug 1', template: 'bug_report', formData: { description: 'd', reproduce: 'r' } });
-    await createTicket(token, { title: 'Suggestion 1', template: 'suggestion', formData: { description: 'd' } });
+    await createTicket(token, {
+      title: 'Bug 1',
+      template: 'bug_report',
+      formData: { description: 'd', reproduce: 'r' },
+    });
+    await createTicket(token, {
+      title: 'Suggestion 1',
+      template: 'suggestion',
+      formData: { description: 'd' },
+    });
 
     const res = await request(app)
       .get('/api/tickets?type=bug_report')
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.tickets).toHaveLength(1);
-    expect(res.body).toHaveProperty('total');
-    expect(res.body).toHaveProperty('page');
+    expect(res.body.data.tickets).toHaveLength(1);
+    expect(res.body.data).toHaveProperty('total');
+    expect(res.body.data).toHaveProperty('page');
   });
 
   it('returns tickets without auth (public)', async () => {
@@ -110,7 +144,7 @@ describe('GET /api/tickets', () => {
 
     const res = await request(app).get('/api/tickets');
     expect(res.status).toBe(200);
-    expect(res.body.tickets.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.tickets.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -119,11 +153,11 @@ describe('GET /api/tickets/:id', () => {
     const token = await createUserAndGetToken('detail@test.com');
     const created = await createTicket(token);
 
-    const res = await request(app).get(`/api/tickets/${created.body.id}`);
+    const res = await request(app).get(`/api/tickets/${created.body.data.id}`);
     expect(res.status).toBe(200);
-    expect(res.body.id).toBe(created.body.id);
-    expect(res.body).toHaveProperty('author');
-    expect(res.body).toHaveProperty('labels');
+    expect(res.body.data.id).toBe(created.body.data.id);
+    expect(res.body.data).toHaveProperty('author');
+    expect(res.body.data).toHaveProperty('labels');
   });
 
   it('returns 404 for nonexistent ticket', async () => {
@@ -135,15 +169,19 @@ describe('GET /api/tickets/:id', () => {
 describe('PATCH /api/tickets/:id', () => {
   it('allows author to close own ticket', async () => {
     const token = await createUserAndGetToken('patcher@test.com');
-    const created = await createTicket(token, { title: 'To Close', template: 'suggestion', formData: { description: 'd' } });
+    const created = await createTicket(token, {
+      title: 'To Close',
+      template: 'suggestion',
+      formData: { description: 'd' },
+    });
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ status: 'closed' });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('closed');
+    expect(res.body.data.status).toBe('closed');
   });
 
   it('rejects author changing status to in_progress', async () => {
@@ -151,7 +189,7 @@ describe('PATCH /api/tickets/:id', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ status: 'in_progress' });
 
@@ -163,7 +201,7 @@ describe('PATCH /api/tickets/:id', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ status: 'invalid' });
 
@@ -176,12 +214,12 @@ describe('PATCH /api/tickets/:id', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ status: 'invalid' });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('invalid');
+    expect(res.body.data.status).toBe('invalid');
   });
 
   it('rejects author reopening an invalid ticket through status update', async () => {
@@ -190,12 +228,12 @@ describe('PATCH /api/tickets/:id', () => {
     const created = await createTicket(token);
 
     await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ status: 'invalid' });
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ status: 'open' });
 
@@ -208,12 +246,12 @@ describe('PATCH /api/tickets/:id', () => {
     const created = await createTicket(token);
 
     await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ status: 'invalid' });
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ status: 'closed' });
 
@@ -226,17 +264,17 @@ describe('PATCH /api/tickets/:id', () => {
     const created = await createTicket(token);
 
     await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ status: 'invalid' });
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ status: 'open' });
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('open');
+    expect(res.body.data.status).toBe('open');
   });
 
   it('rejects non-author non-staff update', async () => {
@@ -245,7 +283,7 @@ describe('PATCH /api/tickets/:id', () => {
     const created = await createTicket(authorToken);
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}`)
+      .patch(`/api/tickets/${created.body.data.id}`)
       .set('Authorization', `Bearer ${otherToken}`)
       .send({ status: 'invalid' });
 
@@ -259,12 +297,12 @@ describe('PATCH /api/tickets/:id/title', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}/title`)
+      .patch(`/api/tickets/${created.body.data.id}/title`)
       .set('Authorization', `Bearer ${token}`)
       .send({ title: 'Updated Title' });
 
     expect(res.status).toBe(200);
-    expect(res.body.title).toBe('Updated Title');
+    expect(res.body.data.title).toBe('Updated Title');
   });
 
   it('rejects empty title', async () => {
@@ -272,7 +310,7 @@ describe('PATCH /api/tickets/:id/title', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}/title`)
+      .patch(`/api/tickets/${created.body.data.id}/title`)
       .set('Authorization', `Bearer ${token}`)
       .send({ title: '' });
 
@@ -286,12 +324,12 @@ describe('PATCH /api/tickets/:id/body', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}/body`)
+      .patch(`/api/tickets/${created.body.data.id}/body`)
       .set('Authorization', `Bearer ${token}`)
       .send({ body: 'Updated body content' });
 
     expect(res.status).toBe(200);
-    expect(res.body.body).toBe('Updated body content');
+    expect(res.body.data.body).toBe('Updated body content');
   });
 
   it('rejects empty body', async () => {
@@ -299,7 +337,7 @@ describe('PATCH /api/tickets/:id/body', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .patch(`/api/tickets/${created.body.id}/body`)
+      .patch(`/api/tickets/${created.body.data.id}/body`)
       .set('Authorization', `Bearer ${token}`)
       .send({ body: '' });
 
@@ -313,20 +351,22 @@ describe('POST /api/tickets/:id/close', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .post(`/api/tickets/${created.body.id}/close`)
+      .post(`/api/tickets/${created.body.data.id}/close`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('closed');
+    expect(res.body.data.status).toBe('closed');
   });
 
   it('rejects closing already closed ticket', async () => {
     const token = await createUserAndGetToken('close-dup@test.com');
     const created = await createTicket(token);
-    await request(app).post(`/api/tickets/${created.body.id}/close`).set('Authorization', `Bearer ${token}`);
+    await request(app)
+      .post(`/api/tickets/${created.body.data.id}/close`)
+      .set('Authorization', `Bearer ${token}`);
 
     const res = await request(app)
-      .post(`/api/tickets/${created.body.id}/close`)
+      .post(`/api/tickets/${created.body.data.id}/close`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(403);
@@ -337,14 +377,16 @@ describe('POST /api/tickets/:id/reopen', () => {
   it('allows author to reopen closed ticket', async () => {
     const token = await createUserAndGetToken('reopener@test.com');
     const created = await createTicket(token);
-    await request(app).post(`/api/tickets/${created.body.id}/close`).set('Authorization', `Bearer ${token}`);
+    await request(app)
+      .post(`/api/tickets/${created.body.data.id}/close`)
+      .set('Authorization', `Bearer ${token}`);
 
     const res = await request(app)
-      .post(`/api/tickets/${created.body.id}/reopen`)
+      .post(`/api/tickets/${created.body.data.id}/reopen`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.status).toBe('open');
+    expect(res.body.data.status).toBe('open');
   });
 });
 
@@ -361,9 +403,9 @@ describe('POST /api/tickets/:id/labels', () => {
       .send({ name: 'test-label', color: '#ef4444' });
 
     const res = await request(app)
-      .post(`/api/tickets/${created.body.id}/labels`)
+      .post(`/api/tickets/${created.body.data.id}/labels`)
       .set('Authorization', `Bearer ${staffToken}`)
-      .send({ labelId: label.body.id });
+      .send({ labelId: label.body.data.id });
 
     expect(res.status).toBe(201);
   });
@@ -373,7 +415,7 @@ describe('POST /api/tickets/:id/labels', () => {
     const created = await createTicket(token);
 
     const res = await request(app)
-      .post(`/api/tickets/${created.body.id}/labels`)
+      .post(`/api/tickets/${created.body.data.id}/labels`)
       .set('Authorization', `Bearer ${token}`)
       .send({ labelId: 'fake-id' });
 
@@ -394,12 +436,12 @@ describe('DELETE /api/tickets/:id/labels/:labelId', () => {
       .send({ name: 'remove-me', color: '#000000' });
 
     await request(app)
-      .post(`/api/tickets/${created.body.id}/labels`)
+      .post(`/api/tickets/${created.body.data.id}/labels`)
       .set('Authorization', `Bearer ${staffToken}`)
-      .send({ labelId: label.body.id });
+      .send({ labelId: label.body.data.id });
 
     const res = await request(app)
-      .delete(`/api/tickets/${created.body.id}/labels/${label.body.id}`)
+      .delete(`/api/tickets/${created.body.data.id}/labels/${label.body.data.id}`)
       .set('Authorization', `Bearer ${staffToken}`);
 
     expect(res.status).toBe(204);

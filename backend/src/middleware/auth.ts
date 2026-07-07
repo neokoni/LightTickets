@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { config } from '../config.js';
+import { getConfig } from '../config.js';
 import { UnauthorizedError } from '../utils/errors.js';
 import { getSiteConfig } from '../services/setup.service.js';
 
@@ -17,46 +17,33 @@ declare global {
   }
 }
 
-export function authMiddleware(req: Request, _res: Response, next: NextFunction) {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    throw new UnauthorizedError('缺少认证令牌或格式不正确');
-  }
-
-  const token = header.slice(7);
+export function verifyBearer(header: string | undefined): AuthPayload | null {
+  if (!header?.startsWith('Bearer ')) return null;
   try {
-    const payload = jwt.verify(token, config.jwtSecret) as AuthPayload;
-    req.user = payload;
-    next();
+    return jwt.verify(header.slice(7), getConfig().security.jwtSecret) as AuthPayload;
   } catch {
-    throw new UnauthorizedError('无效的认证令牌');
+    return null;
   }
+}
+
+export function authMiddleware(req: Request, _res: Response, next: NextFunction) {
+  const payload = verifyBearer(req.headers.authorization);
+  if (!payload) throw new UnauthorizedError('缺少认证令牌或格式不正确');
+  req.user = payload;
+  next();
 }
 
 export async function conditionalAuthMiddleware(req: Request, _res: Response, next: NextFunction) {
   const { requireLogin } = await getSiteConfig();
 
   if (!requireLogin) {
-    const header = req.headers.authorization;
-    if (header?.startsWith('Bearer ')) {
-      try {
-        const payload = jwt.verify(header.slice(7), config.jwtSecret) as AuthPayload;
-        req.user = payload;
-      } catch {}
-    }
+    const payload = verifyBearer(req.headers.authorization);
+    if (payload) req.user = payload;
     return next();
   }
 
-  // requireLogin mode: must have valid token
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    throw new UnauthorizedError('缺少认证令牌或格式不正确');
-  }
-  try {
-    const payload = jwt.verify(header.slice(7), config.jwtSecret) as AuthPayload;
-    req.user = payload;
-    next();
-  } catch {
-    throw new UnauthorizedError('无效的认证令牌');
-  }
+  const payload = verifyBearer(req.headers.authorization);
+  if (!payload) throw new UnauthorizedError('缺少认证令牌或格式不正确');
+  req.user = payload;
+  next();
 }

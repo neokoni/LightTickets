@@ -1,12 +1,18 @@
-import { CommentSource } from '@prisma/client';
-import { getPrisma } from '../db.js';
+import type { CommentSource } from '@prisma/client';
+import { prisma } from '../db.js';
 import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 import * as auditService from './audit.service.js';
+import * as attachmentService from './attachment.service.js';
 import { emitTicketUpdate, emitToAllServers } from '../socket/events.js';
+import { AUDIT_ACTION } from '../constants/audit-actions.js';
+import { isStaffRole } from '../constants/roles.js';
 
-const prisma = () => getPrisma();
-
-export async function create(ticketId: number, authorId: number, body: string, source: CommentSource = 'web') {
+export async function create(
+  ticketId: number,
+  authorId: number,
+  body: string,
+  source: CommentSource = 'web',
+) {
   const ticket = await prisma().ticket.findUnique({
     where: { id: ticketId },
     include: {
@@ -19,7 +25,15 @@ export async function create(ticketId: number, authorId: number, body: string, s
   const comment = await prisma().comment.create({
     data: { ticketId, authorId, body, source },
     include: {
-      author: { select: { id: true, username: true, minecraftName: true, minecraftUuid: true, avatarUrl: true } },
+      author: {
+        select: {
+          id: true,
+          username: true,
+          minecraftName: true,
+          minecraftUuid: true,
+          avatarUrl: true,
+        },
+      },
     },
   });
 
@@ -50,7 +64,9 @@ export async function listByTicket(ticketId: number) {
   return prisma().comment.findMany({
     where: { ticketId },
     orderBy: { createdAt: 'asc' },
-    include: { author: { select: { id: true, username: true, minecraftName: true, avatarUrl: true } } },
+    include: {
+      author: { select: { id: true, username: true, minecraftName: true, avatarUrl: true } },
+    },
   });
 }
 
@@ -65,10 +81,33 @@ export async function updateBody(id: string, userId: number, body: string) {
   const updated = await prisma().comment.update({
     where: { id },
     data: { body },
-    include: { author: { select: { id: true, username: true, minecraftName: true, avatarUrl: true } } },
+    include: {
+      author: { select: { id: true, username: true, minecraftName: true, avatarUrl: true } },
+    },
   });
 
-  await auditService.create(comment.ticketId, userId, 'comment_edit', comment.body, body);
+  await auditService.create(
+    comment.ticketId,
+    userId,
+    AUDIT_ACTION.COMMENT_EDIT,
+    comment.body,
+    body,
+  );
 
   return updated;
+}
+
+export async function deleteComment(id: string, userId: number, userRole: string) {
+  const comment = await prisma().comment.findUnique({
+    where: { id },
+    select: { id: true, authorId: true },
+  });
+  if (!comment) throw new NotFoundError('评论不存在');
+
+  const isAuthor = comment.authorId === userId;
+  const isStaff = isStaffRole(userRole);
+  if (!isAuthor && !isStaff) throw new ForbiddenError('无权删除此评论');
+
+  await attachmentService.cleanupCommentAttachments(id);
+  await prisma().comment.delete({ where: { id } });
 }

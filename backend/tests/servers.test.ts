@@ -14,14 +14,14 @@ async function createAdminAndGetToken(email = 'admin@test.com') {
   const loginRes = await request(app)
     .post('/api/auth/login')
     .send({ emailOrUsername: email, password: 'Password123!' });
-  return loginRes.body.accessToken;
+  return loginRes.body.data.accessToken;
 }
 
 async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username: email.split('@')[0] });
-  return res.body.accessToken;
+  return res.body.data.accessToken;
 }
 
 describe('GET /api/servers', () => {
@@ -29,21 +29,17 @@ describe('GET /api/servers', () => {
     const token = await createAdminAndGetToken('admin-srv@test.com');
     await prisma().server.create({ data: { name: 'test-srv', apiKey: 'key123' } });
 
-    const res = await request(app)
-      .get('/api/servers')
-      .set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/api/servers').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toBeInstanceOf(Array);
-    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data).toBeInstanceOf(Array);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
   });
 
   it('rejects non-admin user', async () => {
     const token = await createUserAndGetToken('player-srv@test.com');
 
-    const res = await request(app)
-      .get('/api/servers')
-      .set('Authorization', `Bearer ${token}`);
+    const res = await request(app).get('/api/servers').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(403);
   });
@@ -59,8 +55,8 @@ describe('POST /api/servers', () => {
       .send({ name: 'new-server', address: 'mc.test.com', description: 'Test server' });
 
     expect(res.status).toBe(201);
-    expect(res.body.name).toBe('new-server');
-    expect(res.body.apiKey).toMatch(/^lt_/);
+    expect(res.body.data.name).toBe('new-server');
+    expect(res.body.data.apiKey).toMatch(/^lt_/);
   });
 
   it('rejects duplicate server name', async () => {
@@ -87,15 +83,15 @@ describe('POST /api/servers/:id/regenerate-key', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'regen-server' });
 
-    const oldKey = created.body.apiKey;
+    const oldKey = created.body.data.apiKey;
 
     const res = await request(app)
-      .post(`/api/servers/${created.body.id}/regenerate-key`)
+      .post(`/api/servers/${created.body.data.id}/regenerate-key`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.apiKey).not.toBe(oldKey);
-    expect(res.body.apiKey).toMatch(/^lt_/);
+    expect(res.body.data.apiKey).not.toBe(oldKey);
+    expect(res.body.data.apiKey).toMatch(/^lt_/);
   });
 });
 
@@ -108,13 +104,13 @@ describe('PATCH /api/servers/:id', () => {
       .send({ name: 'old-server-name' });
 
     const res = await request(app)
-      .patch(`/api/servers/${created.body.id}`)
+      .patch(`/api/servers/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'new-server-name' });
 
     expect(res.status).toBe(200);
-    expect(res.body.name).toBe('new-server-name');
-    expect(res.body.apiKey).toBe(created.body.apiKey);
+    expect(res.body.data.name).toBe('new-server-name');
+    expect(res.body.data.apiKey).toBe(created.body.data.apiKey);
   });
 
   it('rejects duplicate server name on rename', async () => {
@@ -129,7 +125,7 @@ describe('PATCH /api/servers/:id', () => {
       .send({ name: 'rename-target-server' });
 
     const res = await request(app)
-      .patch(`/api/servers/${created.body.id}`)
+      .patch(`/api/servers/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'existing-server-name' });
 
@@ -144,22 +140,22 @@ describe('PATCH /api/servers/:id', () => {
       .send({ name: 'details-server', address: 'old.example.com', description: 'Old description' });
 
     const updated = await request(app)
-      .patch(`/api/servers/${created.body.id}`)
+      .patch(`/api/servers/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ address: 'new.example.com', description: 'New description' });
 
     expect(updated.status).toBe(200);
-    expect(updated.body.address).toBe('new.example.com');
-    expect(updated.body.description).toBe('New description');
+    expect(updated.body.data.address).toBe('new.example.com');
+    expect(updated.body.data.description).toBe('New description');
 
     const cleared = await request(app)
-      .patch(`/api/servers/${created.body.id}`)
+      .patch(`/api/servers/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ address: null, description: null });
 
     expect(cleared.status).toBe(200);
-    expect(cleared.body.address).toBeNull();
-    expect(cleared.body.description).toBeNull();
+    expect(cleared.body.data.address).toBeNull();
+    expect(cleared.body.data.description).toBeNull();
   });
 });
 
@@ -172,7 +168,7 @@ describe('DELETE /api/servers/:id', () => {
       .send({ name: 'del-server' });
 
     const res = await request(app)
-      .delete(`/api/servers/${created.body.id}`)
+      .delete(`/api/servers/${created.body.data.id}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(204);

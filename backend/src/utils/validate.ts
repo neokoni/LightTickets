@@ -1,13 +1,29 @@
-import { z, type ZodSchema } from 'zod';
+import { z } from 'zod';
 import { ValidationError } from './errors.js';
 
-export function validate<T>(schema: ZodSchema, data: unknown): T {
+export function validate<S extends z.ZodType>(schema: S, data: unknown): z.infer<S> {
   const result = schema.safeParse(data);
   if (!result.success) {
-    const issue = result.error.issues[0];
-    throw new ValidationError(`${issue.path.join('.') || 'input'}: ${issue.message}`);
+    throw new ValidationError(result.error.issues[0].message);
   }
-  return result.data as T;
+  return result.data as z.infer<S>;
+}
+
+export function parseId(raw: string): number {
+  const id = Number(raw);
+  if (raw.trim() === '' || isNaN(id)) throw new ValidationError('无效的 ID');
+  return id;
+}
+
+export function parsePagination(query: Record<string, unknown>): {
+  page: number;
+  pageSize: number;
+} {
+  const result = paginationSchema.safeParse(query);
+  if (!result.success) {
+    throw new ValidationError(result.error.issues[0].message);
+  }
+  return { page: result.data.page, pageSize: result.data.pageSize };
 }
 
 // Common reusable schemas
@@ -16,31 +32,4 @@ export const idSchema = z.string().min(1, 'ID is required');
 export const paginationSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-});
-
-export const ticketStatusSchema = z.enum(['open', 'in_progress', 'closed', 'invalid']);
-
-export const createLabelSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color'),
-  description: z.string().max(200, 'Description too long').optional(),
-});
-
-export const createCommentSchema = z.object({
-  body: z.string().min(1, 'Body is required'),
-});
-
-export const registerSchema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  username: z.string().min(2, 'Username too short').max(30, 'Username too long'),
-});
-
-export const loginSchema = z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(1, 'Password is required'),
-});
-
-export const linkMinecraftSchema = z.object({
-  code: z.string().min(1, 'Code is required'),
 });

@@ -1,7 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import express from 'express';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
+import createSetupRoutes from '../src/routes/setup.js';
 
 const app = createApp();
 
@@ -17,23 +19,23 @@ describe('GET /api/setup/site-config', () => {
   it('returns default config when no setup record exists', async () => {
     const res = await request(app).get('/api/setup/site-config');
     expect(res.status).toBe(200);
-    expect(res.body.isSetup).toBe(false);
-    expect(res.body.siteName).toBe('LightTickets');
-    expect(res.body).toHaveProperty('requireLogin');
+    expect(res.body.data.isSetup).toBe(false);
+    expect(res.body.data.siteName).toBe('LightTickets');
+    expect(res.body.data).toHaveProperty('requireLogin');
   });
 
   it('returns footerContent and siteUrl in site config', async () => {
     await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        db: { provider: 'sqlite' },
         admin: { email: 'config-test@test.com', password: 'admin123', username: 'configtest' },
       });
 
     const res = await request(app).get('/api/setup/site-config');
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('siteUrl');
-    expect(res.body).toHaveProperty('footerContent');
+    expect(res.body.data).toHaveProperty('siteUrl');
+    expect(res.body.data).toHaveProperty('footerContent');
   });
 });
 
@@ -42,26 +44,26 @@ describe('POST /api/setup', () => {
     const res = await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        db: { provider: 'sqlite' },
         admin: { email: 'admin@example.com', password: 'admin123', username: 'admin' },
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.setup.isSetup).toBe(true);
-    expect(res.body.admin.email).toBe('admin@example.com');
-    expect(res.body.admin.role).toBe('admin');
-    expect(res.body).toHaveProperty('accessToken');
-    expect(res.body).toHaveProperty('refreshToken');
+    expect(res.body.data.setup.isSetup).toBe(true);
+    expect(res.body.data.admin.email).toBe('admin@example.com');
+    expect(res.body.data.admin.role).toBe('admin');
+    expect(res.body.data).toHaveProperty('accessToken');
+    expect(res.body.data).toHaveProperty('refreshToken');
 
     const status = await request(app).get('/api/setup/site-config');
-    expect(status.body.isSetup).toBe(true);
+    expect(status.body.data.isSetup).toBe(true);
   });
 
   it('rejects invalid payload', async () => {
     const res = await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: '' },
+        db: { provider: 'sqlite' },
         admin: { email: 'bad', password: 'short', username: 'x' },
       });
 
@@ -72,18 +74,35 @@ describe('POST /api/setup', () => {
     await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        db: { provider: 'sqlite' },
         admin: { email: 'dupsetup@example.com', password: 'admin123', username: 'dupsetup' },
       });
 
     const res = await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+        db: { provider: 'sqlite' },
         admin: { email: 'another@example.com', password: 'admin123', username: 'another' },
       });
 
     expect(res.status).toBe(409);
+  });
+
+  it('calls the setup completion callback after setup succeeds', async () => {
+    const onSetupComplete = vi.fn();
+    const setupApp = express();
+    setupApp.use(express.json());
+    setupApp.use('/api/setup', createSetupRoutes({ onSetupComplete }));
+
+    const res = await request(setupApp)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: { email: 'callback@example.com', password: 'admin123', username: 'callback' },
+      });
+
+    expect(res.status).toBe(201);
+    expect(onSetupComplete).toHaveBeenCalledOnce();
   });
 });
 
@@ -92,8 +111,12 @@ describe('PATCH /api/setup/settings', () => {
     await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
-        admin: { email: 'settings-admin@test.com', password: 'admin123', username: 'settingsadmin' },
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-admin@test.com',
+          password: 'admin123',
+          username: 'settingsadmin',
+        },
       });
 
     const loginRes = await request(app)
@@ -102,24 +125,30 @@ describe('PATCH /api/setup/settings', () => {
 
     const res = await request(app)
       .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`)
       .send({ requireLogin: true });
 
     expect(res.status).toBe(200);
-    expect(res.body.requireLogin).toBe(true);
+    expect(res.body.data.requireLogin).toBe(true);
   });
 
   it('rejects non-admin user', async () => {
     await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
-        admin: { email: 'settings-admin2@test.com', password: 'admin123', username: 'settingsadmin2' },
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-admin2@test.com',
+          password: 'admin123',
+          username: 'settingsadmin2',
+        },
       });
 
-    await request(app)
-      .post('/api/auth/register')
-      .send({ email: 'settings-player@test.com', password: 'Password123!', username: 'settingsplayer' });
+    await request(app).post('/api/auth/register').send({
+      email: 'settings-player@test.com',
+      password: 'Password123!',
+      username: 'settingsplayer',
+    });
 
     const loginRes = await request(app)
       .post('/api/auth/login')
@@ -127,7 +156,7 @@ describe('PATCH /api/setup/settings', () => {
 
     const res = await request(app)
       .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`)
       .send({ requireLogin: true });
 
     expect(res.status).toBe(403);
@@ -137,28 +166,36 @@ describe('PATCH /api/setup/settings', () => {
     const setupRes = await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
-        admin: { email: 'mc-settings-admin@test.com', password: 'admin123', username: 'mcsettingsadmin' },
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'mc-settings-admin@test.com',
+          password: 'admin123',
+          username: 'mcsettingsadmin',
+        },
       });
 
     const res = await request(app)
       .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${setupRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
       .send({ allowMcRegister: false });
 
     expect(res.status).toBe(200);
-    expect(res.body.allowMcRegister).toBe(false);
+    expect(res.body.data.allowMcRegister).toBe(false);
 
     const config = await request(app).get('/api/setup/site-config');
-    expect(config.body.allowMcRegister).toBe(false);
+    expect(config.body.data.allowMcRegister).toBe(false);
   });
 
   it('allows admin to update siteName, siteUrl, and footerContent', async () => {
     await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
-        admin: { email: 'settings-ext@test.com', password: 'admin123', username: 'settingsadminext' },
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-ext@test.com',
+          password: 'admin123',
+          username: 'settingsadminext',
+        },
       });
 
     const loginRes = await request(app)
@@ -167,7 +204,7 @@ describe('PATCH /api/setup/settings', () => {
 
     const res = await request(app)
       .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`)
       .send({
         siteName: 'My Tickets',
         siteUrl: 'https://tickets.example.com',
@@ -175,17 +212,23 @@ describe('PATCH /api/setup/settings', () => {
       });
 
     expect(res.status).toBe(200);
-    expect(res.body.siteName).toBe('My Tickets');
-    expect(res.body.siteUrl).toBe('https://tickets.example.com');
-    expect(res.body.footerContent).toBe('<a href="https://beian.miit.gov.cn">京ICP备12345678号</a>');
+    expect(res.body.data.siteName).toBe('My Tickets');
+    expect(res.body.data.siteUrl).toBe('https://tickets.example.com');
+    expect(res.body.data.footerContent).toBe(
+      '<a href="https://beian.miit.gov.cn">京ICP备12345678号</a>',
+    );
   });
 
   it('allows clearing siteUrl and footerContent with null', async () => {
     await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
-        admin: { email: 'settings-clear@test.com', password: 'admin123', username: 'settingsadminclear' },
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-clear@test.com',
+          password: 'admin123',
+          username: 'settingsadminclear',
+        },
       });
 
     const loginRes = await request(app)
@@ -195,26 +238,30 @@ describe('PATCH /api/setup/settings', () => {
     // First set values
     await request(app)
       .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`)
       .send({ siteUrl: 'https://example.com', footerContent: '<p>info</p>' });
 
     // Then clear them
     const res = await request(app)
       .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`)
       .send({ siteUrl: null, footerContent: null });
 
     expect(res.status).toBe(200);
-    expect(res.body.siteUrl).toBeNull();
-    expect(res.body.footerContent).toBeNull();
+    expect(res.body.data.siteUrl).toBeNull();
+    expect(res.body.data.footerContent).toBeNull();
   });
 
   it('rejects empty siteName', async () => {
     await request(app)
       .post('/api/setup')
       .send({
-        db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
-        admin: { email: 'settings-valid@test.com', password: 'admin123', username: 'settingsadminvalid' },
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-valid@test.com',
+          password: 'admin123',
+          username: 'settingsadminvalid',
+        },
       });
 
     const loginRes = await request(app)
@@ -223,7 +270,7 @@ describe('PATCH /api/setup/settings', () => {
 
     const res = await request(app)
       .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`)
       .send({ siteName: '' });
 
     expect([400, 422]).toContain(res.status);
@@ -235,9 +282,9 @@ describe('POST /api/auth/link-minecraft', () => {
     const regRes = await request(app)
       .post('/api/auth/register')
       .send({ email: 'link@test.com', password: 'Password123!', username: 'linkuser' });
-    const token = regRes.body.accessToken;
+    const token = regRes.body.data.accessToken;
 
-    const server = await prisma().server.create({
+    await prisma().server.create({
       data: { name: 'link-srv', apiKey: 'link-key' },
     });
 
@@ -249,11 +296,11 @@ describe('POST /api/auth/link-minecraft', () => {
     const res = await request(app)
       .post('/api/auth/link-minecraft')
       .set('Authorization', `Bearer ${token}`)
-      .send({ code: codeRes.body.code });
+      .send({ code: codeRes.body.data.code });
 
     expect(res.status).toBe(200);
-    expect(res.body.uuid).toBe('550e8400-e29b-41d4-a716-446655440000');
-    expect(res.body.name).toBe('Steve');
+    expect(res.body.data.uuid).toBe('550e8400-e29b-41d4-a716-446655440000');
+    expect(res.body.data.name).toBe('Steve');
   });
 
   it('rejects invalid code', async () => {
@@ -263,7 +310,7 @@ describe('POST /api/auth/link-minecraft', () => {
 
     const res = await request(app)
       .post('/api/auth/link-minecraft')
-      .set('Authorization', `Bearer ${regRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${regRes.body.data.accessToken}`)
       .send({ code: '000000' });
 
     expect(res.status).toBe(400);
@@ -276,7 +323,7 @@ describe('POST /api/auth/link-minecraft', () => {
 
     const res = await request(app)
       .post('/api/auth/link-minecraft')
-      .set('Authorization', `Bearer ${regRes.body.accessToken}`)
+      .set('Authorization', `Bearer ${regRes.body.data.accessToken}`)
       .send({});
 
     expect(res.status).toBe(400);

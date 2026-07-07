@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*.local
 
 # Editor directories and files
 .vscode/*
@@ -23,6 +25,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Generated runtime config (auto-created by vite plugin)
+# Runtime data
 data/
 public/data/

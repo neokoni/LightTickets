@@ -1,33 +1,38 @@
-import { Router, Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import { Router } from 'express';
 import { z } from 'zod';
 import * as userService from '../services/user.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
-import { ValidationError } from '../utils/errors.js';
+import { validate, parseId, parsePagination } from '../utils/validate.js';
+import { ROLE } from '../constants/roles.js';
 
 const router = Router();
 
-router.get('/', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-  const page = req.query.page ? Number(req.query.page) : 1;
-  const pageSize = req.query.pageSize ? Number(req.query.pageSize) : 20;
+router.get('/', authMiddleware, requireRole(ROLE.ADMIN), async (req: Request, res: Response) => {
+  const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
   const result = await userService.listUsers(page, pageSize);
   res.json(result);
 });
 
-router.get('/assignable', authMiddleware, requireRole('staff'), async (_req: Request, res: Response) => {
-  const users = await userService.listAssignableUsers();
-  res.json(users);
-});
+router.get(
+  '/assignable',
+  authMiddleware,
+  requireRole(ROLE.STAFF),
+  async (_req: Request, res: Response) => {
+    const users = await userService.listAssignableUsers();
+    res.json(users);
+  },
+);
 
 const avatarSchema = z.object({
   avatarUrl: z.string().url().nullable().or(z.literal('')),
 });
 
 router.patch('/me/avatar', authMiddleware, async (req: Request, res: Response) => {
-  const parsed = avatarSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+  const data = validate(avatarSchema, req.body);
 
-  const url = parsed.data.avatarUrl || null;
+  const url = data.avatarUrl || null;
   const user = await userService.updateAvatar(req.user!.userId, url);
   res.json(user);
 });
@@ -37,10 +42,9 @@ const usernameSchema = z.object({
 });
 
 router.patch('/me/username', authMiddleware, async (req: Request, res: Response) => {
-  const parsed = usernameSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+  const data = validate(usernameSchema, req.body);
 
-  const user = await userService.updateUsername(req.user!.userId, parsed.data.username);
+  const user = await userService.updateUsername(req.user!.userId, data.username);
   res.json(user);
 });
 
@@ -50,10 +54,9 @@ const passwordSchema = z.object({
 });
 
 router.patch('/me/password', authMiddleware, async (req: Request, res: Response) => {
-  const parsed = passwordSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+  const data = validate(passwordSchema, req.body);
 
-  await userService.changePassword(req.user!.userId, parsed.data.currentPassword, parsed.data.newPassword);
+  await userService.changePassword(req.user!.userId, data.currentPassword, data.newPassword);
   res.json({ message: '密码已更新' });
 });
 
@@ -62,32 +65,38 @@ const emailSchema = z.object({
 });
 
 router.patch('/me/email', authMiddleware, async (req: Request, res: Response) => {
-  const parsed = emailSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+  const data = validate(emailSchema, req.body);
 
-  const user = await userService.updateEmail(req.user!.userId, parsed.data.email);
+  const user = await userService.updateEmail(req.user!.userId, data.email);
   res.json(user);
 });
 
 const roleSchema = z.object({
-  role: z.enum(['player', 'staff', 'admin']),
+  role: z.enum([ROLE.PLAYER, ROLE.STAFF, ROLE.ADMIN]),
 });
 
-router.patch('/:id/role', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-  const parsed = roleSchema.safeParse(req.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.issues[0].message);
+router.patch(
+  '/:id/role',
+  authMiddleware,
+  requireRole(ROLE.ADMIN),
+  async (req: Request, res: Response) => {
+    const data = validate(roleSchema, req.body);
 
-  const userId = Number(req.params.id);
-  if (isNaN(userId)) throw new ValidationError('无效的用户 ID');
-  const user = await userService.changeRole(userId, parsed.data.role);
-  res.json(user);
-});
+    const userId = parseId(String(req.params.id));
+    const user = await userService.changeRole(userId, data.role);
+    res.json(user);
+  },
+);
 
-router.delete('/:id', authMiddleware, requireRole('admin'), async (req: Request, res: Response) => {
-  const userId = Number(req.params.id);
-  if (isNaN(userId)) throw new ValidationError('无效的用户 ID');
-  await userService.deleteUser(userId, req.user!.userId);
-  res.status(204).end();
-});
+router.delete(
+  '/:id',
+  authMiddleware,
+  requireRole(ROLE.ADMIN),
+  async (req: Request, res: Response) => {
+    const userId = parseId(String(req.params.id));
+    await userService.deleteUser(userId, req.user!.userId);
+    res.status(204).end();
+  },
+);
 
 export default router;

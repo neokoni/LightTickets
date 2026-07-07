@@ -1,25 +1,15 @@
-import { Role } from '@prisma/client';
+import type { Role } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import { getPrisma } from '../db.js';
+import { prisma } from '../db.js';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
-
-const prisma = () => getPrisma();
+import { USER_PUBLIC_SELECT } from './constants.js';
+import { ROLE } from '../constants/roles.js';
 
 export async function listUsers(page = 1, pageSize = 20) {
   const skip = (page - 1) * pageSize;
   const [users, total] = await Promise.all([
     prisma().user.findMany({
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        minecraftUuid: true,
-        minecraftName: true,
-        avatarUrl: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      },
+      select: USER_PUBLIC_SELECT,
       orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
@@ -32,7 +22,7 @@ export async function listUsers(page = 1, pageSize = 20) {
 export async function listAssignableUsers() {
   return prisma().user.findMany({
     where: {
-      role: { in: ['player', 'staff', 'admin'] },
+      role: { in: [ROLE.STAFF, ROLE.ADMIN] },
     },
     select: {
       id: true,
@@ -51,17 +41,7 @@ export async function changeRole(userId: number, role: Role) {
   return prisma().user.update({
     where: { id: userId },
     data: { role },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      minecraftUuid: true,
-      minecraftName: true,
-      avatarUrl: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: USER_PUBLIC_SELECT,
   });
 }
 
@@ -85,17 +65,7 @@ export async function updateUsername(userId: number, username: string) {
   return prisma().user.update({
     where: { id: userId },
     data: { username },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      minecraftUuid: true,
-      minecraftName: true,
-      avatarUrl: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: USER_PUBLIC_SELECT,
   });
 }
 
@@ -106,17 +76,7 @@ export async function updateAvatar(userId: number, avatarUrl: string | null) {
   return prisma().user.update({
     where: { id: userId },
     data: { avatarUrl: avatarUrl || null },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      minecraftUuid: true,
-      minecraftName: true,
-      avatarUrl: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: USER_PUBLIC_SELECT,
   });
 }
 
@@ -140,16 +100,6 @@ export async function updateEmail(userId: number, email: string) {
   return prisma().user.update({
     where: { id: userId },
     data: { email },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      minecraftUuid: true,
-      minecraftName: true,
-      avatarUrl: true,
-      role: true,
-      createdAt: true,
-      updatedAt: true,
-    },
+    select: USER_PUBLIC_SELECT,
   });
 }

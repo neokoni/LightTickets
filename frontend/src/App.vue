@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
-import { useRoute } from 'vue-router'
-import AppShell from '@/components/layout/AppShell.vue'
+import { RouterView } from 'vue-router';
+import { useRoute } from 'vue-router';
+import AppShell from '@/components/layout/AppShell.vue';
 
-const route = useRoute()
+const route = useRoute();
 </script>
 
 <template>
@@ -22,7 +22,9 @@ const route = useRoute()
 <style>
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 0.28s ease, transform 0.28s ease;
+  transition:
+    opacity 0.28s ease,
+    transform 0.28s ease;
 }
 .page-enter-from {
   opacity: 0;

@@ -3,7 +3,6 @@ import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
 import { createApp } from '../src/app.js';
-import { prisma } from './setup.js';
 
 const app = createApp();
 
@@ -21,20 +20,20 @@ async function setupAndGetAdmin() {
   await request(app)
     .post('/api/setup')
     .send({
-      db: { provider: 'sqlite', databaseUrl: 'file:./dev.db' },
+      db: { provider: 'sqlite' },
       admin: { email: 'admin@tmpl.test', password: 'admin123', username: 'tmpladmin' },
     });
   const loginRes = await request(app)
     .post('/api/auth/login')
     .send({ emailOrUsername: 'admin@tmpl.test', password: 'admin123' });
-  return loginRes.body.accessToken;
+  return loginRes.body.data.accessToken;
 }
 
 async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username: email.split('@')[0] });
-  return res.body.accessToken;
+  return res.body.data.accessToken;
 }
 
 describe('GET /api/templates', () => {
@@ -43,10 +42,10 @@ describe('GET /api/templates', () => {
 
     const res = await request(app).get('/api/templates');
     expect(res.status).toBe(200);
-    expect(res.body).toBeInstanceOf(Array);
-    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data).toBeInstanceOf(Array);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
 
-    const tmpl = res.body[0];
+    const tmpl = res.body.data[0];
     expect(tmpl).toHaveProperty('name');
     expect(tmpl).toHaveProperty('name_i18n');
     expect(tmpl).toHaveProperty('description');
@@ -60,9 +59,9 @@ describe('GET /api/templates/:name', () => {
 
     const res = await request(app).get('/api/templates/bug_report');
     expect(res.status).toBe(200);
-    expect(res.body.name).toBeDefined();
-    expect(res.body.description).toBeDefined();
-    expect(res.body.body).toBeInstanceOf(Array);
+    expect(res.body.data.name).toBeDefined();
+    expect(res.body.data.description).toBeDefined();
+    expect(res.body.data.body).toBeInstanceOf(Array);
   });
 
   it('returns 404 for nonexistent template', async () => {
@@ -82,8 +81,8 @@ describe('GET /api/admin/templates', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toBeInstanceOf(Array);
-    expect(res.body.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data).toBeInstanceOf(Array);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
   });
 
   it('rejects non-admin user', async () => {
@@ -107,12 +106,12 @@ describe('GET /api/admin/templates/:id', () => {
       .set('Authorization', `Bearer ${token}`);
 
     const res = await request(app)
-      .get(`/api/admin/templates/${list.body[0].name}`)
+      .get(`/api/admin/templates/${list.body.data[0].name}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('name');
-    expect(res.body).toHaveProperty('body');
+    expect(res.body.data).toHaveProperty('name');
+    expect(res.body.data).toHaveProperty('body');
   });
 });
 
@@ -131,21 +130,18 @@ describe('POST /api/admin/templates', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.name).toBe('custom_test');
+    expect(res.body.data.name).toBe('custom_test');
   });
 
   it('rejects duplicate template name', async () => {
     const token = await setupAndGetAdmin();
 
-    await request(app)
-      .post('/api/admin/templates')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        name: 'dup_tmpl',
-        nameI18n: 'Dup',
-        description: 'Dup template',
-        body: '- type: input\n  id: x\n  attributes:\n    label: X',
-      });
+    await request(app).post('/api/admin/templates').set('Authorization', `Bearer ${token}`).send({
+      name: 'dup_tmpl',
+      nameI18n: 'Dup',
+      description: 'Dup template',
+      body: '- type: input\n  id: x\n  attributes:\n    label: X',
+    });
 
     const res = await request(app)
       .post('/api/admin/templates')
@@ -176,12 +172,12 @@ describe('PATCH /api/admin/templates/:id', () => {
       });
 
     const res = await request(app)
-      .patch(`/api/admin/templates/${created.body.name}`)
+      .patch(`/api/admin/templates/${created.body.data.name}`)
       .set('Authorization', `Bearer ${token}`)
       .send({ description: 'Updated description' });
 
     expect(res.status).toBe(200);
-    expect(res.body.description).toBe('Updated description');
+    expect(res.body.data.description).toBe('Updated description');
   });
 });
 
@@ -200,7 +196,7 @@ describe('DELETE /api/admin/templates/:id', () => {
       });
 
     const res = await request(app)
-      .delete(`/api/admin/templates/${created.body.name}`)
+      .delete(`/api/admin/templates/${created.body.data.name}`)
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(204);

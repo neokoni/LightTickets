@@ -126,7 +126,9 @@ function ensureDataTemplatesInitialized(): void {
     for (const file of defaultTemplates) {
       fs.copyFileSync(path.join(defaultTemplatesDir, file), path.join(dataTemplatesDir, file));
     }
-    console.log(`[templates] released ${defaultTemplates.length} default templates to data/templates`);
+    console.log(
+      `[templates] released ${defaultTemplates.length} default templates to data/templates`,
+    );
   }
 
   fs.writeFileSync(templatesInitializedMarker, new Date().toISOString(), 'utf-8');
@@ -149,10 +151,6 @@ export async function initTemplates(): Promise<void> {
   console.log(`[templates] loaded ${cache.size} templates from data/templates`);
 }
 
-export async function seedTemplatesFromFiles(): Promise<void> {
-  await initTemplates();
-}
-
 export function list(): TemplateSummary[] {
   const result: TemplateSummary[] = [];
   for (const [name, entry] of cache) {
@@ -167,7 +165,9 @@ export function list(): TemplateSummary[] {
   return result;
 }
 
-export function get(name: string): Omit<TemplateDefinition, 'completion_hooks' | 'enabled'> | undefined {
+export function get(
+  name: string,
+): Omit<TemplateDefinition, 'completion_hooks' | 'enabled'> | undefined {
   const entry = cache.get(name);
   if (!entry || !entry.enabled) return undefined;
   const def = entry.definition;
@@ -212,13 +212,12 @@ export function renderBody(def: TemplateDefinition, formData: Record<string, str
 
 export function resolveHooks(def: TemplateDefinition, event: string): ResolvedHook[] {
   return def.completion_hooks
-    .filter(h => h.event === event)
-    .flatMap(h => {
+    .filter((h) => h.event === event)
+    .flatMap((h) => {
       const type = h.type ?? (h.commands ? 'command' : 'minimessage');
-      const values = type === 'command'
-        ? (h.commands ?? [])
-        : (h.messages ?? (h.message ? [h.message] : []));
-      return values.map(content => ({ type, content }));
+      const values =
+        type === 'command' ? (h.commands ?? []) : (h.messages ?? (h.message ? [h.message] : []));
+      return values.map((content) => ({ type, content }));
     });
 }
 
@@ -249,10 +248,6 @@ export async function adminGet(name: string): Promise<AdminTemplate> {
   return toAdminTemplate(entry);
 }
 
-export function toAdminEditorResponse(row: AdminTemplate): AdminTemplate {
-  return row;
-}
-
 function parseYamlField(yamlStr: string, fieldName: string): unknown {
   try {
     return yaml.load(yamlStr);
@@ -264,7 +259,7 @@ function parseYamlField(yamlStr: string, fieldName: string): unknown {
 function parseLabels(labels: string): string[] {
   try {
     const parsed = JSON.parse(labels || '[]');
-    if (!Array.isArray(parsed) || !parsed.every(item => typeof item === 'string')) {
+    if (!Array.isArray(parsed) || !parsed.every((item) => typeof item === 'string')) {
       throw new Error();
     }
     return parsed;
@@ -273,22 +268,26 @@ function parseLabels(labels: string): string[] {
   }
 }
 
-function writeTemplateFile(name: string, data: {
-  nameI18n: string;
-  description: string;
-  titlePrefix?: string | null;
-  labels?: string;
-  body: string;
-  completionHooks?: string;
-  enabled?: boolean;
-}): void {
+function writeTemplateFile(
+  name: string,
+  data: {
+    nameI18n: string;
+    description: string;
+    titlePrefix?: string | null;
+    labels?: string;
+    body: string;
+    completionHooks?: string;
+    enabled?: boolean;
+  },
+): void {
   assertValidTemplateName(name);
 
   const bodyParsed = parseYamlField(data.body, 'body');
   if (!Array.isArray(bodyParsed)) throw new ValidationError('body 字段必须是 YAML 数组');
 
   const hooksParsed = parseYamlField(data.completionHooks || '[]', 'completionHooks');
-  if (!Array.isArray(hooksParsed)) throw new ValidationError('completionHooks 字段必须是 YAML 数组');
+  if (!Array.isArray(hooksParsed))
+    throw new ValidationError('completionHooks 字段必须是 YAML 数组');
 
   const labelsArr = parseLabels(data.labels || '[]');
   const template: TemplateDefinition = {
@@ -307,22 +306,36 @@ function writeTemplateFile(name: string, data: {
 }
 
 export async function adminCreate(data: {
-  name: string; nameI18n: string; description: string;
-  titlePrefix?: string; labels?: string;
-  body: string; completionHooks?: string; enabled?: boolean;
+  name: string;
+  nameI18n: string;
+  description: string;
+  titlePrefix?: string;
+  labels?: string;
+  body: string;
+  completionHooks?: string;
+  enabled?: boolean;
 }): Promise<AdminTemplate> {
   assertValidTemplateName(data.name);
-  if (cache.has(data.name) || fs.existsSync(templatePath(data.name))) throw new AppError(409, '模板 key 已存在');
+  if (cache.has(data.name) || fs.existsSync(templatePath(data.name)))
+    throw new AppError(409, '模板 key 已存在');
 
   writeTemplateFile(data.name, data);
   await initTemplates();
   return adminGet(data.name);
 }
 
-export async function adminUpdate(name: string, data: {
-  nameI18n?: string; description?: string; titlePrefix?: string;
-  labels?: string; body?: string; completionHooks?: string; enabled?: boolean;
-}): Promise<AdminTemplate> {
+export async function adminUpdate(
+  name: string,
+  data: {
+    nameI18n?: string;
+    description?: string;
+    titlePrefix?: string;
+    labels?: string;
+    body?: string;
+    completionHooks?: string;
+    enabled?: boolean;
+  },
+): Promise<AdminTemplate> {
   const existing = cache.get(name);
   if (!existing) throw new NotFoundError('模板不存在');
   const current = toAdminTemplate(existing);
