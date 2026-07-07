@@ -10,6 +10,7 @@ const props = defineProps<{
   loading?: boolean;
   disabled?: boolean;
   as?: string | object;
+  hasHover?: boolean;
 }>();
 
 const sizeClass = computed(() => {
@@ -25,14 +26,27 @@ const sizeClass = computed(() => {
 
 const variantClass = computed(() => {
   const v = props.variant || 'primary';
+  const hover = props.hasHover !== false;
   if (props.filled) {
-    return v === 'danger'
-      ? 'bg-red-500 text-white hover:bg-red-600 active:bg-red-700 border-none'
-      : 'bg-slate-900 text-white hover:bg-slate-800 active:bg-slate-950 border-none dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200 dark:active:bg-slate-300';
+    const base =
+      v === 'danger'
+        ? 'bg-red-500 text-white border-none'
+        : 'bg-slate-900 text-white border-none dark:bg-slate-100 dark:text-slate-900';
+    const hoverClasses =
+      v === 'danger'
+        ? 'hover:bg-red-600 active:bg-red-700'
+        : 'hover:bg-slate-800 active:bg-slate-950 dark:hover:bg-slate-200 dark:active:bg-slate-300';
+    return hover ? `${base} ${hoverClasses}` : base;
   }
-  return v === 'danger'
-    ? 'bg-transparent border border-red-500/30 text-red-500 hover:bg-red-500/10 active:bg-red-500/20 dark:border-red-400/30 dark:text-red-400 dark:hover:bg-red-400/10'
-    : 'bg-transparent border border-slate-300 text-slate-700 hover:bg-slate-100 active:bg-slate-200 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 dark:active:bg-slate-700';
+  const base =
+    v === 'danger'
+      ? 'bg-transparent border border-red-500/30 text-red-500 dark:border-red-400/30 dark:text-red-400'
+      : 'bg-transparent border border-slate-300 text-slate-700 dark:border-slate-700 dark:text-slate-200';
+  const hoverClasses =
+    v === 'danger'
+      ? 'hover:bg-red-500/10 active:bg-red-500/20 dark:hover:bg-red-400/10'
+      : 'hover:bg-slate-100 active:bg-slate-200 dark:hover:bg-slate-800 dark:active:bg-slate-700';
+  return hover ? `${base} ${hoverClasses}` : base;
 });
 </script>
 

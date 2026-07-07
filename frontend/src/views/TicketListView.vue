@@ -327,6 +327,7 @@ watch(
       <BaseButton
         v-for="tab in statusTabs"
         :key="tab.key"
+        :has-hover="false"
         :class="[
           tabButtonClass,
           'nav-link',
