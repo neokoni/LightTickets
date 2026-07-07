@@ -65,13 +65,13 @@ describe('POST /api/setup', () => {
       .send({
         db: { provider: 'sqlite' },
         admin: { email: 'local-storage@example.com', password: 'admin123', username: 'localstore' },
-        storage: { driver: 'local', uploadDir: 'data/setup-uploads' },
+        storage: { driver: 'local' },
       });
 
     expect(res.status).toBe(201);
     const config = await prisma().appConfig.findFirst();
     expect(config!.storageDriver).toBe('local');
-    expect(config!.uploadDir).toBe('data/setup-uploads');
+    expect(config!.uploadDir).toBe('data/uploads');
     expect(config!.s3Config).toBeNull();
   });
 

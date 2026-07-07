@@ -8265,16 +8265,10 @@
                           "s3"
                         ]
                       },
-                      "uploadDir": {
-                        "type": "string"
-                      },
                       "s3": {
                         "type": "object",
                         "properties": {
                           "endpoint": {
-                            "type": "string"
-                          },
-                          "region": {
                             "type": "string"
                           },
                           "bucket": {

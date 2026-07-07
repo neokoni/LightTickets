@@ -43,10 +43,8 @@ const payload = reactive<SetupPayload>({
   },
   storage: {
     driver: 'local',
-    uploadDir: 'data/uploads',
     s3: {
       endpoint: '',
-      region: 'us-east-1',
       bucket: '',
       accessKeyId: '',
       secretAccessKey: '',
@@ -83,7 +81,7 @@ const canNext = computed(() => {
       if (payload.db.provider === 'sqlite') return true;
       return !!(mysqlFields.host && mysqlFields.port && mysqlFields.user && mysqlFields.database);
     case 3:
-      if (payload.storage?.driver === 'local') return !!payload.storage.uploadDir?.trim();
+      if (payload.storage?.driver === 'local') return true;
       return !!(
         payload.storage?.s3?.endpoint?.trim() &&
         payload.storage.s3.bucket?.trim() &&
@@ -132,12 +130,10 @@ async function submit() {
         payload.storage?.driver === 's3'
           ? {
               driver: 's3',
-              uploadDir: payload.storage.uploadDir,
               s3: payload.storage.s3,
             }
           : {
               driver: 'local',
-              uploadDir: payload.storage?.uploadDir,
             },
     });
     auth.setTokens(res.accessToken, res.admin);
@@ -274,8 +270,9 @@ async function submit() {
       <!-- Step 3: Storage -->
       <div v-else-if="step === 3" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-          文件存储
+          存储设置
         </h2>
+        <label class="text-sm font-medium text-slate-900 dark:text-white">存储方式</label>
         <div class="flex gap-3">
           <BaseButton
             :class="storageButtonClass"
@@ -283,7 +280,7 @@ async function submit() {
             @click="payload.storage!.driver = 'local'"
           >
             <Icon icon="lucide:hard-drive" class="w-4 h-4" />
-            本地存储
+            本地磁盘
           </BaseButton>
           <BaseButton
             :class="storageButtonClass"
@@ -295,14 +292,11 @@ async function submit() {
           </BaseButton>
         </div>
 
-        <BaseInput
-          v-if="payload.storage?.driver === 'local'"
-          v-model="payload.storage!.uploadDir"
-          label="上传目录"
-          placeholder="data/uploads"
-        />
-
-        <div v-else class="space-y-4">
+        <div
+          v-if="payload.storage?.driver === 's3'"
+          class="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-700"
+        >
+          <p class="text-sm font-medium text-slate-900 dark:text-white pt-2">S3 兼容存储配置</p>
           <BaseInput
             v-model="payload.storage!.s3!.endpoint"
             label="Endpoint *"
@@ -326,27 +320,20 @@ async function submit() {
               placeholder="minioadmin"
             />
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <BaseInput
-              v-model="payload.storage!.s3!.region"
-              label="Region"
-              placeholder="us-east-1"
-            />
-            <BaseInput
-              v-model.number="payload.storage!.s3!.presignExpiry"
-              label="预签名过期（秒）"
-              type="number"
-              min="60"
-              placeholder="300"
-            />
-          </div>
+          <BaseInput
+            v-model.number="payload.storage!.s3!.presignExpiry"
+            label="预签名 URL 过期（秒）"
+            type="number"
+            min="60"
+            placeholder="300"
+          />
           <div
-            class="flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200/80 dark:border-slate-800/80"
+            class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
           >
             <div>
               <p class="text-sm font-medium text-slate-900 dark:text-white">Path Style 寻址</p>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                MinIO 等自建 S3 兼容存储通常需要开启
+                自建 S3 兼容存储（如 MinIO）需开启；AWS S3 官方可关闭
               </p>
             </div>
             <BaseToggle v-model="payload.storage!.s3!.forcePathStyle" />

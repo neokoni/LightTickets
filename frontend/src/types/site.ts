@@ -29,10 +29,8 @@ export interface SetupPayload {
   };
   storage?: {
     driver: 'local' | 's3';
-    uploadDir?: string;
     s3?: {
       endpoint?: string;
-      region?: string;
       bucket?: string;
       accessKeyId?: string;
       secretAccessKey?: string;

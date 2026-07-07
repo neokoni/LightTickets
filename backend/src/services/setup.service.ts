@@ -62,8 +62,7 @@ export interface SetupInput {
   };
   storage?: {
     driver: 'local' | 's3';
-    uploadDir?: string;
-    s3?: Partial<S3Config>;
+    s3?: Omit<Partial<S3Config>, 'region'>;
   };
 }
 
@@ -71,14 +70,14 @@ function buildStorageConfig(input: SetupInput['storage']) {
   if (!input || input.driver === 'local') {
     return {
       storageDriver: 'local',
-      uploadDir: input?.uploadDir?.trim() || 'data/uploads',
+      uploadDir: 'data/uploads',
       s3Config: null,
     };
   }
 
   const s3: Partial<S3Config> = {
     endpoint: input.s3?.endpoint,
-    region: input.s3?.region || 'us-east-1',
+    region: 'us-east-1',
     bucket: input.s3?.bucket,
     accessKeyId: input.s3?.accessKeyId,
     secretAccessKey: input.s3?.secretAccessKey,
@@ -94,7 +93,7 @@ function buildStorageConfig(input: SetupInput['storage']) {
 
   return {
     storageDriver: 's3',
-    uploadDir: input.uploadDir?.trim() || 'data/uploads',
+    uploadDir: 'data/uploads',
     s3Config: JSON.stringify(s3),
   };
 }

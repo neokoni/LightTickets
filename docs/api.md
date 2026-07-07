@@ -95,8 +95,7 @@
     "defaultServerName": "主服务器"
   },
   "storage": {
-    "driver": "local",
-    "uploadDir": "data/uploads"
+    "driver": "local"
   }
 }
 ```
@@ -124,7 +123,6 @@ MySQL 可使用字段模式：
     "driver": "s3",
     "s3": {
       "endpoint": "http://localhost:9000",
-      "region": "us-east-1",
       "bucket": "lighttickets",
       "accessKeyId": "minioadmin",
       "secretAccessKey": "minioadmin",

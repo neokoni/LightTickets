@@ -705,11 +705,9 @@ const registerSetupRoutes = () => {
       storage: z
         .object({
           driver: z.enum(['local', 's3']),
-          uploadDir: z.string().optional(),
           s3: z
             .object({
               endpoint: z.string().optional(),
-              region: z.string().optional(),
               bucket: z.string().optional(),
               accessKeyId: z.string().optional(),
               secretAccessKey: z.string().optional(),
