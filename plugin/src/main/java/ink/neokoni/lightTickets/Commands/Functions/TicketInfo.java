@@ -3,10 +3,11 @@ package ink.neokoni.lightTickets.Commands.Functions;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
+import ink.neokoni.lightTickets.Utils.ApiClient;
+import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
@@ -50,13 +51,10 @@ public class TicketInfo {
     }
 
     private void run(Player player, int ticketId, int commentPage) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/tickets/" + ticketId;
-        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
-
         HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.getWithStatus(url, headers);
+            resp = ApiClient.requestWithStatus(ApiEndpoint.TICKET_DETAIL,
+                    Map.of("id", String.valueOf(ticketId)));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -76,9 +74,8 @@ public class TicketInfo {
 
         JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed == null || !parsed.has("id")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", msg)));
+                    Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
         }
 
@@ -177,12 +174,9 @@ public class TicketInfo {
     }
 
     private JsonArray fetchComments(int ticketId) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/tickets/" + ticketId + "/comments";
-        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
-
         try {
-            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, headers);
+            HttpUtils.Resp resp = ApiClient.requestWithStatus(
+                    ApiEndpoint.TICKET_COMMENTS, Map.of("id", String.valueOf(ticketId)));
             if (resp == null || resp.body() == null || resp.body().isEmpty()) {
                 return null;
             }
@@ -336,12 +330,9 @@ public class TicketInfo {
     }
 
     private JsonObject fetchAccount(Player player) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/user/" + player.getUniqueId().toString();
-        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
-
         try {
-            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, headers);
+            HttpUtils.Resp resp = ApiClient.requestWithStatus(
+                    ApiEndpoint.MC_USER, Map.of("uuid", player.getUniqueId().toString()));
             if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) {
                 return null;
             }
@@ -363,11 +354,6 @@ public class TicketInfo {
         int tIdx = iso.indexOf('T');
         if (tIdx > 0) return iso.substring(0, tIdx) + " " + iso.substring(tIdx + 1, Math.min(tIdx + 9, iso.length()));
         return iso;
-    }
-
-    private String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
 }

@@ -1,9 +1,10 @@
 package ink.neokoni.lightTickets.Commands.Functions;
 
 import com.google.gson.JsonObject;
-import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
+import ink.neokoni.lightTickets.Utils.ApiClient;
+import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
@@ -29,13 +30,10 @@ public class AccountInfo {
     }
 
     private void run(Player player) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/user/" + player.getUniqueId().toString();
-        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
-
         HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.getWithStatus(url, headers);
+            resp = ApiClient.requestWithStatus(ApiEndpoint.MC_USER,
+                    Map.of("uuid", player.getUniqueId().toString()));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -54,9 +52,8 @@ public class AccountInfo {
 
         JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed == null || !parsed.has("id")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", msg)));
+                    Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
         }
 
@@ -113,8 +110,4 @@ public class AccountInfo {
         return iso;
     }
 
-    private String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    }
 }

@@ -1,13 +1,13 @@
 package ink.neokoni.lightTickets.Commands.Functions;
 
 import com.google.gson.JsonObject;
-import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateData;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateField;
 import ink.neokoni.lightTickets.Configs.Datas.TicketSession;
 import ink.neokoni.lightTickets.Configs.Templates;
 import ink.neokoni.lightTickets.LightTickets;
-import ink.neokoni.lightTickets.Utils.HttpUtils;
+import ink.neokoni.lightTickets.Utils.ApiClient;
+import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
@@ -191,15 +191,9 @@ public class CreateTicket {
             reqBody.add("context", context);
         }
 
-        Map<String, String> headers = Map.of(
-                "Content-Type", "application/json",
-                "X-Server-Key", Config.getConfig().getServerKey());
-
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
         String resp;
         try {
-            resp = HttpUtils.post(baseUrl + "/api/mc/tickets",
-                    JsonUtils.toJson(reqBody), headers);
+            resp = ApiClient.post(ApiEndpoint.MC_CREATE_TICKET, JsonUtils.toJson(reqBody));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -213,9 +207,8 @@ public class CreateTicket {
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
         if (parsed == null || !parsed.has("id")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", msg)));
+                    Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
         }
         int id = parsed.get("id").getAsInt();
@@ -256,8 +249,4 @@ public class CreateTicket {
         return sb.length() > 0 ? sb.toString() : LangUtils.getRawLang("ticket.empty_body");
     }
 
-    private static String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    }
 }

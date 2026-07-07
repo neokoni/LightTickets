@@ -1,10 +1,10 @@
 package ink.neokoni.lightTickets.Commands.Functions;
 
 import com.google.gson.JsonObject;
-import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.CommentSession;
 import ink.neokoni.lightTickets.LightTickets;
-import ink.neokoni.lightTickets.Utils.HttpUtils;
+import ink.neokoni.lightTickets.Utils.ApiClient;
+import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
@@ -76,21 +76,14 @@ public class AddComment {
     }
 
     private static void doSubmit(Player player, int ticketId, String body) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/comments";
-
         JsonObject reqBody = new JsonObject();
         reqBody.addProperty("minecraftUuid", player.getUniqueId().toString());
         reqBody.addProperty("ticketId", ticketId);
         reqBody.addProperty("body", body);
 
-        Map<String, String> headers = Map.of(
-                "Content-Type", "application/json",
-                "X-Server-Key", Config.getConfig().getServerKey());
-
         String resp;
         try {
-            resp = HttpUtils.post(url, JsonUtils.toJson(reqBody), headers);
+            resp = ApiClient.post(ApiEndpoint.MC_CREATE_COMMENT, JsonUtils.toJson(reqBody));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("ticket.comment_send_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -104,9 +97,8 @@ public class AddComment {
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
         if (parsed == null || !parsed.has("id")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("ticket.comment_send_failed",
-                    Map.of("{message}", msg)));
+                    Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
         }
 
@@ -124,8 +116,4 @@ public class AddComment {
         return sb.toString();
     }
 
-    private static String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    }
 }

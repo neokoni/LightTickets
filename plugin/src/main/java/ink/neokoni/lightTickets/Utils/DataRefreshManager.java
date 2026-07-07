@@ -96,11 +96,8 @@ public class DataRefreshManager {
     }
 
     private static void refreshAccountInfo(UUID uuid) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/user/" + uuid.toString();
-        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
-
-        HttpUtils.Resp resp = HttpUtils.getWithStatus(url, headers);
+        HttpUtils.Resp resp = ApiClient.requestWithStatus(ApiEndpoint.MC_USER,
+                Map.of("uuid", uuid.toString()));
         if (resp == null || resp.body() == null || resp.body().isEmpty()) return;
 
         boolean isBound = resp.status() == 200;
@@ -115,11 +112,9 @@ public class DataRefreshManager {
     }
 
     private static void refreshTicketList(UUID uuid) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/tickets/" + uuid.toString() + "?page=1&pageSize=10";
-        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
-
-        String resp = HttpUtils.get(url, headers);
+        String resp = ApiClient.get(ApiEndpoint.MC_TICKET_LIST,
+                Map.of("uuid", uuid.toString()),
+                Map.of("page", "1", "pageSize", "10"));
         if (resp == null || resp.isEmpty()) return;
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
@@ -148,11 +143,6 @@ public class DataRefreshManager {
         existing.setBound(bound);
         existing.setRole(role == null || role.isEmpty() ? "player" : role);
         PlayerData.setPlayerBind(player, existing);
-    }
-
-    private static String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
 }

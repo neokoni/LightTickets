@@ -6,7 +6,8 @@ import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateData;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateField;
 import ink.neokoni.lightTickets.LightTickets;
-import ink.neokoni.lightTickets.Utils.HttpUtils;
+import ink.neokoni.lightTickets.Utils.ApiClient;
+import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
 import org.bukkit.Bukkit;
@@ -53,8 +54,7 @@ public class Templates {
 
     private static void doFetch() {
         try {
-            String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-            String listResp = HttpUtils.get(baseUrl + "/api/templates", null);
+            String listResp = ApiClient.get(ApiEndpoint.TEMPLATES);
             if (listResp == null || listResp.isEmpty()) return;
 
             JsonArray list = JsonUtils.fromJson(listResp, JsonArray.class);
@@ -68,7 +68,7 @@ public class Templates {
                 JsonObject summary = el.getAsJsonObject();
                 String key = summary.get("name").getAsString();
 
-                String detailResp = HttpUtils.get(baseUrl + "/api/templates/" + key, null);
+                String detailResp = ApiClient.get(ApiEndpoint.TEMPLATE_DETAIL, Map.of("name", key));
                 if (detailResp == null || detailResp.isEmpty()) continue;
 
                 String cachedJson = cachedRawJson.get(key);
@@ -165,11 +165,6 @@ public class Templates {
         }
 
         return new TemplateField(type, id, required, label, description, placeholder, value, options);
-    }
-
-    private static String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
 }

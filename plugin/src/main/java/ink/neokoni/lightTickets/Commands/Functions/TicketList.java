@@ -3,9 +3,9 @@ package ink.neokoni.lightTickets.Commands.Functions;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.PlayerData;
-import ink.neokoni.lightTickets.Utils.HttpUtils;
+import ink.neokoni.lightTickets.Utils.ApiClient;
+import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
@@ -65,14 +65,11 @@ public class TicketList {
     }
 
     private void fetchFromApi(Player player, int page) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/tickets/" + player.getUniqueId().toString()
-                + "?page=" + page + "&pageSize=10";
-        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
-
         String resp;
         try {
-            resp = HttpUtils.get(url, headers);
+            resp = ApiClient.get(ApiEndpoint.MC_TICKET_LIST,
+                    Map.of("uuid", player.getUniqueId().toString()),
+                    Map.of("page", String.valueOf(page), "pageSize", "10"));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -86,9 +83,8 @@ public class TicketList {
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
         if (parsed == null || !parsed.has("tickets")) {
-            String msg = parsed != null && parsed.has("error") ? parsed.get("error").getAsString() : LangUtils.getRawLang("errors.invalid_response");
             player.sendMessage(LangUtils.getLang("errors.api_failed",
-                    Map.of("{message}", msg)));
+                    Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
         }
 
@@ -166,8 +162,4 @@ public class TicketList {
         player.sendMessage(line);
     }
 
-    private String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    }
 }

@@ -25,35 +25,36 @@ public class HttpUtils {
         return r == null ? null : r.body();
     }
 
-    public static Resp getWithStatus(String url, @Nullable Map<String, String> headers) {
+    public static Resp requestWithStatus(String method, String url, @Nullable String body,
+                                         @Nullable Map<String, String> headers) {
         initHttpClient();
+        String normalizedMethod = method == null ? "GET" : method.toUpperCase();
         try {
             HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(15))
-                    .GET();
+                    .timeout(Duration.ofSeconds(15));
+
+            if (body == null) {
+                requestBuilder.method(normalizedMethod, BodyPublishers.noBody());
+            } else {
+                requestBuilder.method(normalizedMethod, BodyPublishers.ofString(body))
+                        .header("Content-Type", "application/json");
+            }
+
             applyHeaders(requestBuilder, headers);
-            return send("GET", url, requestBuilder.build());
+            return send(normalizedMethod, url, requestBuilder.build());
         } catch (IllegalArgumentException e) {
             throw requestException("http.invalid_uri",
                     Map.of("{url}", url, "{message}", LogUtils.exceptionText(e)), e);
         }
     }
 
+    public static Resp getWithStatus(String url, @Nullable Map<String, String> headers) {
+        return requestWithStatus("GET", url, null, headers);
+    }
+
     public static Resp postWithStatus(String url, String body, @Nullable Map<String, String> headers) {
-        initHttpClient();
-        try {
-            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(15))
-                    .POST(BodyPublishers.ofString(body))
-                    .header("Content-Type", "application/json");
-            applyHeaders(requestBuilder, headers);
-            return send("POST", url, requestBuilder.build());
-        } catch (IllegalArgumentException e) {
-            throw requestException("http.invalid_uri",
-                    Map.of("{url}", url, "{message}", LogUtils.exceptionText(e)), e);
-        }
+        return requestWithStatus("POST", url, body, headers);
     }
 
     private static Resp send(String method, String url, HttpRequest request) {

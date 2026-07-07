@@ -1,10 +1,11 @@
 package ink.neokoni.lightTickets.Commands.Functions;
 
 import com.google.gson.JsonObject;
-import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
+import ink.neokoni.lightTickets.Utils.ApiClient;
+import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
@@ -75,20 +76,14 @@ public class ChangeStatus {
             return;
         }
 
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/tickets/" + ticketId + "/status";
-
         JsonObject reqBody = new JsonObject();
         reqBody.addProperty("minecraftUuid", player.getUniqueId().toString());
         reqBody.addProperty("status", targetStatus.key());
 
-        Map<String, String> headers = Map.of(
-                "Content-Type", "application/json",
-                "X-Server-Key", Config.getConfig().getServerKey());
-
         HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.postWithStatus(url, JsonUtils.toJson(reqBody), headers);
+            resp = ApiClient.requestWithStatus(ApiEndpoint.MC_UPDATE_TICKET_STATUS,
+                    Map.of("id", String.valueOf(ticketId)), null, JsonUtils.toJson(reqBody));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -109,9 +104,7 @@ public class ChangeStatus {
             String msg = LangUtils.getRawLang("errors.invalid_response");
             try {
                 JsonObject errObj = JsonUtils.fromJson(resp.body(), JsonObject.class);
-                if (errObj != null && errObj.has("error")) {
-                    msg = errObj.get("error").getAsString();
-                }
+                msg = ApiClient.errorMessage(errObj);
             } catch (Exception ignored) {
             }
             player.sendMessage(LangUtils.getLang("ticket.status_change_failed",
@@ -159,10 +152,9 @@ public class ChangeStatus {
     }
 
     private JsonObject fetchTicket(int ticketId) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/tickets/" + ticketId;
         try {
-            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, Map.of("X-Server-Key", Config.getConfig().getServerKey()));
+            HttpUtils.Resp resp = ApiClient.requestWithStatus(
+                    ApiEndpoint.TICKET_DETAIL, Map.of("id", String.valueOf(ticketId)));
             if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) return null;
             return JsonUtils.fromJson(resp.body(), JsonObject.class);
         } catch (RuntimeException e) {
@@ -171,10 +163,9 @@ public class ChangeStatus {
     }
 
     private JsonObject fetchAccount(Player player) {
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/user/" + player.getUniqueId().toString();
         try {
-            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, Map.of("X-Server-Key", Config.getConfig().getServerKey()));
+            HttpUtils.Resp resp = ApiClient.requestWithStatus(
+                    ApiEndpoint.MC_USER, Map.of("uuid", player.getUniqueId().toString()));
             if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) return null;
             return JsonUtils.fromJson(resp.body(), JsonObject.class);
         } catch (RuntimeException e) {
@@ -195,12 +186,9 @@ public class ChangeStatus {
         PlayerBind bind = PlayerData.getPlayerBind(player, true, false);
         String cachedRole = bind == null || bind.getRole() == null ? "player" : bind.getRole();
 
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        String url = baseUrl + "/api/mc/user/" + player.getUniqueId().toString();
-        Map<String, String> headers = Map.of("X-Server-Key", Config.getConfig().getServerKey());
-
         try {
-            HttpUtils.Resp resp = HttpUtils.getWithStatus(url, headers);
+            HttpUtils.Resp resp = ApiClient.requestWithStatus(
+                    ApiEndpoint.MC_USER, Map.of("uuid", player.getUniqueId().toString()));
             if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) {
                 return cachedRole;
             }
@@ -219,10 +207,5 @@ public class ChangeStatus {
         } catch (RuntimeException e) {
             return cachedRole;
         }
-    }
-
-    private static String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 }

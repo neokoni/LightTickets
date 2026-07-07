@@ -1,9 +1,10 @@
 package ink.neokoni.lightTickets.Commands.Functions;
 
 import com.google.gson.JsonObject;
-import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
+import ink.neokoni.lightTickets.Utils.ApiClient;
+import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
@@ -44,7 +45,6 @@ public class RegisterAccount {
             return;
         }
 
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
         JsonObject body = new JsonObject();
         body.addProperty("email", email);
         body.addProperty("password", password);
@@ -52,14 +52,9 @@ public class RegisterAccount {
         body.addProperty("minecraftUuid", player.getUniqueId().toString());
         body.addProperty("minecraftName", player.getName());
 
-        Map<String, String> headers = Map.of(
-                "Content-Type", "application/json",
-                "X-Server-Key", Config.getConfig().getServerKey());
-
         HttpUtils.Resp resp;
         try {
-            resp = HttpUtils.postWithStatus(baseUrl + "/api/mc/register",
-                    JsonUtils.toJson(body), headers);
+            resp = ApiClient.requestWithStatus(ApiEndpoint.MC_REGISTER, JsonUtils.toJson(body));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -81,13 +76,8 @@ public class RegisterAccount {
             return;
         }
 
-        String msg = null;
-        if (parsed != null) {
-            if (parsed.has("error")) msg = parsed.get("error").getAsString();
-            else if (parsed.has("message")) msg = parsed.get("message").getAsString();
-        }
         player.sendMessage(LangUtils.getLang("errors.api_failed",
-                Map.of("{message}", msg == null ? LangUtils.getRawLang("errors.invalid_response") : msg)));
+                Map.of("{message}", ApiClient.errorMessage(parsed))));
     }
 
     private void markBound(Player player) {
@@ -97,8 +87,4 @@ public class RegisterAccount {
         PlayerData.setPlayerBind(player, bind);
     }
 
-    private String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    }
 }
