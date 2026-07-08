@@ -62,8 +62,8 @@ function applyConfig(config: StorageConfig) {
 }
 
 function validateS3(): string | null {
-  if (!s3.value.endpoint.trim()) return 'Endpoint 不能为空';
-  if (!s3.value.bucket.trim()) return 'Bucket 不能为空';
+  if (!s3.value.endpoint.trim()) return '服务端点不能为空';
+  if (!s3.value.bucket.trim()) return '存储桶不能为空';
   if (!s3.value.accessKeyId.trim()) return 'Access Key ID 不能为空';
   if (!s3.value.secretAccessKey.trim() && !secretMasked.value) return 'Secret Access Key 不能为空';
   return null;
@@ -154,9 +154,9 @@ async function testConnection() {
         <div class="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-700">
           <p class="text-sm font-medium text-slate-900 dark:text-white pt-2">S3 兼容存储配置</p>
 
-          <BaseInput v-model="s3.endpoint" label="Endpoint *" placeholder="http://localhost:9000" />
+          <BaseInput v-model="s3.endpoint" label="服务端点 *" placeholder="http://localhost:9000" />
 
-          <BaseInput v-model="s3.bucket" label="Bucket *" placeholder="lighttickets" />
+          <BaseInput v-model="s3.bucket" label="存储桶 *" placeholder="lighttickets" />
 
           <div class="grid grid-cols-2 gap-3">
             <BaseInput v-model="s3.accessKeyId" label="Access Key ID *" placeholder="minioadmin" />
@@ -170,7 +170,7 @@ async function testConnection() {
 
           <BaseInput
             v-model.number="s3.presignExpiry"
-            label="预签名 URL 过期（秒）"
+            label="预签名链接过期时间（秒）"
             type="number"
             min="60"
             placeholder="300"
@@ -181,9 +181,11 @@ async function testConnection() {
             class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
           >
             <div>
-              <p class="text-sm font-medium text-slate-900 dark:text-white">Path Style 寻址</p>
+              <p class="text-sm font-medium text-slate-900 dark:text-white">
+                路径样式(Path Style)寻址
+              </p>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                自建 S3 兼容存储（如 MinIO）需开启；AWS S3 官方可关闭
+                自建 S3 兼容存储(如 MinIO)需开启; AWS S3 官方可关闭
               </p>
             </div>
             <BaseToggle v-model="s3.forcePathStyle" />
