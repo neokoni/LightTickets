@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  player
+  staff
+  admin
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  closed
+  invalid
+}
+
+enum CommentSource {
+  web
+  minecraft
+}
+
+model User {
+  id                Int              @id @default(autoincrement())
+  email             String           @unique
+  passwordHash      String           @map("password_hash")
+  username          String           @unique
+  minecraftUuid     String?          @unique @map("minecraft_uuid")
+  minecraftName     String?          @map("minecraft_name")
+  avatarUrl         String?          @map("avatar_url")
+  role              Role             @default(player)
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  authoredTickets   Ticket[]         @relation("TicketAuthor")
+  assignedTickets   Ticket[]         @relation("TicketAssignee")
+  ticketAssignments TicketAssignee[]
+  comments          Comment[]
+  attachments       Attachment[]
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+model Server {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  apiKey      String     @unique @map("api_key")
+  address     String?
+  description String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  tickets     Ticket[]
+  linkCodes   LinkCode[]
+
+  @@map("servers")
+}
+
+model Ticket {
+  id          Int              @id @default(autoincrement())
+  title       String
+  body        String
+  template    String           @default("")
+  formData    String?          @map("form_data")
+  gameContext String?          @map("game_context")
+  status      TicketStatus     @default(open)
+  authorId    Int              @map("author_id")
+  serverId    String?          @map("server_id")
+  assigneeId  Int?             @map("assignee_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  closedAt    DateTime?        @map("closed_at")
+  author      User             @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  server      Server?          @relation(fields: [serverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  assignee    User?            @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  labels      TicketLabel[]
+  assignees   TicketAssignee[]
+  comments    Comment[]
+  attachments Attachment[]
+  auditLogs   AuditLog[]
+
+  @@map("tickets")
+}
+
+model Label {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  color       String
+  description String?
+  tickets     TicketLabel[]
+
+  @@map("labels")
+}
+
+model TicketLabel {
+  ticketId Int    @map("ticket_id")
+  labelId  String @map("label_id")
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  label    Label  @relation(fields: [labelId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([ticketId, labelId])
+  @@map("ticket_labels")
+}
+
+model TicketAssignee {
+  ticketId Int    @map("ticket_id")
+  userId   Int    @map("user_id")
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@id([ticketId, userId])
+  @@map("ticket_assignees")
+}
+
+model Comment {
+  id          String        @id @default(uuid())
+  ticketId    Int           @map("ticket_id")
+  authorId    Int           @map("author_id")
+  body        String
+  source      CommentSource @default(web)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  ticket      Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  attachments Attachment[]
+
+  @@map("comments")
+}
+
+model Attachment {
+  id          String   @id @default(uuid())
+  ticketId    Int?     @map("ticket_id")
+  commentId   String?  @map("comment_id")
+  filename    String
+  path        String
+  mimeType    String   @map("mime_type")
+  size        Int
+  storageType String   @default("local") @map("storage_type")
+  uploadedBy  Int      @map("uploaded_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  ticket      Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  comment     Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  uploader    User     @relation(fields: [uploadedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("attachments")
+}
+
+model LinkCode {
+  id            String   @id @default(uuid())
+  code          String   @unique
+  minecraftUuid String   @map("minecraft_uuid")
+  minecraftName String   @map("minecraft_name")
+  serverId      String   @map("server_id")
+  expiresAt     DateTime @map("expires_at")
+  used          Boolean  @default(false)
+  server        Server   @relation(fields: [serverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("link_codes")
+}
+
+model SetupStatus {
+  id               String   @id @default(uuid())
+  isSetup          Boolean  @default(false) @map("is_setup")
+  siteName         String   @default("LightTickets") @map("site_name")
+  siteUrl          String?  @map("site_url")
+  requireLogin     Boolean  @default(false) @map("require_login")
+  allowWebRegister Boolean  @default(true) @map("allow_web_register")
+  allowMcRegister  Boolean  @default(true) @map("allow_mc_register")
+  footerContent    String?  @map("footer_content")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("setup_status")
+}
+
+model AppConfig {
+  id            String   @id @default(uuid())
+  storageDriver String   @default("local") @map("storage_driver")
+  uploadDir     String   @default("data/uploads") @map("upload_dir")
+  s3Config      String?  @map("s3_config")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("app_config")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  ticketId  Int      @map("ticket_id")
+  actorId   Int      @map("actor_id")
+  action    String
+  oldValue  String?  @map("old_value")
+  newValue  String?  @map("new_value")
+  createdAt DateTime @default(now()) @map("created_at")
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  actor     User     @relation(fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("audit_logs")
+}
