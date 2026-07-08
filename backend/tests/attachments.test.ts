@@ -5,12 +5,13 @@ import path from 'path';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
 import { reinitStorageAdapter } from '../src/services/storage/index.js';
+import { resolveUploadDir } from '../src/paths.js';
 
 const app = createApp();
 
 async function getUploadDir() {
   const config = await prisma().appConfig.findFirst();
-  return config!.uploadDir;
+  return resolveUploadDir(config!.uploadDir);
 }
 
 beforeEach(async () => {

@@ -8,7 +8,10 @@ export default defineConfig({
     fileParallelism: false,
     sequence: { concurrent: false },
     env: {
-      DATABASE_URL: 'file:./dev.db',
+      // Isolate all runtime data under a test-only directory so test runs can
+      // never clobber the real data/ folder (config.yml, uploads, sqlite db).
+      // DATABASE_URL is derived from this by loadConfig() -> data-test/data.db.
+      LIGHTTICKETS_DATA_DIR: 'data-test',
     },
   },
 });

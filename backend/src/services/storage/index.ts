@@ -1,5 +1,6 @@
 import { prisma } from '../../db.js';
 import type { S3Config } from '../../config.js';
+import { resolveUploadDir } from '../../paths.js';
 import type { IStorageAdapter } from './types.js';
 import { LocalStorageAdapter } from './local.adapter.js';
 import { S3StorageAdapter } from './s3.adapter.js';
@@ -25,7 +26,7 @@ export async function getStorageAdapter(): Promise<IStorageAdapter> {
     if (config.driver === 's3' && config.s3) {
       _adapter = new S3StorageAdapter(config.s3);
     } else {
-      _adapter = new LocalStorageAdapter(config.uploadDir);
+      _adapter = new LocalStorageAdapter(resolveUploadDir(config.uploadDir));
     }
   }
   return _adapter;

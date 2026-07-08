@@ -6,3 +6,5 @@ coverage/
 
 # data directory - all runtime-generated, template is src/config.default.yml
 data/
+# test data directory - isolated runtime data for test runs
+data-test/

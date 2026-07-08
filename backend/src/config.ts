@@ -1,8 +1,8 @@
 import fs from 'fs';
-import path from 'path';
 import yaml from 'js-yaml';
+import { dataPath } from './paths.js';
 
-export const CONFIG_PATH = path.resolve('data/config.yml');
+export const CONFIG_PATH = dataPath('config.yml');
 
 export interface S3Config {
   endpoint: string;
@@ -77,7 +77,7 @@ export function isDatabaseConfigured(): boolean {
 
 function resolveDatabaseUrl(db: DatabaseConfig): string {
   if (db.provider === 'sqlite') {
-    return `file:${path.resolve('data', 'data.db')}`;
+    return `file:${dataPath('data.db')}`;
   }
 
   const missing: string[] = [];

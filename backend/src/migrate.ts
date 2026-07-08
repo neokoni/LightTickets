@@ -3,9 +3,11 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
+import { dataPath } from './paths.js';
+
 const PRISMA_DIR = path.resolve('prisma');
 const SCHEMA_PATH = path.join(PRISMA_DIR, 'schema.prisma');
-const GENERATED_PRISMA_DIR = path.resolve('data', 'prisma');
+const GENERATED_PRISMA_DIR = dataPath('prisma');
 const GENERATED_SCHEMA_PATH = path.join(GENERATED_PRISMA_DIR, 'schema.prisma');
 const GENERATED_MIGRATIONS_PATH = path.join(GENERATED_PRISMA_DIR, 'migrations');
 

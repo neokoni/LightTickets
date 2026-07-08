@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
-import path from 'path';
+import { dataPath } from '../src/paths.js';
 
-const configPath = path.resolve('data/config.yml');
+const configPath = dataPath('config.yml');
 
 const minimalConfig = `server:
   port: 3000

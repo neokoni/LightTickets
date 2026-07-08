@@ -1,17 +1,12 @@
 import fs from 'fs';
-import path from 'path';
-import { beforeEach, afterAll } from 'vitest';
+import { beforeEach } from 'vitest';
 
-// Ensure config.yml has db section before any module imports getConfig()
-const configPath = path.resolve('data/config.yml');
-const dataTemplatesPath = path.resolve('data/templates');
-const templatesMarkerPath = path.resolve('data/.templates_initialized');
-// Back up the user's real config so tests never clobber production settings.
-const realConfigBackup = fs.existsSync(configPath) ? fs.readFileSync(configPath, 'utf-8') : null;
-const templatesBackupPath = path.resolve('data/templates.test-backup');
-const markerBackup = fs.existsSync(templatesMarkerPath)
-  ? fs.readFileSync(templatesMarkerPath, 'utf-8')
-  : null;
+import { DATA_DIR, dataPath } from '../src/paths.js';
+
+// Tests run against an isolated data directory (LIGHTTICKETS_DATA_DIR, set in
+// vitest.config.ts) so a run can never touch the real data/ folder — no more
+// clobbering production config.yml, uploads, or the sqlite db.
+const configPath = dataPath('config.yml');
 
 const testConfig = `server:
   port: 3000
@@ -24,22 +19,10 @@ security:
   jwtRefreshSecret: "test-refresh-secret"
 `;
 
-// Delete stale test DBs so migrations always start fresh.
-for (const p of [
-  path.resolve('data', 'dev.db'),
-  path.resolve('data', 'data.db'),
-  path.resolve('prisma', 'dev.db'),
-]) {
-  if (fs.existsSync(p)) fs.unlinkSync(p);
-}
+// Wipe the entire test data dir so every run starts from a clean slate.
+fs.rmSync(DATA_DIR, { recursive: true, force: true });
 
-fs.rmSync(templatesBackupPath, { recursive: true, force: true });
-if (fs.existsSync(dataTemplatesPath))
-  fs.cpSync(dataTemplatesPath, templatesBackupPath, { recursive: true });
-fs.rmSync(dataTemplatesPath, { recursive: true, force: true });
-fs.rmSync(templatesMarkerPath, { force: true });
-
-fs.mkdirSync(path.dirname(configPath), { recursive: true });
+fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.writeFileSync(configPath, testConfig, 'utf-8');
 
 // Load config to resolve DATABASE_URL consistently with production (absolute path)
@@ -66,28 +49,6 @@ beforeEach(async () => {
   await prisma().label.deleteMany();
   await prisma().user.deleteMany();
   await prisma().server.deleteMany();
-});
-
-// Restore the user's real config after all tests (never write a hardcoded
-// clean config — that wipes the production db section and forces re-setup).
-afterAll(() => {
-  if (realConfigBackup !== null) {
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, realConfigBackup, 'utf-8');
-  } else {
-    fs.rmSync(configPath, { force: true });
-  }
-
-  fs.rmSync(dataTemplatesPath, { recursive: true, force: true });
-  if (fs.existsSync(templatesBackupPath)) {
-    fs.cpSync(templatesBackupPath, dataTemplatesPath, { recursive: true });
-    fs.rmSync(templatesBackupPath, { recursive: true, force: true });
-  }
-  if (markerBackup !== null) {
-    fs.writeFileSync(templatesMarkerPath, markerBackup, 'utf-8');
-  } else {
-    fs.rmSync(templatesMarkerPath, { force: true });
-  }
 });
 
 export { prisma };

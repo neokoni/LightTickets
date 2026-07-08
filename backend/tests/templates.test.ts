@@ -3,10 +3,11 @@ import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
 import { createApp } from '../src/app.js';
+import { dataPath } from '../src/paths.js';
 
 const app = createApp();
 
-const templatesDir = path.resolve('data/templates');
+const templatesDir = dataPath('templates');
 const testTemplateNames = ['custom_test', 'dup_tmpl', 'patch_tmpl', 'delete_tmpl'];
 
 afterEach(() => {

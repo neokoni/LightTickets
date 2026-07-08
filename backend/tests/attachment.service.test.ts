@@ -4,6 +4,7 @@ import path from 'path';
 import * as attachmentService from '../src/services/attachment.service.js';
 import { prisma } from './setup.js';
 import { reinitStorageAdapter } from '../src/services/storage/index.js';
+import { resolveUploadDir } from '../src/paths.js';
 
 describe('attachment.service', () => {
   beforeEach(async () => {
@@ -32,7 +33,7 @@ describe('attachment.service', () => {
     });
 
     const config = await prisma().appConfig.findFirst();
-    const filePath = path.resolve(config!.uploadDir, attachment.path);
+    const filePath = path.resolve(resolveUploadDir(config!.uploadDir), attachment.path);
     expect(fs.existsSync(filePath)).toBe(true);
     expect(fs.readFileSync(filePath, 'utf-8')).toBe('hello');
     expect(attachment.filename).toBe('hello.txt');
@@ -58,7 +59,7 @@ describe('attachment.service', () => {
       uploadedBy: user.id,
     });
     const config = await prisma().appConfig.findFirst();
-    const filePath = path.resolve(config!.uploadDir, attachment.path);
+    const filePath = path.resolve(resolveUploadDir(config!.uploadDir), attachment.path);
     expect(fs.existsSync(filePath)).toBe(true);
 
     await attachmentService.deleteAttachment(attachment.id);

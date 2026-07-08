@@ -2,10 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { NotFoundError, AppError, ValidationError } from '../utils/errors.js';
+import { dataPath } from '../paths.js';
 
 const defaultTemplatesDir = path.resolve('templates');
-const dataTemplatesDir = path.resolve('data/templates');
-const templatesInitializedMarker = path.resolve('data/.templates_initialized');
+const dataTemplatesDir = dataPath('templates');
+const templatesInitializedMarker = dataPath('.templates_initialized');
 
 export interface TemplateField {
   type: 'markdown' | 'input' | 'textarea' | 'checkboxes' | 'dropdown';
