@@ -684,15 +684,29 @@ const registerSetupRoutes = () => {
     auth: 'none',
     tags: ['Setup'],
     bodySchema: z.object({
-      db: z.object({
-        provider: z.enum(['sqlite', 'mysql']),
-        databaseUrl: z.string().optional(),
-        host: z.string().optional(),
-        port: z.number().int().positive().optional(),
-        username: z.string().optional(),
-        password: z.string().optional(),
-        database: z.string().optional(),
-      }),
+      db: z
+        .object({
+          provider: z.enum(['sqlite', 'mysql']),
+          host: z.string().optional(),
+          port: z.number().int().positive().optional(),
+          username: z.string().optional(),
+          password: z.string().optional(),
+          database: z.string().optional(),
+          args: z.string().optional(),
+        })
+        .strict()
+        .superRefine((db, ctx) => {
+          if (db.provider !== 'mysql') return;
+          for (const field of ['host', 'username', 'database'] as const) {
+            if (!db[field]?.trim()) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'MySQL 配置必填',
+                path: [field],
+              });
+            }
+          }
+        }),
       admin: z.object({
         email: z.string().email(),
         password: z.string().min(6),

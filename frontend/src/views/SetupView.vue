@@ -27,7 +27,6 @@ const storageButtonClass =
 const payload = reactive<SetupPayload>({
   db: {
     provider: 'sqlite',
-    databaseUrl: 'file:./data.db',
   },
   admin: {
     email: '',
@@ -56,21 +55,28 @@ const payload = reactive<SetupPayload>({
 
 // MySQL 字段
 const mysqlFields = reactive({
-  host: 'localhost',
-  port: '3306',
-  user: 'root',
+  host: '',
+  port: '',
+  username: '',
   password: '',
-  database: 'lightticket',
-  params: '',
+  database: '',
+  args: '',
 });
 
-function buildMysqlUrl() {
-  const { host, port, user, password, database, params } = mysqlFields;
-  let url = `mysql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`;
-  if (params.trim()) {
-    url += '?' + params.trim();
+function buildDbPayload(): SetupPayload['db'] {
+  if (payload.db.provider === 'sqlite') {
+    return { provider: 'sqlite' };
   }
-  return url;
+
+  return {
+    provider: 'mysql',
+    host: mysqlFields.host.trim(),
+    port: mysqlFields.port.trim() ? Number(mysqlFields.port) : undefined,
+    username: mysqlFields.username.trim(),
+    password: mysqlFields.password,
+    database: mysqlFields.database.trim(),
+    args: mysqlFields.args.trim() || undefined,
+  };
 }
 
 const totalSteps = 6;
@@ -79,7 +85,12 @@ const canNext = computed(() => {
   switch (step.value) {
     case 2:
       if (payload.db.provider === 'sqlite') return true;
-      return !!(mysqlFields.host && mysqlFields.port && mysqlFields.user && mysqlFields.database);
+      return !!(
+        mysqlFields.host.trim() &&
+        mysqlFields.username.trim() &&
+        mysqlFields.database.trim() &&
+        (!mysqlFields.port.trim() || Number(mysqlFields.port) > 0)
+      );
     case 3:
       if (payload.storage?.driver === 'local') return true;
       return !!(
@@ -102,9 +113,6 @@ const canNext = computed(() => {
 });
 
 function next() {
-  if (step.value === 2 && payload.db.provider === 'mysql') {
-    payload.db.databaseUrl = buildMysqlUrl();
-  }
   if (step.value < totalSteps) step.value++;
 }
 
@@ -113,14 +121,11 @@ function back() {
 }
 
 async function submit() {
-  if (payload.db.provider === 'mysql') {
-    payload.db.databaseUrl = buildMysqlUrl();
-  }
   loading.value = true;
   error.value = '';
   try {
     const res = await completeSetup({
-      db: payload.db,
+      db: buildDbPayload(),
       admin: payload.admin,
       site: payload.site,
       mc: payload.mc?.defaultServerName
@@ -244,8 +249,8 @@ async function submit() {
 
         <div v-else class="grid grid-cols-2 gap-3">
           <BaseInput v-model="mysqlFields.host" label="主机" placeholder="localhost" />
-          <BaseInput v-model="mysqlFields.port" label="端口" placeholder="3306" />
-          <BaseInput v-model="mysqlFields.user" label="用户名" placeholder="root" />
+          <BaseInput v-model="mysqlFields.port" label="端口（可选）" placeholder="3306" />
+          <BaseInput v-model="mysqlFields.username" label="用户名" placeholder="root" />
           <BaseInput
             v-model="mysqlFields.password"
             label="密码"
@@ -255,12 +260,12 @@ async function submit() {
           <BaseInput
             v-model="mysqlFields.database"
             label="数据库"
-            placeholder="lightticket"
+            placeholder="lighttickets"
             class="col-span-2"
           />
           <BaseInput
-            v-model="mysqlFields.params"
-            label="额外参数（可选）"
+            v-model="mysqlFields.args"
+            label="连接参数（可选）"
             placeholder="sslaccept=strict&connect_timeout=10"
             class="col-span-2"
           />

@@ -38,6 +38,7 @@ interface DatabaseConfig {
   username?: string;
   password?: string;
   database?: string;
+  args?: string;
 }
 
 interface SecurityConfig {
@@ -78,7 +79,20 @@ function resolveDatabaseUrl(db: DatabaseConfig): string {
   if (db.provider === 'sqlite') {
     return `file:${path.resolve('data', 'data.db')}`;
   }
-  return `mysql://${db.username}:${db.password}@${db.host}:${db.port}/${db.database}`;
+
+  const missing: string[] = [];
+  if (!db.host?.trim()) missing.push('host');
+  const username = db.username?.trim();
+  if (!username) missing.push('username');
+  if (!db.database?.trim()) missing.push('database');
+  if (missing.length) {
+    throw new Error(`mysql 配置缺少必填字段: ${missing.join(', ')}`);
+  }
+
+  const port = db.port ?? 3306;
+  const args = db.args?.trim().replace(/^\?/, '');
+  const base = `mysql://${encodeURIComponent(username!)}:${encodeURIComponent(db.password ?? '')}@${db.host!.trim()}:${port}/${encodeURIComponent(db.database!.trim())}`;
+  return args ? `${base}?${args}` : base;
 }
 
 export function loadConfig(): AppConfig {
@@ -115,6 +129,7 @@ export function loadConfig(): AppConfig {
       username: database.username,
       password: database.password,
       database: database.database,
+      args: database.args,
     },
     security: { jwtSecret, jwtRefreshSecret },
     accessTokenExpiry: '2h',

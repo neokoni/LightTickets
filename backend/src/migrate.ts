@@ -2,10 +2,12 @@ import { execFileSync } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
 
 const PRISMA_DIR = path.resolve('prisma');
 const SCHEMA_PATH = path.join(PRISMA_DIR, 'schema.prisma');
+const GENERATED_PRISMA_DIR = path.resolve('data', 'prisma');
+const GENERATED_SCHEMA_PATH = path.join(GENERATED_PRISMA_DIR, 'schema.prisma');
+const GENERATED_MIGRATIONS_PATH = path.join(GENERATED_PRISMA_DIR, 'migrations');
 
 function runPrisma(args: string[]): void {
   execFileSync('npx', ['prisma', ...args], {
@@ -20,6 +22,29 @@ function runPrisma(args: string[]): void {
 
 function sqlString(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
+}
+
+function buildGeneratedSchema(provider: 'sqlite' | 'mysql'): string {
+  const schemaContent = fs.readFileSync(SCHEMA_PATH, 'utf-8');
+  const datasource = `datasource db {
+  provider = "${provider}"
+  url      = env("DATABASE_URL")
+}
+
+`;
+
+  return datasource + schemaContent.trimStart();
+}
+
+function writeGeneratedPrisma(provider: 'sqlite' | 'mysql'): void {
+  const migrationsDir = provider === 'mysql' ? 'migrations-mysql' : 'migrations';
+
+  fs.mkdirSync(GENERATED_PRISMA_DIR, { recursive: true });
+  fs.writeFileSync(GENERATED_SCHEMA_PATH, buildGeneratedSchema(provider), 'utf-8');
+  fs.rmSync(GENERATED_MIGRATIONS_PATH, { recursive: true, force: true });
+  fs.cpSync(path.join(PRISMA_DIR, migrationsDir), GENERATED_MIGRATIONS_PATH, {
+    recursive: true,
+  });
 }
 
 function applySqliteMigrations(schemaPath: string, migrationsPath: string): void {
@@ -73,29 +98,17 @@ export function runMigrations(provider: 'sqlite' | 'mysql'): void {
     throw new Error('DATABASE_URL is not set');
   }
 
-  const schemaContent = fs.readFileSync(SCHEMA_PATH, 'utf-8');
-  const updated = schemaContent.replace(/provider = "(sqlite|mysql)"/, `provider = "${provider}"`);
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lighttickets-prisma-'));
-  const tempSchemaPath = path.join(tempDir, 'schema.prisma');
-  fs.writeFileSync(tempSchemaPath, updated, 'utf-8');
-  const migrationsDir = provider === 'mysql' ? 'migrations-mysql' : 'migrations';
-  fs.cpSync(path.join(PRISMA_DIR, migrationsDir), path.join(tempDir, 'migrations'), {
-    recursive: true,
-  });
+  writeGeneratedPrisma(provider);
+
+  runPrisma(['generate', `--schema=${GENERATED_SCHEMA_PATH}`]);
 
   try {
-    runPrisma(['generate']);
+    runPrisma(['migrate', 'deploy', `--schema=${GENERATED_SCHEMA_PATH}`]);
+  } catch (err) {
+    if (provider !== 'sqlite') throw err;
 
-    try {
-      runPrisma(['migrate', 'deploy', `--schema=${tempSchemaPath}`]);
-    } catch (err) {
-      if (provider !== 'sqlite') throw err;
-
-      console.warn('[migrate] Prisma migrate deploy failed; applying SQLite SQL directly');
-      applySqliteMigrations(tempSchemaPath, path.join(tempDir, 'migrations'));
-    }
-  } finally {
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    console.warn('[migrate] Prisma migrate deploy failed; applying SQLite SQL directly');
+    applySqliteMigrations(GENERATED_SCHEMA_PATH, GENERATED_MIGRATIONS_PATH);
   }
 
   console.log(`[migrate] ${provider} migrations applied`);

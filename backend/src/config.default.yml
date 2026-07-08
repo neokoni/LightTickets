@@ -6,13 +6,14 @@ server:
 database:
   # provider 缺失时进入 setup 模式；setup 完成后回写 sqlite 或 mysql。
   # provider: sqlite
-  # sqlite 时不写下方字段，路径代码写死 file:./data/data.db
-  # mysql 时写入：
-  # host: localhost
-  # port: 3306
-  # username: root
-  # password: xxx
-  # database: lighttickets
+  # sqlite 无需其他字段，数据库文件固定为 data/data.db。
+  # mysql:
+  # host: db.example.com      # 必填
+  # port: 3306                # 可选，默认 3306
+  # username: root            # 必填
+  # password: xxx             # 可选，允许空密码
+  # database: lighttickets    # 必填
+  # args: sslaccept=strict    # 可选，MySQL URL query 参数
 
 security:
   # 空值仅用于 setup 模式；setup 完成后自动生成并回写。

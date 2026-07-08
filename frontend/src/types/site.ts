@@ -13,7 +13,12 @@ export interface SiteConfig {
 export interface SetupPayload {
   db: {
     provider: 'sqlite' | 'mysql';
-    databaseUrl: string;
+    host?: string;
+    port?: number;
+    username?: string;
+    password?: string;
+    database?: string;
+    args?: string;
   };
   admin: {
     email: string;

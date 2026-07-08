@@ -101,6 +101,66 @@ security:
     expect(process.env.DATABASE_URL).toBe('mysql://root:secret@localhost:3306/lighttickets');
   });
 
+  it('loadConfig appends mysql args when provided', async () => {
+    const testConfig = `server:
+  port: 3000
+database:
+  provider: mysql
+  host: db.internal
+  port: 3307
+  username: app
+  password: secret
+  database: lighttickets
+  args: sslaccept=strict&connect_timeout=10
+security:
+  jwtSecret: "test"
+  jwtRefreshSecret: "test"
+`;
+    fs.writeFileSync(configPath, testConfig, 'utf-8');
+
+    const { loadConfig } = await import('../src/config.js');
+    loadConfig();
+    expect(process.env.DATABASE_URL).toBe(
+      'mysql://app:secret@db.internal:3307/lighttickets?sslaccept=strict&connect_timeout=10',
+    );
+  });
+
+  it('loadConfig rejects incomplete mysql fields', async () => {
+    const testConfig = `server:
+  port: 3000
+database:
+  provider: mysql
+  username: root
+security:
+  jwtSecret: "test"
+  jwtRefreshSecret: "test"
+`;
+    fs.writeFileSync(configPath, testConfig, 'utf-8');
+
+    const { loadConfig } = await import('../src/config.js');
+    expect(() => loadConfig()).toThrow(/mysql 配置缺少必填字段/);
+  });
+
+  it('loadConfig rejects mysql user alias', async () => {
+    const testConfig = `server:
+  port: 3000
+database:
+  provider: mysql
+  host: db.internal
+  port: 3307
+  user: app
+  password: secret
+  database: lighttickets
+security:
+  jwtSecret: "test"
+  jwtRefreshSecret: "test"
+`;
+    fs.writeFileSync(configPath, testConfig, 'utf-8');
+
+    const { loadConfig } = await import('../src/config.js');
+    expect(() => loadConfig()).toThrow(/mysql 配置缺少必填字段: username/);
+  });
+
   it('loadConfig throws when database.provider missing', async () => {
     const testConfig = `server:
   port: 3000

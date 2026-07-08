@@ -114,6 +114,21 @@ describe('POST /api/setup', () => {
     expect([400, 422]).toContain(res.status);
   });
 
+  it('rejects legacy mysql databaseUrl and user fields', async () => {
+    const res = await request(app)
+      .post('/api/setup')
+      .send({
+        db: {
+          provider: 'mysql',
+          databaseUrl: 'mysql://app:secret@db.internal:3307/lighttickets',
+          user: 'app',
+        },
+        admin: { email: 'legacy-mysql@example.com', password: 'admin123', username: 'legacydb' },
+      });
+
+    expect([400, 422]).toContain(res.status);
+  });
+
   it('rejects setup after already initialized', async () => {
     await request(app)
       .post('/api/setup')

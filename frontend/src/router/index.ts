@@ -110,7 +110,7 @@ router.beforeEach(async (to) => {
   }
 
   // 2. Fetch site config from server if not yet loaded
-  if (siteConfig.isSetup === null) {
+  if (siteConfig.isSetup === null || to.meta.setup) {
     try {
       const config = await getSiteConfig();
       setSiteConfigCache(config);

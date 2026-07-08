@@ -17,6 +17,7 @@ type SetupConfigFile = {
     username?: string;
     password?: string;
     database?: string;
+    args?: string;
   };
   security?: { jwtSecret?: string; jwtRefreshSecret?: string };
 };
@@ -24,6 +25,12 @@ type SetupConfigFile = {
 function readYaml(filePath: string): SetupConfigFile {
   const raw = yaml.load(fs.readFileSync(filePath, 'utf-8'));
   return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as SetupConfigFile) : {};
+}
+
+function requiredTrim(value: string | undefined, field: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed) throw new ValidationError(`MySQL 配置缺少必填字段: ${field}`);
+  return trimmed;
 }
 
 export interface SiteConfig {
@@ -44,12 +51,12 @@ export interface SiteConfigInput {
 export interface SetupInput {
   db: {
     provider: 'sqlite' | 'mysql';
-    databaseUrl?: string;
     host?: string;
     port?: number;
     username?: string;
     password?: string;
     database?: string;
+    args?: string;
   };
   admin: {
     email: string;
@@ -63,6 +70,26 @@ export interface SetupInput {
   storage?: {
     driver: 'local' | 's3';
     s3?: Omit<Partial<S3Config>, 'region'>;
+  };
+}
+
+function toSiteConfig(status: {
+  isSetup: boolean;
+  requireLogin: boolean;
+  allowWebRegister: boolean;
+  allowMcRegister: boolean;
+  siteName: string;
+  siteUrl: string | null;
+  footerContent: string | null;
+}): SiteConfig {
+  return {
+    isSetup: status.isSetup,
+    requireLogin: status.requireLogin,
+    allowWebRegister: status.allowWebRegister,
+    allowMcRegister: status.allowMcRegister,
+    siteName: status.siteName || 'LightTickets',
+    siteUrl: status.siteUrl ?? null,
+    footerContent: status.footerContent ?? null,
   };
 }
 
@@ -115,8 +142,30 @@ export async function getSiteConfig(): Promise<SiteConfig> {
     const { getPrisma } = await import('../db.js');
     const prisma = getPrisma();
     const status = await prisma.setupStatus.findFirst();
+    if (status?.isSetup) return toSiteConfig(status);
+
+    const userCount = await prisma.user.count();
+    if (userCount > 0) {
+      const recovered = status
+        ? await prisma.setupStatus.update({
+            where: { id: status.id },
+            data: { isSetup: true },
+          })
+        : await prisma.setupStatus.create({
+            data: { isSetup: true },
+          });
+
+      const appConfig = await prisma.appConfig.findFirst();
+      if (!appConfig) {
+        await prisma.appConfig.create({ data: {} });
+      }
+
+      console.warn('[setup] Recovered missing setup status from existing users');
+      return toSiteConfig(recovered);
+    }
+
     return {
-      isSetup: status?.isSetup ?? false,
+      isSetup: false,
       requireLogin: status?.requireLogin ?? false,
       allowWebRegister: status?.allowWebRegister ?? true,
       allowMcRegister: status?.allowMcRegister ?? true,
@@ -127,19 +176,8 @@ export async function getSiteConfig(): Promise<SiteConfig> {
   } catch (e: unknown) {
     const error = e instanceof Error ? e : new Error(String(e));
     const msg = error.message || '';
-    if (error.name === 'PrismaClientValidationError' || msg.includes('Unknown argument')) {
-      throw e;
-    }
     console.warn('[setup] Could not query setup status:', msg);
-    return {
-      isSetup: false,
-      requireLogin: false,
-      allowWebRegister: true,
-      allowMcRegister: true,
-      siteName: 'LightTickets',
-      siteUrl: null,
-      footerContent: null,
-    };
+    throw e;
   }
 }
 
@@ -185,6 +223,30 @@ export async function completeSetup(input: SetupInput) {
       const { getPrisma } = await import('../db.js');
       const prisma = getPrisma();
       const existing = await prisma.setupStatus.findFirst();
+      if (existing?.isSetup) {
+        throw new AppError(409, '站点已完成初始化，无法重复设置');
+      }
+
+      const userCount = await prisma.user.count();
+      if (userCount > 0) {
+        if (existing) {
+          await prisma.setupStatus.update({
+            where: { id: existing.id },
+            data: { isSetup: true },
+          });
+        } else {
+          await prisma.setupStatus.create({ data: { isSetup: true } });
+        }
+
+        const appConfig = await prisma.appConfig.findFirst();
+        if (!appConfig) {
+          await prisma.appConfig.create({ data: {} });
+        }
+
+        console.warn('[setup] Recovered missing setup status from existing users');
+        throw new AppError(409, '站点已完成初始化，无法重复设置');
+      }
+
       if (existing) {
         throw new AppError(409, '站点已完成初始化，无法重复设置');
       }
@@ -221,11 +283,14 @@ export async function completeSetup(input: SetupInput) {
   };
 
   if (input.db.provider === 'mysql') {
-    configData.database.host = input.db.host || 'localhost';
-    configData.database.port = input.db.port || 3306;
-    configData.database.username = input.db.username || '';
-    configData.database.password = input.db.password || '';
-    configData.database.database = input.db.database || 'lighttickets';
+    configData.database.host = requiredTrim(input.db.host, 'host');
+    configData.database.port = input.db.port ?? 3306;
+    configData.database.username = requiredTrim(input.db.username, 'username');
+    configData.database.password = input.db.password ?? '';
+    configData.database.database = requiredTrim(input.db.database, 'database');
+    if (input.db.args?.trim()) {
+      configData.database.args = input.db.args.trim().replace(/^\?/, '');
+    }
   }
 
   if (fs.existsSync(CONFIG_PATH)) {
