@@ -26,9 +26,10 @@ function sqlString(value: string): string {
 
 function buildGeneratedSchema(provider: 'sqlite' | 'mysql'): string {
   const schemaContent = fs.readFileSync(SCHEMA_PATH, 'utf-8');
+  // Prisma 7 no longer allows `url` in the datasource block; the connection URL
+  // is supplied via prisma.config.ts (which reads env DATABASE_URL).
   const datasource = `datasource db {
   provider = "${provider}"
-  url      = env("DATABASE_URL")
 }
 
 `;
@@ -60,7 +61,7 @@ function applySqliteMigrations(schemaPath: string, migrationsPath: string): void
     if (!fs.existsSync(sqlPath)) continue;
 
     const sql = fs.readFileSync(sqlPath, 'utf-8');
-    runPrisma(['db', 'execute', '--file', sqlPath, '--schema', schemaPath]);
+    runPrisma(['db', 'execute', '--file', sqlPath]);
     applied.push({
       name,
       checksum: crypto.createHash('sha256').update(sql).digest('hex'),
@@ -90,7 +91,7 @@ function applySqliteMigrations(schemaPath: string, migrationsPath: string): void
 
   const metadataPath = path.join(path.dirname(schemaPath), 'migration-metadata.sql');
   fs.writeFileSync(metadataPath, metadata, 'utf-8');
-  runPrisma(['db', 'execute', '--file', metadataPath, '--schema', schemaPath]);
+  runPrisma(['db', 'execute', '--file', metadataPath]);
 }
 
 export function runMigrations(provider: 'sqlite' | 'mysql'): void {
