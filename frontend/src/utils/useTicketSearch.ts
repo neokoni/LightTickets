@@ -21,6 +21,7 @@ export interface SuggestionResult {
   type: 'key' | 'value';
   key?: string;
   items: SuggestionItem[];
+  partialValue?: string;
 }
 
 export interface ParsedQuery {
@@ -334,7 +335,12 @@ export function getSuggestions(
         i.value.toLowerCase().startsWith(partialValue.toLowerCase()) ||
         i.label.toLowerCase().includes(partialValue.toLowerCase()),
     );
-    return { type: 'value', key: def.key, items: filtered.length ? filtered : items };
+    return {
+      type: 'value',
+      key: def.key,
+      items: filtered.length ? filtered : items,
+      partialValue,
+    };
   }
 
   const partialKeyMatch = textBefore.match(/(?:^|\s)([^\s:]*)$/);

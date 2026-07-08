@@ -45,6 +45,11 @@ const searchInput = ref<InstanceType<typeof BaseInput> | null>(null);
 const cursorPos = ref(0);
 const suggestions = ref<SuggestionResult | null>(null);
 const selectedSuggestionIdx = ref(0);
+// True once the user explicitly navigates the list (Arrow keys). Until then, a
+// freshly-opened value list with no typed value should not auto-commit on Tab —
+// otherwise completing a key (e.g. "status:") and pressing Tab again would
+// immediately fill the first value ("status:open") instead of just the key.
+const suggestionNavigated = ref(false);
 const tabButtonClass =
   '!px-3 !py-2 !rounded-none border-none -mb-px text-sm font-medium transition whitespace-nowrap shrink-0';
 const chipButtonClass = '!px-0 !py-0 border-none ml-0.5 hover:opacity-70';
@@ -52,6 +57,16 @@ const suggestionButtonClass =
   '!w-full !justify-start !px-3 !py-1.5 border-none text-sm text-left transition cursor-pointer';
 
 const tabStatus = ref<TicketStatus | undefined>();
+
+// Whether the highlighted suggestion is "armed" — i.e. Tab/Enter would commit
+// it. A freshly-opened value list with no typed value and no navigation is not
+// armed, so we avoid highlighting an item the user didn't ask for yet.
+const suggestionArmed = computed(() => {
+  const s = suggestions.value;
+  if (!s) return false;
+  if (s.type === 'key') return true;
+  return !!s.partialValue || suggestionNavigated.value;
+});
 
 const tokens = computed(() => tokenize(searchRaw.value));
 const filterTokens = computed(() => tokens.value.filter((t) => t.type === 'filter' && !t.error));
@@ -166,6 +181,16 @@ function onSearchInput(e: Event) {
 function onSearchKeydown(e: KeyboardEvent) {
   if (e.key === 'Tab' && suggestions.value && suggestions.value.items.length > 0) {
     e.preventDefault();
+    // A just-opened value list (key completed, no value typed yet, user hasn't
+    // arrowed) should not auto-commit its first item — Tab here just completed
+    // the key, so leave the value for the user to pick.
+    if (
+      suggestions.value.type === 'value' &&
+      !suggestions.value.partialValue &&
+      !suggestionNavigated.value
+    ) {
+      return;
+    }
     const idx = selectedSuggestionIdx.value;
     const item = suggestions.value.items[idx];
     if (item) {
@@ -188,12 +213,14 @@ function onSearchKeydown(e: KeyboardEvent) {
     }
   } else if (e.key === 'ArrowDown' && suggestions.value) {
     e.preventDefault();
+    suggestionNavigated.value = true;
     selectedSuggestionIdx.value = Math.min(
       selectedSuggestionIdx.value + 1,
       suggestions.value.items.length - 1,
     );
   } else if (e.key === 'ArrowUp' && suggestions.value) {
     e.preventDefault();
+    suggestionNavigated.value = true;
     selectedSuggestionIdx.value = Math.max(selectedSuggestionIdx.value - 1, 0);
   } else if (e.key === 'Escape') {
     suggestions.value = null;
@@ -204,6 +231,7 @@ function onSearchKeydown(e: KeyboardEvent) {
 
 function updateSuggestions() {
   selectedSuggestionIdx.value = 0;
+  suggestionNavigated.value = false;
   suggestions.value = getSuggestions(
     searchRaw.value,
     cursorPos.value,
@@ -418,7 +446,7 @@ watch(
                 :key="item.value"
                 :class="[
                   suggestionButtonClass,
-                  idx === selectedSuggestionIdx
+                  suggestionArmed && idx === selectedSuggestionIdx
                     ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60',
                 ]"
