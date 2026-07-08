@@ -34,7 +34,7 @@ async function retry() {
 <template>
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="text-center space-y-4">
-      <h1 class="text-2xl font-bold text-slate-900 dark:text-white">无法连接到服务器</h1>
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-white">无法连接到后端服务器</h1>
       <p class="text-sm text-slate-500 dark:text-slate-400">
         请检查后端服务是否正在运行，或稍后重试。
       </p>
