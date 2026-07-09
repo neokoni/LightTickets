@@ -9,18 +9,26 @@ body:
       required: true
     attributes:
       label: "申请理由"
-  - type: input
+  - type: dropdown
     id: permission
     validations:
-      required: false
+      required: true
     attributes:
-      label: "权限节点（选填）"
-      placeholder: "如 essentials.fly"
+      label: "权限节点/权限组"
+      description: ""
+      options:
+        - "Bot权限"
 completion_hooks:
   - event: closed
     type: minimessage
+    if: "{field.permission}==Bot权限"
     messages:
       - "<color:#ffffff>你的权限申请 </color><color:#96bfff>#{ticket_id}</color><color:#ffffff> 已通过</color>"
+  - event: closed
+    type: command
+    if: "{field.permission}==Bot权限"
+    commands:
+      - "tell {player_name} 已添加Bot权限 #{ticket_id} "
   - event: invalid
     type: minimessage
     messages:
