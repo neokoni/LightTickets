@@ -82,6 +82,28 @@ describe('POST /api/setup', () => {
     expect(config).not.toContain('http://localhost:5173');
   });
 
+  it('falls back to the Host header when Origin is absent', async () => {
+    fs.rmSync(dataPath('config.yml'), { force: true });
+
+    const originApp = express();
+    originApp.use(express.json());
+    originApp.use('/api/setup', createSetupRoutes());
+
+    const res = await request(originApp)
+      .post('/api/setup')
+      .set('Host', 'tickets.internal:8080')
+      .set('X-Forwarded-Proto', 'https')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: { email: 'host-test@example.com', password: 'admin123', username: 'hosttest' },
+      });
+
+    expect(res.status).toBe(201);
+    const config = fs.readFileSync(dataPath('config.yml'), 'utf-8');
+    expect(config).toContain('https://tickets.internal:8080');
+    expect(config).not.toContain('http://localhost:5173');
+  });
+
   it('persists local storage settings during setup', async () => {
     const res = await request(app)
       .post('/api/setup')

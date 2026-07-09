@@ -11,6 +11,28 @@ interface SetupRouteOptions {
   onSetupComplete?: () => void | Promise<void>;
 }
 
+function resolveAccessOrigin(req: Request): string | undefined {
+  const origin = req.get('origin');
+  if (origin) return origin;
+
+  const referer = req.get('referer');
+  if (referer) {
+    try {
+      return new URL(referer).origin;
+    } catch {
+      // ignore malformed referer
+    }
+  }
+
+  const host = req.get('x-forwarded-host') ?? req.get('host');
+  if (host) {
+    const proto = req.get('x-forwarded-proto')?.split(',')[0]?.trim() || req.protocol || 'http';
+    return `${proto}://${host}`;
+  }
+
+  return undefined;
+}
+
 const setupSchema = z.object({
   db: z
     .object({
@@ -91,8 +113,10 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
   router.post('/', async (req: Request, res: Response) => {
     const data = validate(setupSchema, req.body);
 
-    const accessOrigin = req.get('origin') ?? undefined;
-    const result = await setupService.completeSetup({ ...data, accessOrigin });
+    const result = await setupService.completeSetup({
+      ...data,
+      accessOrigin: resolveAccessOrigin(req),
+    });
     res.status(201).json(result);
     await options.onSetupComplete?.();
   });
