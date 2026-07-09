@@ -164,6 +164,32 @@ describe('setup.service', () => {
     expect(fs.readFileSync(configPath, 'utf-8')).toContain('provider: sqlite');
   });
 
+  it('uses the real access origin for corsOrigins when provided', async () => {
+    const { completeSetup } = await import('../src/services/setup.service.js');
+
+    await completeSetup({
+      db: { provider: 'sqlite' },
+      admin: { email: 'admin@example.com', password: 'admin123', username: 'admin' },
+      accessOrigin: 'https://tickets.example.com/setup',
+    });
+
+    const config = fs.readFileSync(configPath, 'utf-8');
+    expect(config).toContain('https://tickets.example.com');
+    expect(config).not.toContain('http://localhost:5173');
+  });
+
+  it('falls back to localhost corsOrigins when access origin is missing or invalid', async () => {
+    const { completeSetup } = await import('../src/services/setup.service.js');
+
+    await completeSetup({
+      db: { provider: 'sqlite' },
+      admin: { email: 'admin@example.com', password: 'admin123', username: 'admin' },
+      accessOrigin: 'not-a-url',
+    });
+
+    expect(fs.readFileSync(configPath, 'utf-8')).toContain('http://localhost:5173');
+  });
+
   it('writes explicit mysql fields without hardcoded host or database defaults', async () => {
     const { completeSetup } = await import('../src/services/setup.service.js');
 

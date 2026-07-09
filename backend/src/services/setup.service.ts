@@ -27,6 +27,18 @@ function readYaml(filePath: string): SetupConfigFile {
   return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as SetupConfigFile) : {};
 }
 
+function normalizeAccessOrigin(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
 function requiredTrim(value: string | undefined, field: string): string {
   const trimmed = value?.trim();
   if (!trimmed) throw new ValidationError(`MySQL 配置缺少必填字段: ${field}`);
@@ -71,6 +83,7 @@ export interface SetupInput {
     driver: 'local' | 's3';
     s3?: Omit<Partial<S3Config>, 'region'>;
   };
+  accessOrigin?: string;
 }
 
 function toSiteConfig(status: {
@@ -268,10 +281,12 @@ export async function completeSetup(input: SetupInput) {
 
   const storageConfig = buildStorageConfig(input.storage);
 
+  const accessOrigin = normalizeAccessOrigin(input.accessOrigin);
+
   const configData: Required<SetupConfigFile> = {
     server: {
       port: 3000,
-      corsOrigins: ['http://localhost:5173'],
+      corsOrigins: accessOrigin ? [accessOrigin] : ['http://localhost:5173'],
     },
     database: {
       provider: input.db.provider,

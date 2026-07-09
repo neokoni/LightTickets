@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import express from 'express';
+import fs from 'fs';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
+import { dataPath } from '../src/paths.js';
 import { prisma } from './setup.js';
 import createSetupRoutes from '../src/routes/setup.js';
 
@@ -57,6 +59,27 @@ describe('POST /api/setup', () => {
 
     const status = await request(app).get('/api/setup/site-config');
     expect(status.body.data.isSetup).toBe(true);
+  });
+
+  it('records the request Origin as corsOrigins in config.yml', async () => {
+    fs.rmSync(dataPath('config.yml'), { force: true });
+
+    const originApp = express();
+    originApp.use(express.json());
+    originApp.use('/api/setup', createSetupRoutes());
+
+    const res = await request(originApp)
+      .post('/api/setup')
+      .set('Origin', 'https://tickets.example.com')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: { email: 'origin-test@example.com', password: 'admin123', username: 'origintest' },
+      });
+
+    expect(res.status).toBe(201);
+    const config = fs.readFileSync(dataPath('config.yml'), 'utf-8');
+    expect(config).toContain('https://tickets.example.com');
+    expect(config).not.toContain('http://localhost:5173');
   });
 
   it('persists local storage settings during setup', async () => {

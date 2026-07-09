@@ -91,7 +91,8 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
   router.post('/', async (req: Request, res: Response) => {
     const data = validate(setupSchema, req.body);
 
-    const result = await setupService.completeSetup(data);
+    const accessOrigin = req.get('origin') ?? undefined;
+    const result = await setupService.completeSetup({ ...data, accessOrigin });
     res.status(201).json(result);
     await options.onSetupComplete?.();
   });
