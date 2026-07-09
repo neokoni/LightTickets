@@ -6,6 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "postinstall": "node scripts/generate-client.mjs",
+    "prisma:generate": "node scripts/generate-client.mjs",
+    "prebuild": "node scripts/generate-client.mjs",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest",
