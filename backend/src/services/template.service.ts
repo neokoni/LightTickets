@@ -23,6 +23,7 @@ export interface TemplateField {
 
 export interface CompletionHook {
   event: 'closed' | 'invalid';
+  if?: string;
   type?: 'command' | 'minimessage';
   commands?: string[];
   messages?: string[];
@@ -74,6 +75,9 @@ interface CachedTemplate {
 }
 
 const cache = new Map<string, CachedTemplate>();
+const conditionPattern =
+  /^\s*(\{[a-zA-Z0-9_.-]+\}|[a-zA-Z0-9_.-]+)\s*(==|!=|<=|>=|<|>)\s*(?:"([^"]*)"|'([^']*)'|(.+?))\s*$/;
+const variablePattern = /^\{([a-zA-Z0-9_.-]+)\}$/;
 
 function isTemplateFile(file: string): boolean {
   return file.endsWith('.yml') || file.endsWith('.yaml');
@@ -86,6 +90,62 @@ function templatePath(name: string): string {
 function assertValidTemplateName(name: string): void {
   if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
     throw new ValidationError('模板 key 只能包含字母、数字、下划线和短横线');
+  }
+}
+
+function compareConditionValues(left: string, right: string, operator: string): boolean {
+  if (operator === '==') return left === right;
+  if (operator === '!=') return left !== right;
+
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+  const comparison =
+    Number.isFinite(leftNumber) && Number.isFinite(rightNumber)
+      ? leftNumber - rightNumber
+      : left.localeCompare(right);
+
+  if (operator === '<') return comparison < 0;
+  if (operator === '<=') return comparison <= 0;
+  if (operator === '>') return comparison > 0;
+  if (operator === '>=') return comparison >= 0;
+  return false;
+}
+
+export function evaluateTemplateCondition(
+  condition: string | undefined,
+  variables: Record<string, string>,
+): boolean {
+  if (!condition?.trim()) return true;
+
+  const match = condition.match(conditionPattern);
+  if (!match) {
+    throw new ValidationError(`无效的 if 条件: ${condition}`);
+  }
+
+  const [, leftToken, operator, doubleQuoted, singleQuoted, unquoted] = match;
+  const left = resolveConditionToken(leftToken, variables, true);
+  const right =
+    doubleQuoted ??
+    singleQuoted ??
+    resolveConditionToken((unquoted ?? '').trim(), variables, false);
+  return compareConditionValues(left, right, operator);
+}
+
+function resolveConditionToken(
+  token: string,
+  variables: Record<string, string>,
+  variableByDefault: boolean,
+): string {
+  const variableMatch = token.match(variablePattern);
+  if (variableMatch) return variables[variableMatch[1]] ?? '';
+  return variableByDefault ? (variables[token] ?? '') : token;
+}
+
+function shouldRunHook(hook: CompletionHook, variables: Record<string, string>): boolean {
+  try {
+    return evaluateTemplateCondition(hook.if, variables);
+  } catch {
+    return false;
   }
 }
 
@@ -211,9 +271,13 @@ export function renderBody(def: TemplateDefinition, formData: Record<string, str
   return body || 'No content provided';
 }
 
-export function resolveHooks(def: TemplateDefinition, event: string): ResolvedHook[] {
+export function resolveHooks(
+  def: TemplateDefinition,
+  event: string,
+  variables: Record<string, string> = {},
+): ResolvedHook[] {
   return def.completion_hooks
-    .filter((h) => h.event === event)
+    .filter((h) => h.event === event && shouldRunHook(h, variables))
     .flatMap((h) => {
       const type = h.type ?? (h.commands ? 'command' : 'minimessage');
       const values =

@@ -1,0 +1,93 @@
+name: "完整语法示例"
+description: "展示输入、选择、复选框、Markdown、if 条件与完成钩子"
+title_prefix: "[示例] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请填写基础信息。关闭议题时，完成钩子会根据字段值决定是否执行。
+
+  - type: dropdown
+    id: priority
+    validations:
+      required: true
+    attributes:
+      label: "优先级"
+      description: "1 最低，5 最高"
+      options:
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+        - "5"
+
+  - type: textarea
+    id: reproduction
+    validations:
+      required: true
+    attributes:
+      label: "复现步骤"
+      placeholder: "如果不是 bug，可填写无"
+
+  - type: input
+    id: expected_answer
+    attributes:
+      label: "期望回复"
+      placeholder: "希望收到怎样的处理结果"
+
+  - type: markdown
+    attributes:
+      value: |
+        管理员关闭议题时，completion_hooks 可根据字段值与议题变量条件触发。
+
+  - type: input
+    id: workaround
+    attributes:
+      label: "临时解决方案"
+      placeholder: "如没有可填写无"
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: "提交前确认"
+      options:
+        - label: "我已搜索过现有议题"
+          required: true
+        - "我可以补充更多信息"
+completion_hooks:
+  - event: closed
+    if: "{field.category}==bug"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>Bug 议题 <color:#96bfff>#{ticket_id}</color> 已关闭</color>"
+  - event: closed
+    if: "{field.category}!=bug"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>非 Bug 议题 <color:#96bfff>#{ticket_id}</color> 已关闭</color>"
+  - event: closed
+    if: "{field.priority}<5"
+    type: command
+    commands:
+      - "tell {player_name} 你的议题 #{ticket_id} 已按常规优先级关闭"
+  - event: closed
+    if: "{field.priority}<=2"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>低优先级议题 #{ticket_id} 已进入归档</color>"
+  - event: closed
+    if: "{field.priority}>3"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>高优先级议题 #{ticket_id} 已处理完成</color>"
+  - event: closed
+    if: "{field.priority}>=4"
+    type: command
+    commands:
+      - "tell {player_name} 高优先级议题 #{ticket_id} 已关闭"
+  - event: closed
+    if: "{ticket_id}>0"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>议题 <color:#96bfff>#{ticket_id}</color> 已关闭，标题：{ticket_title}</color>"

@@ -9,6 +9,14 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+      },
+    },
+  },
+  {
     rules: {
       'no-unused-vars': 'off',
       '@typescript-eslint/no-namespace': ['error', { allowDeclarations: true }],

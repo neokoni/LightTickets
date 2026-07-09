@@ -115,6 +115,7 @@ completion_hooks: []        # 可选，状态变更时触发的钩子
 ```yaml
 completion_hooks:
   - event: closed
+    if: "{field.severity}>=4"
     type: minimessage
     messages:
       - "<color:#ffffff>你的议题 <color:#96bfff>#{ticket_id}</color> 已关闭</color>"
@@ -153,6 +154,25 @@ completion_hooks:
 | `{field.<id>}` | 表单中指定字段的值 | `{field.version}` → `1.21.1` |
 
 字段值取自议题创建时提交的 `formData`，字段不存在或为空时替换为空字符串。
+
+### 条件执行（if）
+
+`if` 只支持配置在 `completion_hooks` 项上，用于控制该 hook 是否执行；`body` 字段不支持 `if`。条件表达式可访问上表所有占位符变量，支持 `==`、`!=`、`<`、`<=`、`>`、`>=`。比较两侧都是数字时按数字比较，否则按字符串比较。
+
+```yaml
+completion_hooks:
+  - event: closed
+    if: "{field.category}==bug"
+    type: minimessage
+    messages:
+      - "<color:#ffffff>Bug 议题 #{ticket_id} 已关闭</color>"
+
+  - event: closed
+    if: "{ticket_id}>0"
+    type: command
+    commands:
+      - "tell {player_name} 议题 #{ticket_id} 已关闭"
+```
 
 ### 完整示例
 

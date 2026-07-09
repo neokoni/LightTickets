@@ -34,9 +34,6 @@ export function toHookTicketPayload(ticket: HookTicketPayload): HookTicketPayloa
 export function emitHookExecute(serverId: string, ticket: HookTicketPayload, event: string) {
   const def = getDefinition(ticket.template);
   if (!def) return;
-  const hooks = resolveHooks(def, event);
-  if (hooks.length === 0) return;
-
   let formData: Record<string, string> = {};
   if (ticket.formData) {
     try {
@@ -46,13 +43,23 @@ export function emitHookExecute(serverId: string, ticket: HookTicketPayload, eve
     }
   }
 
+  const variables: Record<string, string> = {
+    ticket_id: String(ticket.id),
+    ticket_title: ticket.title,
+    player_name: ticket.author?.minecraftName || 'unknown',
+    player_uuid: ticket.author?.minecraftUuid || 'unknown',
+  };
+  for (const [id, value] of Object.entries(formData)) {
+    variables[`field.${id}`] = value;
+  }
+
+  const hooks = resolveHooks(def, event, variables);
+  if (hooks.length === 0) return;
+
   const resolvePlaceholders = (content: string) =>
-    content
-      .replace(/\{ticket_id\}/g, String(ticket.id))
-      .replace(/\{ticket_title\}/g, ticket.title)
-      .replace(/\{player_name\}/g, ticket.author?.minecraftName || 'unknown')
-      .replace(/\{player_uuid\}/g, ticket.author?.minecraftUuid || 'unknown')
-      .replace(/\{field\.(\w+)\}/g, (_, id: string) => formData[id] || '');
+    content.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (placeholder, key: string) =>
+      Object.prototype.hasOwnProperty.call(variables, key) ? variables[key] : placeholder,
+    );
 
   const resolvedHooks = hooks.map((hook) => ({
     hookId: ['hook', ticket.id, event, Date.now(), Math.random().toString(36).slice(2, 10)].join(
