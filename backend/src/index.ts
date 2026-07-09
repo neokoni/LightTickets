@@ -4,10 +4,10 @@ import type { Server } from 'http';
 
 import { CONFIG_PATH, isDatabaseConfigured, getConfig } from './config.js';
 
-function loadSetupServerConfig(): { port?: number; corsOrigins?: string[] } {
+function loadSetupServerConfig(): { port?: number } {
   if (!fs.existsSync(CONFIG_PATH)) return {};
   const setupConfig = yaml.load(fs.readFileSync(CONFIG_PATH, 'utf-8')) as {
-    server?: { port?: number; corsOrigins?: string[] };
+    server?: { port?: number };
   } | null;
   return setupConfig?.server || {};
 }
@@ -55,16 +55,13 @@ async function startSetupServer() {
   app.use(globalLimiter);
   app.use(helmet());
   const setupConfig = loadSetupServerConfig();
-  const corsOrigins = setupConfig.corsOrigins || ['http://localhost:5173'];
+  // Setup mode has no config yet, so the real access origin is unknown until
+  // the user submits. Reflect any origin here (one-time bootstrap, no data to
+  // protect); completeSetup persists the real origin and the full app then
+  // enforces the proper allowlist.
   app.use(
     cors({
-      origin: (origin, cb) => {
-        if (!origin || corsOrigins.includes(origin)) {
-          cb(null, true);
-        } else {
-          cb(new Error('Not allowed by CORS'));
-        }
-      },
+      origin: true,
       credentials: true,
     }),
   );
