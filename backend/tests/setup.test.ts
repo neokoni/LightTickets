@@ -677,7 +677,7 @@ describe('PATCH /api/setup/settings', () => {
     expect(res.body.data.footerContent).toBeNull();
   });
 
-  it('rejects empty siteName', async () => {
+  it('allows empty siteName and falls back to the default title publicly', async () => {
     await request(app)
       .post('/api/setup')
       .send({
@@ -698,7 +698,18 @@ describe('PATCH /api/setup/settings', () => {
       .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`)
       .send({ siteName: '' });
 
-    expect([400, 422]).toContain(res.status);
+    expect(res.status).toBe(200);
+    expect(res.body.data.siteName).toBe('');
+
+    const settings = await request(app)
+      .get('/api/setup/settings')
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`);
+    expect(settings.status).toBe(200);
+    expect(settings.body.data.siteName).toBe('');
+
+    const siteConfig = await request(app).get('/api/setup/site-config');
+    expect(siteConfig.status).toBe(200);
+    expect(siteConfig.body.data.siteName).toBe('LightTickets');
   });
 });
 

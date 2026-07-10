@@ -278,11 +278,14 @@ export async function updateSettings(data: {
 
 export async function getAdminSettings(): Promise<AdminSettings> {
   const siteConfig = await getSiteConfig();
+  const { getPrisma } = await import('../db.js');
+  const status = await getPrisma().setupStatus.findFirst();
+
   return {
     requireLogin: siteConfig.requireLogin,
     allowWebRegister: siteConfig.allowWebRegister,
     allowMcRegister: siteConfig.allowMcRegister,
-    siteName: siteConfig.siteName,
+    siteName: status?.siteName ?? siteConfig.siteName,
     siteUrl: siteConfig.siteUrl,
     footerContent: siteConfig.footerContent,
     defaultLanguage: siteConfig.defaultLanguage,
