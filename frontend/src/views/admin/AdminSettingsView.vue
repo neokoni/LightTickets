@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getSettings, testMailSettings, updateSettings } from '@/api/setup';
+import { getSettings, updateSettings } from '@/api/setup';
 import { setRequireLoginCache, siteConfig, siteTitle } from '@/stores/site';
 import { useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
@@ -19,18 +19,8 @@ const siteName = ref('');
 const siteUrl = ref('');
 const footerContent = ref('');
 const defaultLanguage = ref('zh-CN');
-const mailEnabled = ref(false);
-const mailHost = ref('');
-const mailPort = ref(587);
-const mailSecure = ref(false);
-const mailUsername = ref('');
-const mailPassword = ref('');
-const mailPasswordSet = ref(false);
-const mailFromName = ref('');
-const mailFromAddress = ref('');
 const loading = ref(false);
 const saving = ref(false);
-const testingMail = ref(false);
 
 onMounted(async () => {
   loading.value = true;
@@ -43,14 +33,6 @@ onMounted(async () => {
     allowMcRegister.value = config.allowMcRegister ?? true;
     footerContent.value = config.footerContent ?? '';
     defaultLanguage.value = config.defaultLanguage;
-    mailEnabled.value = config.mail.enabled;
-    mailHost.value = config.mail.host;
-    mailPort.value = config.mail.port;
-    mailSecure.value = config.mail.secure;
-    mailUsername.value = config.mail.username ?? '';
-    mailPasswordSet.value = config.mail.passwordSet;
-    mailFromName.value = config.mail.fromName;
-    mailFromAddress.value = config.mail.fromAddress;
   } finally {
     loading.value = false;
   }
@@ -67,16 +49,6 @@ async function save() {
       siteUrl: siteUrl.value || null,
       footerContent: footerContent.value || null,
       defaultLanguage: defaultLanguage.value,
-      mail: {
-        enabled: mailEnabled.value,
-        host: mailHost.value,
-        port: mailPort.value,
-        secure: mailSecure.value,
-        username: mailUsername.value || null,
-        password: mailPassword.value || null,
-        fromName: mailFromName.value,
-        fromAddress: mailFromAddress.value,
-      },
     });
     setRequireLoginCache(result.requireLogin);
     siteConfig.siteName = result.siteName;
@@ -85,28 +57,11 @@ async function save() {
     siteConfig.allowWebRegister = result.allowWebRegister;
     siteConfig.allowMcRegister = result.allowMcRegister;
     siteConfig.defaultLanguage = result.defaultLanguage;
-    mailPassword.value = '';
-    mailPasswordSet.value = result.mail.passwordSet;
     ui.toast(t('admin.settings.saved'), 'success');
   } catch (e) {
     handleError(e, t('common.saveFailed'));
   } finally {
     saving.value = false;
-  }
-}
-
-async function testMail() {
-  testingMail.value = true;
-  try {
-    const result = await testMailSettings();
-    ui.toast(
-      result.success ? t('admin.settings.smtpTestSuccess') : result.message,
-      result.success ? 'success' : 'error',
-    );
-  } catch (e) {
-    handleError(e, t('admin.settings.smtpTestFailed'));
-  } finally {
-    testingMail.value = false;
   }
 }
 </script>
@@ -206,89 +161,6 @@ async function testMail() {
           </p>
         </div>
         <BaseToggle v-model="requireLogin" />
-      </div>
-
-      <div class="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-800">
-        <div
-          class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
-        >
-          <div>
-            <p class="text-sm font-medium text-slate-900 dark:text-white">
-              {{ t('admin.settings.mailEnabled') }}
-            </p>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {{ t('admin.settings.mailEnabledHelp') }}
-            </p>
-          </div>
-          <BaseToggle v-model="mailEnabled" />
-        </div>
-
-        <template v-if="mailEnabled">
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_120px]">
-            <BaseInput
-              v-model="mailHost"
-              :label="t('admin.settings.smtpHost')"
-              placeholder="smtp.example.com"
-            />
-            <BaseInput
-              v-model.number="mailPort"
-              :label="t('admin.settings.smtpPort')"
-              type="number"
-              min="1"
-              placeholder="587"
-            />
-          </div>
-
-          <div
-            class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
-          >
-            <div>
-              <p class="text-sm font-medium text-slate-900 dark:text-white">
-                {{ t('admin.settings.smtpSecure') }}
-              </p>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {{ t('admin.settings.smtpSecureHelp') }}
-              </p>
-            </div>
-            <BaseToggle v-model="mailSecure" />
-          </div>
-
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <BaseInput
-              v-model="mailUsername"
-              :label="t('admin.settings.smtpUsername')"
-              placeholder="mailer"
-            />
-            <BaseInput
-              v-model="mailPassword"
-              :label="t('admin.settings.smtpPassword')"
-              type="password"
-              :placeholder="
-                mailPasswordSet
-                  ? t('admin.settings.smtpPasswordKeep')
-                  : t('admin.settings.smtpPassword')
-              "
-            />
-          </div>
-
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <BaseInput
-              v-model="mailFromName"
-              :label="t('admin.settings.mailFromName')"
-              :placeholder="siteTitle"
-            />
-            <BaseInput
-              v-model="mailFromAddress"
-              :label="t('admin.settings.mailFromAddress')"
-              type="email"
-              placeholder="noreply@example.com"
-            />
-          </div>
-
-          <BaseButton type="button" :loading="testingMail" @click="testMail">
-            {{ t('admin.settings.smtpTest') }}
-          </BaseButton>
-        </template>
       </div>
 
       <BaseButton filled :loading="saving" @click="save">{{

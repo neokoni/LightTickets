@@ -104,6 +104,12 @@ const router = createRouter({
           meta: { auth: true, admin: true, titleKey: 'admin.settings.title' },
         },
         {
+          path: 'mail',
+          name: 'admin-mail',
+          component: () => import('@/views/admin/AdminMailView.vue'),
+          meta: { auth: true, admin: true, titleKey: 'admin.mail.title' },
+        },
+        {
           path: 'storage',
           name: 'admin-storage',
           component: () => import('@/views/admin/AdminStorageView.vue'),
