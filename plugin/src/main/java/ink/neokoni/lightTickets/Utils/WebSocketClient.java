@@ -99,6 +99,7 @@ public class WebSocketClient {
         TicketStatus newStatus = TicketStatus.fromKey(data.optString("newStatus", ""));
         String actor = data.optString("actorName", LangUtils.getRawLang("notifications.unknown_actor"));
 
+        DataRefreshManager.requestRefresh(playerUuid);
         sendToPlayer(playerUuid, statusNotification(ticketId, title, actor, oldStatus, newStatus));
     }
 
@@ -114,6 +115,7 @@ public class WebSocketClient {
         String author = data.optString("authorName", LangUtils.getRawLang("notifications.unknown_actor"));
         String content = compactText(data.optString("body", ""));
 
+        DataRefreshManager.requestRefresh(playerUuid);
         sendToPlayer(playerUuid, commentNotification(ticketId, title, author, content));
     }
 

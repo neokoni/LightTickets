@@ -6,6 +6,7 @@ import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.ApiClient;
 import ink.neokoni.lightTickets.Utils.ApiEndpoint;
+import ink.neokoni.lightTickets.Utils.DataRefreshManager;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
@@ -115,6 +116,7 @@ public class ChangeStatus {
         String label = targetStatus.label();
         player.sendMessage(LangUtils.getLang("ticket.status_changed",
                 Map.of("{status}", label)));
+        DataRefreshManager.refreshNow(player.getUniqueId());
     }
 
     private TicketStatus[] allowedStatuses(Player player) {

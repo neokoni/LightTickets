@@ -42,6 +42,13 @@ export async function getLinkedUser(minecraftUuid: string) {
   return user;
 }
 
+export async function listTicketsForMinecraft(input: { page?: number; pageSize?: number }) {
+  return ticketService.list({
+    page: input.page,
+    pageSize: input.pageSize,
+  });
+}
+
 export async function createTicketFromMinecraft(input: {
   minecraftUuid: string;
   title: string;

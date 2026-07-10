@@ -48,6 +48,23 @@ public class DataRefreshManager {
         lastRefreshTime.remove(uuid);
     }
 
+    public static void requestRefresh(UUID uuid) {
+        if (uuid == null || !activePlayers.contains(uuid)) return;
+        lastRefreshTime.remove(uuid);
+        refreshQueue.remove(uuid);
+        refreshQueue.add(uuid);
+    }
+
+    public static void refreshNow(UUID uuid) {
+        if (uuid == null || Bukkit.getPlayer(uuid) == null) return;
+        doRefresh(uuid);
+        lastRefreshTime.put(uuid, System.currentTimeMillis());
+        if (activePlayers.contains(uuid)) {
+            refreshQueue.remove(uuid);
+            refreshQueue.add(uuid);
+        }
+    }
+
     public static void shutdown() {
         refreshQueue.clear();
         activePlayers.clear();

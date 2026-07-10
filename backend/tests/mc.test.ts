@@ -136,9 +136,114 @@ describe('GET /api/mc/tickets/:uuid', () => {
     expect(res.body.data.tickets.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('returns empty array for unknown uuid', async () => {
+  it('returns all tickets across players, servers, and web-created tickets', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'mc-list-filter', apiKey: 'mc-list-filter-key' },
+    });
+    const otherServer = await prisma().server.create({
+      data: { name: 'mc-list-filter-other', apiKey: 'mc-list-filter-other-key' },
+    });
+    const bcrypt = await import('bcrypt');
+    const hash = await bcrypt.default.hash('Password123!', 12);
+    const player = await prisma().user.create({
+      data: {
+        email: 'mclistfilter@test.com',
+        passwordHash: hash,
+        username: 'mclistfilter',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440101',
+        minecraftName: 'FilterPlayer',
+      },
+    });
+    const otherPlayer = await prisma().user.create({
+      data: {
+        email: 'mclistfilterother@test.com',
+        passwordHash: hash,
+        username: 'mclistfilterother',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440102',
+        minecraftName: 'OtherFilterPlayer',
+      },
+    });
+
+    const visible = await prisma().ticket.create({
+      data: {
+        title: 'Visible ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.id,
+        serverId: server.id,
+      },
+    });
+    await prisma().ticket.create({
+      data: {
+        title: 'Other player ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: otherPlayer.id,
+        serverId: server.id,
+      },
+    });
+    await prisma().ticket.create({
+      data: {
+        title: 'Other server ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.id,
+        serverId: otherServer.id,
+      },
+    });
+    await prisma().ticket.create({
+      data: {
+        title: 'Web ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.id,
+        serverId: null,
+      },
+    });
+
+    const res = await request(app)
+      .get('/api/mc/tickets/550e8400-e29b-41d4-a716-446655440101')
+      .set('X-Server-Key', server.apiKey);
+
+    expect(res.status).toBe(200);
+    const ids = res.body.data.tickets.map((ticket: { id: number }) => ticket.id);
+    expect(ids).toEqual(expect.arrayContaining([visible.id]));
+    expect(ids).toContain(
+      await prisma()
+        .ticket.findFirstOrThrow({ where: { title: 'Other server ticket' }, select: { id: true } })
+        .then((ticket) => ticket.id),
+    );
+    expect(ids).toContain(
+      await prisma()
+        .ticket.findFirstOrThrow({ where: { title: 'Web ticket' }, select: { id: true } })
+        .then((ticket) => ticket.id),
+    );
+    expect(res.body.data.total).toBe(4);
+  });
+
+  it('does not require the path uuid to belong to a linked player for global ticket listing', async () => {
     const server = await prisma().server.create({
       data: { name: 'mc-empty', apiKey: 'mc-empty-key' },
+    });
+    const bcrypt = await import('bcrypt');
+    const hash = await bcrypt.default.hash('Password123!', 12);
+    const user = await prisma().user.create({
+      data: {
+        email: 'mcemptyexisting@test.com',
+        passwordHash: hash,
+        username: 'mcemptyexisting',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440103',
+        minecraftName: 'Existing',
+      },
+    });
+    await prisma().ticket.create({
+      data: {
+        title: 'Existing ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: user.id,
+        serverId: server.id,
+      },
     });
 
     const res = await request(app)
@@ -146,7 +251,9 @@ describe('GET /api/mc/tickets/:uuid', () => {
       .set('X-Server-Key', server.apiKey);
 
     expect(res.status).toBe(200);
-    expect(res.body.data.tickets).toEqual([]);
+    expect(res.body.data.tickets.map((ticket: { title: string }) => ticket.title)).toContain(
+      'Existing ticket',
+    );
   });
 });
 

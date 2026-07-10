@@ -34,12 +34,6 @@ public class TicketList {
     private void run(Player player, int page) {
         if (page < 1) page = 1;
 
-        List<PlayerData.CachedTicket> cached = PlayerData.getTicketList(player.getUniqueId());
-        if (page == 1 && !cached.isEmpty()) {
-            displayFromCache(player, cached);
-            return;
-        }
-
         fetchFromApi(player, page);
     }
 
@@ -71,11 +65,13 @@ public class TicketList {
                     Map.of("uuid", player.getUniqueId().toString()),
                     Map.of("page", String.valueOf(page), "pageSize", "10"));
         } catch (RuntimeException e) {
+            if (page == 1 && displayCacheFallback(player)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
         if (resp == null || resp.isEmpty()) {
+            if (page == 1 && displayCacheFallback(player)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
@@ -83,6 +79,7 @@ public class TicketList {
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
         if (parsed == null || !parsed.has("tickets")) {
+            if (page == 1 && displayCacheFallback(player)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
@@ -96,9 +93,14 @@ public class TicketList {
         if (totalPages < 1) totalPages = 1;
 
         if (tickets.size() == 0) {
+            if (respPage == 1) {
+                PlayerData.setTicketList(player.getUniqueId(), List.of());
+            }
             player.sendMessage(LangUtils.getLang("ticket.list_empty"));
             return;
         }
+
+        List<PlayerData.CachedTicket> cacheSnapshot = new java.util.ArrayList<>();
 
         player.sendMessage(LangUtils.getLang("ticket.list_header",
                 Map.of("{page}", String.valueOf(respPage), "{total}", String.valueOf(totalPages))));
@@ -110,10 +112,22 @@ public class TicketList {
             String status = t.has("status") ? t.get("status").getAsString() : "";
             String createdAt = t.has("createdAt") ? t.get("createdAt").getAsString() : "";
 
+            cacheSnapshot.add(new PlayerData.CachedTicket(id, title, status, createdAt));
             player.sendMessage(buildTicketLine(id, title, status, createdAt));
         }
 
+        if (respPage == 1) {
+            PlayerData.setTicketList(player.getUniqueId(), cacheSnapshot);
+        }
+
         sendPagination(player, respPage, totalPages);
+    }
+
+    private boolean displayCacheFallback(Player player) {
+        List<PlayerData.CachedTicket> cached = PlayerData.getTicketList(player.getUniqueId());
+        if (cached.isEmpty()) return false;
+        displayFromCache(player, cached);
+        return true;
     }
 
     private Component buildTicketLine(int id, String title, String status, String createdAt) {

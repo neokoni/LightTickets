@@ -8,6 +8,7 @@ import ink.neokoni.lightTickets.Configs.Templates;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.ApiClient;
 import ink.neokoni.lightTickets.Utils.ApiEndpoint;
+import ink.neokoni.lightTickets.Utils.DataRefreshManager;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
@@ -216,6 +217,7 @@ public class CreateTicket {
 
         player.sendMessage(LangUtils.getLang("ticket.created",
                 Map.of("{id}", String.valueOf(id), "{title}", respTitle)));
+        DataRefreshManager.refreshNow(player.getUniqueId());
     }
 
     private static String renderBody(TemplateData template, Map<String, String> formData) {

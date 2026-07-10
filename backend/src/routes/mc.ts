@@ -4,7 +4,6 @@ import { z } from 'zod';
 import { serverAuthMiddleware } from '../middleware/server-auth.js';
 import { ForbiddenError, ValidationError } from '../utils/errors.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
-import * as ticketService from '../services/ticket.service.js';
 import * as authService from '../services/auth.service.js';
 import * as mcService from '../services/mc.service.js';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
@@ -92,7 +91,10 @@ router.post('/tickets', async (req: Request, res: Response) => {
 
 router.get('/tickets/:uuid', async (req: Request, res: Response) => {
   const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
-  const result = await ticketService.list({ page, pageSize });
+  const result = await mcService.listTicketsForMinecraft({
+    page,
+    pageSize,
+  });
   res.json(result);
 });
 

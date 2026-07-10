@@ -17,6 +17,11 @@ export async function create(
     where: { id: ticketId },
     include: {
       author: { select: { id: true, minecraftUuid: true } },
+      assignees: {
+        include: {
+          user: { select: { id: true, minecraftUuid: true } },
+        },
+      },
       server: { select: { id: true } },
     },
   });
@@ -37,11 +42,39 @@ export async function create(
     },
   });
 
+  const targetUuids = new Set<string>();
   if (ticket.author?.minecraftUuid && ticket.authorId !== authorId) {
+    targetUuids.add(ticket.author.minecraftUuid);
+  }
+  for (const assignee of ticket.assignees) {
+    if (assignee.user.id !== authorId && assignee.user.minecraftUuid) {
+      targetUuids.add(assignee.user.minecraftUuid);
+    }
+  }
+
+  if (
+    targetUuids.size === 0 &&
+    source === CommentSource.minecraft &&
+    ticket.authorId === authorId
+  ) {
+    const staffUsers = await prisma().user.findMany({
+      where: {
+        role: { in: ['staff', 'admin'] },
+        minecraftUuid: { not: null },
+        id: { not: authorId },
+      },
+      select: { minecraftUuid: true },
+    });
+    for (const staff of staffUsers) {
+      if (staff.minecraftUuid) targetUuids.add(staff.minecraftUuid);
+    }
+  }
+
+  for (const playerUuid of targetUuids) {
     const payload = {
       ticketId: ticket.id,
       title: ticket.title,
-      playerUuid: ticket.author.minecraftUuid,
+      playerUuid,
       commentId: comment.id,
       body: comment.body,
       authorUserId: comment.author.id,
