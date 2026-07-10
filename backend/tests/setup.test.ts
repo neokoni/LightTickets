@@ -228,6 +228,36 @@ describe('POST /api/setup', () => {
 });
 
 describe('PATCH /api/setup/settings', () => {
+  it('returns admin settings with masked mail config', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-read@test.com',
+          password: 'admin123',
+          username: 'settingsread',
+        },
+      });
+
+    const res = await request(app)
+      .get('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.mail).toMatchObject({
+      enabled: false,
+      host: '',
+      port: 587,
+      secure: false,
+      username: null,
+      passwordSet: false,
+      fromName: '',
+      fromAddress: '',
+    });
+    expect(res.body.data.mail).not.toHaveProperty('password');
+  });
+
   it('allows admin to update requireLogin setting', async () => {
     await request(app)
       .post('/api/setup')
@@ -359,6 +389,163 @@ describe('PATCH /api/setup/settings', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.defaultLanguage).toBe('zh-CN');
+  });
+
+  it('allows admin to update mail settings without exposing password', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-mail@test.com',
+          password: 'admin123',
+          username: 'settingsmail',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        mail: {
+          enabled: true,
+          host: 'smtp.example.com',
+          port: 587,
+          secure: false,
+          username: 'mailer',
+          password: 'secret',
+          fromName: 'Tickets',
+          fromAddress: 'noreply@example.com',
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.mail).toMatchObject({
+      enabled: true,
+      host: 'smtp.example.com',
+      port: 587,
+      secure: false,
+      username: 'mailer',
+      passwordSet: true,
+      fromName: 'Tickets',
+      fromAddress: 'noreply@example.com',
+    });
+    expect(res.body.data.mail).not.toHaveProperty('password');
+
+    const config = await prisma().appConfig.findFirst();
+    const mailConfig = JSON.parse(config!.mailConfig!);
+    expect(mailConfig.password).toBe('secret');
+  });
+
+  it('keeps the existing mail password when password is omitted', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-mail-keep@test.com',
+          password: 'admin123',
+          username: 'settingsmailkeep',
+        },
+      });
+
+    await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        mail: {
+          enabled: true,
+          host: 'smtp.example.com',
+          port: 587,
+          username: 'mailer',
+          password: 'secret',
+          fromAddress: 'noreply@example.com',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        mail: {
+          enabled: true,
+          host: 'smtp2.example.com',
+          port: 465,
+          secure: true,
+          username: 'mailer',
+          fromAddress: 'noreply@example.com',
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.mail.passwordSet).toBe(true);
+    const config = await prisma().appConfig.findFirst();
+    const mailConfig = JSON.parse(config!.mailConfig!);
+    expect(mailConfig.host).toBe('smtp2.example.com');
+    expect(mailConfig.password).toBe('secret');
+  });
+
+  it('allows admin to test saved mail settings', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-mail-test@test.com',
+          password: 'admin123',
+          username: 'settingsmailtest',
+        },
+      });
+
+    await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        mail: {
+          enabled: true,
+          host: 'smtp.example.com',
+          port: 587,
+          username: 'mailer',
+          password: 'secret',
+          fromAddress: 'noreply@example.com',
+        },
+      });
+
+    const res = await request(app)
+      .post('/api/setup/settings/mail/test')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('rejects mail test for non-admin users', async () => {
+    await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-mail-test-admin@test.com',
+          password: 'admin123',
+          username: 'settingsmailtestadmin',
+        },
+      });
+
+    await request(app).post('/api/auth/register').send({
+      email: 'settings-mail-test-player@test.com',
+      password: 'Password123!',
+      username: 'settingsmailtestplayer',
+    });
+
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ emailOrUsername: 'settingsmailtestplayer', password: 'Password123!' });
+
+    const res = await request(app)
+      .post('/api/setup/settings/mail/test')
+      .set('Authorization', `Bearer ${loginRes.body.data.accessToken}`);
+
+    expect(res.status).toBe(403);
   });
 
   it('allows clearing siteUrl and footerContent with null', async () => {

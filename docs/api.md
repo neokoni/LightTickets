@@ -177,6 +177,43 @@ MySQL 可使用字段模式：
 }
 ```
 
+### 请求密码重置邮件
+
+`POST /api/auth/password-reset/request`
+
+公开接口，挂认证限流。SMTP 需先在管理后台站点设置中手动启用；初始化流程不包含邮件配置。
+
+请求体：
+
+```json
+{
+  "emailOrUsername": "user@example.com"
+}
+```
+
+`emailOrUsername` 与登录接口一致，可传邮箱或用户名。若邮件服务可用，无论账号是否存在都返回通用响应：
+
+```json
+{
+  "accepted": true
+}
+```
+
+### 确认密码重置
+
+`POST /api/auth/password-reset/confirm`
+
+请求体：
+
+```json
+{
+  "token": "reset-token",
+  "password": "NewPassword123!"
+}
+```
+
+成功后重置密码，并使该用户未使用的重置 token 失效。
+
 ### 刷新 Access Token
 
 `POST /api/auth/refresh`
@@ -400,6 +437,10 @@ MySQL 可使用字段模式：
 
 ### 站点设置
 
+`GET /api/setup/settings`
+
+需要 `admin`。返回站点设置和邮件设置；邮件密码只返回 `passwordSet`，不返回明文。
+
 `PATCH /api/setup/settings`
 
 需要 `admin`。
@@ -414,7 +455,30 @@ MySQL 可使用字段模式：
   "siteName": "LightTickets",
   "siteUrl": "https://tickets.example.com",
   "footerContent": "页脚内容",
-  "defaultLanguage": "zh-CN"
+  "defaultLanguage": "zh-CN",
+  "mail": {
+    "enabled": true,
+    "host": "smtp.example.com",
+    "port": 587,
+    "secure": false,
+    "username": "mailer",
+    "password": "secret",
+    "fromName": "Tickets",
+    "fromAddress": "noreply@example.com"
+  }
+}
+```
+
+`mail.password` 不传或传空时保留原密码；关闭邮件只需设置 `mail.enabled=false`。SMTP 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
+
+`POST /api/setup/settings/mail/test`
+
+需要 `admin`。使用已保存的 SMTP 配置执行 Nodemailer 连接验证，返回：
+
+```json
+{
+  "success": true,
+  "message": "SMTP 连接成功"
 }
 ```
 

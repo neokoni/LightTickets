@@ -15,6 +15,20 @@ export function apiLogin(emailOrUsername: string, password: string) {
   });
 }
 
+export function apiRequestPasswordReset(emailOrUsername: string) {
+  return apiFetch<{ accepted: boolean }>('/auth/password-reset/request', {
+    method: 'POST',
+    body: JSON.stringify({ emailOrUsername }),
+  });
+}
+
+export function apiConfirmPasswordReset(token: string, password: string) {
+  return apiFetch<{ reset: boolean }>('/auth/password-reset/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  });
+}
+
 export function apiRefresh() {
   return apiFetch<RefreshResponse>('/auth/refresh', {
     method: 'POST',

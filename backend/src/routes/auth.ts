@@ -6,6 +6,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rate-limit.js';
 import { ForbiddenError, ValidationError } from '../utils/errors.js';
 import { validate } from '../utils/validate.js';
+import * as passwordResetService from '../services/password-reset.service.js';
 
 const router = Router();
 const REFRESH_COOKIE_NAME = 'lt_refresh_token';
@@ -40,6 +41,25 @@ function clearRefreshCookie(res: Response): void {
   });
 }
 
+function resolveAccessOrigin(req: Request): string | undefined {
+  const origin = req.get('origin');
+  if (origin) return origin;
+
+  const referer = req.get('referer');
+  if (referer) {
+    try {
+      return new URL(referer).origin;
+    } catch {
+      // ignore malformed referer
+    }
+  }
+
+  const host = req.get('x-forwarded-host') ?? req.get('host');
+  if (!host) return undefined;
+  const proto = req.get('x-forwarded-proto')?.split(',')[0]?.trim() || req.protocol || 'http';
+  return `${proto}://${host}`;
+}
+
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -49,6 +69,20 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   emailOrUsername: z.string().min(1),
   password: z.string(),
+});
+
+const passwordResetRequestSchema = z
+  .object({
+    emailOrUsername: z.string().min(1).optional(),
+    email: z.string().min(1).optional(),
+  })
+  .refine((data) => data.emailOrUsername || data.email, {
+    message: '邮箱/用户名不能为空',
+  });
+
+const passwordResetConfirmSchema = z.object({
+  token: z.string().min(1),
+  password: z.string().min(8),
 });
 
 router.post('/register', authLimiter, async (req: Request, res: Response) => {
@@ -71,6 +105,21 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
   const result = await authService.login(data.emailOrUsername, data.password);
   setRefreshCookie(res, result.refreshToken);
   res.json(result);
+});
+
+router.post('/password-reset/request', authLimiter, async (req: Request, res: Response) => {
+  const data = validate(passwordResetRequestSchema, req.body);
+  await passwordResetService.requestPasswordReset(
+    data.emailOrUsername ?? data.email!,
+    resolveAccessOrigin(req),
+  );
+  res.json({ accepted: true });
+});
+
+router.post('/password-reset/confirm', authLimiter, async (req: Request, res: Response) => {
+  const data = validate(passwordResetConfirmSchema, req.body);
+  await passwordResetService.resetPassword(data.token, data.password);
+  res.json({ reset: true });
 });
 
 router.post('/refresh', authLimiter, async (req: Request, res: Response) => {

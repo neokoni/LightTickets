@@ -2,8 +2,20 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
+import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 
 const app = createApp();
+
+const mailConfig = {
+  enabled: true,
+  host: 'smtp.example.com',
+  port: 587,
+  secure: false,
+  username: 'mailer',
+  password: 'secret',
+  fromName: 'LightTickets',
+  fromAddress: 'noreply@example.com',
+};
 
 describe('POST /api/auth/register', () => {
   it('creates a new user and returns tokens', async () => {
@@ -88,6 +100,84 @@ describe('POST /api/auth/refresh', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('accessToken');
+  });
+});
+
+describe('POST /api/auth/password-reset', () => {
+  it('sends a reset email and accepts the token once', async () => {
+    clearTestOutbox();
+    await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'reset@example.com', password: 'Password123!', username: 'resetuser' });
+    await prisma().appConfig.create({ data: { mailConfig: JSON.stringify(mailConfig) } });
+
+    const requestRes = await request(app)
+      .post('/api/auth/password-reset/request')
+      .set('Origin', 'http://localhost:5173')
+      .send({ emailOrUsername: 'resetuser' });
+
+    expect(requestRes.status).toBe(200);
+    expect(requestRes.body.data.accepted).toBe(true);
+    expect(getTestOutbox()).toHaveLength(1);
+    expect(getTestOutbox()[0].to).toBe('reset@example.com');
+    expect(getTestOutbox()[0].html).toContain('border-radius:12px');
+
+    const tokenMatch = getTestOutbox()[0].text.match(/reset-password\?token=([^\s]+)/);
+    expect(tokenMatch?.[1]).toBeTruthy();
+    const token = decodeURIComponent(tokenMatch![1]);
+
+    const resetRes = await request(app)
+      .post('/api/auth/password-reset/confirm')
+      .send({ token, password: 'NewPassword123!' });
+
+    expect(resetRes.status).toBe(200);
+    expect(resetRes.body.data.reset).toBe(true);
+
+    const oldLogin = await request(app)
+      .post('/api/auth/login')
+      .send({ emailOrUsername: 'reset@example.com', password: 'Password123!' });
+    expect(oldLogin.status).toBe(401);
+
+    const newLogin = await request(app)
+      .post('/api/auth/login')
+      .send({ emailOrUsername: 'reset@example.com', password: 'NewPassword123!' });
+    expect(newLogin.status).toBe(200);
+
+    const reuse = await request(app)
+      .post('/api/auth/password-reset/confirm')
+      .send({ token, password: 'AnotherPassword123!' });
+    expect(reuse.status).toBe(400);
+  });
+
+  it('does not send email for unknown accounts', async () => {
+    clearTestOutbox();
+    await prisma().appConfig.create({ data: { mailConfig: JSON.stringify(mailConfig) } });
+
+    const res = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'missinguser' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.accepted).toBe(true);
+    expect(getTestOutbox()).toHaveLength(0);
+  });
+
+  it('rejects reset requests when mail is disabled', async () => {
+    await request(app).post('/api/auth/register').send({
+      email: 'disabled-reset@example.com',
+      password: 'Password123!',
+      username: 'disabledreset',
+    });
+
+    const existing = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'disabledreset' });
+    const missing = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'disabled-missing' });
+
+    expect(existing.status).toBe(400);
+    expect(missing.status).toBe(400);
   });
 });
 

@@ -81,6 +81,7 @@ export interface SettingsResult {
   siteUrl: string | null;
   footerContent: string | null;
   defaultLanguage: string;
+  mail: MailSettings;
 }
 
 export interface SettingsPayload {
@@ -91,4 +92,27 @@ export interface SettingsPayload {
   siteUrl?: string | null;
   footerContent?: string | null;
   defaultLanguage?: string;
+  mail?: MailSettingsPayload;
+}
+
+export interface MailSettings {
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string | null;
+  passwordSet: boolean;
+  fromName: string;
+  fromAddress: string;
+}
+
+export interface MailSettingsPayload {
+  enabled?: boolean;
+  host?: string;
+  port?: number;
+  secure?: boolean;
+  username?: string | null;
+  password?: string | null;
+  fromName?: string;
+  fromAddress?: string;
 }

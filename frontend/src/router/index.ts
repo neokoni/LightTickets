@@ -32,6 +32,18 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: () => import('@/views/ForgotPasswordView.vue'),
+      meta: { guest: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/views/ResetPasswordView.vue'),
+      meta: { guest: true, allowAuthenticated: true },
+    },
+    {
       path: '/',
       name: 'tickets',
       component: () => import('@/views/TicketListView.vue'),
@@ -154,7 +166,7 @@ router.beforeEach(async (to) => {
   }
 
   // 6. Already logged in visiting guest routes → go home
-  if (auth.isAuthenticated && to.meta.guest) {
+  if (auth.isAuthenticated && to.meta.guest && !to.meta.allowAuthenticated) {
     return { name: 'tickets' };
   }
 

@@ -7,7 +7,9 @@ import { AppError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
 import { ROLE } from '../constants/roles.js';
 import { CONFIG_PATH, isDatabaseConfigured, validateS3Config, type S3Config } from '../config.js';
-import { DEFAULT_LANGUAGE_ID, resolveLanguageId } from './i18n.service.js';
+import type { MailConfigInput, PublicMailConfig } from './mail-config.service.js';
+import * as i18nService from './i18n.service.js';
+import * as mailConfigService from './mail-config.service.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[] };
@@ -57,6 +59,10 @@ export interface SiteConfig {
   defaultLanguage: string;
 }
 
+export interface AdminSettings extends Omit<SiteConfig, 'isSetup'> {
+  mail: PublicMailConfig;
+}
+
 export interface SiteConfigInput {
   siteName?: string;
   siteUrl?: string;
@@ -99,7 +105,7 @@ function toSiteConfig(status: {
   footerContent: string | null;
   defaultLanguage: string;
 }): SiteConfig {
-  const defaultLanguage = resolveLanguageId(status.defaultLanguage);
+  const defaultLanguage = i18nService.resolveLanguageId(status.defaultLanguage);
   return {
     isSetup: status.isSetup,
     requireLogin: status.requireLogin,
@@ -154,7 +160,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       siteName: 'LightTickets',
       siteUrl: null,
       footerContent: null,
-      defaultLanguage: DEFAULT_LANGUAGE_ID,
+      defaultLanguage: i18nService.DEFAULT_LANGUAGE_ID,
     };
   }
 
@@ -192,7 +198,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       siteName: status?.siteName || 'LightTickets',
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
-      defaultLanguage: resolveLanguageId(status?.defaultLanguage),
+      defaultLanguage: i18nService.resolveLanguageId(status?.defaultLanguage),
     };
   } catch (e: unknown) {
     const error = e instanceof Error ? e : new Error(String(e));
@@ -210,6 +216,7 @@ export async function updateSettings(data: {
   siteUrl?: string | null;
   footerContent?: string | null;
   defaultLanguage?: string;
+  mail?: MailConfigInput;
 }) {
   const { getPrisma } = await import('../db.js');
   const prisma = getPrisma();
@@ -227,10 +234,13 @@ export async function updateSettings(data: {
       ...(data.siteUrl !== undefined && { siteUrl: data.siteUrl }),
       ...(data.footerContent !== undefined && { footerContent: data.footerContent }),
       ...(data.defaultLanguage !== undefined && {
-        defaultLanguage: resolveLanguageId(data.defaultLanguage),
+        defaultLanguage: i18nService.resolveLanguageId(data.defaultLanguage),
       }),
     },
   });
+  const mail = data.mail
+    ? await mailConfigService.updateMailConfig(data.mail)
+    : await mailConfigService.getMailConfig();
 
   return {
     requireLogin: updated.requireLogin,
@@ -239,7 +249,22 @@ export async function updateSettings(data: {
     siteName: updated.siteName,
     siteUrl: updated.siteUrl,
     footerContent: updated.footerContent,
-    defaultLanguage: resolveLanguageId(updated.defaultLanguage),
+    defaultLanguage: i18nService.resolveLanguageId(updated.defaultLanguage),
+    mail,
+  };
+}
+
+export async function getAdminSettings(): Promise<AdminSettings> {
+  const siteConfig = await getSiteConfig();
+  return {
+    requireLogin: siteConfig.requireLogin,
+    allowWebRegister: siteConfig.allowWebRegister,
+    allowMcRegister: siteConfig.allowMcRegister,
+    siteName: siteConfig.siteName,
+    siteUrl: siteConfig.siteUrl,
+    footerContent: siteConfig.footerContent,
+    defaultLanguage: siteConfig.defaultLanguage,
+    mail: await mailConfigService.getMailConfig(),
   };
 }
 
@@ -371,7 +396,7 @@ export async function completeSetup(input: SetupInput) {
       isSetup: true,
       siteName: siteConfig.siteName || 'LightTickets',
       siteUrl: siteConfig.siteUrl || null,
-      defaultLanguage: resolveLanguageId(siteConfig.defaultLanguage),
+      defaultLanguage: i18nService.resolveLanguageId(siteConfig.defaultLanguage),
     },
   });
 

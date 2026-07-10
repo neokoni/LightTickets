@@ -25,6 +25,16 @@ export async function updateSettings(data: SettingsPayload): Promise<SettingsRes
   });
 }
 
+export async function getSettings(): Promise<SettingsResult> {
+  return apiFetch<SettingsResult>('/setup/settings', { method: 'GET' });
+}
+
+export async function testMailSettings(): Promise<{ success: boolean; message: string }> {
+  return apiFetch<{ success: boolean; message: string }>('/setup/settings/mail/test', {
+    method: 'POST',
+  });
+}
+
 export async function waitForServerReady(maxAttempts = 30, intervalMs = 1000): Promise<boolean> {
   for (let i = 0; i < maxAttempts; i++) {
     try {

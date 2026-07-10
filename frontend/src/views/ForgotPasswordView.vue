@@ -1,30 +1,24 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useRouter, useRoute } from 'vue-router';
-import { useAuthStore } from '@/stores/auth';
-import { siteConfig } from '@/stores/site';
+import { apiRequestPasswordReset } from '@/api/auth';
 import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 
-const router = useRouter();
-const route = useRoute();
-const auth = useAuthStore();
-
 const emailOrUsername = ref('');
-const password = ref('');
+const submitted = ref(false);
 const error = ref('');
 const loading = ref(false);
 
 async function submit() {
   error.value = '';
+  submitted.value = false;
   loading.value = true;
   try {
-    await auth.login(emailOrUsername.value, password.value);
-    const redirect = (route.query.redirect as string) || '/';
-    router.push(redirect);
+    await apiRequestPasswordReset(emailOrUsername.value);
+    submitted.value = true;
   } catch (e) {
-    error.value = e instanceof Error ? e.message : t('auth.login.failed');
+    error.value = e instanceof Error ? e.message : t('auth.forgot.failed');
   } finally {
     loading.value = false;
   }
@@ -47,10 +41,10 @@ async function submit() {
         <h1
           class="mt-4 text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl"
         >
-          {{ t('auth.login.title') }}
+          {{ t('auth.forgot.title') }}
         </h1>
         <p class="mt-4 text-base leading-8 text-slate-600 dark:text-slate-300">
-          {{ t('auth.login.subtitle') }}
+          {{ t('auth.forgot.subtitle') }}
         </p>
       </div>
 
@@ -58,42 +52,32 @@ async function submit() {
         <BaseInput
           v-model="emailOrUsername"
           :label="t('auth.emailOrUsername')"
-          type="text"
           :placeholder="t('auth.emailOrUsernamePlaceholder')"
         />
-        <BaseInput
-          v-model="password"
-          :label="t('auth.password')"
-          type="password"
-          placeholder="••••••••"
-        />
 
+        <p v-if="submitted" class="text-sm text-green-600 dark:text-green-400">
+          {{ t('auth.forgot.sent') }}
+        </p>
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
-        <BaseButton filled type="submit" :loading="loading" class="w-full">{{
-          t('auth.login.title')
-        }}</BaseButton>
+        <BaseButton
+          filled
+          type="submit"
+          :loading="loading"
+          :disabled="!emailOrUsername.trim()"
+          class="w-full"
+        >
+          {{ t('auth.forgot.submit') }}
+        </BaseButton>
       </form>
 
-      <p class="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
         <RouterLink
-          to="/forgot-password"
+          to="/login"
           class="font-semibold text-slate-900 transition hover:text-slate-700 dark:text-slate-100 dark:hover:text-slate-300"
         >
-          {{ t('auth.forgot.link') }}
+          {{ t('auth.backToLogin') }}
         </RouterLink>
-      </p>
-
-      <p
-        v-if="siteConfig.allowWebRegister"
-        class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400"
-      >
-        {{ t('auth.noAccount') }}
-        <RouterLink
-          to="/register"
-          class="font-semibold text-slate-900 dark:text-slate-100 hover:text-slate-700 dark:hover:text-slate-300 transition"
-          >{{ t('auth.register.title') }}</RouterLink
-        >
       </p>
     </div>
   </div>

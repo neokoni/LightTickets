@@ -127,6 +127,33 @@ const registerAuthRoutes = () => {
   });
   registerRoute({
     method: 'post',
+    path: '/api/auth/password-reset/request',
+    summary: '请求密码重置邮件',
+    auth: 'none',
+    tags: ['Auth'],
+    bodySchema: z.object({
+      emailOrUsername: z.string().min(1),
+    }),
+    responseSchema: z.object({
+      accepted: z.boolean(),
+    }),
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/auth/password-reset/confirm',
+    summary: '确认密码重置',
+    auth: 'none',
+    tags: ['Auth'],
+    bodySchema: z.object({
+      token: z.string().min(1),
+      password: z.string().min(8),
+    }),
+    responseSchema: z.object({
+      reset: z.boolean(),
+    }),
+  });
+  registerRoute({
+    method: 'post',
     path: '/api/auth/refresh',
     summary: '刷新访问令牌',
     auth: 'none',
@@ -769,6 +796,36 @@ const registerSetupRoutes = () => {
       siteUrl: z.string().url().nullable().optional(),
       footerContent: z.string().max(2000).nullable().optional(),
       defaultLanguage: z.string().optional(),
+      mail: z
+        .object({
+          enabled: z.boolean().optional(),
+          host: z.string().optional(),
+          port: z.number().int().positive().optional(),
+          secure: z.boolean().optional(),
+          username: z.string().nullable().optional(),
+          password: z.string().nullable().optional(),
+          fromName: z.string().optional(),
+          fromAddress: z.string().email().or(z.literal('')).optional(),
+        })
+        .optional(),
+    }),
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/setup/settings',
+    summary: '获取管理端站点设置',
+    auth: 'admin',
+    tags: ['Setup'],
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/setup/settings/mail/test',
+    summary: '测试 SMTP 连接',
+    auth: 'admin',
+    tags: ['Setup'],
+    responseSchema: z.object({
+      success: z.boolean(),
+      message: z.string(),
     }),
   });
 };
@@ -803,7 +860,7 @@ const openapi = generator.generateDocument({
   openapi: '3.0.0',
   info: {
     title: 'LightTickets API',
-    version: '1.1.0',
+    version: '1.2.0',
     description: 'LightTickets API 文档',
   },
   servers: [{ url: 'http://localhost:3000', description: 'Development server' }],

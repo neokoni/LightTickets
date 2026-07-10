@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
 import * as setupService from '../services/setup.service.js';
+import * as mailService from '../services/mail.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { validate } from '../utils/validate.js';
@@ -123,6 +124,16 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
   });
 
   // PATCH /api/setup/settings - admin only
+  router.get(
+    '/settings',
+    authMiddleware,
+    requireRole(ROLE.ADMIN),
+    async (_req: Request, res: Response) => {
+      const result = await setupService.getAdminSettings();
+      res.json(result);
+    },
+  );
+
   router.patch(
     '/settings',
     authMiddleware,
@@ -136,10 +147,32 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
         siteUrl: z.string().url().nullable().optional(),
         footerContent: z.string().max(2000).nullable().optional(),
         defaultLanguage: z.string().optional(),
+        mail: z
+          .object({
+            enabled: z.boolean().optional(),
+            host: z.string().optional(),
+            port: z.number().int().positive().optional(),
+            secure: z.boolean().optional(),
+            username: z.string().nullable().optional(),
+            password: z.string().nullable().optional(),
+            fromName: z.string().optional(),
+            fromAddress: z.string().email().or(z.literal('')).optional(),
+          })
+          .optional(),
       });
       const data = validate(schema, req.body);
 
       const result = await setupService.updateSettings(data);
+      res.json(result);
+    },
+  );
+
+  router.post(
+    '/settings/mail/test',
+    authMiddleware,
+    requireRole(ROLE.ADMIN),
+    async (_req: Request, res: Response) => {
+      const result = await mailService.testMailConfig();
       res.json(result);
     },
   );
