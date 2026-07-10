@@ -61,7 +61,7 @@
 
 `GET /api/i18n/languages`
 
-公开接口。返回内置语言和 `data/locales/*.json` 自定义语言的清单。
+公开接口。返回内置语言（当前包含 `zh-CN`、`en-US`）和 `data/locales/*.json` 自定义语言的清单。
 
 ### 语言资源
 

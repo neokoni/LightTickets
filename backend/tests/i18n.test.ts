@@ -22,6 +22,11 @@ describe('GET /api/i18n/languages', () => {
           displayName: '简体中文',
           source: 'internal',
         }),
+        expect.objectContaining({
+          id: 'en-US',
+          displayName: 'English',
+          source: 'internal',
+        }),
       ]),
     );
   });
@@ -49,21 +54,30 @@ describe('GET /api/i18n/languages', () => {
 });
 
 describe('GET /api/i18n/languages/:id', () => {
+  it('returns bundled English messages', async () => {
+    const res = await request(app).get('/api/i18n/languages/en-US');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe('en-US');
+    expect(res.body.data.properties.displayName).toBe('English');
+    expect(res.body.data.messages['common.save']).toBe('Save');
+  });
+
   it('returns merged custom messages with zh-CN fallback', async () => {
     fs.mkdirSync(dataPath('locales'), { recursive: true });
     fs.writeFileSync(
-      dataPath('locales/en-US.json'),
+      dataPath('locales/test-Lang.json'),
       JSON.stringify({
-        manifest: { displayName: 'English' },
+        manifest: { displayName: 'Test Language' },
         messages: { 'common.save': 'Save' },
       }),
       'utf-8',
     );
 
-    const res = await request(app).get('/api/i18n/languages/en-US');
+    const res = await request(app).get('/api/i18n/languages/test-Lang');
 
     expect(res.status).toBe(200);
-    expect(res.body.data.id).toBe('en-US');
+    expect(res.body.data.id).toBe('test-Lang');
     expect(res.body.data.messages['common.save']).toBe('Save');
     expect(res.body.data.messages['common.cancel']).toBe('取消');
   });
