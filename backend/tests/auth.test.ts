@@ -162,6 +162,28 @@ describe('POST /api/auth/password-reset', () => {
     expect(getTestOutbox()).toHaveLength(0);
   });
 
+  it('limits reset email sends to one per minute for the same account', async () => {
+    clearTestOutbox();
+    await request(app).post('/api/auth/register').send({
+      email: 'limited-reset@example.com',
+      password: 'Password123!',
+      username: 'limitedreset',
+    });
+    await prisma().appConfig.create({ data: { mailConfig: JSON.stringify(mailConfig) } });
+
+    const first = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'limitedreset' });
+    const second = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'limited-reset@example.com' });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(429);
+    expect(getTestOutbox()).toHaveLength(1);
+    await expect(prisma().passwordResetToken.count()).resolves.toBe(1);
+  });
+
   it('rejects reset requests when mail is disabled', async () => {
     await request(app).post('/api/auth/register').send({
       email: 'disabled-reset@example.com',

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { prisma } from '../db.js';
-import { ValidationError } from '../utils/errors.js';
+import { AppError, ValidationError } from '../utils/errors.js';
 import * as setupService from './setup.service.js';
 import * as i18nService from './i18n.service.js';
 import * as mailService from './mail.service.js';
@@ -10,6 +10,7 @@ import { resolveSiteTitle } from './site.js';
 
 const RESET_TOKEN_BYTES = 32;
 const RESET_TOKEN_EXPIRY_MS = 30 * 60 * 1000;
+const RESET_EMAIL_SEND_INTERVAL_MS = 60 * 1000;
 
 function tokenHash(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -141,6 +142,17 @@ export async function requestPasswordReset(
   });
 
   const created = await prisma().$transaction(async (tx) => {
+    const recentToken = await tx.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        createdAt: { gte: new Date(Date.now() - RESET_EMAIL_SEND_INTERVAL_MS) },
+      },
+      select: { id: true },
+    });
+    if (recentToken) {
+      throw new AppError(429, '密码重置邮件发送过于频繁，请稍后再试');
+    }
+
     await tx.passwordResetToken.updateMany({
       where: { userId: user.id, usedAt: null },
       data: { usedAt: new Date() },
