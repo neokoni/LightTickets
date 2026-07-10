@@ -8602,7 +8602,72 @@
         "security": [],
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "isSetup": {
+                      "type": "boolean"
+                    },
+                    "requireLogin": {
+                      "type": "boolean"
+                    },
+                    "allowWebRegister": {
+                      "type": "boolean"
+                    },
+                    "allowMcRegister": {
+                      "type": "boolean"
+                    },
+                    "passwordResetEnabled": {
+                      "type": "boolean"
+                    },
+                    "siteName": {
+                      "type": "string"
+                    },
+                    "siteUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "footerContent": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "defaultLanguage": {
+                      "type": "string"
+                    },
+                    "turnstile": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "siteKey": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "enabled",
+                        "siteKey"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "isSetup",
+                    "requireLogin",
+                    "allowWebRegister",
+                    "allowMcRegister",
+                    "passwordResetEnabled",
+                    "siteName",
+                    "siteUrl",
+                    "footerContent",
+                    "defaultLanguage",
+                    "turnstile"
+                  ]
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",

@@ -57,6 +57,7 @@ export interface SiteConfig {
   requireLogin: boolean;
   allowWebRegister: boolean;
   allowMcRegister: boolean;
+  passwordResetEnabled: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
@@ -117,6 +118,7 @@ function toSiteConfig(status: {
     requireLogin: status.requireLogin,
     allowWebRegister: status.allowWebRegister,
     allowMcRegister: status.allowMcRegister,
+    passwordResetEnabled: false,
     siteName: resolveSiteTitle(status.siteName),
     siteUrl: status.siteUrl ?? null,
     footerContent: status.footerContent ?? null,
@@ -164,6 +166,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       requireLogin: false,
       allowWebRegister: true,
       allowMcRegister: true,
+      passwordResetEnabled: false,
       siteName: DEFAULT_SITE_TITLE,
       siteUrl: null,
       footerContent: null,
@@ -178,9 +181,12 @@ export async function getSiteConfig(): Promise<SiteConfig> {
     const status = await prisma.setupStatus.findFirst();
     if (status?.isSetup) {
       const siteConfig = toSiteConfig(status);
-      siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(
-        await turnstileConfigService.getTurnstileConfig(),
-      );
+      const [turnstile, mail] = await Promise.all([
+        turnstileConfigService.getTurnstileConfig(),
+        mailConfigService.getMailConfig(),
+      ]);
+      siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(turnstile);
+      siteConfig.passwordResetEnabled = mailConfigService.canSendPasswordResetMail(mail);
       return siteConfig;
     }
 
@@ -202,9 +208,12 @@ export async function getSiteConfig(): Promise<SiteConfig> {
 
       console.warn('[setup] Recovered missing setup status from existing users');
       const siteConfig = toSiteConfig(recovered);
-      siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(
-        await turnstileConfigService.getTurnstileConfig(),
-      );
+      const [turnstile, mail] = await Promise.all([
+        turnstileConfigService.getTurnstileConfig(),
+        mailConfigService.getMailConfig(),
+      ]);
+      siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(turnstile);
+      siteConfig.passwordResetEnabled = mailConfigService.canSendPasswordResetMail(mail);
       return siteConfig;
     }
 
@@ -213,6 +222,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       requireLogin: status?.requireLogin ?? false,
       allowWebRegister: status?.allowWebRegister ?? true,
       allowMcRegister: status?.allowMcRegister ?? true,
+      passwordResetEnabled: false,
       siteName: resolveSiteTitle(status?.siteName),
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
@@ -287,6 +297,7 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     requireLogin: siteConfig.requireLogin,
     allowWebRegister: siteConfig.allowWebRegister,
     allowMcRegister: siteConfig.allowMcRegister,
+    passwordResetEnabled: siteConfig.passwordResetEnabled,
     siteName: status?.siteName ?? siteConfig.siteName,
     siteUrl: siteConfig.siteUrl,
     footerContent: siteConfig.footerContent,

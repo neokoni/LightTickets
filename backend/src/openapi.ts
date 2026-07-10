@@ -726,6 +726,21 @@ const registerSetupRoutes = () => {
     summary: '获取站点配置',
     auth: 'none',
     tags: ['Setup'],
+    responseSchema: z.object({
+      isSetup: z.boolean(),
+      requireLogin: z.boolean(),
+      allowWebRegister: z.boolean(),
+      allowMcRegister: z.boolean(),
+      passwordResetEnabled: z.boolean(),
+      siteName: z.string(),
+      siteUrl: z.string().nullable(),
+      footerContent: z.string().nullable(),
+      defaultLanguage: z.string(),
+      turnstile: z.object({
+        enabled: z.boolean(),
+        siteKey: z.string(),
+      }),
+    }),
   });
   registerRoute({
     method: 'post',

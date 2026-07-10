@@ -26,6 +26,7 @@ describe('GET /api/setup/site-config', () => {
     expect(res.body.data).toHaveProperty('requireLogin');
     expect(res.body.data.defaultLanguage).toBe('zh-CN');
     expect(res.body.data.turnstile).toEqual({ enabled: false, siteKey: '' });
+    expect(res.body.data.passwordResetEnabled).toBe(false);
   });
 
   it('returns footerContent and siteUrl in site config', async () => {
@@ -464,6 +465,10 @@ describe('PATCH /api/setup/settings', () => {
     const config = await prisma().appConfig.findFirst();
     const mailConfig = JSON.parse(config!.mailConfig!);
     expect(mailConfig.password).toBe('secret');
+
+    const siteConfig = await request(app).get('/api/setup/site-config');
+    expect(siteConfig.body.data.passwordResetEnabled).toBe(true);
+    expect(siteConfig.body.data).not.toHaveProperty('mail');
   });
 
   it('keeps the existing mail password when password is omitted', async () => {

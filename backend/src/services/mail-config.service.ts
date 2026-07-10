@@ -104,6 +104,16 @@ function toPublicMailConfig(config: MailConfig): PublicMailConfig {
   };
 }
 
+export function canSendPasswordResetMail(config: MailConfig | PublicMailConfig): boolean {
+  if (!config.enabled) return false;
+  if (!config.host.trim()) return false;
+  if (!Number.isInteger(config.port) || config.port <= 0) return false;
+  if (!config.fromAddress.trim()) return false;
+  if (config.username && 'password' in config && !config.password) return false;
+  if (config.username && 'passwordSet' in config && !config.passwordSet) return false;
+  return true;
+}
+
 export async function getFullMailConfig(): Promise<MailConfig> {
   const appConfig = await ensureAppConfig();
   return parseMailConfig(appConfig.mailConfig);

@@ -85,7 +85,10 @@ async function submit() {
         }}</BaseButton>
       </form>
 
-      <p class="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">
+      <p
+        v-if="siteConfig.passwordResetEnabled"
+        class="mt-4 text-center text-sm text-slate-500 dark:text-slate-400"
+      >
         <RouterLink
           to="/forgot-password"
           class="font-semibold text-slate-900 transition hover:text-slate-700 dark:text-slate-100 dark:hover:text-slate-300"

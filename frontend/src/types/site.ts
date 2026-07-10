@@ -13,6 +13,7 @@ export interface SiteConfig {
   requireLogin: boolean;
   allowWebRegister: boolean;
   allowMcRegister: boolean;
+  passwordResetEnabled: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;

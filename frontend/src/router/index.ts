@@ -163,6 +163,10 @@ router.beforeEach(async (to) => {
     return { name: 'setup' };
   }
 
+  if (to.name === 'forgot-password' && !siteConfig.passwordResetEnabled) {
+    return { name: 'login' };
+  }
+
   // 5. requireLogin check
   const requireLogin = siteConfig.requireLogin === true;
 

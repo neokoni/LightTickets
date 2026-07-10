@@ -121,7 +121,9 @@ export async function requestPasswordReset(
   requestOrigin?: string,
 ): Promise<void> {
   const mailConfig = await mailConfigService.getFullMailConfig();
-  if (!mailConfig.enabled) throw new ValidationError('邮件服务尚未启用');
+  if (!mailConfigService.canSendPasswordResetMail(mailConfig)) {
+    throw new ValidationError('邮件服务尚未启用');
+  }
 
   const identifier = emailOrUsername.trim();
   const user = await prisma().user.findUnique({

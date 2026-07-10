@@ -154,6 +154,7 @@ async function submit() {
       requireLogin: false,
       allowWebRegister: true,
       allowMcRegister: true,
+      passwordResetEnabled: false,
       siteName: res.setup.siteName,
       siteUrl: res.setup.siteUrl,
       footerContent: null,

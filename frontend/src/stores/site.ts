@@ -1,5 +1,5 @@
 import { computed, reactive } from 'vue';
-import type { SiteConfig } from '@/types/site';
+import type { MailSettings, SiteConfig } from '@/types/site';
 
 export const DEFAULT_SITE_TITLE = 'LightTickets';
 
@@ -14,6 +14,7 @@ export const siteConfig = reactive<SiteConfigCache>({
   requireLogin: null,
   allowWebRegister: true,
   allowMcRegister: true,
+  passwordResetEnabled: false,
   siteName: '',
   siteUrl: null,
   footerContent: null,
@@ -26,6 +27,19 @@ export const siteTitle = computed(() => siteConfig.siteName?.trim() || DEFAULT_S
 
 export function setSiteConfigCache(data: SiteConfig) {
   Object.assign(siteConfig, data, { connectionError: false });
+}
+
+export function canSendPasswordResetMail(mail: MailSettings): boolean {
+  if (!mail.enabled) return false;
+  if (!mail.host.trim()) return false;
+  if (!Number.isInteger(mail.port) || mail.port <= 0) return false;
+  if (!mail.fromAddress.trim()) return false;
+  if (mail.username && !mail.passwordSet) return false;
+  return true;
+}
+
+export function setPasswordResetEnabledCache(value: boolean) {
+  siteConfig.passwordResetEnabled = value;
 }
 
 export function setRequireLoginCache(value: boolean) {
