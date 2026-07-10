@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { siteConfig } from '@/stores/site';
+import { siteConfig, siteTitle } from '@/stores/site';
 import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -42,7 +42,7 @@ async function submit() {
         <p
           class="text-sm font-semibold tracking-[0.2em] text-slate-500 uppercase dark:text-slate-400"
         >
-          LightTickets
+          {{ siteTitle }}
         </p>
         <h1
           class="mt-4 text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl"

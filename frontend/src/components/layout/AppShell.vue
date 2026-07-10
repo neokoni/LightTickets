@@ -4,7 +4,7 @@ import MarkdownIt from 'markdown-it';
 import AppHeader from './AppHeader.vue';
 import ToastContainer from './ToastContainer.vue';
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue';
-import { siteConfig } from '@/stores/site';
+import { siteConfig, siteTitle } from '@/stores/site';
 
 const md = new MarkdownIt({ html: false, linkify: true });
 
@@ -49,7 +49,7 @@ watch(
           class="prose prose-sm prose-slate mx-auto max-w-none text-center dark:prose-invert prose-a:underline hover:prose-a:text-slate-700 dark:hover:prose-a:text-slate-300 mb-0 last:mb-0 **:mb-0"
         />
         <p class="text-center text-sm text-slate-500 dark:text-slate-400">
-          &copy; {{ new Date().getFullYear() }} {{ siteConfig.siteName || 'LightTickets' }}
+          &copy; {{ new Date().getFullYear() }} {{ siteTitle }}
         </p>
       </div>
     </footer>

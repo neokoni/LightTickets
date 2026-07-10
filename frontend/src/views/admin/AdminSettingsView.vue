@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getSettings, testMailSettings, updateSettings } from '@/api/setup';
-import { setRequireLoginCache, siteConfig } from '@/stores/site';
+import { setRequireLoginCache, siteConfig, siteTitle } from '@/stores/site';
 import { useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { availableLanguages, t } from '@/i18n';
@@ -125,7 +125,7 @@ async function testMail() {
         v-model="siteName"
         :label="t('admin.settings.siteName')"
         maxlength="100"
-        placeholder="LightTickets"
+        :placeholder="siteTitle"
       />
 
       <!-- Site URL -->
@@ -275,7 +275,7 @@ async function testMail() {
             <BaseInput
               v-model="mailFromName"
               :label="t('admin.settings.mailFromName')"
-              placeholder="LightTickets"
+              :placeholder="siteTitle"
             />
             <BaseInput
               v-model="mailFromAddress"

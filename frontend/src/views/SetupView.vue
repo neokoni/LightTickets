@@ -6,7 +6,7 @@ import { useUiStore } from '@/stores/ui';
 import { Icon } from '@iconify/vue';
 import { completeSetup, waitForServerReady } from '@/api/setup';
 import type { SetupPayload } from '@/types/site';
-import { setSiteConfigCache } from '@/stores/site';
+import { DEFAULT_SITE_TITLE, setSiteConfigCache } from '@/stores/site';
 import { activeLanguage, availableLanguages, setLanguage, t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
@@ -55,6 +55,8 @@ const payload = reactive<SetupPayload>({
     },
   },
 });
+
+const setupSiteTitle = computed(() => payload.site?.siteName?.trim() || DEFAULT_SITE_TITLE);
 
 // MySQL fields
 const mysqlFields = reactive({
@@ -212,7 +214,7 @@ async function changeSetupLanguage(languageId: string) {
       <!-- Step 1: Welcome -->
       <div v-if="step === 1">
         <div class="text-center py-6">
-          <img src="/icons/lighttickets.svg" alt="LightTickets" class="w-16 h-16 mx-auto mb-4" />
+          <img src="/icons/lighttickets.svg" :alt="setupSiteTitle" class="w-16 h-16 mx-auto mb-4" />
           <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
             {{ t('setup.welcome') }}
           </h2>
@@ -405,7 +407,7 @@ async function changeSetupLanguage(languageId: string) {
         <BaseInput
           v-model="payload.site!.siteName"
           :label="t('setup.site.name')"
-          placeholder="LightTickets"
+          :placeholder="setupSiteTitle"
         />
         <BaseInput
           v-model="payload.site!.siteUrl"

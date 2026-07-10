@@ -4,7 +4,7 @@ import { Icon } from '@iconify/vue';
 import { RouterLink, useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
-import { siteConfig } from '@/stores/site';
+import { siteConfig, siteTitle } from '@/stores/site';
 import { t } from '@/i18n';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 
@@ -43,11 +43,11 @@ function handleLogout() {
       class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:py-5"
     >
       <RouterLink to="/" class="inline-flex w-fit shrink-0 items-center gap-2.5">
-        <img src="/icons/lighttickets.svg" alt="LightTickets" class="h-6 w-6 lg:h-7 lg:w-7" />
+        <img :alt="siteTitle" src="/icons/lighttickets.svg" class="h-6 w-6 lg:h-7 lg:w-7" />
         <div
           class="text-sm font-semibold tracking-[0.06em] text-slate-900 dark:text-slate-100 lg:text-base"
         >
-          {{ siteConfig.siteName || 'LightTickets' }}
+          {{ siteTitle }}
         </div>
       </RouterLink>
 
@@ -153,9 +153,9 @@ function handleLogout() {
         >
           <div class="mb-5 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <img src="/icons/lighttickets.svg" alt="LightTickets" class="h-6 w-6" />
+              <img :alt="siteTitle" src="/icons/lighttickets.svg" class="h-6 w-6" />
               <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {{ siteConfig.siteName || 'LightTickets' }}
+                {{ siteTitle }}
               </div>
             </div>
             <button
