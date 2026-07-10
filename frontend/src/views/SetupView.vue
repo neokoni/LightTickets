@@ -36,7 +36,7 @@ const payload = reactive<SetupPayload>({
     username: '',
   },
   site: {
-    siteName: 'LightTickets',
+    siteName: DEFAULT_SITE_TITLE,
     siteUrl: '',
     defaultLanguage: 'zh-CN',
   },

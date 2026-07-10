@@ -3,6 +3,7 @@ import yaml from 'js-yaml';
 import type { Server } from 'http';
 
 import { CONFIG_PATH, isDatabaseConfigured, getConfig } from './config.js';
+import { DEFAULT_SITE_TITLE } from './services/site.js';
 
 function loadSetupServerConfig(): { port?: number } {
   if (!fs.existsSync(CONFIG_PATH)) return {};
@@ -73,7 +74,7 @@ async function startSetupServer() {
   });
 
   app.get('/api/setup/site-config', (_req, res) => {
-    res.json({ isSetup: false, requireLogin: false, siteName: 'LightTickets' });
+    res.json({ isSetup: false, requireLogin: false, siteName: DEFAULT_SITE_TITLE });
   });
 
   const { createServer } = await import('http');

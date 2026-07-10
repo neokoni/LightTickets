@@ -10,6 +10,7 @@ import { CONFIG_PATH, isDatabaseConfigured, validateS3Config, type S3Config } fr
 import type { MailConfigInput, PublicMailConfig } from './mail-config.service.js';
 import * as i18nService from './i18n.service.js';
 import * as mailConfigService from './mail-config.service.js';
+import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[] };
@@ -111,7 +112,7 @@ function toSiteConfig(status: {
     requireLogin: status.requireLogin,
     allowWebRegister: status.allowWebRegister,
     allowMcRegister: status.allowMcRegister,
-    siteName: status.siteName || 'LightTickets',
+    siteName: resolveSiteTitle(status.siteName),
     siteUrl: status.siteUrl ?? null,
     footerContent: status.footerContent ?? null,
     defaultLanguage,
@@ -157,7 +158,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       requireLogin: false,
       allowWebRegister: true,
       allowMcRegister: true,
-      siteName: 'LightTickets',
+      siteName: DEFAULT_SITE_TITLE,
       siteUrl: null,
       footerContent: null,
       defaultLanguage: i18nService.DEFAULT_LANGUAGE_ID,
@@ -195,7 +196,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       requireLogin: status?.requireLogin ?? false,
       allowWebRegister: status?.allowWebRegister ?? true,
       allowMcRegister: status?.allowMcRegister ?? true,
-      siteName: status?.siteName || 'LightTickets',
+      siteName: resolveSiteTitle(status?.siteName),
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
       defaultLanguage: i18nService.resolveLanguageId(status?.defaultLanguage),
@@ -394,7 +395,7 @@ export async function completeSetup(input: SetupInput) {
   const setupRecord = await prisma.setupStatus.create({
     data: {
       isSetup: true,
-      siteName: siteConfig.siteName || 'LightTickets',
+      siteName: resolveSiteTitle(siteConfig.siteName),
       siteUrl: siteConfig.siteUrl || null,
       defaultLanguage: i18nService.resolveLanguageId(siteConfig.defaultLanguage),
     },

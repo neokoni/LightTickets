@@ -6,6 +6,7 @@ import * as setupService from './setup.service.js';
 import * as i18nService from './i18n.service.js';
 import * as mailService from './mail.service.js';
 import * as mailConfigService from './mail-config.service.js';
+import { resolveSiteTitle } from './site.js';
 
 const RESET_TOKEN_BYTES = 32;
 const RESET_TOKEN_EXPIRY_MS = 30 * 60 * 1000;
@@ -53,18 +54,19 @@ function buildResetEmail(input: {
   resetUrl: string;
   languageId: string;
 }) {
+  const siteName = resolveSiteTitle(input.siteName);
   const pack = i18nService.getLanguage(i18nService.resolveLanguageId(input.languageId));
   const messages = pack.messages;
   const minutes = String(Math.floor(RESET_TOKEN_EXPIRY_MS / 60000));
-  const subject = t(messages, 'mail.passwordReset.subject', { siteName: input.siteName });
+  const subject = t(messages, 'mail.passwordReset.subject', { siteName });
   const title = t(messages, 'mail.passwordReset.title');
   const greeting = t(messages, 'mail.passwordReset.greeting', { username: input.username });
-  const intro = t(messages, 'mail.passwordReset.intro', { siteName: input.siteName });
+  const intro = t(messages, 'mail.passwordReset.intro', { siteName });
   const button = t(messages, 'mail.passwordReset.button');
   const expiry = t(messages, 'mail.passwordReset.expiry', { minutes });
   const ignore = t(messages, 'mail.passwordReset.ignore');
   const fallback = t(messages, 'mail.passwordReset.fallback');
-  const safeSiteName = escapeHtml(input.siteName);
+  const safeSiteName = escapeHtml(siteName);
   const safeResetUrl = escapeHtml(input.resetUrl);
 
   const html = `<!doctype html>
@@ -99,7 +101,7 @@ function buildResetEmail(input: {
 </html>`;
 
   const text = [
-    `${input.siteName} - ${title}`,
+    `${siteName} - ${title}`,
     '',
     greeting,
     intro,
