@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
@@ -16,6 +16,40 @@ const mailConfig = {
   fromName: 'LightTickets',
   fromAddress: 'noreply@example.com',
 };
+
+const turnstileConfig = {
+  enabled: true,
+  siteKey: 'site-key',
+  secretKey: 'secret-key',
+};
+
+async function configureApp(
+  data: Parameters<ReturnType<typeof prisma>['appConfig']['create']>[0]['data'],
+) {
+  const status = await prisma().setupStatus.findFirst();
+  if (status) {
+    await prisma().setupStatus.update({
+      where: { id: status.id },
+      data: { isSetup: true },
+    });
+  } else {
+    await prisma().setupStatus.create({ data: { isSetup: true } });
+  }
+
+  const appConfig = await prisma().appConfig.findFirst();
+  if (appConfig) {
+    await prisma().appConfig.update({
+      where: { id: appConfig.id },
+      data,
+    });
+  } else {
+    await prisma().appConfig.create({ data });
+  }
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('POST /api/auth/register', () => {
   it('creates a new user and returns tokens', async () => {
@@ -40,6 +74,34 @@ describe('POST /api/auth/register', () => {
       .send({ email: 'dup@example.com', password: 'Password123!', username: 'user2' });
 
     expect(res.status).toBe(409);
+  });
+
+  it('requires turnstile token when turnstile is enabled', async () => {
+    await configureApp({ turnstileConfig: JSON.stringify(turnstileConfig) });
+
+    const missing = await request(app).post('/api/auth/register').send({
+      email: 'turnstile-register@example.com',
+      password: 'Password123!',
+      username: 'tregister',
+    });
+
+    expect(missing.status).toBe(400);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const valid = await request(app).post('/api/auth/register').send({
+      email: 'turnstile-register@example.com',
+      password: 'Password123!',
+      username: 'tregister',
+      turnstileToken: 'valid-token',
+    });
+
+    expect(valid.status).toBe(201);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
 
@@ -86,6 +148,34 @@ describe('POST /api/auth/login', () => {
 
     expect(res.status).toBe(401);
   });
+
+  it('requires turnstile token when turnstile is enabled', async () => {
+    await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'turnstile-login@example.com', password: 'Password123!', username: 'tlogin' });
+    await configureApp({ turnstileConfig: JSON.stringify(turnstileConfig) });
+
+    const missing = await request(app)
+      .post('/api/auth/login')
+      .send({ emailOrUsername: 'turnstile-login@example.com', password: 'Password123!' });
+
+    expect(missing.status).toBe(400);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const valid = await request(app).post('/api/auth/login').send({
+      emailOrUsername: 'turnstile-login@example.com',
+      password: 'Password123!',
+      turnstileToken: 'valid-token',
+    });
+
+    expect(valid.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
 });
 
 describe('POST /api/auth/refresh', () => {
@@ -109,7 +199,7 @@ describe('POST /api/auth/password-reset', () => {
     await request(app)
       .post('/api/auth/register')
       .send({ email: 'reset@example.com', password: 'Password123!', username: 'resetuser' });
-    await prisma().appConfig.create({ data: { mailConfig: JSON.stringify(mailConfig) } });
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
 
     const requestRes = await request(app)
       .post('/api/auth/password-reset/request')
@@ -151,7 +241,7 @@ describe('POST /api/auth/password-reset', () => {
 
   it('does not send email for unknown accounts', async () => {
     clearTestOutbox();
-    await prisma().appConfig.create({ data: { mailConfig: JSON.stringify(mailConfig) } });
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
 
     const res = await request(app)
       .post('/api/auth/password-reset/request')
@@ -162,6 +252,41 @@ describe('POST /api/auth/password-reset', () => {
     expect(getTestOutbox()).toHaveLength(0);
   });
 
+  it('requires turnstile token before sending reset email when turnstile is enabled', async () => {
+    clearTestOutbox();
+    await request(app).post('/api/auth/register').send({
+      email: 'turnstile-reset@example.com',
+      password: 'Password123!',
+      username: 'turnstilereset',
+    });
+    await configureApp({
+      mailConfig: JSON.stringify(mailConfig),
+      turnstileConfig: JSON.stringify(turnstileConfig),
+    });
+
+    const missing = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'turnstilereset' });
+
+    expect(missing.status).toBe(400);
+    expect(getTestOutbox()).toHaveLength(0);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true }),
+      }),
+    );
+
+    const valid = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'turnstilereset', turnstileToken: 'valid-token' });
+
+    expect(valid.status).toBe(200);
+    expect(getTestOutbox()).toHaveLength(1);
+  });
+
   it('limits reset email sends to one per minute for the same account', async () => {
     clearTestOutbox();
     await request(app).post('/api/auth/register').send({
@@ -169,7 +294,7 @@ describe('POST /api/auth/password-reset', () => {
       password: 'Password123!',
       username: 'limitedreset',
     });
-    await prisma().appConfig.create({ data: { mailConfig: JSON.stringify(mailConfig) } });
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
 
     const first = await request(app)
       .post('/api/auth/password-reset/request')

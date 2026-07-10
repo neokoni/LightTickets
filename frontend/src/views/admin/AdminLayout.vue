@@ -12,6 +12,7 @@ const navItems = [
   { to: '/admin/users', labelKey: 'admin.nav.users', icon: 'lucide:users' },
   { to: '/admin/settings', labelKey: 'admin.nav.settings', icon: 'lucide:settings' },
   { to: '/admin/mail', labelKey: 'admin.nav.mail', icon: 'lucide:mail' },
+  { to: '/admin/turnstile', labelKey: 'admin.nav.turnstile', icon: 'lucide:shield-check' },
   { to: '/admin/storage', labelKey: 'admin.nav.storage', icon: 'lucide:database' },
 ];
 </script>

@@ -187,12 +187,13 @@ model SetupStatus {
 }
 
 model AppConfig {
-  id            String   @id @default(uuid())
-  storageDriver String   @default("local") @map("storage_driver")
-  uploadDir     String   @default("data/uploads") @map("upload_dir")
-  s3Config      String?  @map("s3_config")
-  mailConfig    String?  @map("mail_config")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  storageDriver   String   @default("local") @map("storage_driver")
+  uploadDir       String   @default("data/uploads") @map("upload_dir")
+  s3Config        String?  @map("s3_config")
+  mailConfig      String?  @map("mail_config")
+  turnstileConfig String?  @map("turnstile_config")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("app_config")
 }

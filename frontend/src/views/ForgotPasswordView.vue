@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { apiRequestPasswordReset } from '@/api/auth';
-import { siteTitle } from '@/stores/site';
+import { siteConfig, siteTitle } from '@/stores/site';
 import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
+import TurnstileWidget from '@/components/auth/TurnstileWidget.vue';
 
 const emailOrUsername = ref('');
+const turnstileToken = ref('');
+const turnstileWidget = ref<InstanceType<typeof TurnstileWidget> | null>(null);
 const submitted = ref(false);
 const error = ref('');
 const loading = ref(false);
@@ -16,10 +19,12 @@ async function submit() {
   submitted.value = false;
   loading.value = true;
   try {
-    await apiRequestPasswordReset(emailOrUsername.value);
+    await apiRequestPasswordReset(emailOrUsername.value, turnstileToken.value);
     submitted.value = true;
+    turnstileWidget.value?.reset();
   } catch (e) {
     error.value = e instanceof Error ? e.message : t('auth.forgot.failed');
+    turnstileWidget.value?.reset();
   } finally {
     loading.value = false;
   }
@@ -54,6 +59,12 @@ async function submit() {
           v-model="emailOrUsername"
           :label="t('auth.emailOrUsername')"
           :placeholder="t('auth.emailOrUsernamePlaceholder')"
+        />
+        <TurnstileWidget
+          v-if="siteConfig.turnstile.enabled"
+          ref="turnstileWidget"
+          v-model="turnstileToken"
+          :site-key="siteConfig.turnstile.siteKey"
         />
 
         <p v-if="submitted" class="text-sm text-green-600 dark:text-green-400">

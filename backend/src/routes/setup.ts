@@ -34,73 +34,75 @@ function resolveAccessOrigin(req: Request): string | undefined {
   return undefined;
 }
 
-const setupSchema = z.object({
-  db: z
-    .object({
-      provider: z.enum(['sqlite', 'mysql']),
-      host: z.string().optional(),
-      port: z.number().int().positive().optional(),
-      username: z.string().optional(),
-      password: z.string().optional(),
-      database: z.string().optional(),
-      args: z.string().optional(),
-    })
-    .strict()
-    .superRefine((db, ctx) => {
-      if (db.provider !== 'mysql') return;
+const setupSchema = z
+  .object({
+    db: z
+      .object({
+        provider: z.enum(['sqlite', 'mysql']),
+        host: z.string().optional(),
+        port: z.number().int().positive().optional(),
+        username: z.string().optional(),
+        password: z.string().optional(),
+        database: z.string().optional(),
+        args: z.string().optional(),
+      })
+      .strict()
+      .superRefine((db, ctx) => {
+        if (db.provider !== 'mysql') return;
 
-      for (const field of ['host', 'username', 'database'] as const) {
-        if (!db[field]?.trim()) {
+        for (const field of ['host', 'username', 'database'] as const) {
+          if (!db[field]?.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'MySQL 配置必填',
+              path: [field],
+            });
+          }
+        }
+      }),
+    admin: z.object({
+      email: z.string().email(),
+      password: z.string().min(6),
+      username: z.string().min(2).max(30),
+    }),
+    site: z
+      .object({
+        siteName: z.string().optional(),
+        siteUrl: z.string().optional(),
+        defaultLanguage: z.string().optional(),
+      })
+      .optional(),
+    mc: z
+      .object({
+        defaultServerName: z.string().optional(),
+      })
+      .optional(),
+    storage: z
+      .object({
+        driver: z.enum(['local', 's3']),
+        s3: z
+          .object({
+            endpoint: z.string().optional(),
+            bucket: z.string().optional(),
+            accessKeyId: z.string().optional(),
+            secretAccessKey: z.string().optional(),
+            forcePathStyle: z.boolean().optional(),
+            presignExpiry: z.number().int().positive().optional(),
+          })
+          .optional(),
+      })
+      .superRefine((data, ctx) => {
+        if (data.driver === 's3' && !data.s3) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: 'MySQL 配置必填',
-            path: [field],
+            message: 'driver 为 s3 时必须提供 s3 配置',
+            path: ['s3'],
           });
         }
-      }
-    }),
-  admin: z.object({
-    email: z.string().email(),
-    password: z.string().min(6),
-    username: z.string().min(2).max(30),
-  }),
-  site: z
-    .object({
-      siteName: z.string().optional(),
-      siteUrl: z.string().optional(),
-      defaultLanguage: z.string().optional(),
-    })
-    .optional(),
-  mc: z
-    .object({
-      defaultServerName: z.string().optional(),
-    })
-    .optional(),
-  storage: z
-    .object({
-      driver: z.enum(['local', 's3']),
-      s3: z
-        .object({
-          endpoint: z.string().optional(),
-          bucket: z.string().optional(),
-          accessKeyId: z.string().optional(),
-          secretAccessKey: z.string().optional(),
-          forcePathStyle: z.boolean().optional(),
-          presignExpiry: z.number().int().positive().optional(),
-        })
-        .optional(),
-    })
-    .superRefine((data, ctx) => {
-      if (data.driver === 's3' && !data.s3) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'driver 为 s3 时必须提供 s3 配置',
-          path: ['s3'],
-        });
-      }
-    })
-    .optional(),
-});
+      })
+      .optional(),
+  })
+  .strict();
 
 export default function createSetupRoutes(options: SetupRouteOptions = {}) {
   const router = Router();
@@ -157,6 +159,13 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
             password: z.string().nullable().optional(),
             fromName: z.string().optional(),
             fromAddress: z.string().email().or(z.literal('')).optional(),
+          })
+          .optional(),
+        turnstile: z
+          .object({
+            enabled: z.boolean().optional(),
+            siteKey: z.string().optional(),
+            secretKey: z.string().nullable().optional(),
           })
           .optional(),
       });

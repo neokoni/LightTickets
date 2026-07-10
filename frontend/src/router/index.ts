@@ -110,6 +110,12 @@ const router = createRouter({
           meta: { auth: true, admin: true, titleKey: 'admin.mail.title' },
         },
         {
+          path: 'turnstile',
+          name: 'admin-turnstile',
+          component: () => import('@/views/admin/AdminTurnstileView.vue'),
+          meta: { auth: true, admin: true, titleKey: 'admin.turnstile.title' },
+        },
+        {
           path: 'storage',
           name: 'admin-storage',
           component: () => import('@/views/admin/AdminStorageView.vue'),

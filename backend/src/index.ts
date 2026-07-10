@@ -74,7 +74,12 @@ async function startSetupServer() {
   });
 
   app.get('/api/setup/site-config', (_req, res) => {
-    res.json({ isSetup: false, requireLogin: false, siteName: DEFAULT_SITE_TITLE });
+    res.json({
+      isSetup: false,
+      requireLogin: false,
+      siteName: DEFAULT_SITE_TITLE,
+      turnstile: { enabled: false, siteKey: '' },
+    });
   });
 
   const { createServer } = await import('http');

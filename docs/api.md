@@ -147,6 +147,7 @@ MySQL 可使用字段模式：
 ```
 
 成功后创建管理员、初始化模板和 AppConfig，并返回 `accessToken`；同时设置 refresh cookie。
+Turnstile 默认关闭，初始化接口不接受 Turnstile 配置；如需启用，只能在管理后台的 Turnstile 设置中配置 Site Key 和 Secret Key。
 
 ### 注册
 
@@ -158,11 +159,13 @@ MySQL 可使用字段模式：
 {
   "email": "user@example.com",
   "password": "Password123!",
-  "username": "player"
+  "username": "player",
+  "turnstileToken": "optional-token"
 }
 ```
 
 受 `allowWebRegister` 控制。成功后返回用户和 token，并设置 refresh cookie。
+启用 Turnstile 后必须传 `turnstileToken`；未启用时可省略。
 
 ### 登录
 
@@ -173,9 +176,12 @@ MySQL 可使用字段模式：
 ```json
 {
   "emailOrUsername": "user@example.com",
-  "password": "Password123!"
+  "password": "Password123!",
+  "turnstileToken": "optional-token"
 }
 ```
+
+启用 Turnstile 后必须传 `turnstileToken`；未启用时可省略。
 
 ### 请求密码重置邮件
 
@@ -187,11 +193,13 @@ MySQL 可使用字段模式：
 
 ```json
 {
-  "emailOrUsername": "user@example.com"
+  "emailOrUsername": "user@example.com",
+  "turnstileToken": "optional-token"
 }
 ```
 
 `emailOrUsername` 与登录接口一致，可传邮箱或用户名。若邮件服务可用，无论账号是否存在都返回通用响应：
+启用 Turnstile 后必须传 `turnstileToken`；未启用时可省略。
 
 ```json
 {
@@ -439,7 +447,7 @@ MySQL 可使用字段模式：
 
 `GET /api/setup/settings`
 
-需要 `admin`。返回站点设置和邮件设置；邮件密码只返回 `passwordSet`，不返回明文。
+需要 `admin`。返回站点设置、邮件设置和 Turnstile 设置；邮件密码和 Turnstile Secret Key 只返回是否已设置，不返回明文。
 
 `PATCH /api/setup/settings`
 
@@ -465,11 +473,17 @@ MySQL 可使用字段模式：
     "password": "secret",
     "fromName": "Tickets",
     "fromAddress": "noreply@example.com"
+  },
+  "turnstile": {
+    "enabled": true,
+    "siteKey": "0x4AAAA...",
+    "secretKey": "secret"
   }
 }
 ```
 
 `mail.password` 不传或传空时保留原密码；关闭邮件只需设置 `mail.enabled=false`。SMTP 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
+`turnstile.secretKey` 不传或传空时保留原 Secret Key；关闭 Turnstile 只需设置 `turnstile.enabled=false`。Turnstile 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
 
 `POST /api/setup/settings/mail/test`
 

@@ -10,6 +10,7 @@ import { CONFIG_PATH, isDatabaseConfigured, validateS3Config, type S3Config } fr
 import type { MailConfigInput, PublicMailConfig } from './mail-config.service.js';
 import * as i18nService from './i18n.service.js';
 import * as mailConfigService from './mail-config.service.js';
+import * as turnstileConfigService from './turnstile-config.service.js';
 import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 
 type SetupConfigFile = {
@@ -58,10 +59,12 @@ export interface SiteConfig {
   siteUrl: string | null;
   footerContent: string | null;
   defaultLanguage: string;
+  turnstile: turnstileConfigService.TurnstilePublicConfig;
 }
 
 export interface AdminSettings extends Omit<SiteConfig, 'isSetup'> {
   mail: PublicMailConfig;
+  turnstile: turnstileConfigService.PublicTurnstileConfig;
 }
 
 export interface SiteConfigInput {
@@ -116,6 +119,7 @@ function toSiteConfig(status: {
     siteUrl: status.siteUrl ?? null,
     footerContent: status.footerContent ?? null,
     defaultLanguage,
+    turnstile: { enabled: false, siteKey: '' },
   };
 }
 
@@ -162,6 +166,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       siteUrl: null,
       footerContent: null,
       defaultLanguage: i18nService.DEFAULT_LANGUAGE_ID,
+      turnstile: { enabled: false, siteKey: '' },
     };
   }
 
@@ -169,7 +174,13 @@ export async function getSiteConfig(): Promise<SiteConfig> {
     const { getPrisma } = await import('../db.js');
     const prisma = getPrisma();
     const status = await prisma.setupStatus.findFirst();
-    if (status?.isSetup) return toSiteConfig(status);
+    if (status?.isSetup) {
+      const siteConfig = toSiteConfig(status);
+      siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(
+        await turnstileConfigService.getTurnstileConfig(),
+      );
+      return siteConfig;
+    }
 
     const userCount = await prisma.user.count();
     if (userCount > 0) {
@@ -188,7 +199,11 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       }
 
       console.warn('[setup] Recovered missing setup status from existing users');
-      return toSiteConfig(recovered);
+      const siteConfig = toSiteConfig(recovered);
+      siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(
+        await turnstileConfigService.getTurnstileConfig(),
+      );
+      return siteConfig;
     }
 
     return {
@@ -200,6 +215,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
       defaultLanguage: i18nService.resolveLanguageId(status?.defaultLanguage),
+      turnstile: { enabled: false, siteKey: '' },
     };
   } catch (e: unknown) {
     const error = e instanceof Error ? e : new Error(String(e));
@@ -218,6 +234,7 @@ export async function updateSettings(data: {
   footerContent?: string | null;
   defaultLanguage?: string;
   mail?: MailConfigInput;
+  turnstile?: turnstileConfigService.TurnstileConfigInput;
 }) {
   const { getPrisma } = await import('../db.js');
   const prisma = getPrisma();
@@ -242,6 +259,9 @@ export async function updateSettings(data: {
   const mail = data.mail
     ? await mailConfigService.updateMailConfig(data.mail)
     : await mailConfigService.getMailConfig();
+  const turnstile = data.turnstile
+    ? await turnstileConfigService.updateTurnstileConfig(data.turnstile)
+    : await turnstileConfigService.getTurnstileConfig();
 
   return {
     requireLogin: updated.requireLogin,
@@ -252,6 +272,7 @@ export async function updateSettings(data: {
     footerContent: updated.footerContent,
     defaultLanguage: i18nService.resolveLanguageId(updated.defaultLanguage),
     mail,
+    turnstile,
   };
 }
 
@@ -265,6 +286,7 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     siteUrl: siteConfig.siteUrl,
     footerContent: siteConfig.footerContent,
     defaultLanguage: siteConfig.defaultLanguage,
+    turnstile: await turnstileConfigService.getTurnstileConfig(),
     mail: await mailConfigService.getMailConfig(),
   };
 }

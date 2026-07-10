@@ -1,24 +1,29 @@
 import { apiFetch } from './client';
 import type { AuthResponse, RefreshResponse, User } from '@/types/user';
 
-export function apiRegister(email: string, password: string, username: string) {
+export function apiRegister(
+  email: string,
+  password: string,
+  username: string,
+  turnstileToken?: string,
+) {
   return apiFetch<AuthResponse>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, username }),
+    body: JSON.stringify({ email, password, username, turnstileToken }),
   });
 }
 
-export function apiLogin(emailOrUsername: string, password: string) {
+export function apiLogin(emailOrUsername: string, password: string, turnstileToken?: string) {
   return apiFetch<AuthResponse>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ emailOrUsername, password }),
+    body: JSON.stringify({ emailOrUsername, password, turnstileToken }),
   });
 }
 
-export function apiRequestPasswordReset(emailOrUsername: string) {
+export function apiRequestPasswordReset(emailOrUsername: string, turnstileToken?: string) {
   return apiFetch<{ accepted: boolean }>('/auth/password-reset/request', {
     method: 'POST',
-    body: JSON.stringify({ emailOrUsername }),
+    body: JSON.stringify({ emailOrUsername, turnstileToken }),
   });
 }
 

@@ -18,6 +18,7 @@ export const siteConfig = reactive<SiteConfigCache>({
   siteUrl: null,
   footerContent: null,
   defaultLanguage: 'zh-CN',
+  turnstile: { enabled: false, siteKey: '' },
   connectionError: false,
 });
 

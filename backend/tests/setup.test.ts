@@ -25,6 +25,7 @@ describe('GET /api/setup/site-config', () => {
     expect(res.body.data.siteName).toBe('LightTickets');
     expect(res.body.data).toHaveProperty('requireLogin');
     expect(res.body.data.defaultLanguage).toBe('zh-CN');
+    expect(res.body.data.turnstile).toEqual({ enabled: false, siteKey: '' });
   });
 
   it('returns footerContent and siteUrl in site config', async () => {
@@ -135,6 +136,28 @@ describe('POST /api/setup', () => {
 
     const config = await request(app).get('/api/setup/site-config');
     expect(config.body.data.defaultLanguage).toBe('zh-CN');
+  });
+
+  it('does not accept turnstile configuration during setup', async () => {
+    const res = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'turnstile-setup@example.com',
+          password: 'admin123',
+          username: 'turnstilesetup',
+        },
+        turnstile: {
+          enabled: true,
+          siteKey: 'site-key',
+          secretKey: 'secret-key',
+        },
+      });
+
+    expect([400, 422]).toContain(res.status);
+    await expect(prisma().setupStatus.count()).resolves.toBe(0);
+    await expect(prisma().appConfig.count()).resolves.toBe(0);
   });
 
   it('persists s3 storage settings during setup', async () => {
@@ -256,6 +279,12 @@ describe('PATCH /api/setup/settings', () => {
       fromAddress: '',
     });
     expect(res.body.data.mail).not.toHaveProperty('password');
+    expect(res.body.data.turnstile).toMatchObject({
+      enabled: false,
+      siteKey: '',
+      secretKeySet: false,
+    });
+    expect(res.body.data.turnstile).not.toHaveProperty('secretKey');
   });
 
   it('allows admin to update requireLogin setting', async () => {
@@ -483,6 +512,73 @@ describe('PATCH /api/setup/settings', () => {
     const mailConfig = JSON.parse(config!.mailConfig!);
     expect(mailConfig.host).toBe('smtp2.example.com');
     expect(mailConfig.password).toBe('secret');
+  });
+
+  it('allows admin to update turnstile settings without exposing secret key', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-turnstile@test.com',
+          password: 'admin123',
+          username: 'settingsturnstile',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        turnstile: {
+          enabled: true,
+          siteKey: 'site-key',
+          secretKey: 'secret-key',
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.turnstile).toMatchObject({
+      enabled: true,
+      siteKey: 'site-key',
+      secretKeySet: true,
+    });
+    expect(res.body.data.turnstile).not.toHaveProperty('secretKey');
+
+    const siteConfig = await request(app).get('/api/setup/site-config');
+    expect(siteConfig.body.data.turnstile).toEqual({ enabled: true, siteKey: 'site-key' });
+
+    const config = await prisma().appConfig.findFirst();
+    const turnstileConfig = JSON.parse(config!.turnstileConfig!);
+    expect(turnstileConfig.secretKey).toBe('secret-key');
+  });
+
+  it('does not expose turnstile as enabled without both keys', async () => {
+    await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-turnstile-partial@test.com',
+          password: 'admin123',
+          username: 'settingsturnstilepartial',
+        },
+      });
+    const config = await prisma().appConfig.findFirst();
+    await prisma().appConfig.update({
+      where: { id: config!.id },
+      data: {
+        turnstileConfig: JSON.stringify({
+          enabled: true,
+          siteKey: 'site-key',
+          secretKey: null,
+        }),
+      },
+    });
+
+    const siteConfig = await request(app).get('/api/setup/site-config');
+
+    expect(siteConfig.body.data.turnstile).toEqual({ enabled: false, siteKey: 'site-key' });
   });
 
   it('allows admin to test saved mail settings', async () => {

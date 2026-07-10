@@ -23,14 +23,19 @@ export const useAuthStore = defineStore('auth', () => {
   const isStaff = computed(() => (user.value ? isStaffRole(user.value.role) : false));
   const isAdmin = computed(() => (user.value ? isAdminRole(user.value.role) : false));
 
-  async function login(emailOrUsername: string, password: string) {
-    const res = await apiLogin(emailOrUsername, password);
+  async function login(emailOrUsername: string, password: string, turnstileToken?: string) {
+    const res = await apiLogin(emailOrUsername, password, turnstileToken);
     user.value = res.user;
     setAccessToken(res.accessToken);
   }
 
-  async function register(email: string, password: string, username: string) {
-    const res = await apiRegister(email, password, username);
+  async function register(
+    email: string,
+    password: string,
+    username: string,
+    turnstileToken?: string,
+  ) {
+    const res = await apiRegister(email, password, username, turnstileToken);
     user.value = res.user;
     setAccessToken(res.accessToken);
   }

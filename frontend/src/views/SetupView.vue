@@ -157,6 +157,7 @@ async function submit() {
       siteUrl: res.setup.siteUrl,
       footerContent: null,
       defaultLanguage: res.setup.defaultLanguage,
+      turnstile: { enabled: false, siteKey: '' },
     });
     // Server restarts after setup — wait for it to come back
     const ready = await waitForServerReady();

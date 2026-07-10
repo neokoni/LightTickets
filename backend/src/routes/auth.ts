@@ -7,6 +7,7 @@ import { authLimiter } from '../middleware/rate-limit.js';
 import { ForbiddenError, ValidationError } from '../utils/errors.js';
 import { validate } from '../utils/validate.js';
 import * as passwordResetService from '../services/password-reset.service.js';
+import * as turnstileConfigService from '../services/turnstile-config.service.js';
 
 const router = Router();
 const REFRESH_COOKIE_NAME = 'lt_refresh_token';
@@ -64,17 +65,20 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   username: z.string().min(2).max(32),
+  turnstileToken: z.string().optional(),
 });
 
 const loginSchema = z.object({
   emailOrUsername: z.string().min(1),
   password: z.string(),
+  turnstileToken: z.string().optional(),
 });
 
 const passwordResetRequestSchema = z
   .object({
     emailOrUsername: z.string().min(1).optional(),
     email: z.string().min(1).optional(),
+    turnstileToken: z.string().optional(),
   })
   .refine((data) => data.emailOrUsername || data.email, {
     message: '邮箱/用户名不能为空',
@@ -94,6 +98,7 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
     throw new ForbiddenError('网页注册已关闭，请联系管理员');
   }
 
+  await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
   const result = await authService.register(data.email, data.password, data.username);
   setRefreshCookie(res, result.refreshToken);
   res.status(201).json(result);
@@ -102,6 +107,7 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
 router.post('/login', authLimiter, async (req: Request, res: Response) => {
   const data = validate(loginSchema, req.body);
 
+  await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
   const result = await authService.login(data.emailOrUsername, data.password);
   setRefreshCookie(res, result.refreshToken);
   res.json(result);
@@ -109,6 +115,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
 
 router.post('/password-reset/request', authLimiter, async (req: Request, res: Response) => {
   const data = validate(passwordResetRequestSchema, req.body);
+  await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
   await passwordResetService.requestPasswordReset(
     data.emailOrUsername ?? data.email!,
     resolveAccessOrigin(req),

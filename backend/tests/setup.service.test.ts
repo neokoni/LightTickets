@@ -104,6 +104,7 @@ vi.mock('../src/db.js', () => {
   return {
     initPrisma: vi.fn(),
     getPrisma: vi.fn(() => prisma),
+    prisma: vi.fn(() => prisma),
   };
 });
 

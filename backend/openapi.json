@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "LightTickets API",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "description": "LightTickets API 文档"
   },
   "servers": [
@@ -167,6 +167,9 @@
                     "type": "string",
                     "minLength": 2,
                     "maxLength": 32
+                  },
+                  "turnstileToken": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -304,6 +307,9 @@
                   },
                   "password": {
                     "type": "string"
+                  },
+                  "turnstileToken": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -437,6 +443,9 @@
                   "emailOrUsername": {
                     "type": "string",
                     "minLength": 1
+                  },
+                  "turnstileToken": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -8836,7 +8845,8 @@
                 "required": [
                   "db",
                   "admin"
-                ]
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -9033,6 +9043,21 @@
                             ]
                           }
                         ]
+                      }
+                    }
+                  },
+                  "turnstile": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "siteKey": {
+                        "type": "string"
+                      },
+                      "secretKey": {
+                        "type": "string",
+                        "nullable": true
                       }
                     }
                   }

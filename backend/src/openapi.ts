@@ -112,6 +112,7 @@ const registerAuthRoutes = () => {
       email: z.string().email(),
       password: z.string().min(8),
       username: z.string().min(2).max(32),
+      turnstileToken: z.string().optional(),
     }),
   });
   registerRoute({
@@ -123,6 +124,7 @@ const registerAuthRoutes = () => {
     bodySchema: z.object({
       emailOrUsername: z.string().min(1),
       password: z.string(),
+      turnstileToken: z.string().optional(),
     }),
   });
   registerRoute({
@@ -133,6 +135,7 @@ const registerAuthRoutes = () => {
     tags: ['Auth'],
     bodySchema: z.object({
       emailOrUsername: z.string().min(1),
+      turnstileToken: z.string().optional(),
     }),
     responseSchema: z.object({
       accepted: z.boolean(),
@@ -728,59 +731,61 @@ const registerSetupRoutes = () => {
     summary: '执行初始化设置',
     auth: 'none',
     tags: ['Setup'],
-    bodySchema: z.object({
-      db: z
-        .object({
-          provider: z.enum(['sqlite', 'mysql']),
-          host: z.string().optional(),
-          port: z.number().int().positive().optional(),
-          username: z.string().optional(),
-          password: z.string().optional(),
-          database: z.string().optional(),
-          args: z.string().optional(),
-        })
-        .strict()
-        .superRefine((db, ctx) => {
-          if (db.provider !== 'mysql') return;
-          for (const field of ['host', 'username', 'database'] as const) {
-            if (!db[field]?.trim()) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: 'MySQL 配置必填',
-                path: [field],
-              });
+    bodySchema: z
+      .object({
+        db: z
+          .object({
+            provider: z.enum(['sqlite', 'mysql']),
+            host: z.string().optional(),
+            port: z.number().int().positive().optional(),
+            username: z.string().optional(),
+            password: z.string().optional(),
+            database: z.string().optional(),
+            args: z.string().optional(),
+          })
+          .strict()
+          .superRefine((db, ctx) => {
+            if (db.provider !== 'mysql') return;
+            for (const field of ['host', 'username', 'database'] as const) {
+              if (!db[field]?.trim()) {
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: 'MySQL 配置必填',
+                  path: [field],
+                });
+              }
             }
-          }
+          }),
+        admin: z.object({
+          email: z.string().email(),
+          password: z.string().min(6),
+          username: z.string().min(2).max(30),
         }),
-      admin: z.object({
-        email: z.string().email(),
-        password: z.string().min(6),
-        username: z.string().min(2).max(30),
-      }),
-      site: z
-        .object({
-          siteName: z.string().optional(),
-          siteUrl: z.string().optional(),
-          defaultLanguage: z.string().optional(),
-        })
-        .optional(),
-      mc: z.object({ defaultServerName: z.string().optional() }).optional(),
-      storage: z
-        .object({
-          driver: z.enum(['local', 's3']),
-          s3: z
-            .object({
-              endpoint: z.string().optional(),
-              bucket: z.string().optional(),
-              accessKeyId: z.string().optional(),
-              secretAccessKey: z.string().optional(),
-              forcePathStyle: z.boolean().optional(),
-              presignExpiry: z.number().int().positive().optional(),
-            })
-            .optional(),
-        })
-        .optional(),
-    }),
+        site: z
+          .object({
+            siteName: z.string().optional(),
+            siteUrl: z.string().optional(),
+            defaultLanguage: z.string().optional(),
+          })
+          .optional(),
+        mc: z.object({ defaultServerName: z.string().optional() }).optional(),
+        storage: z
+          .object({
+            driver: z.enum(['local', 's3']),
+            s3: z
+              .object({
+                endpoint: z.string().optional(),
+                bucket: z.string().optional(),
+                accessKeyId: z.string().optional(),
+                secretAccessKey: z.string().optional(),
+                forcePathStyle: z.boolean().optional(),
+                presignExpiry: z.number().int().positive().optional(),
+              })
+              .optional(),
+          })
+          .optional(),
+      })
+      .strict(),
   });
   registerRoute({
     method: 'patch',
@@ -806,6 +811,13 @@ const registerSetupRoutes = () => {
           password: z.string().nullable().optional(),
           fromName: z.string().optional(),
           fromAddress: z.string().email().or(z.literal('')).optional(),
+        })
+        .optional(),
+      turnstile: z
+        .object({
+          enabled: z.boolean().optional(),
+          siteKey: z.string().optional(),
+          secretKey: z.string().nullable().optional(),
         })
         .optional(),
     }),
@@ -860,7 +872,7 @@ const openapi = generator.generateDocument({
   openapi: '3.0.0',
   info: {
     title: 'LightTickets API',
-    version: '1.2.0',
+    version: '1.2.1',
     description: 'LightTickets API 文档',
   },
   servers: [{ url: 'http://localhost:3000', description: 'Development server' }],

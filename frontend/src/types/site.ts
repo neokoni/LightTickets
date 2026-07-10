@@ -9,6 +9,7 @@ export interface SiteConfig {
   siteUrl: string | null;
   footerContent: string | null;
   defaultLanguage: string;
+  turnstile: TurnstilePublicConfig;
 }
 
 export interface SetupPayload {
@@ -82,6 +83,7 @@ export interface SettingsResult {
   footerContent: string | null;
   defaultLanguage: string;
   mail: MailSettings;
+  turnstile: TurnstileSettings;
 }
 
 export interface SettingsPayload {
@@ -93,6 +95,7 @@ export interface SettingsPayload {
   footerContent?: string | null;
   defaultLanguage?: string;
   mail?: MailSettingsPayload;
+  turnstile?: TurnstileSettingsPayload;
 }
 
 export interface MailSettings {
@@ -115,4 +118,19 @@ export interface MailSettingsPayload {
   password?: string | null;
   fromName?: string;
   fromAddress?: string;
+}
+
+export interface TurnstilePublicConfig {
+  enabled: boolean;
+  siteKey: string;
+}
+
+export interface TurnstileSettings extends TurnstilePublicConfig {
+  secretKeySet: boolean;
+}
+
+export interface TurnstileSettingsPayload {
+  enabled?: boolean;
+  siteKey?: string;
+  secretKey?: string | null;
 }

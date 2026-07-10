@@ -6,6 +6,7 @@ import { siteConfig, siteTitle } from '@/stores/site';
 import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
+import TurnstileWidget from '@/components/auth/TurnstileWidget.vue';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -14,6 +15,8 @@ const username = ref('');
 const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
+const turnstileToken = ref('');
+const turnstileWidget = ref<InstanceType<typeof TurnstileWidget> | null>(null);
 const error = ref('');
 const loading = ref(false);
 
@@ -35,10 +38,11 @@ async function submit() {
   }
   loading.value = true;
   try {
-    await auth.register(email.value, password.value, username.value);
+    await auth.register(email.value, password.value, username.value, turnstileToken.value);
     router.push('/');
   } catch (e) {
     error.value = e instanceof Error ? e.message : t('auth.register.failed');
+    turnstileWidget.value?.reset();
   } finally {
     loading.value = false;
   }
@@ -87,6 +91,12 @@ async function submit() {
           :label="t('auth.confirmPassword')"
           type="password"
           :placeholder="t('auth.confirmPasswordPlaceholder')"
+        />
+        <TurnstileWidget
+          v-if="siteConfig.turnstile.enabled"
+          ref="turnstileWidget"
+          v-model="turnstileToken"
+          :site-key="siteConfig.turnstile.siteKey"
         />
 
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
