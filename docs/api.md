@@ -212,7 +212,8 @@ MySQL 可使用字段模式：
     "description": "问题描述",
     "reproduce": "复现步骤"
   },
-  "serverId": "server-id"
+  "serverId": "server-id",
+  "attachmentIds": ["attachment-id"]
 }
 ```
 
@@ -222,6 +223,7 @@ MySQL 可使用字段模式：
 - `template`：模板名
 - `formData`：字符串键值对象
 - `serverId`：可选
+- `attachmentIds`：可选，预上传附件 ID 列表；创建成功后关联到该议题
 
 ### 议题列表
 

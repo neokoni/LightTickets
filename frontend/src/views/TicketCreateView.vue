@@ -2,8 +2,7 @@
 import { ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
-import { apiCreateTicket, apiUpdateTicketBody } from '@/api/tickets';
-import { apiUploadAttachment } from '@/api/attachments';
+import { apiCreateTicket } from '@/api/tickets';
 import { useUiStore } from '@/stores/ui';
 import { useTicketForm } from '@/composables/useTicketForm';
 import { useMarkdownUpload } from '@/composables/useMarkdownUpload';
@@ -34,7 +33,6 @@ const {
 
 const mdUpload = useMarkdownUpload();
 
-const files = ref<File[]>([]);
 const loading = ref(false);
 const error = ref('');
 const templateButtonClass =
@@ -42,8 +40,6 @@ const templateButtonClass =
 const iconButtonClass = '!px-0 !py-0 border-none text-slate-400 hover:text-red-500';
 const backButtonClass =
   '!px-0 !py-0 border-none text-slate-500 hover:text-slate-700 dark:hover:text-slate-300';
-const uploadButtonClass =
-  '!px-3 !py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100';
 
 onMounted(fetchTemplates);
 
@@ -55,24 +51,14 @@ watch(
   { deep: true },
 );
 
-function onFileChange(e: Event) {
-  const input = e.target as HTMLInputElement;
-  if (input.files && input.files.length > 0) {
-    files.value.push(...Array.from(input.files));
-  }
-  input.value = '';
-}
-
-function removeFile(index: number) {
-  files.value.splice(index, 1);
-}
-
-function getActiveTextarea(): HTMLTextAreaElement | null {
-  return document.activeElement as HTMLTextAreaElement | null;
+function getEventTextarea(e: DragEvent | ClipboardEvent): HTMLTextAreaElement | null {
+  if (e.target instanceof HTMLTextAreaElement) return e.target;
+  if (document.activeElement instanceof HTMLTextAreaElement) return document.activeElement;
+  return null;
 }
 
 function onTextareaFileDrop(e: DragEvent, fieldId: string) {
-  const textarea = getActiveTextarea();
+  const textarea = getEventTextarea(e);
   if (!textarea) return;
   const modelValue = {
     get value() {
@@ -86,7 +72,7 @@ function onTextareaFileDrop(e: DragEvent, fieldId: string) {
 }
 
 function onTextareaFilePaste(e: ClipboardEvent, fieldId: string) {
-  const textarea = getActiveTextarea();
+  const textarea = getEventTextarea(e);
   if (!textarea) return;
   const modelValue = {
     get value() {
@@ -104,22 +90,23 @@ async function submit() {
   error.value = '';
   loading.value = true;
   try {
+    let submittedFormData = formValues.value;
+    let attachmentIds: string[] = [];
+    if (mdUpload.pendingFiles.value.size > 0) {
+      const replaced = await mdUpload.uploadAndReplace(
+        JSON.stringify(formValues.value),
+        undefined,
+        (attachmentId) => attachmentIds.push(attachmentId),
+      );
+      submittedFormData = JSON.parse(replaced) as Record<string, string>;
+    }
+
     const ticket = await apiCreateTicket({
       title: title.value.trim(),
       template: selectedTemplateName.value,
-      formData: formValues.value,
+      formData: submittedFormData,
+      attachmentIds,
     });
-    if (files.value.length > 0) {
-      await Promise.all(
-        files.value.map((file) => apiUploadAttachment(file, { ticketId: ticket.id })),
-      );
-    }
-
-    // Upload markdown-embedded images and update body
-    if (mdUpload.pendingFiles.value.size > 0) {
-      const updatedBody = await mdUpload.uploadAndReplace(ticket.body, ticket.id);
-      await apiUpdateTicketBody(ticket.id, updatedBody);
-    }
 
     ui.toast('议题已创建', 'success');
     router.push(`/tickets/${ticket.id}`);
@@ -152,17 +139,23 @@ async function submit() {
       </BaseButton>
     </div>
 
-    <!-- Step 2: Template Form -->
-    <form
-      v-else-if="step === 2 && selectedTemplate"
-      class="space-y-4"
-      @submit.prevent="goToStep(3)"
-    >
+    <!-- Step 2: Ticket Form -->
+    <form v-else-if="step === 2 && selectedTemplate" class="space-y-4" @submit.prevent="submit">
       <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
         <BaseButton type="button" :class="backButtonClass" @click="goToStep(1)">
           <Icon icon="lucide:arrow-left" class="w-4 h-4" />
         </BaseButton>
         <span>{{ currentTemplateSummary?.name_i18n }}</span>
+      </div>
+
+      <div>
+        <BaseInput v-model="title" label="标题" placeholder="简要描述问题" />
+        <p
+          v-if="selectedTemplate?.title_prefix"
+          class="mt-1 text-xs text-slate-400 dark:text-slate-500"
+        >
+          前缀「{{ selectedTemplate.title_prefix }}」将自动添加到标题
+        </p>
       </div>
 
       <div v-for="field in selectedTemplate.body" :key="field.id || field.attributes.label">
@@ -196,24 +189,6 @@ async function submit() {
           @file-drop="onTextareaFileDrop($event, field.id || '')"
           @file-paste="onTextareaFilePaste($event, field.id || '')"
         />
-        <div
-          v-if="field.type === 'textarea' && mdUpload.pendingFiles.value.size > 0"
-          class="mt-1 flex flex-wrap gap-2"
-        >
-          <div
-            v-for="[url, file] in mdUpload.pendingFiles.value"
-            :key="url"
-            class="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
-          >
-            <Icon icon="lucide:image" class="w-3 h-3 text-slate-400" />
-            <span class="text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{{
-              file.name
-            }}</span>
-            <BaseButton type="button" :class="iconButtonClass" @click="mdUpload.removePending(url)">
-              <Icon icon="lucide:x" class="w-3 h-3" />
-            </BaseButton>
-          </div>
-        </div>
 
         <!-- checkboxes -->
         <fieldset v-else-if="field.type === 'checkboxes'" class="space-y-2">
@@ -259,68 +234,19 @@ async function submit() {
         />
       </div>
 
-      <div class="flex justify-end">
-        <BaseButton filled type="submit" :disabled="!allFieldsValid">下一步</BaseButton>
-      </div>
-    </form>
-
-    <!-- Step 3: Title + Attachments -->
-    <form v-else-if="step === 3" class="space-y-4" @submit.prevent="submit">
-      <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-        <BaseButton type="button" :class="backButtonClass" @click="goToStep(2)">
-          <Icon icon="lucide:arrow-left" class="w-4 h-4" />
-        </BaseButton>
-        <span>{{ currentTemplateSummary?.name_i18n }}</span>
-      </div>
-
-      <div>
-        <BaseInput v-model="title" label="标题" placeholder="简要描述问题" />
-        <p
-          v-if="selectedTemplate?.title_prefix"
-          class="mt-1 text-xs text-slate-400 dark:text-slate-500"
+      <div v-if="mdUpload.pendingFiles.value.size > 0" class="flex flex-wrap gap-2">
+        <div
+          v-for="[url, file] in mdUpload.pendingFiles.value"
+          :key="url"
+          class="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
         >
-          前缀「{{ selectedTemplate.title_prefix }}」将自动添加到标题
-        </p>
-      </div>
-
-      <!-- Attachment upload -->
-      <div class="space-y-2">
-        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">附件</label>
-        <div class="flex items-center gap-2">
-          <input
-            id="file-upload"
-            type="file"
-            multiple
-            accept="image/*,.pdf,.txt,.zip,.log"
-            class="hidden"
-            @change="onFileChange"
-          />
-          <BaseButton as="label" for="file-upload" :class="uploadButtonClass">
-            <Icon icon="lucide:paperclip" class="w-4 h-4" />
-            上传文件
+          <Icon icon="lucide:image" class="w-3 h-3 text-slate-400" />
+          <span class="text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{{
+            file.name
+          }}</span>
+          <BaseButton type="button" :class="iconButtonClass" @click="mdUpload.removePending(url)">
+            <Icon icon="lucide:x" class="w-3 h-3" />
           </BaseButton>
-        </div>
-        <div v-if="files.length > 0" class="space-y-1">
-          <div
-            v-for="(file, idx) in files"
-            :key="idx"
-            class="flex items-center justify-between px-3 py-2 rounded-md bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800/80 text-sm"
-          >
-            <div class="flex items-center gap-2 min-w-0">
-              <Icon icon="lucide:file" class="w-4 h-4 text-slate-400 shrink-0" />
-              <span class="text-slate-700 dark:text-slate-300 truncate">{{ file.name }}</span>
-              <span class="text-xs text-slate-400 shrink-0"
-                >{{ (file.size / 1024).toFixed(1) }} KB</span
-              >
-            </div>
-            <BaseButton
-              type="button"
-              :class="[iconButtonClass, 'shrink-0']"
-              @click="removeFile(idx)"
-            >
-              <Icon icon="lucide:x" class="w-4 h-4" />
-            </BaseButton>
-          </div>
         </div>
       </div>
 
@@ -328,9 +254,14 @@ async function submit() {
 
       <div class="flex justify-end gap-2">
         <BaseButton type="button" @click="router.back()">取消</BaseButton>
-        <BaseButton filled type="submit" :loading="loading" :disabled="!title.trim()"
-          >提交议题</BaseButton
+        <BaseButton
+          filled
+          type="submit"
+          :loading="loading"
+          :disabled="!allFieldsValid || !title.trim()"
         >
+          提交议题
+        </BaseButton>
       </div>
     </form>
   </div>

@@ -18,6 +18,7 @@ const createSchema = z.object({
   template: z.string().min(1),
   formData: z.record(z.string(), z.string()),
   serverId: z.string().optional(),
+  attachmentIds: z.array(z.string()).optional(),
 });
 
 router.post('/', authMiddleware, async (req: Request, res: Response) => {

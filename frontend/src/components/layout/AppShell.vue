@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, nextTick, ref, watch } from 'vue';
 import MarkdownIt from 'markdown-it';
 import AppHeader from './AppHeader.vue';
 import ToastContainer from './ToastContainer.vue';
@@ -13,11 +13,23 @@ const defaultLinkOpen =
   ((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
 md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
   tokens[idx].attrSet('target', '_blank');
+  tokens[idx].attrSet('rel', 'noopener noreferrer');
   return defaultLinkOpen(tokens, idx, options, env, self);
 };
 
+const footerRef = ref<HTMLElement | null>(null);
 const footerHtml = computed(() =>
   siteConfig.footerContent ? md.renderInline(siteConfig.footerContent) : '',
+);
+
+watch(
+  footerHtml,
+  () => {
+    nextTick(() => {
+      if (footerRef.value) footerRef.value.innerHTML = footerHtml.value;
+    });
+  },
+  { immediate: true },
 );
 </script>
 
@@ -33,8 +45,8 @@ const footerHtml = computed(() =>
       <div class="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 lg:px-8 space-y-1">
         <div
           v-if="footerHtml"
+          ref="footerRef"
           class="prose prose-sm prose-slate mx-auto max-w-none text-center dark:prose-invert prose-a:underline hover:prose-a:text-slate-700 dark:hover:prose-a:text-slate-300 mb-0 last:mb-0 **:mb-0"
-          v-html="footerHtml"
         />
         <p class="text-center text-sm text-slate-500 dark:text-slate-400">
           &copy; {{ new Date().getFullYear() }} {{ siteConfig.siteName || 'LightTickets' }}

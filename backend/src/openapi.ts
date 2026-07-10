@@ -166,6 +166,7 @@ const registerTicketRoutes = () => {
       template: z.string(),
       formData: z.record(z.string(), z.unknown()),
       serverId: z.string().optional(),
+      attachmentIds: z.array(z.string()).optional(),
     }),
   });
   registerRoute({
@@ -779,7 +780,7 @@ const openapi = generator.generateDocument({
   openapi: '3.0.0',
   info: {
     title: 'LightTickets API',
-    version: '1.0.0',
+    version: '1.0.1',
     description: 'LightTickets 工单系统 API 文档',
   },
   servers: [{ url: 'http://localhost:3000', description: 'Development server' }],

@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "LightTickets API",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "LightTickets 工单系统 API 文档"
   },
   "servers": [
@@ -836,6 +836,12 @@
                   },
                   "serverId": {
                     "type": "string"
+                  },
+                  "attachmentIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
                 "required": [
@@ -8188,9 +8194,6 @@
                           "mysql"
                         ]
                       },
-                      "databaseUrl": {
-                        "type": "string"
-                      },
                       "host": {
                         "type": "string"
                       },
@@ -8207,11 +8210,15 @@
                       },
                       "database": {
                         "type": "string"
+                      },
+                      "args": {
+                        "type": "string"
                       }
                     },
                     "required": [
                       "provider"
-                    ]
+                    ],
+                    "additionalProperties": false
                   },
                   "admin": {
                     "type": "object",

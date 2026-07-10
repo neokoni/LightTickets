@@ -99,6 +99,7 @@ interface CreateTicketInput {
   serverId?: string;
   authorId: number;
   gameContext?: string;
+  attachmentIds?: string[];
 }
 
 interface ListTicketsInput {
@@ -128,17 +129,39 @@ export async function create(input: CreateTicketInput) {
     }
   }
 
-  return prisma().ticket.create({
-    data: {
-      title,
-      body,
-      template: input.template,
-      formData: input.formData ? JSON.stringify(input.formData) : null,
-      gameContext: input.gameContext ?? null,
-      authorId: input.authorId,
-      serverId: input.serverId,
-    },
-    include: TICKET_INCLUDE_BASE,
+  const attachmentIds = Array.from(new Set(input.attachmentIds ?? []));
+
+  return prisma().$transaction(async (tx) => {
+    const ticket = await tx.ticket.create({
+      data: {
+        title,
+        body,
+        template: input.template,
+        formData: input.formData ? JSON.stringify(input.formData) : null,
+        gameContext: input.gameContext ?? null,
+        authorId: input.authorId,
+        serverId: input.serverId,
+      },
+      include: TICKET_INCLUDE_BASE,
+    });
+
+    if (attachmentIds.length > 0) {
+      const claimed = await tx.attachment.updateMany({
+        where: {
+          id: { in: attachmentIds },
+          uploadedBy: input.authorId,
+          ticketId: null,
+          commentId: null,
+        },
+        data: { ticketId: ticket.id },
+      });
+
+      if (claimed.count !== attachmentIds.length) {
+        throw new ValidationError('附件不存在或无权关联');
+      }
+    }
+
+    return ticket;
   });
 }
 

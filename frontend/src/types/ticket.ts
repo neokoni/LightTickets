@@ -123,6 +123,14 @@ export interface TemplateSummary {
   labels: string[];
 }
 
+export interface CreateTicketPayload {
+  title: string;
+  template: string;
+  formData: Record<string, string>;
+  serverId?: string;
+  attachmentIds?: string[];
+}
+
 export interface TicketFilters {
   page?: number;
   pageSize?: number;

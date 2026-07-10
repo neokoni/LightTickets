@@ -50,6 +50,11 @@ async function createTicket(token: string, overrides: Record<string, unknown> = 
     });
 }
 
+const PNG_1x1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64',
+);
+
 describe('POST /api/tickets', () => {
   it('creates a ticket', async () => {
     const token = await createUserAndGetToken();
@@ -91,6 +96,36 @@ describe('POST /api/tickets', () => {
       .send({ title: 'Test', template: 'nonexistent', formData: {} });
 
     expect(res.status).toBe(400);
+  });
+
+  it('claims pre-uploaded markdown attachments during create without body audit', async () => {
+    const token = await createUserAndGetToken('create-attachment@test.com');
+    const upload = await request(app)
+      .post('/api/attachments/upload')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', PNG_1x1, 'pasted.png');
+    const attachmentUrl = `/api/attachments/${upload.body.data.id}`;
+
+    const res = await createTicket(token, {
+      formData: {
+        description: `Screenshot\n\n![](${attachmentUrl})`,
+        reproduce: 'Step 1',
+      },
+      attachmentIds: [upload.body.data.id],
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.body).toContain(`![](${attachmentUrl})`);
+
+    const attachment = await prisma().attachment.findUnique({
+      where: { id: upload.body.data.id },
+    });
+    expect(attachment?.ticketId).toBe(res.body.data.id);
+
+    const auditCount = await prisma().auditLog.count({
+      where: { ticketId: res.body.data.id, action: 'body_change' },
+    });
+    expect(auditCount).toBe(0);
   });
 });
 

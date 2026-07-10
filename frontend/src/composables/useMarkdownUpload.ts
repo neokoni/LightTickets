@@ -75,12 +75,17 @@ export function useMarkdownUpload() {
     pendingFiles.value.delete(objectUrl);
   }
 
-  async function uploadAndReplace(text: string, ticketId: number): Promise<string> {
+  async function uploadAndReplace(
+    text: string,
+    ticketId?: number,
+    onUploaded?: (attachmentId: string) => void,
+  ): Promise<string> {
     let result = text;
     const entries = Array.from(pendingFiles.value.entries());
 
     const uploads = entries.map(async ([objectUrl, file]) => {
-      const attachment = await apiUploadAttachment(file, { ticketId });
+      const attachment = await apiUploadAttachment(file, ticketId ? { ticketId } : undefined);
+      onUploaded?.(attachment.id);
       result = result.replaceAll(objectUrl, `/api/attachments/${attachment.id}`);
       URL.revokeObjectURL(objectUrl);
     });

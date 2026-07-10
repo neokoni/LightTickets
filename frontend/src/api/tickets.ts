@@ -5,6 +5,7 @@ import type {
   TemplateSummary,
   TemplateDefinition,
   TicketFilters,
+  CreateTicketPayload,
 } from '@/types/ticket';
 import type { PaginatedResponse } from '@/types/api';
 
@@ -26,12 +27,7 @@ export function apiGetTicket(id: number) {
   return apiFetch<Ticket>(`/tickets/${id}`);
 }
 
-export function apiCreateTicket(data: {
-  title: string;
-  template: string;
-  formData: Record<string, string>;
-  serverId?: string;
-}) {
+export function apiCreateTicket(data: CreateTicketPayload) {
   return apiFetch<Ticket>('/tickets', {
     method: 'POST',
     body: JSON.stringify(data),

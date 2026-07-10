@@ -3,7 +3,7 @@ import type { TemplateSummary, TemplateDefinition, TemplateField } from '@/types
 import { apiGetTemplates, apiGetTemplate } from '@/api/tickets';
 
 export function useTicketForm() {
-  const step = ref<1 | 2 | 3>(1);
+  const step = ref<1 | 2>(1);
   const templates = ref<TemplateSummary[]>([]);
   const selectedTemplateName = ref<string | null>(null);
   const selectedTemplate = ref<TemplateDefinition | null>(null);
@@ -54,7 +54,7 @@ export function useTicketForm() {
     return selectedTemplate.value.body.every(isFieldValid);
   });
 
-  function goToStep(n: 1 | 2 | 3) {
+  function goToStep(n: 1 | 2) {
     step.value = n;
   }
 

@@ -61,7 +61,9 @@ watch(
   rendered,
   () => {
     nextTick(() => {
-      if (containerRef.value) insertCopyButtons(containerRef.value);
+      if (!containerRef.value) return;
+      containerRef.value.innerHTML = rendered.value;
+      insertCopyButtons(containerRef.value);
     });
   },
   { immediate: true },
@@ -72,7 +74,6 @@ watch(
   <div
     ref="containerRef"
     class="markdown-body prose prose-sm dark:prose-invert max-w-none prose-slate prose-blockquote:not-italic prose-blockquote:font-normal"
-    v-html="rendered"
   />
 </template>
 

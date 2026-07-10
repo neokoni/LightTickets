@@ -1,6 +1,7 @@
 export interface Attachment {
   id: string;
-  ticketId: number;
+  ticketId: number | null;
+  commentId?: string | null;
   filename: string;
   url: string;
   mimeType: string;
