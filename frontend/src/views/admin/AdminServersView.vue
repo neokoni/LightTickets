@@ -11,6 +11,7 @@ import {
 import { useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useConfirm } from '@/composables/useConfirm';
+import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
@@ -35,9 +36,9 @@ async function create() {
     servers.value.push(server);
     showModal.value = false;
     form.value = { name: '', address: '', description: '' };
-    ui.toast('服务器已创建', 'success');
+    ui.toast(t('admin.servers.created'), 'success');
   } catch (e) {
-    handleError(e, '创建失败');
+    handleError(e, t('common.createFailed'));
   }
 }
 
@@ -46,7 +47,7 @@ async function regenerate(id: string) {
     const { apiKey } = await apiRegenerateKey(id);
     const idx = servers.value.findIndex((s) => s.id === id);
     if (idx !== -1) servers.value[idx].apiKey = apiKey;
-    ui.toast('API Key 已重新生成', 'success');
+    ui.toast(t('admin.servers.keyRegenerated'), 'success');
   } catch (e) {
     handleError(e);
   }
@@ -74,20 +75,20 @@ async function saveEdit() {
     if (idx !== -1) servers.value[idx] = updated;
     showEditModal.value = false;
     editingServer.value = null;
-    ui.toast('服务器已更新', 'success');
+    ui.toast(t('admin.servers.updated'), 'success');
   } catch (e) {
-    handleError(e, '保存失败');
+    handleError(e, t('common.saveFailed'));
   }
 }
 
 async function remove(id: string) {
-  if (!(await confirm('确定删除此服务器？'))) return;
+  if (!(await confirm(t('admin.servers.deleteConfirm')))) return;
   try {
     await apiDeleteServer(id);
     servers.value = servers.value.filter((s) => s.id !== id);
-    ui.toast('服务器已删除', 'success');
+    ui.toast(t('admin.servers.deleted'), 'success');
   } catch (e) {
-    handleError(e, '删除失败');
+    handleError(e, t('common.deleteFailed'));
   }
 }
 
@@ -109,9 +110,9 @@ async function copyToClipboard(server: Server) {
         copiedId.value = null;
       }
     }, 2000);
-    ui.toast('API Key 已复制到剪贴板', 'success');
+    ui.toast(t('admin.servers.keyCopied'), 'success');
   } catch {
-    ui.toast('复制失败', 'error');
+    ui.toast(t('common.copyFailed'), 'error');
   }
 }
 
@@ -122,9 +123,11 @@ onMounted(fetchServers);
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-        服务器管理
+        {{ t('admin.servers.title') }}
       </h2>
-      <BaseButton size="sm" icon="lucide:plus" @click="showModal = true">添加服务器</BaseButton>
+      <BaseButton size="sm" icon="lucide:plus" @click="showModal = true">{{
+        t('admin.servers.add')
+      }}</BaseButton>
     </div>
 
     <div class="space-y-3">
@@ -145,17 +148,25 @@ onMounted(fetchServers);
             </div>
           </div>
           <div class="flex gap-1">
-            <BaseButton :class="iconButtonClass" title="重命名" @click="startEdit(server)">
+            <BaseButton
+              :class="iconButtonClass"
+              :title="t('admin.servers.rename')"
+              @click="startEdit(server)"
+            >
               <Icon icon="lucide:pencil" class="w-4 h-4" />
             </BaseButton>
             <BaseButton
               :class="iconButtonClass"
-              title="重新生成 Key"
+              :title="t('admin.servers.regenerateKey')"
               @click="regenerate(server.id)"
             >
               <Icon icon="lucide:refresh-cw" class="w-4 h-4" />
             </BaseButton>
-            <BaseButton :class="dangerIconButtonClass" title="删除" @click="remove(server.id)">
+            <BaseButton
+              :class="dangerIconButtonClass"
+              :title="t('common.delete')"
+              @click="remove(server.id)"
+            >
               <Icon icon="lucide:trash-2" class="w-4 h-4" />
             </BaseButton>
           </div>
@@ -172,7 +183,7 @@ onMounted(fetchServers);
                 ? 'text-green-500 dark:text-green-400'
                 : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
             ]"
-            title="复制 Key"
+            :title="t('admin.servers.copyKey')"
             @click="copyToClipboard(server)"
           >
             <Icon
@@ -186,30 +197,52 @@ onMounted(fetchServers);
         v-if="!servers.length"
         class="py-8 text-center text-sm text-slate-500 dark:text-slate-400"
       >
-        暂无服务器
+        {{ t('admin.servers.empty') }}
       </div>
     </div>
 
-    <BaseModal v-model="showModal" title="添加服务器">
+    <BaseModal v-model="showModal" :title="t('admin.servers.add')">
       <form class="space-y-4" @submit.prevent="create">
-        <BaseInput v-model="form.name" label="名称" placeholder="主服务器" />
-        <BaseInput v-model="form.address" label="地址（可选）" placeholder="play.example.com" />
-        <BaseInput v-model="form.description" label="描述（可选）" />
+        <BaseInput
+          v-model="form.name"
+          :label="t('common.name')"
+          :placeholder="t('admin.servers.namePlaceholder')"
+        />
+        <BaseInput
+          v-model="form.address"
+          :label="t('common.addressOptional')"
+          placeholder="play.example.com"
+        />
+        <BaseInput v-model="form.description" :label="t('common.descriptionOptional')" />
         <div class="flex justify-end gap-2">
-          <BaseButton type="button" @click="showModal = false">取消</BaseButton>
-          <BaseButton filled type="submit" :disabled="!form.name.trim()">创建</BaseButton>
+          <BaseButton type="button" @click="showModal = false">{{ t('common.cancel') }}</BaseButton>
+          <BaseButton filled type="submit" :disabled="!form.name.trim()">{{
+            t('common.create')
+          }}</BaseButton>
         </div>
       </form>
     </BaseModal>
 
-    <BaseModal v-model="showEditModal" title="编辑服务器">
+    <BaseModal v-model="showEditModal" :title="t('admin.servers.editTitle')">
       <form class="space-y-4" @submit.prevent="saveEdit">
-        <BaseInput v-model="editForm.name" label="名称" placeholder="主服务器" />
-        <BaseInput v-model="editForm.address" label="地址（可选）" placeholder="play.example.com" />
-        <BaseInput v-model="editForm.description" label="描述（可选）" />
+        <BaseInput
+          v-model="editForm.name"
+          :label="t('common.name')"
+          :placeholder="t('admin.servers.namePlaceholder')"
+        />
+        <BaseInput
+          v-model="editForm.address"
+          :label="t('common.addressOptional')"
+          placeholder="play.example.com"
+        />
+        <BaseInput v-model="editForm.description" :label="t('common.descriptionOptional')" />
         <div class="flex justify-end gap-2">
-          <BaseButton type="button" @click="showEditModal = false">取消</BaseButton>
-          <BaseButton filled type="submit" :disabled="!editForm.name.trim()">保存</BaseButton>
+          <BaseButton type="button" @click="showEditModal = false">{{
+            t('common.cancel')
+          }}</BaseButton>
+          <BaseButton filled type="submit" :disabled="!editForm.name.trim()">{{
+            t('common.save')
+          }}</BaseButton>
         </div>
       </form>
     </BaseModal>

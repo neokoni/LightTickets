@@ -11,13 +11,13 @@ export const AUDIT_ACTION = {
 
 export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];
 
-export const AUDIT_ACTION_META: Record<AuditAction, { label: string; icon: string }> = {
-  status_change: { label: '状态变更', icon: 'lucide:refresh-cw' },
-  body_change: { label: '正文修改', icon: 'lucide:file-text' },
-  title_change: { label: '标题修改', icon: 'lucide:type' },
-  comment_edit: { label: '评论编辑', icon: 'lucide:message-square' },
-  label_add: { label: '添加标签', icon: 'lucide:tag' },
-  label_remove: { label: '移除标签', icon: 'lucide:tag-off' },
-  assign: { label: '分配', icon: 'lucide:user-plus' },
-  assignees_change: { label: '负责人变更', icon: 'lucide:users' },
+export const AUDIT_ACTION_META: Record<AuditAction, { labelKey: string; icon: string }> = {
+  status_change: { labelKey: 'audit.action.statusChange', icon: 'lucide:refresh-cw' },
+  body_change: { labelKey: 'audit.action.bodyChange', icon: 'lucide:file-text' },
+  title_change: { labelKey: 'audit.action.titleChange', icon: 'lucide:type' },
+  comment_edit: { labelKey: 'audit.action.commentEdit', icon: 'lucide:message-square' },
+  label_add: { labelKey: 'audit.action.labelAdd', icon: 'lucide:tag' },
+  label_remove: { labelKey: 'audit.action.labelRemove', icon: 'lucide:tag-off' },
+  assign: { labelKey: 'audit.action.assign', icon: 'lucide:user-plus' },
+  assignees_change: { labelKey: 'audit.action.assigneesChange', icon: 'lucide:users' },
 };

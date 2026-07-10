@@ -4,6 +4,7 @@ import App from './App.vue';
 import router from './router';
 import { useUiStore } from './stores/ui';
 import { frontendConfig } from './config';
+import { initI18n } from './i18n';
 import './app.css';
 
 async function bootstrap() {
@@ -24,6 +25,7 @@ async function bootstrap() {
   const app = createApp(App);
   const pinia = createPinia();
   app.use(pinia);
+  await initI18n();
   app.use(router);
 
   const ui = useUiStore();

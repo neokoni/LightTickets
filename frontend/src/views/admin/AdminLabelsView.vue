@@ -5,6 +5,7 @@ import { useLabelsStore } from '@/stores/labels';
 import { useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useConfirm } from '@/composables/useConfirm';
+import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
@@ -37,10 +38,10 @@ async function save() {
   try {
     if (editingId.value) {
       await labels.update(editingId.value, form.value);
-      ui.toast('标签已更新', 'success');
+      ui.toast(t('admin.labels.updated'), 'success');
     } else {
       await labels.create(form.value);
-      ui.toast('标签已创建', 'success');
+      ui.toast(t('admin.labels.created'), 'success');
     }
     showModal.value = false;
   } catch (e) {
@@ -49,12 +50,12 @@ async function save() {
 }
 
 async function remove(id: string) {
-  if (!(await confirm('确定删除此标签？'))) return;
+  if (!(await confirm(t('admin.labels.deleteConfirm')))) return;
   try {
     await labels.remove(id);
-    ui.toast('标签已删除', 'success');
+    ui.toast(t('admin.labels.deleted'), 'success');
   } catch (e) {
-    handleError(e, '删除失败');
+    handleError(e, t('common.deleteFailed'));
   }
 }
 
@@ -66,8 +67,12 @@ onMounted(() => {
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">标签管理</h2>
-      <BaseButton size="sm" icon="lucide:plus" @click="openCreate">新建标签</BaseButton>
+      <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+        {{ t('admin.labels.title') }}
+      </h2>
+      <BaseButton size="sm" icon="lucide:plus" @click="openCreate">{{
+        t('admin.labels.create')
+      }}</BaseButton>
     </div>
 
     <div
@@ -98,21 +103,32 @@ onMounted(() => {
         v-if="!labels.labels.length"
         class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400"
       >
-        暂无标签
+        {{ t('admin.labels.empty') }}
       </div>
     </div>
 
-    <BaseModal v-model="showModal" :title="editingId ? '编辑标签' : '新建标签'">
+    <BaseModal
+      v-model="showModal"
+      :title="editingId ? t('admin.labels.editTitle') : t('admin.labels.create')"
+    >
       <form class="space-y-4" @submit.prevent="save">
-        <BaseInput v-model="form.name" label="名称" placeholder="bug, feature..." />
+        <BaseInput v-model="form.name" :label="t('common.name')" placeholder="bug, feature..." />
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">颜色</label>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">{{
+            t('common.color')
+          }}</label>
           <BaseColorPicker v-model="form.color" />
         </div>
-        <BaseInput v-model="form.description" label="描述（可选）" placeholder="标签用途说明" />
+        <BaseInput
+          v-model="form.description"
+          :label="t('common.descriptionOptional')"
+          :placeholder="t('admin.labels.descriptionPlaceholder')"
+        />
         <div class="flex justify-end gap-2">
-          <BaseButton type="button" @click="showModal = false">取消</BaseButton>
-          <BaseButton filled type="submit" :disabled="!form.name.trim()">保存</BaseButton>
+          <BaseButton type="button" @click="showModal = false">{{ t('common.cancel') }}</BaseButton>
+          <BaseButton filled type="submit" :disabled="!form.name.trim()">{{
+            t('common.save')
+          }}</BaseButton>
         </div>
       </form>
     </BaseModal>

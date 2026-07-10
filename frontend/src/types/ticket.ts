@@ -9,22 +9,32 @@ export const TICKET_STATUS = {
   INVALID: 'invalid',
 } as const;
 
-export const STATUS_META: Record<TicketStatus, { label: string; icon: string; color: string }> = {
-  [TICKET_STATUS.OPEN]: { label: '开放', icon: 'lucide:circle-dot', color: 'text-green-500' },
-  [TICKET_STATUS.IN_PROGRESS]: { label: '处理中', icon: 'lucide:loader', color: 'text-yellow-500' },
-  [TICKET_STATUS.CLOSED]: {
-    label: '已关闭',
-    icon: 'lucide:check-circle-2',
-    color: 'text-purple-500',
-  },
-  [TICKET_STATUS.INVALID]: { label: '无效', icon: 'lucide:ban', color: 'text-slate-400' },
-};
+export const STATUS_META: Record<TicketStatus, { labelKey: string; icon: string; color: string }> =
+  {
+    [TICKET_STATUS.OPEN]: {
+      labelKey: 'ticket.status.open',
+      icon: 'lucide:circle-dot',
+      color: 'text-green-500',
+    },
+    [TICKET_STATUS.IN_PROGRESS]: {
+      labelKey: 'ticket.status.inProgress',
+      icon: 'lucide:loader',
+      color: 'text-yellow-500',
+    },
+    [TICKET_STATUS.CLOSED]: {
+      labelKey: 'ticket.status.closed',
+      icon: 'lucide:check-circle-2',
+      color: 'text-purple-500',
+    },
+    [TICKET_STATUS.INVALID]: {
+      labelKey: 'ticket.status.invalid',
+      icon: 'lucide:ban',
+      color: 'text-slate-400',
+    },
+  };
 
 export const STATUS_ALIASES: Record<string, TicketStatus> = Object.fromEntries(
-  Object.entries(STATUS_META).flatMap(([key, { label }]) => [
-    [key, key],
-    [label, key],
-  ]),
+  Object.keys(STATUS_META).map((key) => [key, key]),
 ) as Record<string, TicketStatus>;
 export interface GameContext {
   world?: string;

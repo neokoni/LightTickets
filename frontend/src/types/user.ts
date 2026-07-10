@@ -6,10 +6,10 @@ export const ROLE = {
   ADMIN: 'admin',
 } as const;
 
-export const ROLE_META: Record<Role, { label: string }> = {
-  [ROLE.PLAYER]: { label: '玩家' },
-  [ROLE.STAFF]: { label: '工作人员' },
-  [ROLE.ADMIN]: { label: '管理员' },
+export const ROLE_META: Record<Role, { labelKey: string }> = {
+  [ROLE.PLAYER]: { labelKey: 'role.player' },
+  [ROLE.STAFF]: { labelKey: 'role.staff' },
+  [ROLE.ADMIN]: { labelKey: 'role.admin' },
 };
 
 export function isStaffRole(role: Role): boolean {

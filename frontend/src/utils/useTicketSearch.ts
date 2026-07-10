@@ -1,5 +1,6 @@
 import type { TicketStatus, TemplateSummary } from '@/types/ticket';
 import { STATUS_ALIASES, STATUS_META } from '@/types/ticket';
+import { t } from '@/i18n';
 import type { Server } from '@/types/user';
 import type { Label } from '@/types/ticket';
 
@@ -59,7 +60,7 @@ function resolveStatus(raw: string): TicketStatus | null {
 }
 
 function statusLabel(status: TicketStatus): string {
-  return STATUS_META[status]?.label ?? status;
+  return STATUS_META[status] ? t(STATUS_META[status].labelKey) : status;
 }
 
 function aliasMap(defs: FilterDefinition[]): Record<string, FilterDefinition> {
@@ -78,138 +79,143 @@ function byKey(defs: FilterDefinition[]): Record<string, FilterDefinition> {
   return map;
 }
 
-const FILTER_DEFS: FilterDefinition[] = [
-  {
-    key: 'status',
-    aliases: ['status', '状态'],
-    label: '状态',
-    color: {
-      bg: 'bg-green-100 dark:bg-green-900/30',
-      text: 'text-green-800 dark:text-green-300',
-      border: 'border-green-300 dark:border-green-700',
-    },
-    collect: true,
-    parse: (value, _ctx) => {
-      const s = resolveStatus(value);
-      if (!s) return null;
-      return { statuses: [s] };
-    },
-    preview: (value) => (resolveStatus(value) ? statusLabel(resolveStatus(value)!) : value),
-    suggestions: () =>
-      Object.entries(STATUS_META).map(([k, { label }]) => ({
-        value: k,
-        label: `${k} (${label})`,
-      })),
+export const FILTER_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  status: {
+    bg: 'bg-green-100 dark:bg-green-900/30',
+    text: 'text-green-800 dark:text-green-300',
+    border: 'border-green-300 dark:border-green-700',
   },
-  {
-    key: 'type',
-    aliases: ['type', '类型', '模板'],
-    label: '类型',
-    color: {
-      bg: 'bg-blue-100 dark:bg-blue-900/30',
-      text: 'text-blue-800 dark:text-blue-300',
-      border: 'border-blue-300 dark:border-blue-700',
-    },
-    parse: (value, ctx) => {
-      const v = value.toLowerCase();
-      const matched = ctx.templates.find(
-        (t) => t.name.toLowerCase() === v || t.name_i18n.toLowerCase() === v,
-      );
-      return matched ? { type: matched.name } : null;
-    },
-    preview: (value, ctx) => {
-      const v = value.toLowerCase();
-      const matched = ctx.templates.find(
-        (t) => t.name.toLowerCase() === v || t.name_i18n.toLowerCase() === v,
-      );
-      return matched ? matched.name_i18n : value;
-    },
-    suggestions: (ctx) =>
-      ctx.templates.map((t) => ({ value: t.name, label: `${t.name} (${t.name_i18n})` })),
+  type: {
+    bg: 'bg-blue-100 dark:bg-blue-900/30',
+    text: 'text-blue-800 dark:text-blue-300',
+    border: 'border-blue-300 dark:border-blue-700',
   },
-  {
-    key: 'label',
-    aliases: ['label', '标签'],
-    label: '标签',
-    color: {
-      bg: 'bg-purple-100 dark:bg-purple-900/30',
-      text: 'text-purple-800 dark:text-purple-300',
-      border: 'border-purple-300 dark:border-purple-700',
-    },
-    parse: (value, ctx) => {
-      const v = value.toLowerCase();
-      const matched = ctx.labels.find((l) => l.name.toLowerCase() === v);
-      return matched ? { labelId: matched.id } : null;
-    },
-    preview: (value, ctx) => {
-      const v = value.toLowerCase();
-      const matched = ctx.labels.find((l) => l.name.toLowerCase() === v);
-      return matched ? matched.name : value;
-    },
-    suggestions: (ctx) => ctx.labels.map((l) => ({ value: l.name, label: l.name })),
+  label: {
+    bg: 'bg-purple-100 dark:bg-purple-900/30',
+    text: 'text-purple-800 dark:text-purple-300',
+    border: 'border-purple-300 dark:border-purple-700',
   },
-  {
-    key: 'from',
-    aliases: ['from', '来源'],
-    label: '来源',
-    color: {
-      bg: 'bg-orange-100 dark:bg-orange-900/30',
-      text: 'text-orange-800 dark:text-orange-300',
-      border: 'border-orange-300 dark:border-orange-700',
-    },
-    parse: (value, ctx) => {
-      const v = value.toLowerCase();
-      if (v === 'web') return { hasServer: false };
-      if (v === 'minecraft') return { hasServer: true };
-      if (v.startsWith('minecraft:')) {
-        const serverName = v.slice('minecraft:'.length);
-        const matched = ctx.servers.find((s) => s.name.toLowerCase() === serverName);
-        return matched ? { serverId: matched.id, hasServer: undefined } : null;
-      }
-      return null;
-    },
-    preview: (value, ctx) => {
-      const v = value.toLowerCase();
-      if (v === 'web') return 'Web';
-      if (v === 'minecraft') return 'Minecraft';
-      if (v.startsWith('minecraft:')) {
-        const serverName = v.slice('minecraft:'.length);
-        const matched = ctx.servers.find((s) => s.name.toLowerCase() === serverName);
-        return matched ? `MC:${matched.name}` : value;
-      }
-      return value;
-    },
-    suggestions: (ctx) => [
-      { value: 'web', label: 'web (网页)' },
-      { value: 'minecraft', label: 'minecraft (游戏内)' },
-      ...ctx.servers.map((s) => ({
-        value: `minecraft:${s.name}`,
-        label: `minecraft:${s.name} (${s.name}服务器)`,
-      })),
-    ],
+  from: {
+    bg: 'bg-orange-100 dark:bg-orange-900/30',
+    text: 'text-orange-800 dark:text-orange-300',
+    border: 'border-orange-300 dark:border-orange-700',
   },
-  {
-    key: 'author',
-    aliases: ['author', '作者'],
-    label: '作者',
-    color: {
-      bg: 'bg-cyan-100 dark:bg-cyan-900/30',
-      text: 'text-cyan-800 dark:text-cyan-300',
-      border: 'border-cyan-300 dark:border-cyan-700',
-    },
-    parse: (value) => ({ authorName: value }),
-    preview: (value) => value,
-    suggestions: () => [],
+  author: {
+    bg: 'bg-cyan-100 dark:bg-cyan-900/30',
+    text: 'text-cyan-800 dark:text-cyan-300',
+    border: 'border-cyan-300 dark:border-cyan-700',
   },
-];
+};
 
-const ALIAS_MAP = aliasMap(FILTER_DEFS);
-const DEF_BY_KEY = byKey(FILTER_DEFS);
-
-export const FILTER_COLORS = Object.fromEntries(FILTER_DEFS.map((d) => [d.key, d.color]));
+function filterDefinitions(): FilterDefinition[] {
+  return [
+    {
+      key: 'status',
+      aliases: ['status', t('ticket.search.status')],
+      label: t('ticket.search.status'),
+      color: FILTER_COLORS.status,
+      collect: true,
+      parse: (value, _ctx) => {
+        const s = resolveStatus(value);
+        if (!s) return null;
+        return { statuses: [s] };
+      },
+      preview: (value) => (resolveStatus(value) ? statusLabel(resolveStatus(value)!) : value),
+      suggestions: () =>
+        Object.entries(STATUS_META).map(([k, { labelKey }]) => ({
+          value: k,
+          label: `${k} (${t(labelKey)})`,
+        })),
+    },
+    {
+      key: 'type',
+      aliases: ['type', t('ticket.search.type'), t('ticket.search.template')],
+      label: t('ticket.search.type'),
+      color: FILTER_COLORS.type,
+      parse: (value, ctx) => {
+        const v = value.toLowerCase();
+        const matched = ctx.templates.find(
+          (t) => t.name.toLowerCase() === v || t.name_i18n.toLowerCase() === v,
+        );
+        return matched ? { type: matched.name } : null;
+      },
+      preview: (value, ctx) => {
+        const v = value.toLowerCase();
+        const matched = ctx.templates.find(
+          (t) => t.name.toLowerCase() === v || t.name_i18n.toLowerCase() === v,
+        );
+        return matched ? matched.name_i18n : value;
+      },
+      suggestions: (ctx) =>
+        ctx.templates.map((t) => ({ value: t.name, label: `${t.name} (${t.name_i18n})` })),
+    },
+    {
+      key: 'label',
+      aliases: ['label', t('ticket.search.label')],
+      label: t('ticket.search.label'),
+      color: FILTER_COLORS.label,
+      parse: (value, ctx) => {
+        const v = value.toLowerCase();
+        const matched = ctx.labels.find((l) => l.name.toLowerCase() === v);
+        return matched ? { labelId: matched.id } : null;
+      },
+      preview: (value, ctx) => {
+        const v = value.toLowerCase();
+        const matched = ctx.labels.find((l) => l.name.toLowerCase() === v);
+        return matched ? matched.name : value;
+      },
+      suggestions: (ctx) => ctx.labels.map((l) => ({ value: l.name, label: l.name })),
+    },
+    {
+      key: 'from',
+      aliases: ['from', t('ticket.search.source')],
+      label: t('ticket.search.source'),
+      color: FILTER_COLORS.from,
+      parse: (value, ctx) => {
+        const v = value.toLowerCase();
+        if (v === 'web') return { hasServer: false };
+        if (v === 'minecraft') return { hasServer: true };
+        if (v.startsWith('minecraft:')) {
+          const serverName = v.slice('minecraft:'.length);
+          const matched = ctx.servers.find((s) => s.name.toLowerCase() === serverName);
+          return matched ? { serverId: matched.id, hasServer: undefined } : null;
+        }
+        return null;
+      },
+      preview: (value, ctx) => {
+        const v = value.toLowerCase();
+        if (v === 'web') return 'Web';
+        if (v === 'minecraft') return 'Minecraft';
+        if (v.startsWith('minecraft:')) {
+          const serverName = v.slice('minecraft:'.length);
+          const matched = ctx.servers.find((s) => s.name.toLowerCase() === serverName);
+          return matched ? `MC:${matched.name}` : value;
+        }
+        return value;
+      },
+      suggestions: (ctx) => [
+        { value: 'web', label: `web (${t('ticket.source.web')})` },
+        { value: 'minecraft', label: `minecraft (${t('ticket.source.minecraftInGame')})` },
+        ...ctx.servers.map((s) => ({
+          value: `minecraft:${s.name}`,
+          label: t('ticket.search.minecraftServerSuggestion', { name: s.name }),
+        })),
+      ],
+    },
+    {
+      key: 'author',
+      aliases: ['author', t('ticket.search.author')],
+      label: t('ticket.search.author'),
+      color: FILTER_COLORS.author,
+      parse: (value) => ({ authorName: value }),
+      preview: (value) => value,
+      suggestions: () => [],
+    },
+  ];
+}
 
 export function normalizeKey(raw: string): FilterDefinition | null {
-  return ALIAS_MAP[raw.toLowerCase()] ?? null;
+  return aliasMap(filterDefinitions())[raw.toLowerCase()] ?? null;
 }
 
 export function tokenize(raw: string): SearchToken[] {
@@ -270,7 +276,7 @@ export function parseQuery(
       continue;
     }
 
-    const def = DEF_BY_KEY[t.filterType];
+    const def = byKey(filterDefinitions())[t.filterType];
     if (!def) {
       textParts.push(t.raw);
       continue;
@@ -307,7 +313,7 @@ export function getFilterValuePreview(
   templates: TemplateSummary[],
   servers: Server[],
 ): string {
-  const def = DEF_BY_KEY[key];
+  const def = byKey(filterDefinitions())[key];
   if (!def) return value;
   return def.preview(value, { labels, templates, servers });
 }
@@ -320,13 +326,14 @@ export function getSuggestions(
   servers: Server[],
 ): SuggestionResult | null {
   const ctx: FilterContext = { labels, templates, servers };
+  const defs = filterDefinitions();
   const textBefore = raw.slice(0, cursorPos);
   const keyMatch = textBefore.match(/(?:^|\s)(\S+):\s*([^\s:]*)$/);
 
   if (keyMatch) {
     const rawKey = keyMatch[1];
     const partialValue = keyMatch[2];
-    const def = normalizeKey(rawKey);
+    const def = aliasMap(defs)[rawKey.toLowerCase()] ?? null;
     if (!def) return null;
 
     const items = def.suggestions(ctx);
@@ -346,12 +353,12 @@ export function getSuggestions(
   const partialKeyMatch = textBefore.match(/(?:^|\s)([^\s:]*)$/);
   if (partialKeyMatch && partialKeyMatch[1]) {
     const partial = partialKeyMatch[1].toLowerCase();
-    const items = FILTER_DEFS.filter((d) =>
-      d.aliases.some((a) => a.toLowerCase().startsWith(partial)),
-    ).map((d) => ({
-      value: d.key,
-      label: `${d.key} (${d.label})`,
-    }));
+    const items = defs
+      .filter((d) => d.aliases.some((a) => a.toLowerCase().startsWith(partial)))
+      .map((d) => ({
+        value: d.key,
+        label: `${d.key} (${d.label})`,
+      }));
     if (items.length > 0 && partial.length >= 1) {
       return { type: 'key', items };
     }

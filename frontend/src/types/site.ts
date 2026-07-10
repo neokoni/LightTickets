@@ -8,6 +8,7 @@ export interface SiteConfig {
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
+  defaultLanguage: string;
 }
 
 export interface SetupPayload {
@@ -28,6 +29,7 @@ export interface SetupPayload {
   site?: {
     siteName?: string;
     siteUrl?: string;
+    defaultLanguage?: string;
   };
   mc?: {
     defaultServerName?: string;
@@ -51,6 +53,7 @@ export interface SetupResult {
     isSetup: boolean;
     siteName: string;
     siteUrl: string | null;
+    defaultLanguage: string;
     createdAt: string;
     updatedAt: string;
   };
@@ -77,4 +80,15 @@ export interface SettingsResult {
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
+  defaultLanguage: string;
+}
+
+export interface SettingsPayload {
+  requireLogin?: boolean;
+  allowWebRegister?: boolean;
+  allowMcRegister?: boolean;
+  siteName?: string;
+  siteUrl?: string | null;
+  footerContent?: string | null;
+  defaultLanguage?: string;
 }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
+import { t } from '@/i18n';
 
 const props = defineProps<{
   page: number;
@@ -45,14 +46,14 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
       v-if="total != null && pageSize != null"
       class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"
     >
-      <span>共 {{ total }} 条</span>
+      <span>{{ t('pagination.total', { total }) }}</span>
       <div ref="sizeEl" class="relative">
         <button
           type="button"
           class="flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition cursor-pointer"
           @click="sizeOpen = !sizeOpen"
         >
-          {{ pageSize }} 条/页
+          {{ t('pagination.pageSize', { size: pageSize }) }}
           <Icon
             icon="lucide:chevron-down"
             class="w-3 h-3 text-slate-400 transition-transform duration-200"
@@ -84,7 +85,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
                 "
                 @click="pickSize(s)"
               >
-                {{ s }} 条/页
+                {{ t('pagination.pageSize', { size: s }) }}
               </button>
             </div>
           </div>

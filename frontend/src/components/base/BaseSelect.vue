@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
+import { t } from '@/i18n';
 
 const model = defineModel<string>();
 
@@ -34,7 +35,9 @@ onMounted(() => document.addEventListener('mousedown', onClickOutside));
 onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside));
 
 const selectedLabel = () =>
-  props.options.find((o) => o.value === model.value)?.label ?? props.placeholder ?? '请选择';
+  props.options.find((o) => o.value === model.value)?.label ??
+  props.placeholder ??
+  t('common.selectPlaceholder');
 </script>
 
 <template>

@@ -67,6 +67,7 @@ const setupSchema = z.object({
     .object({
       siteName: z.string().optional(),
       siteUrl: z.string().optional(),
+      defaultLanguage: z.string().optional(),
     })
     .optional(),
   mc: z
@@ -134,6 +135,7 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
         siteName: z.string().min(1).max(100).optional(),
         siteUrl: z.string().url().nullable().optional(),
         footerContent: z.string().max(2000).nullable().optional(),
+        defaultLanguage: z.string().optional(),
       });
       const data = validate(schema, req.body);
 

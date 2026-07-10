@@ -4,8 +4,10 @@ import { getSiteConfig, updateSettings } from '@/api/setup';
 import { setRequireLoginCache, siteConfig } from '@/stores/site';
 import { useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
+import { availableLanguages, t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
+import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
 
@@ -16,6 +18,7 @@ const allowMcRegister = ref(true);
 const siteName = ref('');
 const siteUrl = ref('');
 const footerContent = ref('');
+const defaultLanguage = ref('zh-CN');
 const loading = ref(false);
 const saving = ref(false);
 
@@ -29,6 +32,7 @@ onMounted(async () => {
     allowWebRegister.value = config.allowWebRegister ?? true;
     allowMcRegister.value = config.allowMcRegister ?? true;
     footerContent.value = config.footerContent ?? '';
+    defaultLanguage.value = config.defaultLanguage;
   } finally {
     loading.value = false;
   }
@@ -44,6 +48,7 @@ async function save() {
       siteName: siteName.value,
       siteUrl: siteUrl.value || null,
       footerContent: footerContent.value || null,
+      defaultLanguage: defaultLanguage.value,
     });
     setRequireLoginCache(result.requireLogin);
     siteConfig.siteName = result.siteName;
@@ -51,9 +56,10 @@ async function save() {
     siteConfig.footerContent = result.footerContent;
     siteConfig.allowWebRegister = result.allowWebRegister;
     siteConfig.allowMcRegister = result.allowMcRegister;
-    ui.toast('设置已保存', 'success');
+    siteConfig.defaultLanguage = result.defaultLanguage;
+    ui.toast(t('admin.settings.saved'), 'success');
   } catch (e) {
-    handleError(e, '保存失败');
+    handleError(e, t('common.saveFailed'));
   } finally {
     saving.value = false;
   }
@@ -62,33 +68,53 @@ async function save() {
 
 <template>
   <div class="space-y-6">
-    <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">平台设置</h2>
+    <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+      {{ t('admin.settings.title') }}
+    </h2>
 
-    <div v-if="loading" class="py-4 text-center text-slate-400">加载中...</div>
+    <div v-if="loading" class="py-4 text-center text-slate-400">{{ t('common.loading') }}</div>
 
     <div v-else class="space-y-4 max-w-lg">
       <!-- Site Name -->
-      <BaseInput v-model="siteName" label="站点名称" maxlength="100" placeholder="LightTickets" />
+      <BaseInput
+        v-model="siteName"
+        :label="t('admin.settings.siteName')"
+        maxlength="100"
+        placeholder="LightTickets"
+      />
 
       <!-- Site URL -->
       <BaseInput
         v-model="siteUrl"
-        label="站点地址"
+        :label="t('admin.settings.siteUrl')"
         type="url"
         placeholder="https://ticket.example.com"
       />
 
+      <BaseSelect
+        v-model="defaultLanguage"
+        :label="t('settings.language.default')"
+        :options="
+          availableLanguages.map((language) => ({
+            value: language.id,
+            label: language.displayName,
+          }))
+        "
+      />
+
       <!-- Footer Content -->
       <div class="space-y-1.5">
-        <label class="text-sm font-medium text-slate-900 dark:text-white">页脚自定义内容</label>
+        <label class="text-sm font-medium text-slate-900 dark:text-white">{{
+          t('admin.settings.footerContent')
+        }}</label>
         <p class="text-xs text-slate-500 dark:text-slate-400">
-          支持 Markdown，可用于添加备案信息、版权声明等
+          {{ t('admin.settings.footerHelp') }}
         </p>
         <BaseTextarea
           v-model="footerContent"
           :rows="3"
           maxlength="2000"
-          placeholder="[京ICP备xxxxxxx号](https://beian.miit.gov.cn)"
+          :placeholder="t('admin.settings.footerPlaceholder')"
         />
       </div>
 
@@ -97,9 +123,11 @@ async function save() {
         class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
       >
         <div>
-          <p class="text-sm font-medium text-slate-900 dark:text-white">允许网页注册</p>
+          <p class="text-sm font-medium text-slate-900 dark:text-white">
+            {{ t('admin.settings.allowWebRegister') }}
+          </p>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            关闭后登录页不显示注册入口，且网页注册接口将被禁用
+            {{ t('admin.settings.allowWebRegisterHelp') }}
           </p>
         </div>
         <BaseToggle v-model="allowWebRegister" />
@@ -110,9 +138,11 @@ async function save() {
         class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
       >
         <div>
-          <p class="text-sm font-medium text-slate-900 dark:text-white">允许Minecraft注册</p>
+          <p class="text-sm font-medium text-slate-900 dark:text-white">
+            {{ t('admin.settings.allowMcRegister') }}
+          </p>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            关闭后，服务器插件将无法通过API注册新账户
+            {{ t('admin.settings.allowMcRegisterHelp') }}
           </p>
         </div>
         <BaseToggle v-model="allowMcRegister" />
@@ -123,16 +153,18 @@ async function save() {
         class="flex items-center justify-between px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
       >
         <div>
-          <p class="text-sm font-medium text-slate-900 dark:text-white">要求登录查看议题</p>
+          <p class="text-sm font-medium text-slate-900 dark:text-white">
+            {{ t('admin.settings.requireLogin') }}
+          </p>
           <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            开启后，未登录用户将无法查看议题列表和详情
+            {{ t('admin.settings.requireLoginHelp') }}
           </p>
         </div>
         <BaseToggle v-model="requireLogin" />
       </div>
 
       <BaseButton filled :loading="saving" @click="save">{{
-        saving ? '保存中...' : '保存'
+        saving ? t('common.saving') : t('common.save')
       }}</BaseButton>
     </div>
   </div>

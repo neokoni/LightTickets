@@ -24,6 +24,7 @@ describe('GET /api/setup/site-config', () => {
     expect(res.body.data.isSetup).toBe(false);
     expect(res.body.data.siteName).toBe('LightTickets');
     expect(res.body.data).toHaveProperty('requireLogin');
+    expect(res.body.data.defaultLanguage).toBe('zh-CN');
   });
 
   it('returns footerContent and siteUrl in site config', async () => {
@@ -118,6 +119,22 @@ describe('POST /api/setup', () => {
     expect(config!.storageDriver).toBe('local');
     expect(config!.uploadDir).toBe('data/uploads');
     expect(config!.s3Config).toBeNull();
+  });
+
+  it('persists default language during setup', async () => {
+    const res = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: { email: 'language-setup@example.com', password: 'admin123', username: 'langsetup' },
+        site: { defaultLanguage: 'zh-CN' },
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.setup.defaultLanguage).toBe('zh-CN');
+
+    const config = await request(app).get('/api/setup/site-config');
+    expect(config.body.data.defaultLanguage).toBe('zh-CN');
   });
 
   it('persists s3 storage settings during setup', async () => {
@@ -321,6 +338,27 @@ describe('PATCH /api/setup/settings', () => {
     expect(res.body.data.footerContent).toBe(
       '<a href="https://beian.miit.gov.cn">京ICP备12345678号</a>',
     );
+  });
+
+  it('allows admin to update default language', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-language@test.com',
+          password: 'admin123',
+          username: 'settingslanguage',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({ defaultLanguage: 'zh-CN' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.defaultLanguage).toBe('zh-CN');
   });
 
   it('allows clearing siteUrl and footerContent with null', async () => {

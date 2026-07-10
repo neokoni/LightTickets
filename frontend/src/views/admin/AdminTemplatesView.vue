@@ -5,6 +5,7 @@ import { useTemplatesStore } from '@/stores/templates';
 import { useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useConfirm } from '@/composables/useConfirm';
+import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
@@ -77,10 +78,10 @@ async function save() {
         completionHooks: form.value.completionHooks,
         enabled: form.value.enabled,
       });
-      ui.toast('模板已更新', 'success');
+      ui.toast(t('admin.templates.updated'), 'success');
     } else {
       await templates.create(form.value);
-      ui.toast('模板已创建', 'success');
+      ui.toast(t('admin.templates.created'), 'success');
     }
     showModal.value = false;
   } catch (e) {
@@ -91,19 +92,22 @@ async function save() {
 async function toggleEnabled(tmpl: AdminTemplate) {
   try {
     await templates.update(tmpl.name, { enabled: !tmpl.enabled });
-    ui.toast(tmpl.enabled ? '已禁用模板' : '已启用模板', 'success');
+    ui.toast(
+      tmpl.enabled ? t('admin.templates.disabled') : t('admin.templates.enabled'),
+      'success',
+    );
   } catch (e) {
     handleError(e);
   }
 }
 
 async function remove(name: string) {
-  if (!(await confirm('确定删除此模板？'))) return;
+  if (!(await confirm(t('admin.templates.deleteConfirm')))) return;
   try {
     await templates.remove(name);
-    ui.toast('模板已删除', 'success');
+    ui.toast(t('admin.templates.deleted'), 'success');
   } catch (e) {
-    handleError(e, '删除失败');
+    handleError(e, t('common.deleteFailed'));
   }
 }
 
@@ -123,8 +127,12 @@ onMounted(() => {
 <template>
   <div class="space-y-4">
     <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">模板管理</h2>
-      <BaseButton size="sm" icon="lucide:plus" @click="openCreate">新建模板</BaseButton>
+      <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+        {{ t('admin.templates.title') }}
+      </h2>
+      <BaseButton size="sm" icon="lucide:plus" @click="openCreate">{{
+        t('admin.templates.create')
+      }}</BaseButton>
     </div>
 
     <div
@@ -143,21 +151,25 @@ onMounted(() => {
           <span
             v-if="!tmpl.enabled"
             class="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500"
-            >已禁用</span
+            >{{ t('admin.templates.disabledBadge') }}</span
           >
         </div>
         <div class="flex items-center gap-1">
           <BaseButton
             :class="iconButtonClass"
-            :title="tmpl.enabled ? '禁用' : '启用'"
+            :title="tmpl.enabled ? t('admin.templates.disable') : t('admin.templates.enable')"
             @click="toggleEnabled(tmpl)"
           >
             <Icon :icon="tmpl.enabled ? 'lucide:eye' : 'lucide:eye-off'" class="w-4 h-4" />
           </BaseButton>
-          <BaseButton :class="iconButtonClass" title="编辑" @click="openEdit(tmpl)">
+          <BaseButton :class="iconButtonClass" :title="t('common.edit')" @click="openEdit(tmpl)">
             <Icon icon="lucide:pencil" class="w-4 h-4" />
           </BaseButton>
-          <BaseButton :class="dangerIconButtonClass" title="删除" @click="remove(tmpl.name)">
+          <BaseButton
+            :class="dangerIconButtonClass"
+            :title="t('common.delete')"
+            @click="remove(tmpl.name)"
+          >
             <Icon icon="lucide:trash-2" class="w-4 h-4" />
           </BaseButton>
         </div>
@@ -166,33 +178,56 @@ onMounted(() => {
         v-if="!templates.templates.length"
         class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400"
       >
-        暂无模板
+        {{ t('admin.templates.empty') }}
       </div>
     </div>
 
-    <BaseModal v-model="showModal" :title="editingName ? '编辑模板' : '新建模板'">
+    <BaseModal
+      v-model="showModal"
+      :title="editingName ? t('admin.templates.editTitle') : t('admin.templates.create')"
+    >
       <form class="space-y-4 max-h-[70vh] overflow-y-auto" @submit.prevent="save">
         <BaseInput
           v-model="form.name"
-          label="模板 Key"
+          :label="t('admin.templates.key')"
           placeholder="bug_report"
           :disabled="!!editingName"
         />
-        <p v-if="!!editingName" class="text-xs text-slate-500 -mt-3">模板 Key 创建后不可修改</p>
-        <BaseInput v-model="form.nameI18n" label="显示名称" placeholder="Bug 反馈" />
-        <BaseInput v-model="form.description" label="描述" placeholder="报告游戏中遇到的问题" />
-        <BaseInput v-model="form.titlePrefix" label="标题前缀（可选）" placeholder="[Bug] " />
-        <BaseInput v-model="form.labels" label="标签 (JSON 数组)" placeholder='["bug"]' />
+        <p v-if="!!editingName" class="text-xs text-slate-500 -mt-3">
+          {{ t('admin.templates.keyImmutable') }}
+        </p>
+        <BaseInput
+          v-model="form.nameI18n"
+          :label="t('admin.templates.displayName')"
+          :placeholder="t('admin.templates.displayNamePlaceholder')"
+        />
+        <BaseInput
+          v-model="form.description"
+          :label="t('common.description')"
+          :placeholder="t('admin.templates.descriptionPlaceholder')"
+        />
+        <BaseInput
+          v-model="form.titlePrefix"
+          :label="t('admin.templates.titlePrefix')"
+          placeholder="[Bug] "
+        />
+        <BaseInput
+          v-model="form.labels"
+          :label="t('admin.templates.labelsJson')"
+          placeholder='["bug"]'
+        />
 
         <div class="flex items-center justify-between gap-4">
-          <span class="text-sm text-slate-700 dark:text-slate-300">启用（在创建议题页面显示）</span>
+          <span class="text-sm text-slate-700 dark:text-slate-300">{{
+            t('admin.templates.enabledInCreate')
+          }}</span>
           <BaseToggle v-model="form.enabled" />
         </div>
 
         <!-- YAML editors with Tab indentation support -->
         <BaseTextarea
           v-model="form.body"
-          label="表单字段 (YAML)"
+          :label="t('admin.templates.formFieldsYaml')"
           :rows="16"
           spellcheck="false"
           class="[&_textarea]:font-mono"
@@ -200,7 +235,7 @@ onMounted(() => {
         />
         <BaseTextarea
           v-model="form.completionHooks"
-          label="完成钩子 (YAML)"
+          :label="t('admin.templates.completionHooksYaml')"
           :rows="8"
           spellcheck="false"
           class="[&_textarea]:font-mono"
@@ -208,12 +243,12 @@ onMounted(() => {
         />
 
         <div class="flex justify-end gap-2">
-          <BaseButton type="button" @click="showModal = false">取消</BaseButton>
+          <BaseButton type="button" @click="showModal = false">{{ t('common.cancel') }}</BaseButton>
           <BaseButton
             filled
             type="submit"
             :disabled="!form.name.trim() || !form.nameI18n.trim() || !form.body.trim()"
-            >保存</BaseButton
+            >{{ t('common.save') }}</BaseButton
           >
         </div>
       </form>

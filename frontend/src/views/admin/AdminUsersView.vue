@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { apiFetch } from '@/api/client';
 import { useUiStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
@@ -11,6 +11,7 @@ import BaseSelect from '@/components/base/BaseSelect.vue';
 import BasePagination from '@/components/base/BasePagination.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 import { ROLE, ROLE_META, type User } from '@/types/user';
+import { t } from '@/i18n';
 import type { Role } from '@/types/ticket';
 
 interface UsersResponse {
@@ -36,11 +37,11 @@ const { totalPages } = usePagination(
   () => pageSize.value,
 );
 
-const roleOptions = [
-  { value: ROLE.PLAYER, label: ROLE_META[ROLE.PLAYER].label },
-  { value: ROLE.STAFF, label: ROLE_META[ROLE.STAFF].label },
-  { value: ROLE.ADMIN, label: ROLE_META[ROLE.ADMIN].label },
-];
+const roleOptions = computed(() => [
+  { value: ROLE.PLAYER, label: t(ROLE_META[ROLE.PLAYER].labelKey) },
+  { value: ROLE.STAFF, label: t(ROLE_META[ROLE.STAFF].labelKey) },
+  { value: ROLE.ADMIN, label: t(ROLE_META[ROLE.ADMIN].labelKey) },
+]);
 
 let fetchSeq = 0;
 
@@ -55,7 +56,7 @@ async function fetchUsers() {
     total.value = res.total;
   } catch (e) {
     if (seq !== fetchSeq) return;
-    handleError(e, '加载失败');
+    handleError(e, t('common.loadFailed'));
   }
 }
 
@@ -78,17 +79,17 @@ async function changeRole(userId: number, role: Role) {
     });
     const idx = users.value.findIndex((u) => u.id === userId);
     if (idx !== -1) users.value[idx].role = role;
-    ui.toast('角色已更新', 'success');
+    ui.toast(t('admin.users.roleUpdated'), 'success');
   } catch (e) {
     handleError(e);
   }
 }
 
 async function deleteUser(userId: number) {
-  if (!(await confirm('确定要删除该用户吗？此操作不可撤销。'))) return;
+  if (!(await confirm(t('admin.users.deleteConfirm')))) return;
   try {
     await apiFetch(`/users/${userId}`, { method: 'DELETE' });
-    ui.toast('用户已删除', 'success');
+    ui.toast(t('admin.users.deleted'), 'success');
     await fetchUsers();
     if (users.value.length === 0 && page.value > 1) {
       page.value--;
@@ -104,7 +105,9 @@ onMounted(fetchUsers);
 
 <template>
   <div class="space-y-4">
-    <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">用户管理</h2>
+    <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+      {{ t('admin.users.title') }}
+    </h2>
 
     <table class="w-full text-sm">
       <thead>
@@ -112,12 +115,12 @@ onMounted(fetchUsers);
           <th
             class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
           >
-            用户名
+            {{ t('user.username') }}
           </th>
           <th
             class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
           >
-            邮箱
+            {{ t('user.email') }}
           </th>
           <th
             class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
@@ -127,12 +130,12 @@ onMounted(fetchUsers);
           <th
             class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
           >
-            角色
+            {{ t('user.role') }}
           </th>
           <th
             class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
           >
-            操作
+            {{ t('common.actions') }}
           </th>
         </tr>
       </thead>
@@ -167,7 +170,7 @@ onMounted(fetchUsers);
               :class="dangerTextButtonClass"
               @click="deleteUser(user.id)"
             >
-              删除
+              {{ t('common.delete') }}
             </BaseButton>
             <span class="text-xs text-slate-400">{{ user.createdAt?.slice(0, 10) }}</span>
           </td>
@@ -176,7 +179,7 @@ onMounted(fetchUsers);
     </table>
 
     <div v-if="!users.length" class="py-12 text-center text-sm text-slate-500 dark:text-slate-400">
-      暂无用户
+      {{ t('admin.users.empty') }}
     </div>
 
     <BasePagination

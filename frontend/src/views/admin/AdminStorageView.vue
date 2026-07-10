@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
+import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
@@ -42,7 +43,7 @@ onMounted(async () => {
     const config = await apiGetStorageConfig();
     applyConfig(config);
   } catch (e) {
-    handleError(e, '加载失败');
+    handleError(e, t('common.loadFailed'));
   } finally {
     loading.value = false;
   }
@@ -62,10 +63,12 @@ function applyConfig(config: StorageConfig) {
 }
 
 function validateS3(): string | null {
-  if (!s3.value.endpoint.trim()) return '服务端点不能为空';
-  if (!s3.value.bucket.trim()) return '存储桶不能为空';
-  if (!s3.value.accessKeyId.trim()) return 'Access Key ID 不能为空';
-  if (!s3.value.secretAccessKey.trim() && !secretMasked.value) return 'Secret Access Key 不能为空';
+  if (!s3.value.endpoint.trim()) return t('admin.storage.endpointRequired');
+  if (!s3.value.bucket.trim()) return t('admin.storage.bucketRequired');
+  if (!s3.value.accessKeyId.trim()) return t('admin.storage.accessKeyRequired');
+  if (!s3.value.secretAccessKey.trim() && !secretMasked.value) {
+    return t('admin.storage.secretKeyRequired');
+  }
   return null;
 }
 
@@ -90,9 +93,9 @@ async function save() {
     }
     const result = await apiUpdateStorageConfig(payload);
     applyConfig(result);
-    ui.toast('存储设置已保存', 'success');
+    ui.toast(t('admin.storage.saved'), 'success');
   } catch (e) {
-    handleError(e, '保存失败');
+    handleError(e, t('common.saveFailed'));
   } finally {
     saving.value = false;
   }
@@ -105,14 +108,14 @@ async function testConnection() {
     const result = await apiTestS3Connection();
     testResult.value = result;
     if (result.success) {
-      ui.toast('连接成功', 'success');
+      ui.toast(t('admin.storage.connectionSuccess'), 'success');
     } else {
-      ui.toast(result.message || '连接失败', 'error');
+      ui.toast(result.message || t('admin.storage.connectionFailed'), 'error');
     }
   } catch (e) {
-    const msg = e instanceof Error ? e.message : '连接失败';
+    const msg = e instanceof Error ? e.message : t('admin.storage.connectionFailed');
     testResult.value = { success: false, message: msg };
-    handleError(e, '连接失败');
+    handleError(e, t('admin.storage.connectionFailed'));
   } finally {
     testing.value = false;
   }
@@ -121,14 +124,18 @@ async function testConnection() {
 
 <template>
   <div class="space-y-6">
-    <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">存储设置</h2>
+    <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+      {{ t('admin.storage.title') }}
+    </h2>
 
-    <div v-if="loading" class="py-4 text-center text-slate-400">加载中...</div>
+    <div v-if="loading" class="py-4 text-center text-slate-400">{{ t('common.loading') }}</div>
 
     <div v-else class="space-y-4 max-w-lg">
       <!-- Driver selection -->
       <div class="space-y-2">
-        <label class="text-sm font-medium text-slate-900 dark:text-white">存储方式</label>
+        <label class="text-sm font-medium text-slate-900 dark:text-white">{{
+          t('setup.storage.driver')
+        }}</label>
         <div class="grid grid-cols-2 gap-3">
           <BaseButton
             :class="storageButtonClass"
@@ -136,7 +143,7 @@ async function testConnection() {
             @click="driver = 'local'"
           >
             <Icon icon="lucide:hard-drive" class="w-4 h-4" />
-            本地磁盘
+            {{ t('setup.storage.local') }}
           </BaseButton>
           <BaseButton
             :class="storageButtonClass"
@@ -144,7 +151,7 @@ async function testConnection() {
             @click="driver = 's3'"
           >
             <Icon icon="lucide:cloud" class="w-4 h-4" />
-            S3 兼容存储
+            {{ t('setup.storage.s3') }}
           </BaseButton>
         </div>
       </div>
@@ -152,11 +159,21 @@ async function testConnection() {
       <!-- S3 config -->
       <template v-if="driver === 's3'">
         <div class="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-700">
-          <p class="text-sm font-medium text-slate-900 dark:text-white pt-2">S3 兼容存储配置</p>
+          <p class="text-sm font-medium text-slate-900 dark:text-white pt-2">
+            {{ t('setup.storage.s3Config') }}
+          </p>
 
-          <BaseInput v-model="s3.endpoint" label="服务端点 *" placeholder="http://localhost:9000" />
+          <BaseInput
+            v-model="s3.endpoint"
+            :label="t('setup.storage.endpoint')"
+            placeholder="http://localhost:9000"
+          />
 
-          <BaseInput v-model="s3.bucket" label="存储桶 *" placeholder="lighttickets" />
+          <BaseInput
+            v-model="s3.bucket"
+            :label="t('setup.storage.bucket')"
+            placeholder="lighttickets"
+          />
 
           <div class="grid grid-cols-2 gap-3">
             <BaseInput v-model="s3.accessKeyId" label="Access Key ID *" placeholder="minioadmin" />
@@ -164,13 +181,13 @@ async function testConnection() {
               v-model="s3.secretAccessKey"
               label="Secret Access Key *"
               type="password"
-              :placeholder="secretMasked ? '••••••••（留空保持不变）' : 'minioadmin'"
+              :placeholder="secretMasked ? t('admin.storage.secretKeepPlaceholder') : 'minioadmin'"
             />
           </div>
 
           <BaseInput
             v-model.number="s3.presignExpiry"
-            label="预签名链接过期时间（秒）"
+            :label="t('setup.storage.presignExpiry')"
             type="number"
             min="60"
             placeholder="300"
@@ -182,10 +199,10 @@ async function testConnection() {
           >
             <div>
               <p class="text-sm font-medium text-slate-900 dark:text-white">
-                路径样式(Path Style)寻址
+                {{ t('setup.storage.pathStyle') }}
               </p>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                自建 S3 兼容存储(如 MinIO)需开启; AWS S3 官方可关闭
+                {{ t('setup.storage.pathStyleHelp') }}
               </p>
             </div>
             <BaseToggle v-model="s3.forcePathStyle" />
@@ -196,7 +213,7 @@ async function testConnection() {
             <BaseButton variant="primary" :loading="testing" @click="testConnection">
               <template #default>
                 <Icon icon="lucide:plug" class="w-4 h-4" />
-                测试连接
+                {{ t('admin.storage.testConnection') }}
               </template>
             </BaseButton>
             <span
@@ -219,7 +236,7 @@ async function testConnection() {
       </template>
 
       <BaseButton filled :loading="saving" @click="save">{{
-        saving ? '保存中...' : '保存'
+        saving ? t('common.saving') : t('common.save')
       }}</BaseButton>
     </div>
   </div>

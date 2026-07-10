@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { getSiteConfig } from '@/api/setup';
 import { siteConfig, setSiteConfigCache, setConnectionError } from '@/stores/site';
+import { syncI18nWithDefault } from '@/i18n';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -64,37 +65,37 @@ const router = createRouter({
           path: 'labels',
           name: 'admin-labels',
           component: () => import('@/views/admin/AdminLabelsView.vue'),
-          meta: { auth: true, admin: true, title: '标签管理' },
+          meta: { auth: true, admin: true, titleKey: 'admin.labels.title' },
         },
         {
           path: 'servers',
           name: 'admin-servers',
           component: () => import('@/views/admin/AdminServersView.vue'),
-          meta: { auth: true, admin: true, title: '服务器管理' },
+          meta: { auth: true, admin: true, titleKey: 'admin.servers.title' },
         },
         {
           path: 'templates',
           name: 'admin-templates',
           component: () => import('@/views/admin/AdminTemplatesView.vue'),
-          meta: { auth: true, admin: true, title: '模板管理' },
+          meta: { auth: true, admin: true, titleKey: 'admin.templates.title' },
         },
         {
           path: 'users',
           name: 'admin-users',
           component: () => import('@/views/admin/AdminUsersView.vue'),
-          meta: { auth: true, admin: true, title: '用户管理' },
+          meta: { auth: true, admin: true, titleKey: 'admin.users.title' },
         },
         {
           path: 'settings',
           name: 'admin-settings',
           component: () => import('@/views/admin/AdminSettingsView.vue'),
-          meta: { auth: true, admin: true, title: '平台设置' },
+          meta: { auth: true, admin: true, titleKey: 'admin.settings.title' },
         },
         {
           path: 'storage',
           name: 'admin-storage',
           component: () => import('@/views/admin/AdminStorageView.vue'),
-          meta: { auth: true, admin: true, title: '存储设置' },
+          meta: { auth: true, admin: true, titleKey: 'admin.storage.title' },
         },
       ],
     },
@@ -114,6 +115,7 @@ router.beforeEach(async (to) => {
     try {
       const config = await getSiteConfig();
       setSiteConfigCache(config);
+      await syncI18nWithDefault(config.defaultLanguage);
     } catch {
       setConnectionError(true);
     }

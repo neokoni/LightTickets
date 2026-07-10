@@ -22,6 +22,7 @@ import TicketLabels from '@/components/tickets/TicketLabels.vue';
 import type { TicketStatus, GameContext, Role } from '@/types/ticket';
 import { STATUS_META } from '@/types/ticket';
 import { ROLE_META } from '@/types/user';
+import { t } from '@/i18n';
 import { AUDIT_ACTION } from '@/types/audit';
 import { apiGetTemplates } from '@/api/tickets';
 import { useAssignees } from '@/composables/useAssignees';
@@ -67,14 +68,16 @@ function templateName(template: string): string {
 }
 
 const ticketBody = computed(() => (ticket.value ? renderTicketRefs(ticket.value.body) : ''));
-const ticketSourceLabel = computed(() => (ticket.value?.serverId ? 'Minecraft' : '网页'));
+const ticketSourceLabel = computed(() =>
+  ticket.value?.serverId ? 'Minecraft' : t('ticket.source.web'),
+);
 
-const gameModeLabels: Record<string, string> = {
-  survival: '生存模式',
-  creative: '创造模式',
-  adventure: '冒险模式',
-  spectator: '观察模式',
-};
+const gameModeLabels = computed<Record<string, string>>(() => ({
+  survival: t('ticket.gameMode.survival'),
+  creative: t('ticket.gameMode.creative'),
+  adventure: t('ticket.gameMode.adventure'),
+  spectator: t('ticket.gameMode.spectator'),
+}));
 
 const gameContext = computed<GameContext | null>(() => {
   if (!ticket.value?.gameContext) return null;
@@ -145,24 +148,26 @@ const {
   onBodyFilePaste,
 } = useTicketEdit(ticket, () => fetchAuditLogs(), titleInputRef, bodyTextareaRef);
 
-const statusOptions: { key: TicketStatus; label: string; icon: string; color: string }[] =
-  Object.entries(STATUS_META).map(([key, { label, icon, color }]) => ({
-    key: key as TicketStatus,
-    label,
-    icon,
-    color,
-  }));
+const statusOptions = computed<{ key: TicketStatus; label: string; icon: string; color: string }[]>(
+  () =>
+    Object.entries(STATUS_META).map(([key, { labelKey, icon, color }]) => ({
+      key: key as TicketStatus,
+      label: t(labelKey),
+      icon,
+      color,
+    })),
+);
 
 const visibleStatusOptions = computed(() => {
   if (!ticket.value) return [];
   if (!auth.isStaff) return [];
-  return statusOptions.filter((s) => s.key !== ticket.value!.status);
+  return statusOptions.value.filter((s) => s.key !== ticket.value!.status);
 });
 
 async function changeStatus(status: TicketStatus) {
   try {
     await store.updateStatus(id, status);
-    ui.toast('状态已更新', 'success');
+    ui.toast(t('ticket.detail.statusUpdated'), 'success');
   } catch (e) {
     handleError(e);
   }
@@ -176,7 +181,7 @@ async function closeTicket() {
     }
     await store.closeTicket(id);
     await fetchAuditLogs();
-    ui.toast('议题已关闭', 'success');
+    ui.toast(t('ticket.detail.closed'), 'success');
   } catch (e) {
     handleError(e);
   } finally {
@@ -192,7 +197,7 @@ async function reopenTicket() {
     }
     await store.reopenTicket(id);
     await fetchAuditLogs();
-    ui.toast('议题已重新打开', 'success');
+    ui.toast(t('ticket.detail.reopened'), 'success');
   } catch (e) {
     handleError(e);
   } finally {
@@ -257,8 +262,8 @@ watch(
           @keydown.enter="saveTitle"
           @keydown.escape="cancelEditTitle"
         />
-        <BaseButton size="sm" @click="saveTitle">保存</BaseButton>
-        <BaseButton size="sm" @click="cancelEditTitle">取消</BaseButton>
+        <BaseButton size="sm" @click="saveTitle">{{ t('common.save') }}</BaseButton>
+        <BaseButton size="sm" @click="cancelEditTitle">{{ t('common.cancel') }}</BaseButton>
       </div>
       <div class="mt-2 flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
         <span>{{ ticket.author.username }}</span>
@@ -284,7 +289,7 @@ watch(
             >
               <BaseButton :class="linkButtonClass" @click="startEditBody">
                 <Icon icon="lucide:pencil" class="w-3 h-3" />
-                编辑
+                {{ t('common.edit') }}
               </BaseButton>
             </div>
             <div class="p-6">
@@ -321,8 +326,8 @@ watch(
               </div>
             </div>
             <div class="flex justify-end gap-2">
-              <BaseButton size="sm" @click="saveBody">保存</BaseButton>
-              <BaseButton size="sm" @click="cancelEditBody">取消</BaseButton>
+              <BaseButton size="sm" @click="saveBody">{{ t('common.save') }}</BaseButton>
+              <BaseButton size="sm" @click="cancelEditBody">{{ t('common.cancel') }}</BaseButton>
             </div>
           </div>
         </div>
@@ -330,7 +335,7 @@ watch(
         <!-- Comments -->
         <div class="space-y-4">
           <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            评论 ({{ comments.length }})
+            {{ t('ticket.comments.title', { count: comments.length }) }}
           </h2>
 
           <div v-for="item in timeline" :key="item.id + ('body' in item ? '-comment' : '-audit')">
@@ -358,7 +363,7 @@ watch(
                   >
                     <BaseButton
                       :class="iconButtonClass"
-                      title="引用回复"
+                      :title="t('ticket.comments.quoteReply')"
                       @click="quoteComment(item)"
                     >
                       <Icon icon="lucide:text-quote" class="w-3.5 h-3.5" />
@@ -366,14 +371,14 @@ watch(
                     <BaseButton
                       v-if="item.authorId === auth.user?.id || auth.isStaff"
                       :class="iconButtonClass"
-                      title="编辑"
+                      :title="t('common.edit')"
                       @click="startEditComment(item)"
                     >
                       <Icon icon="lucide:pencil" class="w-3.5 h-3.5" />
                     </BaseButton>
                     <BaseButton
                       :class="iconButtonClass"
-                      title="复制链接"
+                      :title="t('common.copyLink')"
                       @click="copyCommentLink(item.id)"
                     >
                       <Icon icon="lucide:link" class="w-3.5 h-3.5" />
@@ -389,10 +394,15 @@ watch(
                 <div v-else class="mt-2 space-y-2">
                   <BaseTextarea v-model="editCommentValue" :rows="4" uploadable previewable />
                   <div class="flex justify-end gap-2">
-                    <BaseButton size="sm" :loading="savingComment" @click="saveEditComment(item.id)"
-                      >保存</BaseButton
+                    <BaseButton
+                      size="sm"
+                      :loading="savingComment"
+                      @click="saveEditComment(item.id)"
+                      >{{ t('common.save') }}</BaseButton
                     >
-                    <BaseButton size="sm" @click="cancelEditComment">取消</BaseButton>
+                    <BaseButton size="sm" @click="cancelEditComment">{{
+                      t('common.cancel')
+                    }}</BaseButton>
                   </div>
                 </div>
               </div>
@@ -459,7 +469,9 @@ watch(
                 class="ml-5.5 mt-1"
               >
                 <BaseButton :class="linkButtonClass" @click="toggleDiff(item)">
-                  {{ expandedBodyDiff === item.id ? '收起变更' : '查看变更' }}
+                  {{
+                    expandedBodyDiff === item.id ? t('ticket.diff.collapse') : t('ticket.diff.view')
+                  }}
                 </BaseButton>
                 <div
                   v-if="expandedBodyDiff === item.id"
@@ -469,7 +481,9 @@ watch(
                     class="flex items-center justify-between px-3 py-1.5 border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900"
                   >
                     <span class="text-xs text-slate-500">{{
-                      item.action === AUDIT_ACTION.COMMENT_EDIT ? '评论变更详情' : '内容变更详情'
+                      item.action === AUDIT_ACTION.COMMENT_EDIT
+                        ? t('ticket.diff.commentTitle')
+                        : t('ticket.diff.bodyTitle')
                     }}</span>
                     <BaseButton :class="iconButtonClass" @click="expandedBodyDiff = null">
                       <Icon icon="lucide:x" class="w-3.5 h-3.5" />
@@ -526,7 +540,7 @@ watch(
             <BaseTextarea
               ref="commentTextareaRef"
               v-model="newComment"
-              placeholder="添加评论... (支持 Markdown)"
+              :placeholder="t('ticket.comments.placeholder')"
               :rows="3"
               uploadable
               previewable
@@ -563,7 +577,11 @@ watch(
                 icon="lucide:check-circle-2"
                 @click="closeTicket"
               >
-                {{ newComment.trim() ? '评论并关闭' : '关闭议题' }}
+                {{
+                  newComment.trim()
+                    ? t('ticket.comments.commentAndClose')
+                    : t('ticket.comments.close')
+                }}
               </BaseButton>
               <BaseButton
                 v-if="
@@ -576,7 +594,11 @@ watch(
                 icon="lucide:check-circle-2"
                 @click="closeTicket"
               >
-                {{ newComment.trim() ? '评论并已完成关闭' : '已完成关闭' }}
+                {{
+                  newComment.trim()
+                    ? t('ticket.comments.commentAndComplete')
+                    : t('ticket.comments.completeClose')
+                }}
               </BaseButton>
               <BaseButton
                 v-if="
@@ -588,14 +610,18 @@ watch(
                 icon="lucide:rotate-ccw"
                 @click="reopenTicket"
               >
-                {{ newComment.trim() ? '评论并重新打开' : '重新打开' }}
+                {{
+                  newComment.trim()
+                    ? t('ticket.comments.commentAndReopen')
+                    : t('ticket.comments.reopen')
+                }}
               </BaseButton>
               <BaseButton
                 type="submit"
                 size="sm"
                 :loading="submitting"
                 :disabled="!newComment.trim()"
-                >发送</BaseButton
+                >{{ t('ticket.comments.send') }}</BaseButton
               >
             </div>
           </form>
@@ -611,7 +637,7 @@ watch(
           <h3
             class="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400"
           >
-            状态
+            {{ t('ticket.detail.status') }}
           </h3>
           <div class="flex items-center gap-2">
             <Icon
@@ -644,17 +670,17 @@ watch(
           class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3 text-sm"
         >
           <div class="flex justify-between">
-            <span class="text-slate-500 dark:text-slate-400">类型</span>
+            <span class="text-slate-500 dark:text-slate-400">{{ t('ticket.search.type') }}</span>
             <span class="text-slate-700 dark:text-slate-300">{{
               templateName(ticket.template)
             }}</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500 dark:text-slate-400">来源</span>
+            <span class="text-slate-500 dark:text-slate-400">{{ t('ticket.search.source') }}</span>
             <span class="text-slate-700 dark:text-slate-300">{{ ticketSourceLabel }}</span>
           </div>
           <div v-if="ticket.server" class="flex justify-between">
-            <span class="text-slate-500 dark:text-slate-400">服务器</span>
+            <span class="text-slate-500 dark:text-slate-400">{{ t('ticket.detail.server') }}</span>
             <span class="text-slate-700 dark:text-slate-300">{{ ticket.server.name }}</span>
           </div>
         </div>
@@ -666,7 +692,7 @@ watch(
           <h3
             class="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400"
           >
-            受理人
+            {{ t('ticket.assignees.title') }}
           </h3>
 
           <div v-if="ticket.assignees?.length" class="flex flex-wrap gap-2">
@@ -677,7 +703,9 @@ watch(
               <span class="text-sm text-slate-700 dark:text-slate-300">{{ a.user.username }}</span>
             </div>
           </div>
-          <div v-else class="text-sm text-slate-400 dark:text-slate-500">未分配</div>
+          <div v-else class="text-sm text-slate-400 dark:text-slate-500">
+            {{ t('ticket.assignees.unassigned') }}
+          </div>
 
           <BaseButton
             v-if="auth.isStaff"
@@ -685,19 +713,25 @@ watch(
             @click="openAssignPicker"
           >
             <Icon icon="lucide:user-plus" class="w-3.5 h-3.5" />
-            {{ ticket.assignees?.length ? '管理受理人' : '分配受理人' }}
+            {{
+              ticket.assignees?.length ? t('ticket.assignees.manage') : t('ticket.assignees.assign')
+            }}
           </BaseButton>
         </div>
 
         <!-- Assign picker modal -->
-        <BaseModal v-model="showAssignPicker" title="分配受理人">
+        <BaseModal v-model="showAssignPicker" :title="t('ticket.assignees.assign')">
           <div class="space-y-3">
             <div class="relative">
               <Icon
                 icon="lucide:search"
                 class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
               />
-              <BaseInput v-model="assignSearch" placeholder="搜索用户..." class="[&_input]:pl-9" />
+              <BaseInput
+                v-model="assignSearch"
+                :placeholder="t('ticket.assignees.searchUser')"
+                class="[&_input]:pl-9"
+              />
             </div>
 
             <div class="max-h-64 overflow-y-auto space-y-0.5 -mx-1">
@@ -718,7 +752,7 @@ watch(
                     {{ u.username }}
                   </div>
                   <div class="text-[11px] text-slate-400 dark:text-slate-500">
-                    {{ ROLE_META[u.role as Role].label }}
+                    {{ t(ROLE_META[u.role as Role].labelKey) }}
                   </div>
                 </div>
               </label>
@@ -726,21 +760,25 @@ watch(
                 v-if="!filteredAssignableUsers.length"
                 class="py-4 text-center text-sm text-slate-400"
               >
-                无匹配用户
+                {{ t('ticket.assignees.noMatches') }}
               </div>
             </div>
           </div>
 
           <template #footer>
-            <span class="text-xs text-slate-400 dark:text-slate-500 mr-auto self-center"
-              >已选 {{ selectedAssigneeIds.length }} 人</span
-            >
-            <BaseButton size="sm" @click="showAssignPicker = false">取消</BaseButton>
-            <BaseButton size="sm" :loading="assigning" @click="saveAssignees">确认</BaseButton>
+            <span class="text-xs text-slate-400 dark:text-slate-500 mr-auto self-center">{{
+              t('ticket.assignees.selectedCount', { count: selectedAssigneeIds.length })
+            }}</span>
+            <BaseButton size="sm" @click="showAssignPicker = false">{{
+              t('common.cancel')
+            }}</BaseButton>
+            <BaseButton size="sm" :loading="assigning" @click="saveAssignees">{{
+              t('common.confirm')
+            }}</BaseButton>
           </template>
         </BaseModal>
 
-        <!-- 附加信息 (Game Context) -->
+        <!-- Game context -->
         <div
           v-if="gameContext"
           class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3 text-sm"
@@ -748,10 +786,12 @@ watch(
           <h3
             class="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400"
           >
-            附加信息
+            {{ t('ticket.gameContext.title') }}
           </h3>
           <div v-if="gameContext.world" class="flex justify-between">
-            <span class="text-slate-500 dark:text-slate-400">世界</span>
+            <span class="text-slate-500 dark:text-slate-400">{{
+              t('ticket.gameContext.world')
+            }}</span>
             <span class="text-slate-700 dark:text-slate-300">{{ gameContext.world }}</span>
           </div>
           <div
@@ -762,13 +802,17 @@ watch(
             "
             class="flex justify-between"
           >
-            <span class="text-slate-500 dark:text-slate-400">坐标</span>
+            <span class="text-slate-500 dark:text-slate-400">{{
+              t('ticket.gameContext.coordinates')
+            }}</span>
             <span class="text-slate-700 dark:text-slate-300"
               >{{ gameContext.x }}, {{ gameContext.y }}, {{ gameContext.z }}</span
             >
           </div>
           <div v-if="gameContext.gameMode" class="flex justify-between">
-            <span class="text-slate-500 dark:text-slate-400">游戏模式</span>
+            <span class="text-slate-500 dark:text-slate-400">{{
+              t('ticket.gameContext.gameMode')
+            }}</span>
             <span class="text-slate-700 dark:text-slate-300">{{
               gameModeLabels[gameContext.gameMode.toLowerCase()] || gameContext.gameMode
             }}</span>

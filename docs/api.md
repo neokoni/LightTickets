@@ -57,6 +57,18 @@
 
 返回 setup 状态、站点名、注册策略、页脚等公开配置。
 
+### 语言列表
+
+`GET /api/i18n/languages`
+
+公开接口。返回内置语言和 `data/locales/*.json` 自定义语言的清单。
+
+### 语言资源
+
+`GET /api/i18n/languages/:id`
+
+公开接口。返回合并后的语言资源；自定义语言缺失的 key 回退到内置 `zh-CN`。
+
 ### 模板列表
 
 `GET /api/templates`
@@ -89,7 +101,8 @@
   },
   "site": {
     "siteName": "LightTickets",
-    "siteUrl": "https://tickets.example.com"
+    "siteUrl": "https://tickets.example.com",
+    "defaultLanguage": "zh-CN"
   },
   "mc": {
     "defaultServerName": "主服务器"
@@ -400,7 +413,8 @@ MySQL 可使用字段模式：
   "allowMcRegister": true,
   "siteName": "LightTickets",
   "siteUrl": "https://tickets.example.com",
-  "footerContent": "页脚内容"
+  "footerContent": "页脚内容",
+  "defaultLanguage": "zh-CN"
 }
 ```
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, useAttrs } from 'vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
+import { t } from '@/i18n';
 
 const model = defineModel<string>();
 const attrs = useAttrs();
@@ -50,7 +51,7 @@ function onPaste(e: ClipboardEvent) {
         "
         @click="mode = 'write'"
       >
-        编辑
+        {{ t('common.edit') }}
       </button>
       <button
         type="button"
@@ -62,7 +63,7 @@ function onPaste(e: ClipboardEvent) {
         "
         @click="mode = 'preview'"
       >
-        预览
+        {{ t('common.preview') }}
       </button>
     </div>
     <textarea
@@ -83,7 +84,9 @@ function onPaste(e: ClipboardEvent) {
       :class="{ 'border-red-400 dark:border-red-500': error }"
     >
       <MarkdownRenderer v-if="model" :content="model" />
-      <p v-else class="text-sm text-slate-400 dark:text-slate-500 italic">暂无内容可预览</p>
+      <p v-else class="text-sm text-slate-400 dark:text-slate-500 italic">
+        {{ t('common.noPreviewContent') }}
+      </p>
     </div>
     <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
   </div>

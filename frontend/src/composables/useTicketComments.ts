@@ -3,6 +3,7 @@ import { useMarkdownUpload } from '@/composables/useMarkdownUpload';
 import { useUiStore } from '@/stores/ui';
 import { renderTicketRefs } from '@/utils/ticketRef';
 import { handleError } from '@/utils/error';
+import { t } from '@/i18n';
 import { apiGetComments, apiCreateComment, apiUpdateCommentBody } from '@/api/comments';
 import type { Comment } from '@/types/ticket';
 
@@ -50,7 +51,7 @@ export function useTicketComments(
     try {
       await postComment();
     } catch (e) {
-      handleError(e, '评论失败');
+      handleError(e, t('ticket.comments.failed'));
     } finally {
       submitting.value = false;
     }
@@ -113,7 +114,7 @@ export function useTicketComments(
       document.execCommand('copy');
       document.body.removeChild(input);
     }
-    ui.toast('链接已复制', 'success');
+    ui.toast(t('common.linkCopied'), 'success');
   }
 
   function scrollToComment(commentId: string) {

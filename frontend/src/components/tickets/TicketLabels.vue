@@ -7,6 +7,7 @@ import { useLabelsStore } from '@/stores/labels';
 import { useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useAuthStore } from '@/stores/auth';
+import { t } from '@/i18n';
 import type { Ticket } from '@/types/ticket';
 
 const props = defineProps<{
@@ -47,9 +48,9 @@ async function addLabel(labelId: string) {
   try {
     await apiAddTicketLabel(props.ticket.id, labelId);
     await tickets.fetchDetail(props.ticket.id);
-    ui.toast('标签已添加', 'success');
+    ui.toast(t('ticket.labels.added'), 'success');
   } catch (e) {
-    handleError(e, '添加失败');
+    handleError(e, t('common.addFailed'));
   }
 }
 
@@ -57,9 +58,9 @@ async function removeLabel(labelId: string) {
   try {
     await apiRemoveTicketLabel(props.ticket.id, labelId);
     await tickets.fetchDetail(props.ticket.id);
-    ui.toast('标签已移除', 'success');
+    ui.toast(t('ticket.labels.removed'), 'success');
   } catch (e) {
-    handleError(e, '移除失败');
+    handleError(e, t('common.removeFailed'));
   }
 }
 </script>
@@ -72,7 +73,7 @@ async function removeLabel(labelId: string) {
     <h3
       class="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400"
     >
-      标签
+      {{ t('ticket.labels.title') }}
     </h3>
 
     <div v-if="ticket.labels.length" class="flex flex-wrap gap-1.5">
@@ -82,13 +83,15 @@ async function removeLabel(labelId: string) {
         class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full transition cursor-default"
         :class="auth.isStaff ? 'hover:ring-1 hover:ring-red-400/50 cursor-pointer' : ''"
         :style="{ backgroundColor: tl.label.color + '22', color: tl.label.color }"
-        :title="auth.isStaff ? '点击移除' : undefined"
+        :title="auth.isStaff ? t('ticket.labels.clickRemove') : undefined"
         @click="auth.isStaff && removeLabel(tl.labelId)"
       >
         {{ tl.label.name }}
       </span>
     </div>
-    <div v-else-if="auth.isStaff" class="text-sm text-slate-400 dark:text-slate-500">暂无标签</div>
+    <div v-else-if="auth.isStaff" class="text-sm text-slate-400 dark:text-slate-500">
+      {{ t('ticket.labels.empty') }}
+    </div>
 
     <div v-if="auth.isStaff" ref="dropdownEl" class="relative">
       <button
@@ -102,7 +105,7 @@ async function removeLabel(labelId: string) {
         @click="dropdownOpen = !dropdownOpen"
         @keydown="onKeydown"
       >
-        <span>添加标签...</span>
+        <span>{{ t('ticket.labels.add') }}</span>
         <Icon
           icon="lucide:chevron-down"
           class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 transition-transform duration-200"
@@ -139,7 +142,7 @@ async function removeLabel(labelId: string) {
               </button>
             </template>
             <div v-else class="px-3 py-2 text-xs text-slate-400 dark:text-slate-500">
-              所有标签已添加
+              {{ t('ticket.labels.allAdded') }}
             </div>
           </div>
         </div>

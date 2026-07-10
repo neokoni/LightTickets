@@ -248,6 +248,23 @@ const registerTicketRoutes = () => {
   });
 };
 
+const registerI18nRoutes = () => {
+  registerRoute({
+    method: 'get',
+    path: '/api/i18n/languages',
+    summary: '获取可用语言列表',
+    auth: 'none',
+    tags: ['I18n'],
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/i18n/languages/{id}',
+    summary: '获取语言资源',
+    auth: 'none',
+    tags: ['I18n'],
+  });
+};
+
 const registerCommentRoutes = () => {
   registerRoute({
     method: 'get',
@@ -714,7 +731,11 @@ const registerSetupRoutes = () => {
         username: z.string().min(2).max(30),
       }),
       site: z
-        .object({ siteName: z.string().optional(), siteUrl: z.string().optional() })
+        .object({
+          siteName: z.string().optional(),
+          siteUrl: z.string().optional(),
+          defaultLanguage: z.string().optional(),
+        })
         .optional(),
       mc: z.object({ defaultServerName: z.string().optional() }).optional(),
       storage: z
@@ -747,6 +768,7 @@ const registerSetupRoutes = () => {
       siteName: z.string().min(1).max(100).optional(),
       siteUrl: z.string().url().nullable().optional(),
       footerContent: z.string().max(2000).nullable().optional(),
+      defaultLanguage: z.string().optional(),
     }),
   });
 };
@@ -763,6 +785,7 @@ const registerHealthRoute = () => {
 
 registerHealthRoute();
 registerAuthRoutes();
+registerI18nRoutes();
 registerTicketRoutes();
 registerCommentRoutes();
 registerLabelRoutes();
@@ -780,8 +803,8 @@ const openapi = generator.generateDocument({
   openapi: '3.0.0',
   info: {
     title: 'LightTickets API',
-    version: '1.0.1',
-    description: 'LightTickets 工单系统 API 文档',
+    version: '1.1.0',
+    description: 'LightTickets API 文档',
   },
   servers: [{ url: 'http://localhost:3000', description: 'Development server' }],
 });

@@ -5,6 +5,7 @@ import { apiFetch } from '@/api/client';
 import { timeAgo } from '@/utils/date';
 import type { AuditLog } from '@/types/ticket';
 import { AUDIT_ACTION_META } from '@/types/audit';
+import { t } from '@/i18n';
 
 const props = defineProps<{
   ticketId: number;
@@ -23,7 +24,8 @@ async function fetchLogs() {
 }
 
 function actionLabel(action: string): string {
-  return AUDIT_ACTION_META[action as keyof typeof AUDIT_ACTION_META]?.label ?? action;
+  const labelKey = AUDIT_ACTION_META[action as keyof typeof AUDIT_ACTION_META]?.labelKey;
+  return labelKey ? t(labelKey) : action;
 }
 
 onMounted(fetchLogs);
@@ -32,11 +34,13 @@ onMounted(fetchLogs);
 <template>
   <div class="space-y-3">
     <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-      操作历史
+      {{ t('ticket.audit.title') }}
     </h3>
-    <div v-if="loading" class="text-sm text-slate-400 animate-pulse">加载中...</div>
+    <div v-if="loading" class="text-sm text-slate-400 animate-pulse">{{ t('common.loading') }}</div>
 
-    <div v-else-if="logs.length === 0" class="text-sm text-slate-400">暂无历史记录</div>
+    <div v-else-if="logs.length === 0" class="text-sm text-slate-400">
+      {{ t('ticket.audit.empty') }}
+    </div>
 
     <div v-else class="space-y-3">
       <div v-for="log in logs" :key="log.id" class="flex gap-3 text-sm">

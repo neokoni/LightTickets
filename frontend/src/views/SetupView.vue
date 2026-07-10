@@ -7,8 +7,10 @@ import { Icon } from '@iconify/vue';
 import { completeSetup, waitForServerReady } from '@/api/setup';
 import type { SetupPayload } from '@/types/site';
 import { setSiteConfigCache } from '@/stores/site';
+import { activeLanguage, availableLanguages, setLanguage, t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
+import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
 
 const router = useRouter();
@@ -36,6 +38,7 @@ const payload = reactive<SetupPayload>({
   site: {
     siteName: 'LightTickets',
     siteUrl: '',
+    defaultLanguage: 'zh-CN',
   },
   mc: {
     defaultServerName: '',
@@ -53,7 +56,7 @@ const payload = reactive<SetupPayload>({
   },
 });
 
-// MySQL 字段
+// MySQL fields
 const mysqlFields = reactive({
   host: '',
   port: '',
@@ -151,19 +154,25 @@ async function submit() {
       siteName: res.setup.siteName,
       siteUrl: res.setup.siteUrl,
       footerContent: null,
+      defaultLanguage: res.setup.defaultLanguage,
     });
     // Server restarts after setup — wait for it to come back
     const ready = await waitForServerReady();
     if (ready) {
       router.replace({ name: 'tickets' });
     } else {
-      error.value = '服务器重启超时，请手动刷新页面。';
+      error.value = t('setup.error.restartTimeout');
     }
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '设置失败，请重试。';
+    error.value = e instanceof Error ? e.message : t('setup.error.failed');
   } finally {
     loading.value = false;
   }
+}
+
+async function changeSetupLanguage(languageId: string) {
+  payload.site!.defaultLanguage = languageId;
+  await setLanguage(languageId);
 }
 </script>
 
@@ -174,7 +183,7 @@ async function submit() {
     <div class="absolute top-4 right-4">
       <BaseButton
         :class="themeButtonClass"
-        :aria-label="ui.theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'"
+        :aria-label="ui.theme === 'dark' ? t('theme.light') : t('theme.dark')"
         @click="ui.toggleTheme()"
       >
         <Icon :icon="ui.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" class="w-5 h-5" />
@@ -185,11 +194,11 @@ async function submit() {
     >
       <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">
-          LightTickets初始化向导
+          {{ t('setup.title') }}
         </h1>
         <template v-if="step <= totalSteps">
           <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            步骤 {{ step }} / {{ totalSteps }}
+            {{ t('setup.step', { step, total: totalSteps }) }}
           </p>
           <div class="mt-4 h-1 bg-slate-100 dark:bg-slate-800 rounded overflow-hidden">
             <div
@@ -205,12 +214,12 @@ async function submit() {
         <div class="text-center py-6">
           <img src="/icons/lighttickets.svg" alt="LightTickets" class="w-16 h-16 mx-auto mb-4" />
           <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-            欢迎使用 LightTickets
+            {{ t('setup.welcome') }}
           </h2>
           <p
             class="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed max-w-xs mx-auto"
           >
-            本向导将帮助你完成站点初始化：数据库配置、管理员账户创建和基本站点设置。
+            {{ t('setup.welcomeDescription') }}
           </p>
         </div>
       </div>
@@ -218,7 +227,7 @@ async function submit() {
       <!-- Step 2: Database -->
       <div v-else-if="step === 2" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-          数据库配置
+          {{ t('setup.database.title') }}
         </h2>
         <div class="flex gap-3">
           <BaseButton
@@ -241,31 +250,43 @@ async function submit() {
           v-if="payload.db.provider === 'sqlite'"
           class="text-sm text-slate-500 dark:text-slate-400"
         >
-          数据库文件将保存在
+          {{ t('setup.database.sqlitePathPrefix') }}
           <code class="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded"
             >data/data.db</code
           >
         </p>
 
         <div v-else class="grid grid-cols-2 gap-3">
-          <BaseInput v-model="mysqlFields.host" label="主机" placeholder="localhost" />
-          <BaseInput v-model="mysqlFields.port" label="端口（可选）" placeholder="3306" />
-          <BaseInput v-model="mysqlFields.username" label="用户名" placeholder="root" />
+          <BaseInput
+            v-model="mysqlFields.host"
+            :label="t('setup.database.host')"
+            placeholder="localhost"
+          />
+          <BaseInput
+            v-model="mysqlFields.port"
+            :label="t('setup.database.port')"
+            placeholder="3306"
+          />
+          <BaseInput
+            v-model="mysqlFields.username"
+            :label="t('setup.database.username')"
+            placeholder="root"
+          />
           <BaseInput
             v-model="mysqlFields.password"
-            label="密码"
+            :label="t('setup.database.password')"
             type="password"
             placeholder="password"
           />
           <BaseInput
             v-model="mysqlFields.database"
-            label="数据库"
+            :label="t('setup.database.database')"
             placeholder="lighttickets"
             class="col-span-2"
           />
           <BaseInput
             v-model="mysqlFields.args"
-            label="连接参数（可选）"
+            :label="t('setup.database.args')"
             placeholder="sslaccept=strict&connect_timeout=10"
             class="col-span-2"
           />
@@ -275,9 +296,11 @@ async function submit() {
       <!-- Step 3: Storage -->
       <div v-else-if="step === 3" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-          存储设置
+          {{ t('setup.storage.title') }}
         </h2>
-        <label class="text-sm font-medium text-slate-900 dark:text-white">存储方式</label>
+        <label class="text-sm font-medium text-slate-900 dark:text-white">{{
+          t('setup.storage.driver')
+        }}</label>
         <div class="flex gap-3">
           <BaseButton
             :class="storageButtonClass"
@@ -285,7 +308,7 @@ async function submit() {
             @click="payload.storage!.driver = 'local'"
           >
             <Icon icon="lucide:hard-drive" class="w-4 h-4" />
-            本地磁盘
+            {{ t('setup.storage.local') }}
           </BaseButton>
           <BaseButton
             :class="storageButtonClass"
@@ -293,7 +316,7 @@ async function submit() {
             @click="payload.storage!.driver = 's3'"
           >
             <Icon icon="lucide:cloud" class="w-4 h-4" />
-            S3 兼容存储
+            {{ t('setup.storage.s3') }}
           </BaseButton>
         </div>
 
@@ -301,15 +324,17 @@ async function submit() {
           v-if="payload.storage?.driver === 's3'"
           class="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-700"
         >
-          <p class="text-sm font-medium text-slate-900 dark:text-white pt-2">S3 兼容存储配置</p>
+          <p class="text-sm font-medium text-slate-900 dark:text-white pt-2">
+            {{ t('setup.storage.s3Config') }}
+          </p>
           <BaseInput
             v-model="payload.storage!.s3!.endpoint"
-            label="服务端点 *"
+            :label="t('setup.storage.endpoint')"
             placeholder="http://localhost:9000"
           />
           <BaseInput
             v-model="payload.storage!.s3!.bucket"
-            label="存储桶 *"
+            :label="t('setup.storage.bucket')"
             placeholder="lighttickets"
           />
           <div class="grid grid-cols-2 gap-3">
@@ -327,7 +352,7 @@ async function submit() {
           </div>
           <BaseInput
             v-model.number="payload.storage!.s3!.presignExpiry"
-            label="预签名链接过期时间（秒）"
+            :label="t('setup.storage.presignExpiry')"
             type="number"
             min="60"
             placeholder="300"
@@ -337,10 +362,10 @@ async function submit() {
           >
             <div>
               <p class="text-sm font-medium text-slate-900 dark:text-white">
-                路径样式(Path Style)寻址
+                {{ t('setup.storage.pathStyle') }}
               </p>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                自建 S3 兼容存储(如 MinIO)需开启; AWS S3 官方可关闭
+                {{ t('setup.storage.pathStyleHelp') }}
               </p>
             </div>
             <BaseToggle v-model="payload.storage!.s3!.forcePathStyle" />
@@ -351,19 +376,23 @@ async function submit() {
       <!-- Step 4: Admin Account -->
       <div v-else-if="step === 4" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-          管理员账户
+          {{ t('setup.admin.title') }}
         </h2>
-        <BaseInput v-model="payload.admin.username" label="用户名" placeholder="admin" />
+        <BaseInput
+          v-model="payload.admin.username"
+          :label="t('setup.admin.username')"
+          placeholder="admin"
+        />
         <BaseInput
           v-model="payload.admin.email"
-          label="邮箱"
+          :label="t('setup.admin.email')"
           placeholder="admin@example.com"
           type="email"
         />
         <BaseInput
           v-model="payload.admin.password"
-          label="密码"
-          placeholder="至少 6 位字符"
+          :label="t('setup.admin.password')"
+          :placeholder="t('setup.admin.passwordPlaceholder')"
           type="password"
         />
       </div>
@@ -371,27 +400,42 @@ async function submit() {
       <!-- Step 5: Site Settings -->
       <div v-else-if="step === 5" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-          站点设置
+          {{ t('setup.site.title') }}
         </h2>
-        <BaseInput v-model="payload.site!.siteName" label="站点名称" placeholder="LightTickets" />
+        <BaseInput
+          v-model="payload.site!.siteName"
+          :label="t('setup.site.name')"
+          placeholder="LightTickets"
+        />
         <BaseInput
           v-model="payload.site!.siteUrl"
-          label="站点地址（可选）"
+          :label="t('setup.site.url')"
           placeholder="https://ticket.example.com"
+        />
+        <BaseSelect
+          :model-value="activeLanguage"
+          :label="t('settings.language.default')"
+          :options="
+            availableLanguages.map((language) => ({
+              value: language.id,
+              label: language.displayName,
+            }))
+          "
+          @update:model-value="changeSetupLanguage($event || 'zh-CN')"
         />
       </div>
 
       <!-- Step 6: Optional Default Server -->
       <div v-else-if="step === 6" class="space-y-5">
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-          Minecraft 服务器（可选）
+          {{ t('setup.mc.title') }}
         </h2>
         <BaseInput
           v-model="payload.mc!.defaultServerName"
-          label="默认服务器名称"
+          :label="t('setup.mc.defaultServerName')"
           placeholder="MyServer"
         />
-        <p class="text-xs text-slate-400">留空可跳过。之后可在「管理 › 服务器」中添加服务器。</p>
+        <p class="text-xs text-slate-400">{{ t('setup.mc.help') }}</p>
       </div>
 
       <!-- Complete -->
@@ -402,9 +446,11 @@ async function submit() {
           ✓
         </div>
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-          设置完成！
+          {{ t('setup.complete.title') }}
         </h2>
-        <p class="text-slate-500 dark:text-slate-400 text-sm">服务器正在重启，请稍候...</p>
+        <p class="text-slate-500 dark:text-slate-400 text-sm">
+          {{ t('setup.complete.restarting') }}
+        </p>
         <div v-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</div>
       </div>
 
@@ -416,15 +462,17 @@ async function submit() {
       </div>
 
       <div class="mt-8 flex justify-between">
-        <BaseButton v-if="step > 1 && step <= totalSteps" @click="back"> 上一步 </BaseButton>
+        <BaseButton v-if="step > 1 && step <= totalSteps" @click="back">
+          {{ t('common.previous') }}
+        </BaseButton>
         <div v-else />
         <BaseButton v-if="step < totalSteps" :disabled="!canNext" @click="next">
-          下一步
+          {{ t('common.next') }}
         </BaseButton>
         <BaseButton v-else-if="step === totalSteps" :loading="loading" @click="submit">
-          完成设置
+          {{ t('setup.complete.submit') }}
         </BaseButton>
-        <BaseButton v-else-if="step === 1" @click="next"> 开始使用 </BaseButton>
+        <BaseButton v-else-if="step === 1" @click="next">{{ t('setup.start') }}</BaseButton>
       </div>
     </div>
   </div>

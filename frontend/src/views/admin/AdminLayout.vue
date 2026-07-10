@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router';
+import { t } from '@/i18n';
 
 const route = useRoute();
 
 const navItems = [
-  { to: '/admin/labels', label: '标签', icon: 'lucide:tag' },
-  { to: '/admin/servers', label: '服务器', icon: 'lucide:server' },
-  { to: '/admin/templates', label: '模板', icon: 'lucide:layout-template' },
-  { to: '/admin/users', label: '用户', icon: 'lucide:users' },
-  { to: '/admin/settings', label: '设置', icon: 'lucide:settings' },
-  { to: '/admin/storage', label: '存储', icon: 'lucide:database' },
+  { to: '/admin/labels', labelKey: 'admin.nav.labels', icon: 'lucide:tag' },
+  { to: '/admin/servers', labelKey: 'admin.nav.servers', icon: 'lucide:server' },
+  { to: '/admin/templates', labelKey: 'admin.nav.templates', icon: 'lucide:layout-template' },
+  { to: '/admin/users', labelKey: 'admin.nav.users', icon: 'lucide:users' },
+  { to: '/admin/settings', labelKey: 'admin.nav.settings', icon: 'lucide:settings' },
+  { to: '/admin/storage', labelKey: 'admin.nav.storage', icon: 'lucide:database' },
 ];
 </script>
 
@@ -29,7 +30,7 @@ const navItems = [
         "
       >
         <Icon :icon="item.icon" class="w-4 h-4" />
-        {{ item.label }}
+        {{ t(item.labelKey) }}
       </RouterLink>
     </nav>
     <div>

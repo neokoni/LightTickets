@@ -12,6 +12,7 @@ import BaseButton from '@/components/base/BaseButton.vue';
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
+import { t } from '@/i18n';
 
 const router = useRouter();
 const ui = useUiStore();
@@ -108,10 +109,10 @@ async function submit() {
       attachmentIds,
     });
 
-    ui.toast('议题已创建', 'success');
+    ui.toast(t('ticket.create.created'), 'success');
     router.push(`/tickets/${ticket.id}`);
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '创建失败';
+    error.value = e instanceof Error ? e.message : t('common.createFailed');
   } finally {
     loading.value = false;
   }
@@ -121,20 +122,24 @@ async function submit() {
 <template>
   <div class="max-w-2xl mx-auto space-y-6">
     <h1 class="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
-      新建议题
+      {{ t('ticket.create.title') }}
     </h1>
 
     <!-- Step 1: Template Picker -->
     <div v-if="step === 1" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <BaseButton
-        v-for="t in templates"
-        :key="t.name"
+        v-for="template in templates"
+        :key="template.name"
         :class="templateButtonClass"
-        @click="selectTemplate(t.name)"
+        @click="selectTemplate(template.name)"
       >
         <div>
-          <div class="font-medium text-slate-900 dark:text-white text-sm">{{ t.name_i18n }}</div>
-          <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ t.description }}</div>
+          <div class="font-medium text-slate-900 dark:text-white text-sm">
+            {{ template.name_i18n }}
+          </div>
+          <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {{ template.description }}
+          </div>
         </div>
       </BaseButton>
     </div>
@@ -149,12 +154,16 @@ async function submit() {
       </div>
 
       <div>
-        <BaseInput v-model="title" label="标题" placeholder="简要描述问题" />
+        <BaseInput
+          v-model="title"
+          :label="t('ticket.create.fieldTitle')"
+          :placeholder="t('ticket.create.titlePlaceholder')"
+        />
         <p
           v-if="selectedTemplate?.title_prefix"
           class="mt-1 text-xs text-slate-400 dark:text-slate-500"
         >
-          前缀「{{ selectedTemplate.title_prefix }}」将自动添加到标题
+          {{ t('ticket.create.titlePrefixHelp', { prefix: selectedTemplate.title_prefix }) }}
         </p>
       </div>
 
@@ -222,7 +231,7 @@ async function submit() {
         <BaseSelect
           v-else-if="field.type === 'dropdown'"
           :label="field.attributes.label"
-          :placeholder="field.attributes.placeholder || '请选择...'"
+          :placeholder="field.attributes.placeholder || t('common.selectPlaceholderWithDots')"
           :model-value="formValues[field.id || ''] || ''"
           :options="
             (field.attributes.options || []).map((opt) => ({
@@ -253,14 +262,14 @@ async function submit() {
       <p v-if="error" class="text-sm text-red-500 dark:text-red-400">{{ error }}</p>
 
       <div class="flex justify-end gap-2">
-        <BaseButton type="button" @click="router.back()">取消</BaseButton>
+        <BaseButton type="button" @click="router.back()">{{ t('common.cancel') }}</BaseButton>
         <BaseButton
           filled
           type="submit"
           :loading="loading"
           :disabled="!allFieldsValid || !title.trim()"
         >
-          提交议题
+          {{ t('ticket.create.submit') }}
         </BaseButton>
       </div>
     </form>

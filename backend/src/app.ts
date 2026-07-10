@@ -17,6 +17,7 @@ import attachmentRoutes from './routes/attachments.js';
 import serverRoutes from './routes/servers.js';
 import mcRoutes from './routes/mc.js';
 import auditRoutes from './routes/audit.js';
+import i18nRoutes from './routes/i18n.js';
 import templateRoutes from './routes/templates.js';
 import adminTemplateRoutes from './routes/admin-templates.js';
 import adminStorageRoutes from './routes/admin-storage.js';
@@ -63,6 +64,7 @@ export function createApp() {
 
   app.use('/api/setup', createSetupRoutes());
   app.use('/api/auth', authRoutes);
+  app.use('/api/i18n', i18nRoutes);
   app.use('/api/templates', templateRoutes);
   app.use('/api/admin/templates', adminTemplateRoutes);
   app.use('/api/admin/storage', adminStorageRoutes);

@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { siteConfig } from '@/stores/site';
+import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 
@@ -25,11 +26,11 @@ onMounted(() => {
 async function submit() {
   error.value = '';
   if (password.value !== confirmPassword.value) {
-    error.value = '两次密码不一致';
+    error.value = t('auth.passwordMismatch');
     return;
   }
   if (password.value.length < 6) {
-    error.value = '密码至少6位';
+    error.value = t('auth.passwordMinLength');
     return;
   }
   loading.value = true;
@@ -37,7 +38,7 @@ async function submit() {
     await auth.register(email.value, password.value, username.value);
     router.push('/');
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '注册失败';
+    error.value = e instanceof Error ? e.message : t('auth.register.failed');
   } finally {
     loading.value = false;
   }
@@ -60,35 +61,47 @@ async function submit() {
         <h1
           class="mt-4 text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl"
         >
-          注册
+          {{ t('auth.register.title') }}
         </h1>
         <p class="mt-4 text-base leading-8 text-slate-600 dark:text-slate-300">
-          创建 LightTickets 账号
+          {{ t('auth.register.subtitle') }}
         </p>
       </div>
 
       <form class="mt-6 space-y-4" @submit.prevent="submit">
-        <BaseInput v-model="username" label="用户名" placeholder="your_name" />
-        <BaseInput v-model="email" label="邮箱" type="email" placeholder="you@example.com" />
-        <BaseInput v-model="password" label="密码" type="password" placeholder="至少6位" />
+        <BaseInput v-model="username" :label="t('user.username')" placeholder="your_name" />
+        <BaseInput
+          v-model="email"
+          :label="t('user.email')"
+          type="email"
+          placeholder="you@example.com"
+        />
+        <BaseInput
+          v-model="password"
+          :label="t('auth.password')"
+          type="password"
+          :placeholder="t('auth.passwordMinLength')"
+        />
         <BaseInput
           v-model="confirmPassword"
-          label="确认密码"
+          :label="t('auth.confirmPassword')"
           type="password"
-          placeholder="再次输入密码"
+          :placeholder="t('auth.confirmPasswordPlaceholder')"
         />
 
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
-        <BaseButton filled type="submit" :loading="loading" class="w-full">注册</BaseButton>
+        <BaseButton filled type="submit" :loading="loading" class="w-full">{{
+          t('auth.register.title')
+        }}</BaseButton>
       </form>
 
       <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
-        已有账号？
+        {{ t('auth.hasAccount') }}
         <RouterLink
           to="/login"
           class="font-semibold text-slate-900 dark:text-slate-100 hover:text-slate-700 dark:hover:text-slate-300 transition"
-          >登录</RouterLink
+          >{{ t('auth.login.title') }}</RouterLink
         >
       </p>
     </div>

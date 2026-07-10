@@ -15,6 +15,7 @@ export const siteConfig = reactive<SiteConfigCache>({
   siteName: 'LightTickets',
   siteUrl: null,
   footerContent: null,
+  defaultLanguage: 'zh-CN',
   connectionError: false,
 });
 

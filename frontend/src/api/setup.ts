@@ -1,5 +1,11 @@
 import { apiFetch } from './client';
-import type { SiteConfig, SetupPayload, SetupResult, SettingsResult } from '@/types/site';
+import type {
+  SiteConfig,
+  SetupPayload,
+  SetupResult,
+  SettingsResult,
+  SettingsPayload,
+} from '@/types/site';
 
 export async function getSiteConfig(): Promise<SiteConfig> {
   return apiFetch<SiteConfig>('/setup/site-config', { method: 'GET' });
@@ -12,14 +18,7 @@ export async function completeSetup(payload: SetupPayload): Promise<SetupResult>
   });
 }
 
-export async function updateSettings(data: {
-  requireLogin?: boolean;
-  allowWebRegister?: boolean;
-  allowMcRegister?: boolean;
-  siteName?: string;
-  siteUrl?: string | null;
-  footerContent?: string | null;
-}): Promise<SettingsResult> {
+export async function updateSettings(data: SettingsPayload): Promise<SettingsResult> {
   return apiFetch<SettingsResult>('/setup/settings', {
     method: 'PATCH',
     body: JSON.stringify(data),

@@ -3,6 +3,7 @@ import { apiFetch } from '@/api/client';
 import { useLabelsStore } from '@/stores/labels';
 import { STATUS_META } from '@/types/ticket';
 import { AUDIT_ACTION } from '@/types/audit';
+import { t } from '@/i18n';
 import type { Comment, AuditLog, TicketStatus } from '@/types/ticket';
 import type { Ticket } from '@/types/ticket';
 import type { AssignableUser } from '@/types/user';
@@ -57,38 +58,46 @@ export function useAuditTimeline(
           c.authorId === item.actorId &&
           Math.abs(new Date(c.createdAt).getTime() - new Date(item.createdAt).getTime()) < 10000,
       );
-      const prefix = hasComment ? '评论并' : '';
+      const prefix = hasComment ? t('ticket.timeline.commentAnd') : '';
       if (item.newValue === 'closed') {
         return item.actor.id === ticket.value?.authorId
-          ? prefix + '关闭了此议题'
-          : prefix + '关闭了此议题并标记为已完成';
+          ? prefix + t('ticket.timeline.closed')
+          : prefix + t('ticket.timeline.closedCompleted');
       }
-      if (item.newValue === 'open') return prefix + '重新打开了此议题';
-      if (item.newValue === 'in_progress') return '开始处理此议题';
-      if (item.newValue === 'invalid') return '标记为不做计划';
+      if (item.newValue === 'open') return prefix + t('ticket.timeline.reopened');
+      if (item.newValue === 'in_progress') return t('ticket.timeline.inProgress');
+      if (item.newValue === 'invalid') return t('ticket.timeline.invalid');
     }
     if (item.action === AUDIT_ACTION.ASSIGNEES_CHANGE) {
       const oldNames = parseUserIds(item.oldValue);
       const newNames = parseUserIds(item.newValue);
-      if (newNames.length === 0) return '取消了所有受理人';
+      if (newNames.length === 0) return t('ticket.timeline.assigneesCleared');
       if (newNames.length === 1 && oldNames.length === 0 && newNames[0] === item.actor.username)
-        return '分配给了自己';
+        return t('ticket.timeline.assignedSelf');
       const added = newNames.filter((n) => !oldNames.includes(n));
       const removed = oldNames.filter((n) => !newNames.includes(n));
       const parts: string[] = [];
-      if (added.length) parts.push(`添加了 ${added.join('、')}`);
-      if (removed.length) parts.push(`移除了 ${removed.join('、')}`);
-      if (parts.length) return `分配给了 ${newNames.join('、')}（${parts.join('，')}）`;
-      return `分配给了 ${newNames.join('、')}`;
+      if (added.length)
+        parts.push(t('ticket.timeline.addedAssignees', { names: added.join('、') }));
+      if (removed.length) {
+        parts.push(t('ticket.timeline.removedAssignees', { names: removed.join('、') }));
+      }
+      if (parts.length) {
+        return t('ticket.timeline.assignedWithChanges', {
+          names: newNames.join('、'),
+          changes: parts.join('，'),
+        });
+      }
+      return t('ticket.timeline.assignedTo', { names: newNames.join('、') });
     }
     const map: Record<string, string> = {
-      assign: '变更了受理人',
-      assignees_change: '变更了受理人',
-      label_add: '添加了标签',
-      label_remove: '移除了标签',
-      title_change: '更改了标题',
-      body_change: '编辑了内容',
-      comment_edit: '编辑了评论',
+      assign: t('ticket.timeline.assigneesChanged'),
+      assignees_change: t('ticket.timeline.assigneesChanged'),
+      label_add: t('ticket.timeline.labelAdded'),
+      label_remove: t('ticket.timeline.labelRemoved'),
+      title_change: t('ticket.timeline.titleChanged'),
+      body_change: t('ticket.timeline.bodyChanged'),
+      comment_edit: t('ticket.timeline.commentEdited'),
     };
     return map[item.action] || item.action;
   }

@@ -1,5 +1,6 @@
 <script setup lang="ts" generic="T extends Record<string, unknown>">
 import { Icon } from '@iconify/vue';
+import { t } from '@/i18n';
 
 interface TableColumn {
   key: string;
@@ -50,7 +51,7 @@ function getRowKey(row: T): string | number {
             v-if="actions?.length"
             class="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400"
           >
-            操作
+            {{ t('common.actions') }}
           </th>
         </tr>
       </thead>
@@ -95,13 +96,13 @@ function getRowKey(row: T): string | number {
       v-if="!loading && data.length === 0"
       class="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400"
     >
-      {{ emptyText || '暂无数据' }}
+      {{ emptyText || t('common.noData') }}
     </div>
     <div
       v-if="loading"
       class="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400 animate-pulse"
     >
-      加载中...
+      {{ t('common.loading') }}
     </div>
   </div>
 </template>

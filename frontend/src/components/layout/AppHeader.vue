@@ -5,6 +5,7 @@ import { RouterLink, useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/ui';
 import { siteConfig } from '@/stores/site';
+import { t } from '@/i18n';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 
 const auth = useAuthStore();
@@ -59,7 +60,7 @@ function handleLogout() {
           class="nav-link px-2 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 lg:px-2.5 lg:text-base"
           :class="{ 'nav-link-active': route.path === '/' || route.path.startsWith('/tickets') }"
         >
-          <span class="nav-link-text">议题</span>
+          <span class="nav-link-text">{{ t('nav.tickets') }}</span>
         </RouterLink>
         <RouterLink
           v-if="auth.isAdmin"
@@ -67,14 +68,14 @@ function handleLogout() {
           class="nav-link px-2 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 lg:px-2.5 lg:text-base"
           :class="{ 'nav-link-active': route.path.startsWith('/admin') }"
         >
-          <span class="nav-link-text">管理</span>
+          <span class="nav-link-text">{{ t('nav.admin') }}</span>
         </RouterLink>
       </nav>
 
       <div class="ml-auto flex items-center gap-2">
         <button
           class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100"
-          :aria-label="ui.theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'"
+          :aria-label="ui.theme === 'dark' ? t('theme.light') : t('theme.dark')"
           @click="ui.toggleTheme()"
         >
           <Transition name="theme-icon" mode="out-in">
@@ -107,13 +108,13 @@ function handleLogout() {
                 to="/profile"
                 class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
                 @click="profileMenuOpen = false"
-                >个人资料</RouterLink
+                >{{ t('nav.profile') }}</RouterLink
               >
               <button
                 class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 @click="handleLogout"
               >
-                退出登录
+                {{ t('nav.logout') }}
               </button>
             </div>
           </div>
@@ -123,13 +124,13 @@ function handleLogout() {
           <RouterLink
             to="/login"
             class="text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-slate-900 dark:hover:text-slate-100 transition"
-            >登录</RouterLink
+            >{{ t('auth.login.title') }}</RouterLink
           >
         </template>
 
         <button
           class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100 lg:hidden"
-          aria-label="菜单"
+          :aria-label="t('nav.menu')"
           @click="ui.mobileMenuOpen = !ui.mobileMenuOpen"
         >
           <Icon :icon="ui.mobileMenuOpen ? 'lucide:x' : 'lucide:menu'" class="h-5 w-5" />
@@ -160,7 +161,7 @@ function handleLogout() {
             <button
               type="button"
               class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-slate-600 dark:border-slate-800 dark:text-slate-200"
-              aria-label="关闭菜单"
+              :aria-label="t('nav.closeMenu')"
               @click="ui.mobileMenuOpen = false"
             >
               ✕
@@ -175,7 +176,7 @@ function handleLogout() {
                 active-class="nav-link-active"
                 @click="ui.mobileMenuOpen = false"
               >
-                议题
+                {{ t('nav.tickets') }}
               </RouterLink>
               <RouterLink
                 v-if="auth.isAdmin"
@@ -184,7 +185,7 @@ function handleLogout() {
                 active-class="nav-link-active"
                 @click="ui.mobileMenuOpen = false"
               >
-                管理
+                {{ t('nav.admin') }}
               </RouterLink>
               <template v-if="auth.isAuthenticated">
                 <div class="my-1 border-t border-slate-200 dark:border-slate-800" />
@@ -193,13 +194,13 @@ function handleLogout() {
                   class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
                   @click="ui.mobileMenuOpen = false"
                 >
-                  个人资料
+                  {{ t('nav.profile') }}
                 </RouterLink>
                 <button
                   class="w-full rounded-md px-4 py-2.5 text-left text-sm font-medium text-red-600 dark:text-red-400 transition hover:text-red-700 dark:hover:text-red-300"
                   @click="handleLogout"
                 >
-                  退出登录
+                  {{ t('nav.logout') }}
                 </button>
               </template>
             </template>
@@ -209,7 +210,7 @@ function handleLogout() {
                 class="rounded-md px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:text-slate-900 dark:text-slate-200 dark:hover:text-slate-100"
                 @click="ui.mobileMenuOpen = false"
               >
-                登录
+                {{ t('auth.login.title') }}
               </RouterLink>
             </template>
           </nav>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useConfirm } from '@/composables/useConfirm';
+import { t } from '@/i18n';
 import BaseButton from './BaseButton.vue';
 import BaseModal from './BaseModal.vue';
 
@@ -14,16 +15,16 @@ function respond(value: boolean) {
 <template>
   <BaseModal
     :model-value="state.open"
-    :title="state.title ?? '请确认'"
+    :title="state.title ?? t('common.confirmTitle')"
     @update:model-value="(v: boolean) => !v && respond(false)"
   >
     <p class="text-sm text-slate-700 dark:text-slate-300">{{ state.message }}</p>
     <template #footer>
       <BaseButton size="sm" @click="respond(false)">
-        {{ state.cancelText ?? '取消' }}
+        {{ state.cancelText ?? t('common.cancel') }}
       </BaseButton>
       <BaseButton size="sm" :variant="state.danger ? 'danger' : 'primary'" @click="respond(true)">
-        {{ state.confirmText ?? '确定' }}
+        {{ state.confirmText ?? t('common.confirm') }}
       </BaseButton>
     </template>
   </BaseModal>

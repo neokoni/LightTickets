@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { siteConfig } from '@/stores/site';
+import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 
@@ -23,7 +24,7 @@ async function submit() {
     const redirect = (route.query.redirect as string) || '/';
     router.push(redirect);
   } catch (e) {
-    error.value = e instanceof Error ? e.message : '登录失败';
+    error.value = e instanceof Error ? e.message : t('auth.login.failed');
   } finally {
     loading.value = false;
   }
@@ -46,36 +47,43 @@ async function submit() {
         <h1
           class="mt-4 text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl"
         >
-          登录
+          {{ t('auth.login.title') }}
         </h1>
         <p class="mt-4 text-base leading-8 text-slate-600 dark:text-slate-300">
-          登录到 LightTickets 平台
+          {{ t('auth.login.subtitle') }}
         </p>
       </div>
 
       <form class="mt-6 space-y-4" @submit.prevent="submit">
         <BaseInput
           v-model="emailOrUsername"
-          label="邮箱/用户名"
+          :label="t('auth.emailOrUsername')"
           type="text"
-          placeholder="请输入邮箱或用户名"
+          :placeholder="t('auth.emailOrUsernamePlaceholder')"
         />
-        <BaseInput v-model="password" label="密码" type="password" placeholder="••••••••" />
+        <BaseInput
+          v-model="password"
+          :label="t('auth.password')"
+          type="password"
+          placeholder="••••••••"
+        />
 
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
-        <BaseButton filled type="submit" :loading="loading" class="w-full">登录</BaseButton>
+        <BaseButton filled type="submit" :loading="loading" class="w-full">{{
+          t('auth.login.title')
+        }}</BaseButton>
       </form>
 
       <p
         v-if="siteConfig.allowWebRegister"
         class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400"
       >
-        没有账号？
+        {{ t('auth.noAccount') }}
         <RouterLink
           to="/register"
           class="font-semibold text-slate-900 dark:text-slate-100 hover:text-slate-700 dark:hover:text-slate-300 transition"
-          >注册</RouterLink
+          >{{ t('auth.register.title') }}</RouterLink
         >
       </p>
     </div>

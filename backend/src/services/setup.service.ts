@@ -7,6 +7,7 @@ import { AppError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
 import { ROLE } from '../constants/roles.js';
 import { CONFIG_PATH, isDatabaseConfigured, validateS3Config, type S3Config } from '../config.js';
+import { DEFAULT_LANGUAGE_ID, resolveLanguageId } from './i18n.service.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[] };
@@ -53,11 +54,13 @@ export interface SiteConfig {
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
+  defaultLanguage: string;
 }
 
 export interface SiteConfigInput {
   siteName?: string;
   siteUrl?: string;
+  defaultLanguage?: string;
 }
 
 export interface SetupInput {
@@ -94,7 +97,9 @@ function toSiteConfig(status: {
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
+  defaultLanguage: string;
 }): SiteConfig {
+  const defaultLanguage = resolveLanguageId(status.defaultLanguage);
   return {
     isSetup: status.isSetup,
     requireLogin: status.requireLogin,
@@ -103,6 +108,7 @@ function toSiteConfig(status: {
     siteName: status.siteName || 'LightTickets',
     siteUrl: status.siteUrl ?? null,
     footerContent: status.footerContent ?? null,
+    defaultLanguage,
   };
 }
 
@@ -148,6 +154,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       siteName: 'LightTickets',
       siteUrl: null,
       footerContent: null,
+      defaultLanguage: DEFAULT_LANGUAGE_ID,
     };
   }
 
@@ -185,6 +192,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       siteName: status?.siteName || 'LightTickets',
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
+      defaultLanguage: resolveLanguageId(status?.defaultLanguage),
     };
   } catch (e: unknown) {
     const error = e instanceof Error ? e : new Error(String(e));
@@ -201,6 +209,7 @@ export async function updateSettings(data: {
   siteName?: string;
   siteUrl?: string | null;
   footerContent?: string | null;
+  defaultLanguage?: string;
 }) {
   const { getPrisma } = await import('../db.js');
   const prisma = getPrisma();
@@ -217,6 +226,9 @@ export async function updateSettings(data: {
       ...(data.siteName !== undefined && { siteName: data.siteName }),
       ...(data.siteUrl !== undefined && { siteUrl: data.siteUrl }),
       ...(data.footerContent !== undefined && { footerContent: data.footerContent }),
+      ...(data.defaultLanguage !== undefined && {
+        defaultLanguage: resolveLanguageId(data.defaultLanguage),
+      }),
     },
   });
 
@@ -227,6 +239,7 @@ export async function updateSettings(data: {
     siteName: updated.siteName,
     siteUrl: updated.siteUrl,
     footerContent: updated.footerContent,
+    defaultLanguage: resolveLanguageId(updated.defaultLanguage),
   };
 }
 
@@ -358,6 +371,7 @@ export async function completeSetup(input: SetupInput) {
       isSetup: true,
       siteName: siteConfig.siteName || 'LightTickets',
       siteUrl: siteConfig.siteUrl || null,
+      defaultLanguage: resolveLanguageId(siteConfig.defaultLanguage),
     },
   });
 

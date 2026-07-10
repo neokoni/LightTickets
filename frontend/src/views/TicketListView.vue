@@ -25,6 +25,7 @@ import type { TemplateSummary } from '@/types/ticket';
 import type { Server } from '@/types/user';
 import type { TicketStatus } from '@/types/ticket';
 import { STATUS_META } from '@/types/ticket';
+import { t } from '@/i18n';
 import BasePagination from '@/components/base/BasePagination.vue';
 import BaseBadge from '@/components/base/BaseBadge.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -72,11 +73,11 @@ const tokens = computed(() => tokenize(searchRaw.value));
 const filterTokens = computed(() => tokens.value.filter((t) => t.type === 'filter' && !t.error));
 const hasActiveFilters = computed(() => filterTokens.value.length > 0);
 
-const statusTabs: { key: TicketStatus | 'all'; label: string; icon: string }[] = [
-  { key: 'all', label: '全部', icon: 'lucide:list' },
-  ...Object.entries(STATUS_META).map(([key, { label, icon }]) => ({
+const statusTabs: { key: TicketStatus | 'all'; labelKey: string; icon: string }[] = [
+  { key: 'all', labelKey: 'ticket.status.all', icon: 'lucide:list' },
+  ...Object.entries(STATUS_META).map(([key, { labelKey, icon }]) => ({
     key: key as TicketStatus,
-    label,
+    labelKey,
     icon,
   })),
 ];
@@ -282,11 +283,11 @@ function getFilterLabel(token: SearchToken): string {
     servers.value,
   );
   const keyLabel: Record<string, string> = {
-    status: '状态',
-    type: '类型',
-    label: '标签',
-    from: '来源',
-    author: '作者',
+    status: t('ticket.search.status'),
+    type: t('ticket.search.type'),
+    label: t('ticket.search.label'),
+    from: t('ticket.search.source'),
+    author: t('ticket.search.author'),
   };
   return `${keyLabel[token.key] || token.key}: ${label}`;
 }
@@ -330,7 +331,7 @@ watch(
   <div class="space-y-4">
     <div class="flex items-center justify-between">
       <h1 class="text-3xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-4xl">
-        议题
+        {{ t('nav.tickets') }}
       </h1>
       <BaseButton
         v-if="auth.isAuthenticated"
@@ -338,13 +339,13 @@ watch(
         to="/tickets/new"
         size="sm"
         icon="lucide:plus"
-        >新建</BaseButton
+        >{{ t('ticket.list.create') }}</BaseButton
       >
       <RouterLink
         v-else
         to="/login"
         class="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition"
-        >登录以创建议题</RouterLink
+        >{{ t('ticket.list.loginToCreate') }}</RouterLink
       >
     </div>
 
@@ -367,7 +368,7 @@ watch(
       >
         <span class="nav-link-text inline-flex items-center gap-1.5">
           <Icon :icon="tab.icon" class="w-4 h-4" />
-          {{ tab.label }}
+          {{ t(tab.labelKey) }}
         </span>
       </BaseButton>
     </div>
@@ -403,7 +404,7 @@ watch(
         <BaseInput
           ref="searchInput"
           v-model="searchRaw"
-          placeholder="搜索议题..."
+          :placeholder="t('ticket.search.placeholder')"
           class="[&_input]:pl-9"
           :class="
             hasActiveFilters
@@ -434,9 +435,9 @@ watch(
             >
               {{
                 suggestions.type === 'key'
-                  ? '筛选条件'
+                  ? t('ticket.search.filterKeys')
                   : suggestions.key
-                    ? `筛选: ${suggestions.key}`
+                    ? t('ticket.search.filterValues', { key: suggestions.key })
                     : ''
               }}
             </div>
@@ -453,7 +454,7 @@ watch(
                 @mousedown.prevent="clickSuggestion(item)"
               >
                 <span class="text-slate-400 dark:text-slate-500 text-xs w-10 shrink-0 text-right">{{
-                  suggestions.type === 'key' ? 'key' : 'value'
+                  suggestions.type === 'key' ? t('ticket.search.key') : t('ticket.search.value')
                 }}</span>
                 <span>{{ item.label }}</span>
               </BaseButton>
@@ -468,7 +469,9 @@ watch(
       <Icon icon="lucide:loader-2" class="w-6 h-6 mx-auto animate-spin" />
     </div>
 
-    <div v-else-if="!store.tickets.length" class="py-12 text-center text-slate-400">暂无议题</div>
+    <div v-else-if="!store.tickets.length" class="py-12 text-center text-slate-400">
+      {{ t('ticket.list.empty') }}
+    </div>
 
     <div
       v-else

@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRouter, type Router } from 'vue-router';
 import { getSiteConfig } from '@/api/setup';
 import { setSiteConfigCache } from '@/stores/site';
+import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 
 let router: Router | null = null;
@@ -34,12 +35,14 @@ async function retry() {
 <template>
   <div class="min-h-screen flex items-center justify-center px-4">
     <div class="text-center space-y-4">
-      <h1 class="text-2xl font-bold text-slate-900 dark:text-white">无法连接到后端服务器</h1>
+      <h1 class="text-2xl font-bold text-slate-900 dark:text-white">
+        {{ t('connectionError.title') }}
+      </h1>
       <p class="text-sm text-slate-500 dark:text-slate-400">
-        请检查后端服务是否正在运行，或稍后重试。
+        {{ t('connectionError.description') }}
       </p>
       <BaseButton :disabled="retrying" variant="primary" @click="retry">
-        {{ retrying ? '重试中...' : '重试' }}
+        {{ retrying ? t('connectionError.retrying') : t('connectionError.retry') }}
       </BaseButton>
     </div>
   </div>
