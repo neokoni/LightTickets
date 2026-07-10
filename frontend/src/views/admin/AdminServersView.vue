@@ -8,7 +8,7 @@ import {
   apiUpdateServer,
   apiDeleteServer,
 } from '@/api/servers';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useConfirm } from '@/composables/useConfirm';
 import { t } from '@/i18n';
@@ -36,7 +36,7 @@ async function create() {
     servers.value.push(server);
     showModal.value = false;
     form.value = { name: '', address: '', description: '' };
-    ui.toast(t('admin.servers.created'), 'success');
+    ui.toast(t('admin.servers.created'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.createFailed'));
   }
@@ -47,7 +47,7 @@ async function regenerate(id: string) {
     const { apiKey } = await apiRegenerateKey(id);
     const idx = servers.value.findIndex((s) => s.id === id);
     if (idx !== -1) servers.value[idx].apiKey = apiKey;
-    ui.toast(t('admin.servers.keyRegenerated'), 'success');
+    ui.toast(t('admin.servers.keyRegenerated'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e);
   }
@@ -75,7 +75,7 @@ async function saveEdit() {
     if (idx !== -1) servers.value[idx] = updated;
     showEditModal.value = false;
     editingServer.value = null;
-    ui.toast(t('admin.servers.updated'), 'success');
+    ui.toast(t('admin.servers.updated'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.saveFailed'));
   }
@@ -86,7 +86,7 @@ async function remove(id: string) {
   try {
     await apiDeleteServer(id);
     servers.value = servers.value.filter((s) => s.id !== id);
-    ui.toast(t('admin.servers.deleted'), 'success');
+    ui.toast(t('admin.servers.deleted'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.deleteFailed'));
   }
@@ -110,9 +110,9 @@ async function copyToClipboard(server: Server) {
         copiedId.value = null;
       }
     }, 2000);
-    ui.toast(t('admin.servers.keyCopied'), 'success');
+    ui.toast(t('admin.servers.keyCopied'), ToastType.SUCCESS);
   } catch {
-    ui.toast(t('common.copyFailed'), 'error');
+    ui.toast(t('common.copyFailed'), ToastType.ERROR);
   }
 }
 

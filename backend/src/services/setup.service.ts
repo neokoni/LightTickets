@@ -6,6 +6,8 @@ import bcrypt from 'bcrypt';
 import { AppError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
 import { ROLE } from '../constants/roles.js';
+import { DatabaseProvider } from '../constants/database-provider.js';
+import { StorageDriver } from '../constants/storage-driver.js';
 import { CONFIG_PATH, isDatabaseConfigured, validateS3Config, type S3Config } from '../config.js';
 import type { MailConfigInput, PublicMailConfig } from './mail-config.service.js';
 import * as i18nService from './i18n.service.js';
@@ -16,7 +18,7 @@ import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[] };
   database?: {
-    provider?: 'sqlite' | 'mysql';
+    provider?: DatabaseProvider;
     host?: string;
     port?: number;
     username?: string;
@@ -75,7 +77,7 @@ export interface SiteConfigInput {
 
 export interface SetupInput {
   db: {
-    provider: 'sqlite' | 'mysql';
+    provider: DatabaseProvider;
     host?: string;
     port?: number;
     username?: string;
@@ -93,7 +95,7 @@ export interface SetupInput {
     defaultServerName?: string;
   };
   storage?: {
-    driver: 'local' | 's3';
+    driver: StorageDriver;
     s3?: Omit<Partial<S3Config>, 'region'>;
   };
   accessOrigin?: string;
@@ -124,9 +126,9 @@ function toSiteConfig(status: {
 }
 
 function buildStorageConfig(input: SetupInput['storage']) {
-  if (!input || input.driver === 'local') {
+  if (!input || input.driver === StorageDriver.LOCAL) {
     return {
-      storageDriver: 'local',
+      storageDriver: StorageDriver.LOCAL,
       uploadDir: 'data/uploads',
       s3Config: null,
     };
@@ -149,7 +151,7 @@ function buildStorageConfig(input: SetupInput['storage']) {
   }
 
   return {
-    storageDriver: 's3',
+    storageDriver: StorageDriver.S3,
     uploadDir: 'data/uploads',
     s3Config: JSON.stringify(s3),
   };
@@ -332,7 +334,10 @@ export async function completeSetup(input: SetupInput) {
     }
   }
 
-  if (!input.db.provider || !['sqlite', 'mysql'].includes(input.db.provider)) {
+  if (
+    !input.db.provider ||
+    ![DatabaseProvider.SQLITE, DatabaseProvider.MYSQL].includes(input.db.provider)
+  ) {
     throw new ValidationError('无效的数据库类型，仅支持 sqlite 或 mysql');
   }
 
@@ -361,7 +366,7 @@ export async function completeSetup(input: SetupInput) {
     },
   };
 
-  if (input.db.provider === 'mysql') {
+  if (input.db.provider === DatabaseProvider.MYSQL) {
     configData.database.host = requiredTrim(input.db.host, 'host');
     configData.database.port = input.db.port ?? 3306;
     configData.database.username = requiredTrim(input.db.username, 'username');

@@ -1,6 +1,12 @@
 export type Role = 'player' | 'staff' | 'admin';
 export type TicketStatus = 'open' | 'in_progress' | 'closed' | 'invalid';
-export type CommentSource = 'web' | 'minecraft';
+
+export const CommentSource = {
+  WEB: 'web',
+  MINECRAFT: 'minecraft',
+} as const;
+
+export type CommentSource = (typeof CommentSource)[keyof typeof CommentSource];
 
 export const TICKET_STATUS = {
   OPEN: 'open',

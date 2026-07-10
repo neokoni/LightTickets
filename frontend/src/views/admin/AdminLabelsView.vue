@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useLabelsStore } from '@/stores/labels';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useConfirm } from '@/composables/useConfirm';
 import { t } from '@/i18n';
@@ -38,10 +38,10 @@ async function save() {
   try {
     if (editingId.value) {
       await labels.update(editingId.value, form.value);
-      ui.toast(t('admin.labels.updated'), 'success');
+      ui.toast(t('admin.labels.updated'), ToastType.SUCCESS);
     } else {
       await labels.create(form.value);
-      ui.toast(t('admin.labels.created'), 'success');
+      ui.toast(t('admin.labels.created'), ToastType.SUCCESS);
     }
     showModal.value = false;
   } catch (e) {
@@ -53,7 +53,7 @@ async function remove(id: string) {
   if (!(await confirm(t('admin.labels.deleteConfirm')))) return;
   try {
     await labels.remove(id);
-    ui.toast(t('admin.labels.deleted'), 'success');
+    ui.toast(t('admin.labels.deleted'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.deleteFailed'));
   }

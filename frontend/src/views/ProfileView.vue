@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '@/stores/auth';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { activeLanguage, availableLanguages, setLanguage, t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
@@ -50,14 +50,14 @@ const savingPassword = ref(false);
 async function saveUsername() {
   const val = usernameInput.value.trim();
   if (!val || val.length < 2 || val.length > 32) {
-    ui.toast(t('profile.account.usernameLength'), 'error');
+    ui.toast(t('profile.account.usernameLength'), ToastType.ERROR);
     return;
   }
   if (val === auth.user?.username) return;
   savingUsername.value = true;
   try {
     await auth.updateUsername(val);
-    ui.toast(t('profile.account.usernameUpdated'), 'success');
+    ui.toast(t('profile.account.usernameUpdated'), ToastType.SUCCESS);
     editingUsername.value = false;
   } catch (e) {
     handleError(e, t('common.updateFailed'));
@@ -69,14 +69,14 @@ async function saveUsername() {
 async function saveEmail() {
   const val = emailInput.value.trim();
   if (!val || !val.includes('@')) {
-    ui.toast(t('profile.account.invalidEmail'), 'error');
+    ui.toast(t('profile.account.invalidEmail'), ToastType.ERROR);
     return;
   }
   if (val === auth.user?.email) return;
   savingEmail.value = true;
   try {
     await auth.updateEmail(val);
-    ui.toast(t('profile.account.emailUpdated'), 'success');
+    ui.toast(t('profile.account.emailUpdated'), ToastType.SUCCESS);
     editingEmail.value = false;
   } catch (e) {
     handleError(e, t('common.updateFailed'));
@@ -89,7 +89,7 @@ async function saveAvatar() {
   savingAvatar.value = true;
   try {
     await auth.updateAvatar(avatarInput.value.trim() || null);
-    ui.toast(t('profile.account.avatarUpdated'), 'success');
+    ui.toast(t('profile.account.avatarUpdated'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.updateFailed'));
   } finally {
@@ -102,7 +102,7 @@ async function clearAvatar() {
   try {
     await auth.updateAvatar(null);
     avatarInput.value = '';
-    ui.toast(t('profile.account.avatarCleared'), 'success');
+    ui.toast(t('profile.account.avatarCleared'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.updateFailed'));
   } finally {
@@ -115,7 +115,7 @@ async function linkMc() {
   linking.value = true;
   try {
     await auth.linkMinecraft(mcCode.value.trim());
-    ui.toast(t('profile.minecraft.linked'), 'success');
+    ui.toast(t('profile.minecraft.linked'), ToastType.SUCCESS);
     mcCode.value = '';
   } catch (e) {
     handleError(e, t('profile.minecraft.linkFailed'));
@@ -128,7 +128,7 @@ async function unlinkMc() {
   unlinking.value = true;
   try {
     await auth.unlinkMinecraft();
-    ui.toast(t('profile.minecraft.unlinked'), 'success');
+    ui.toast(t('profile.minecraft.unlinked'), ToastType.SUCCESS);
     confirmUnlink.value = false;
   } catch (e) {
     handleError(e, t('profile.minecraft.unlinkFailed'));
@@ -139,21 +139,21 @@ async function unlinkMc() {
 
 async function changePassword() {
   if (!currentPassword.value || !newPassword.value) {
-    ui.toast(t('profile.password.required'), 'error');
+    ui.toast(t('profile.password.required'), ToastType.ERROR);
     return;
   }
   if (newPassword.value.length < 8) {
-    ui.toast(t('profile.password.minLength'), 'error');
+    ui.toast(t('profile.password.minLength'), ToastType.ERROR);
     return;
   }
   if (newPassword.value !== confirmPassword.value) {
-    ui.toast(t('auth.passwordMismatch'), 'error');
+    ui.toast(t('auth.passwordMismatch'), ToastType.ERROR);
     return;
   }
   savingPassword.value = true;
   try {
     await auth.changePassword(currentPassword.value, newPassword.value);
-    ui.toast(t('profile.password.updated'), 'success');
+    ui.toast(t('profile.password.updated'), ToastType.SUCCESS);
     currentPassword.value = '';
     newPassword.value = '';
     confirmPassword.value = '';

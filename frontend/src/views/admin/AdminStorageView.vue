@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
 import { apiGetStorageConfig, apiUpdateStorageConfig, apiTestS3Connection } from '@/api/storage';
-import type { StorageConfig } from '@/types/storage';
+import { StorageDriver, type StorageConfig } from '@/types/storage';
 
 const ui = useUiStore();
 
@@ -17,7 +17,7 @@ const saving = ref(false);
 const testing = ref(false);
 const testResult = ref<{ success: boolean; message: string } | null>(null);
 
-const driver = ref<'local' | 's3'>('local');
+const driver = ref<StorageDriver>(StorageDriver.LOCAL);
 const s3 = ref({
   endpoint: '',
   bucket: '',
@@ -73,10 +73,10 @@ function validateS3(): string | null {
 }
 
 async function save() {
-  if (driver.value === 's3') {
+  if (driver.value === StorageDriver.S3) {
     const err = validateS3();
     if (err) {
-      ui.toast(err, 'error');
+      ui.toast(err, ToastType.ERROR);
       return;
     }
   }
@@ -85,7 +85,7 @@ async function save() {
     const payload: Parameters<typeof apiUpdateStorageConfig>[0] = {
       driver: driver.value,
     };
-    if (driver.value === 's3') {
+    if (driver.value === StorageDriver.S3) {
       payload.s3 = { ...s3.value };
       if (!s3.value.secretAccessKey && secretMasked.value) {
         delete payload.s3.secretAccessKey;
@@ -93,7 +93,7 @@ async function save() {
     }
     const result = await apiUpdateStorageConfig(payload);
     applyConfig(result);
-    ui.toast(t('admin.storage.saved'), 'success');
+    ui.toast(t('admin.storage.saved'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.saveFailed'));
   } finally {
@@ -108,9 +108,9 @@ async function testConnection() {
     const result = await apiTestS3Connection();
     testResult.value = result;
     if (result.success) {
-      ui.toast(t('admin.storage.connectionSuccess'), 'success');
+      ui.toast(t('admin.storage.connectionSuccess'), ToastType.SUCCESS);
     } else {
-      ui.toast(result.message || t('admin.storage.connectionFailed'), 'error');
+      ui.toast(result.message || t('admin.storage.connectionFailed'), ToastType.ERROR);
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : t('admin.storage.connectionFailed');
@@ -139,16 +139,16 @@ async function testConnection() {
         <div class="grid grid-cols-2 gap-3">
           <BaseButton
             :class="storageButtonClass"
-            :data-active="driver === 'local'"
-            @click="driver = 'local'"
+            :data-active="driver === StorageDriver.LOCAL"
+            @click="driver = StorageDriver.LOCAL"
           >
             <Icon icon="lucide:hard-drive" class="w-4 h-4" />
             {{ t('setup.storage.local') }}
           </BaseButton>
           <BaseButton
             :class="storageButtonClass"
-            :data-active="driver === 's3'"
-            @click="driver = 's3'"
+            :data-active="driver === StorageDriver.S3"
+            @click="driver = StorageDriver.S3"
           >
             <Icon icon="lucide:cloud" class="w-4 h-4" />
             {{ t('setup.storage.s3') }}
@@ -157,7 +157,7 @@ async function testConnection() {
       </div>
 
       <!-- S3 config -->
-      <template v-if="driver === 's3'">
+      <template v-if="driver === StorageDriver.S3">
         <div class="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-700">
           <p class="text-sm font-medium text-slate-900 dark:text-white pt-2">
             {{ t('setup.storage.s3Config') }}

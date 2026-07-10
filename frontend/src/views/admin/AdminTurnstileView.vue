@@ -2,7 +2,7 @@
 import { computed, ref, onMounted } from 'vue';
 import { getSettings, updateSettings } from '@/api/setup';
 import { setSiteConfigCache, siteConfig } from '@/stores/site';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -37,7 +37,7 @@ onMounted(async () => {
 
 async function save() {
   if (enabled.value && !hasRequiredKeys.value) {
-    ui.toast(t('admin.turnstile.keysRequired'), 'error');
+    ui.toast(t('admin.turnstile.keysRequired'), ToastType.ERROR);
     return;
   }
 
@@ -62,7 +62,7 @@ async function save() {
         siteKey: result.turnstile.siteKey,
       },
     });
-    ui.toast(t('admin.turnstile.saved'), 'success');
+    ui.toast(t('admin.turnstile.saved'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.saveFailed'));
   } finally {

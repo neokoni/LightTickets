@@ -4,7 +4,7 @@ import { Icon } from '@iconify/vue';
 import { apiAddTicketLabel, apiRemoveTicketLabel } from '@/api/labels';
 import { useTicketsStore } from '@/stores/tickets';
 import { useLabelsStore } from '@/stores/labels';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useAuthStore } from '@/stores/auth';
 import { t } from '@/i18n';
@@ -48,7 +48,7 @@ async function addLabel(labelId: string) {
   try {
     await apiAddTicketLabel(props.ticket.id, labelId);
     await tickets.fetchDetail(props.ticket.id);
-    ui.toast(t('ticket.labels.added'), 'success');
+    ui.toast(t('ticket.labels.added'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.addFailed'));
   }
@@ -58,7 +58,7 @@ async function removeLabel(labelId: string) {
   try {
     await apiRemoveTicketLabel(props.ticket.id, labelId);
     await tickets.fetchDetail(props.ticket.id);
-    ui.toast(t('ticket.labels.removed'), 'success');
+    ui.toast(t('ticket.labels.removed'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.removeFailed'));
   }

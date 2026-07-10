@@ -1,4 +1,4 @@
-import type { CommentSource } from '@prisma/client';
+import { CommentSource } from '@prisma/client';
 import { prisma } from '../db.js';
 import { NotFoundError, ForbiddenError } from '../utils/errors.js';
 import * as auditService from './audit.service.js';
@@ -11,7 +11,7 @@ export async function create(
   ticketId: number,
   authorId: number,
   body: string,
-  source: CommentSource = 'web',
+  source: CommentSource = CommentSource.web,
 ) {
   const ticket = await prisma().ticket.findUnique({
     where: { id: ticketId },

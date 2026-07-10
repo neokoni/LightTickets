@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useTemplatesStore } from '@/stores/templates';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useConfirm } from '@/composables/useConfirm';
 import { t } from '@/i18n';
@@ -78,10 +78,10 @@ async function save() {
         completionHooks: form.value.completionHooks,
         enabled: form.value.enabled,
       });
-      ui.toast(t('admin.templates.updated'), 'success');
+      ui.toast(t('admin.templates.updated'), ToastType.SUCCESS);
     } else {
       await templates.create(form.value);
-      ui.toast(t('admin.templates.created'), 'success');
+      ui.toast(t('admin.templates.created'), ToastType.SUCCESS);
     }
     showModal.value = false;
   } catch (e) {
@@ -94,7 +94,7 @@ async function toggleEnabled(tmpl: AdminTemplate) {
     await templates.update(tmpl.name, { enabled: !tmpl.enabled });
     ui.toast(
       tmpl.enabled ? t('admin.templates.disabled') : t('admin.templates.enabled'),
-      'success',
+      ToastType.SUCCESS,
     );
   } catch (e) {
     handleError(e);
@@ -105,7 +105,7 @@ async function remove(name: string) {
   if (!(await confirm(t('admin.templates.deleteConfirm')))) return;
   try {
     await templates.remove(name);
-    ui.toast(t('admin.templates.deleted'), 'success');
+    ui.toast(t('admin.templates.deleted'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.deleteFailed'));
   }

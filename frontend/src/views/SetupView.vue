@@ -2,10 +2,11 @@
 import { ref, computed, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { useUiStore } from '@/stores/ui';
+import { Theme, useUiStore } from '@/stores/ui';
 import { Icon } from '@iconify/vue';
 import { completeSetup, waitForServerReady } from '@/api/setup';
-import type { SetupPayload } from '@/types/site';
+import { DatabaseProvider, type SetupPayload } from '@/types/site';
+import { StorageDriver } from '@/types/storage';
 import { DEFAULT_SITE_TITLE, setSiteConfigCache } from '@/stores/site';
 import { activeLanguage, availableLanguages, setLanguage, t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -28,7 +29,7 @@ const storageButtonClass =
 
 const payload = reactive<SetupPayload>({
   db: {
-    provider: 'sqlite',
+    provider: DatabaseProvider.SQLITE,
   },
   admin: {
     email: '',
@@ -44,7 +45,7 @@ const payload = reactive<SetupPayload>({
     defaultServerName: '',
   },
   storage: {
-    driver: 'local',
+    driver: StorageDriver.LOCAL,
     s3: {
       endpoint: '',
       bucket: '',
@@ -69,12 +70,12 @@ const mysqlFields = reactive({
 });
 
 function buildDbPayload(): SetupPayload['db'] {
-  if (payload.db.provider === 'sqlite') {
-    return { provider: 'sqlite' };
+  if (payload.db.provider === DatabaseProvider.SQLITE) {
+    return { provider: DatabaseProvider.SQLITE };
   }
 
   return {
-    provider: 'mysql',
+    provider: DatabaseProvider.MYSQL,
     host: mysqlFields.host.trim(),
     port: mysqlFields.port.trim() ? Number(mysqlFields.port) : undefined,
     username: mysqlFields.username.trim(),
@@ -89,7 +90,7 @@ const totalSteps = 6;
 const canNext = computed(() => {
   switch (step.value) {
     case 2:
-      if (payload.db.provider === 'sqlite') return true;
+      if (payload.db.provider === DatabaseProvider.SQLITE) return true;
       return !!(
         mysqlFields.host.trim() &&
         mysqlFields.username.trim() &&
@@ -97,7 +98,7 @@ const canNext = computed(() => {
         (!mysqlFields.port.trim() || Number(mysqlFields.port) > 0)
       );
     case 3:
-      if (payload.storage?.driver === 'local') return true;
+      if (payload.storage?.driver === StorageDriver.LOCAL) return true;
       return !!(
         payload.storage?.s3?.endpoint?.trim() &&
         payload.storage.s3.bucket?.trim() &&
@@ -137,13 +138,13 @@ async function submit() {
         ? { defaultServerName: payload.mc.defaultServerName }
         : undefined,
       storage:
-        payload.storage?.driver === 's3'
+        payload.storage?.driver === StorageDriver.S3
           ? {
-              driver: 's3',
+              driver: StorageDriver.S3,
               s3: payload.storage.s3,
             }
           : {
-              driver: 'local',
+              driver: StorageDriver.LOCAL,
             },
     });
     auth.setTokens(res.accessToken, res.admin);
@@ -186,10 +187,10 @@ async function changeSetupLanguage(languageId: string) {
     <div class="absolute top-4 right-4">
       <BaseButton
         :class="themeButtonClass"
-        :aria-label="ui.theme === 'dark' ? t('theme.light') : t('theme.dark')"
+        :aria-label="ui.theme === Theme.DARK ? t('theme.light') : t('theme.dark')"
         @click="ui.toggleTheme()"
       >
-        <Icon :icon="ui.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'" class="w-5 h-5" />
+        <Icon :icon="ui.theme === Theme.DARK ? 'lucide:sun' : 'lucide:moon'" class="w-5 h-5" />
       </BaseButton>
     </div>
     <div
@@ -235,22 +236,22 @@ async function changeSetupLanguage(languageId: string) {
         <div class="flex gap-3">
           <BaseButton
             :class="providerButtonClass"
-            :data-active="payload.db.provider === 'sqlite'"
-            @click="payload.db.provider = 'sqlite'"
+            :data-active="payload.db.provider === DatabaseProvider.SQLITE"
+            @click="payload.db.provider = DatabaseProvider.SQLITE"
           >
             SQLite
           </BaseButton>
           <BaseButton
             :class="providerButtonClass"
-            :data-active="payload.db.provider === 'mysql'"
-            @click="payload.db.provider = 'mysql'"
+            :data-active="payload.db.provider === DatabaseProvider.MYSQL"
+            @click="payload.db.provider = DatabaseProvider.MYSQL"
           >
             MySQL
           </BaseButton>
         </div>
 
         <p
-          v-if="payload.db.provider === 'sqlite'"
+          v-if="payload.db.provider === DatabaseProvider.SQLITE"
           class="text-sm text-slate-500 dark:text-slate-400"
         >
           {{ t('setup.database.sqlitePathPrefix') }}
@@ -307,16 +308,16 @@ async function changeSetupLanguage(languageId: string) {
         <div class="flex gap-3">
           <BaseButton
             :class="storageButtonClass"
-            :data-active="payload.storage?.driver === 'local'"
-            @click="payload.storage!.driver = 'local'"
+            :data-active="payload.storage?.driver === StorageDriver.LOCAL"
+            @click="payload.storage!.driver = StorageDriver.LOCAL"
           >
             <Icon icon="lucide:hard-drive" class="w-4 h-4" />
             {{ t('setup.storage.local') }}
           </BaseButton>
           <BaseButton
             :class="storageButtonClass"
-            :data-active="payload.storage?.driver === 's3'"
-            @click="payload.storage!.driver = 's3'"
+            :data-active="payload.storage?.driver === StorageDriver.S3"
+            @click="payload.storage!.driver = StorageDriver.S3"
           >
             <Icon icon="lucide:cloud" class="w-4 h-4" />
             {{ t('setup.storage.s3') }}
@@ -324,7 +325,7 @@ async function changeSetupLanguage(languageId: string) {
         </div>
 
         <div
-          v-if="payload.storage?.driver === 's3'"
+          v-if="payload.storage?.driver === StorageDriver.S3"
           class="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-700"
         >
           <p class="text-sm font-medium text-slate-900 dark:text-white pt-2">

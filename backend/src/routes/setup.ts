@@ -7,6 +7,8 @@ import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { validate } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
+import { DatabaseProvider } from '../constants/database-provider.js';
+import { StorageDriver } from '../constants/storage-driver.js';
 
 interface SetupRouteOptions {
   onSetupComplete?: () => void | Promise<void>;
@@ -38,7 +40,7 @@ const setupSchema = z
   .object({
     db: z
       .object({
-        provider: z.enum(['sqlite', 'mysql']),
+        provider: z.enum([DatabaseProvider.SQLITE, DatabaseProvider.MYSQL]),
         host: z.string().optional(),
         port: z.number().int().positive().optional(),
         username: z.string().optional(),
@@ -48,7 +50,7 @@ const setupSchema = z
       })
       .strict()
       .superRefine((db, ctx) => {
-        if (db.provider !== 'mysql') return;
+        if (db.provider !== DatabaseProvider.MYSQL) return;
 
         for (const field of ['host', 'username', 'database'] as const) {
           if (!db[field]?.trim()) {
@@ -79,7 +81,7 @@ const setupSchema = z
       .optional(),
     storage: z
       .object({
-        driver: z.enum(['local', 's3']),
+        driver: z.enum([StorageDriver.LOCAL, StorageDriver.S3]),
         s3: z
           .object({
             endpoint: z.string().optional(),
@@ -92,7 +94,7 @@ const setupSchema = z
           .optional(),
       })
       .superRefine((data, ctx) => {
-        if (data.driver === 's3' && !data.s3) {
+        if (data.driver === StorageDriver.S3 && !data.s3) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: 'driver 为 s3 时必须提供 s3 配置',

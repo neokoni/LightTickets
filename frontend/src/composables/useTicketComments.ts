@@ -1,6 +1,6 @@
 import { ref, watch, nextTick, type ComponentPublicInstance, type Ref } from 'vue';
 import { useMarkdownUpload } from '@/composables/useMarkdownUpload';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { renderTicketRefs } from '@/utils/ticketRef';
 import { handleError } from '@/utils/error';
 import { t } from '@/i18n';
@@ -114,7 +114,7 @@ export function useTicketComments(
       document.execCommand('copy');
       document.body.removeChild(input);
     }
-    ui.toast(t('common.linkCopied'), 'success');
+    ui.toast(t('common.linkCopied'), ToastType.SUCCESS);
   }
 
   function scrollToComment(commentId: string) {

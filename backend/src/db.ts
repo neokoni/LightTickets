@@ -3,6 +3,7 @@ import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 
 import { getConfig } from './config.js';
+import { DatabaseProvider } from './constants/database-provider.js';
 
 let _client: PrismaClient | null = null;
 
@@ -11,7 +12,7 @@ function createAdapter() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not set');
 
-  if (database.provider === 'mysql') {
+  if (database.provider === DatabaseProvider.MYSQL) {
     return new PrismaMariaDb(url);
   }
   return new PrismaBetterSqlite3({ url });

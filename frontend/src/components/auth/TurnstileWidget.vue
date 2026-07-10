@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useUiStore } from '@/stores/ui';
+import { useUiStore, type Theme } from '@/stores/ui';
 
 type TurnstileWidgetId = string;
 
@@ -11,7 +11,7 @@ declare global {
         element: HTMLElement,
         options: {
           sitekey: string;
-          theme: 'light' | 'dark';
+          theme: Theme;
           size: 'flexible';
           callback: (token: string) => void;
           'expired-callback': () => void;

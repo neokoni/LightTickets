@@ -3,9 +3,10 @@ import path from 'path';
 import type { Response } from 'express';
 import type { IStorageAdapter, SaveInput } from './types.js';
 import { NotFoundError } from '../../utils/errors.js';
+import { StorageDriver } from '../../constants/storage-driver.js';
 
 export class LocalStorageAdapter implements IStorageAdapter {
-  readonly type = 'local' as const;
+  readonly type = StorageDriver.LOCAL;
 
   constructor(private uploadDir: string) {
     if (!fs.existsSync(uploadDir)) {

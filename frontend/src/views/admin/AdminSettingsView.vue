@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { getSettings, updateSettings } from '@/api/setup';
 import { setRequireLoginCache, siteConfig, siteTitle } from '@/stores/site';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { availableLanguages, t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -57,7 +57,7 @@ async function save() {
     siteConfig.allowWebRegister = result.allowWebRegister;
     siteConfig.allowMcRegister = result.allowMcRegister;
     siteConfig.defaultLanguage = result.defaultLanguage;
-    ui.toast(t('admin.settings.saved'), 'success');
+    ui.toast(t('admin.settings.saved'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.saveFailed'));
   } finally {

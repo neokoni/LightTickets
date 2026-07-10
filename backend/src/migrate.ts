@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { dataPath } from './paths.js';
+import { DatabaseProvider } from './constants/database-provider.js';
 
 const PRISMA_DIR = path.resolve('prisma');
 const SCHEMA_PATH = path.join(PRISMA_DIR, 'schema.prisma');
@@ -26,7 +27,7 @@ function sqlString(value: string): string {
   return `'${value.replace(/'/g, "''")}'`;
 }
 
-function buildGeneratedSchema(provider: 'sqlite' | 'mysql'): string {
+function buildGeneratedSchema(provider: DatabaseProvider): string {
   const schemaContent = fs.readFileSync(SCHEMA_PATH, 'utf-8');
   // Prisma 7 no longer allows `url` in the datasource block; the connection URL
   // is supplied via prisma.config.ts (which reads env DATABASE_URL).
@@ -39,8 +40,8 @@ function buildGeneratedSchema(provider: 'sqlite' | 'mysql'): string {
   return datasource + schemaContent.trimStart();
 }
 
-function writeGeneratedPrisma(provider: 'sqlite' | 'mysql'): void {
-  const migrationsDir = provider === 'mysql' ? 'migrations-mysql' : 'migrations';
+function writeGeneratedPrisma(provider: DatabaseProvider): void {
+  const migrationsDir = provider === DatabaseProvider.MYSQL ? 'migrations-mysql' : 'migrations';
 
   fs.mkdirSync(GENERATED_PRISMA_DIR, { recursive: true });
   fs.writeFileSync(GENERATED_SCHEMA_PATH, buildGeneratedSchema(provider), 'utf-8');
@@ -96,7 +97,7 @@ function applySqliteMigrations(schemaPath: string, migrationsPath: string): void
   runPrisma(['db', 'execute', '--file', metadataPath]);
 }
 
-export function runMigrations(provider: 'sqlite' | 'mysql'): void {
+export function runMigrations(provider: DatabaseProvider): void {
   if (!process.env.DATABASE_URL) {
     throw new Error('DATABASE_URL is not set');
   }
@@ -108,7 +109,7 @@ export function runMigrations(provider: 'sqlite' | 'mysql'): void {
   try {
     runPrisma(['migrate', 'deploy', `--schema=${GENERATED_SCHEMA_PATH}`]);
   } catch (err) {
-    if (provider !== 'sqlite') throw err;
+    if (provider !== DatabaseProvider.SQLITE) throw err;
 
     console.warn('[migrate] Prisma migrate deploy failed; applying SQLite SQL directly');
     applySqliteMigrations(GENERATED_SCHEMA_PATH, GENERATED_MIGRATIONS_PATH);

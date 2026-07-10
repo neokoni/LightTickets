@@ -1,6 +1,8 @@
 import fs from 'fs';
 import yaml from 'js-yaml';
 import { dataPath } from './paths.js';
+import { DatabaseProvider } from './constants/database-provider.js';
+import type { StorageDriver } from './constants/storage-driver.js';
 
 export const CONFIG_PATH = dataPath('config.yml');
 
@@ -15,7 +17,7 @@ export interface S3Config {
 }
 
 export interface StorageConfig {
-  driver: 'local' | 's3';
+  driver: StorageDriver;
   uploadDir: string;
   s3?: S3Config;
 }
@@ -32,7 +34,7 @@ interface ServerConfig {
 }
 
 interface DatabaseConfig {
-  provider: 'sqlite' | 'mysql';
+  provider: DatabaseProvider;
   host?: string;
   port?: number;
   username?: string;
@@ -76,7 +78,7 @@ export function isDatabaseConfigured(): boolean {
 }
 
 function resolveDatabaseUrl(db: DatabaseConfig): string {
-  if (db.provider === 'sqlite') {
+  if (db.provider === DatabaseProvider.SQLITE) {
     return `file:${dataPath('data.db')}`;
   }
 

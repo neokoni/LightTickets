@@ -2,6 +2,8 @@ import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-open
 import { z } from 'zod';
 import path from 'path';
 import fs from 'fs';
+import { DatabaseProvider } from './constants/database-provider.js';
+import { StorageDriver } from './constants/storage-driver.js';
 
 const registry = new OpenAPIRegistry();
 
@@ -626,7 +628,7 @@ const registerStorageRoutes = () => {
     auth: 'admin',
     tags: ['Admin Storage'],
     bodySchema: z.object({
-      driver: z.enum(['local', 's3']),
+      driver: z.enum([StorageDriver.LOCAL, StorageDriver.S3]),
       uploadDir: z.string().optional(),
       s3: z
         .object({
@@ -735,7 +737,7 @@ const registerSetupRoutes = () => {
       .object({
         db: z
           .object({
-            provider: z.enum(['sqlite', 'mysql']),
+            provider: z.enum([DatabaseProvider.SQLITE, DatabaseProvider.MYSQL]),
             host: z.string().optional(),
             port: z.number().int().positive().optional(),
             username: z.string().optional(),
@@ -745,7 +747,7 @@ const registerSetupRoutes = () => {
           })
           .strict()
           .superRefine((db, ctx) => {
-            if (db.provider !== 'mysql') return;
+            if (db.provider !== DatabaseProvider.MYSQL) return;
             for (const field of ['host', 'username', 'database'] as const) {
               if (!db[field]?.trim()) {
                 ctx.addIssue({
@@ -771,7 +773,7 @@ const registerSetupRoutes = () => {
         mc: z.object({ defaultServerName: z.string().optional() }).optional(),
         storage: z
           .object({
-            driver: z.enum(['local', 's3']),
+            driver: z.enum([StorageDriver.LOCAL, StorageDriver.S3]),
             s3: z
               .object({
                 endpoint: z.string().optional(),

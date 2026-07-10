@@ -3,7 +3,7 @@ import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
 import { RouterLink, useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { useUiStore } from '@/stores/ui';
+import { Theme, useUiStore } from '@/stores/ui';
 import { siteConfig, siteTitle } from '@/stores/site';
 import { t } from '@/i18n';
 import UserAvatar from '@/components/base/UserAvatar.vue';
@@ -75,13 +75,13 @@ function handleLogout() {
       <div class="ml-auto flex items-center gap-2">
         <button
           class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100"
-          :aria-label="ui.theme === 'dark' ? t('theme.light') : t('theme.dark')"
+          :aria-label="ui.theme === Theme.DARK ? t('theme.light') : t('theme.dark')"
           @click="ui.toggleTheme()"
         >
           <Transition name="theme-icon" mode="out-in">
             <Icon
               :key="ui.theme"
-              :icon="ui.theme === 'dark' ? 'lucide:sun' : 'lucide:moon'"
+              :icon="ui.theme === Theme.DARK ? 'lucide:sun' : 'lucide:moon'"
               class="h-4 w-4"
             />
           </Transition>

@@ -1,6 +1,6 @@
 import { ref, computed, nextTick, watch, type Ref, type ComponentPublicInstance } from 'vue';
 import { useTicketsStore } from '@/stores/tickets';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { useMarkdownUpload } from '@/composables/useMarkdownUpload';
 import { handleError } from '@/utils/error';
 import { t } from '@/i18n';
@@ -42,7 +42,7 @@ export function useTicketEdit(
       await store.updateTitle(ticket.value.id, editTitleValue.value.trim());
       editingTitle.value = false;
       await onAuditRefresh();
-      ui.toast(t('ticket.detail.titleUpdated'), 'success');
+      ui.toast(t('ticket.detail.titleUpdated'), ToastType.SUCCESS);
     } catch (e) {
       handleError(e);
     }
@@ -68,7 +68,7 @@ export function useTicketEdit(
       await store.updateBody(ticket.value.id, body);
       editingBody.value = false;
       await onAuditRefresh();
-      ui.toast(t('ticket.detail.bodyUpdated'), 'success');
+      ui.toast(t('ticket.detail.bodyUpdated'), ToastType.SUCCESS);
     } catch (e) {
       handleError(e);
     }

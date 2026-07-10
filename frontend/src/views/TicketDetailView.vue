@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { useTicketsStore } from '@/stores/tickets';
 import { useAuthStore } from '@/stores/auth';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { useLabelsStore } from '@/stores/labels';
 import { usePolling } from '@/composables/usePolling';
 import { handleError } from '@/utils/error';
@@ -20,7 +20,7 @@ import UserAvatar from '@/components/base/UserAvatar.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import TicketLabels from '@/components/tickets/TicketLabels.vue';
 import type { TicketStatus, GameContext, Role } from '@/types/ticket';
-import { STATUS_META } from '@/types/ticket';
+import { CommentSource, STATUS_META } from '@/types/ticket';
 import { ROLE_META } from '@/types/user';
 import { t } from '@/i18n';
 import { AUDIT_ACTION } from '@/types/audit';
@@ -167,7 +167,7 @@ const visibleStatusOptions = computed(() => {
 async function changeStatus(status: TicketStatus) {
   try {
     await store.updateStatus(id, status);
-    ui.toast(t('ticket.detail.statusUpdated'), 'success');
+    ui.toast(t('ticket.detail.statusUpdated'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e);
   }
@@ -181,7 +181,7 @@ async function closeTicket() {
     }
     await store.closeTicket(id);
     await fetchAuditLogs();
-    ui.toast(t('ticket.detail.closed'), 'success');
+    ui.toast(t('ticket.detail.closed'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e);
   } finally {
@@ -197,7 +197,7 @@ async function reopenTicket() {
     }
     await store.reopenTicket(id);
     await fetchAuditLogs();
-    ui.toast(t('ticket.detail.reopened'), 'success');
+    ui.toast(t('ticket.detail.reopened'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e);
   } finally {
@@ -355,7 +355,9 @@ watch(
                       item.author.username
                     }}</span>
                     <span class="text-slate-400 text-xs">{{ timeAgo(item.createdAt) }}</span>
-                    <BaseBadge v-if="item.source === 'minecraft'" color="#4ade80">MC</BaseBadge>
+                    <BaseBadge v-if="item.source === CommentSource.MINECRAFT" color="#4ade80">
+                      MC
+                    </BaseBadge>
                   </div>
                   <div
                     v-if="auth.isAuthenticated && editingCommentId !== item.id"

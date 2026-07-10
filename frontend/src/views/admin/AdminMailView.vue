@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import { getSettings, testMailSettings, updateSettings } from '@/api/setup';
 import { siteTitle } from '@/stores/site';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
@@ -59,7 +59,7 @@ async function save() {
     });
     mailPassword.value = '';
     mailPasswordSet.value = result.mail.passwordSet;
-    ui.toast(t('admin.mail.saved'), 'success');
+    ui.toast(t('admin.mail.saved'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.saveFailed'));
   } finally {
@@ -73,7 +73,7 @@ async function testMail() {
     const result = await testMailSettings();
     ui.toast(
       result.success ? t('admin.settings.smtpTestSuccess') : result.message,
-      result.success ? 'success' : 'error',
+      result.success ? ToastType.SUCCESS : ToastType.ERROR,
     );
   } catch (e) {
     handleError(e, t('admin.settings.smtpTestFailed'));

@@ -6,6 +6,7 @@ import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { validate } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
+import { StorageDriver } from '../constants/storage-driver.js';
 
 const router = Router();
 
@@ -21,12 +22,12 @@ const s3Schema = z.object({
 
 const updateSchema = z
   .object({
-    driver: z.enum(['local', 's3']),
+    driver: z.enum([StorageDriver.LOCAL, StorageDriver.S3]),
     uploadDir: z.string().optional(),
     s3: s3Schema.optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.driver === 's3' && !data.s3) {
+    if (data.driver === StorageDriver.S3 && !data.s3) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'driver 为 s3 时必须提供 s3 配置',

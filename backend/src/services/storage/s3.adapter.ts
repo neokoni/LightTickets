@@ -4,9 +4,10 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { IStorageAdapter, SaveInput } from './types.js';
 import type { S3Config } from '../../config.js';
 import { createS3Client } from './s3-client.js';
+import { StorageDriver } from '../../constants/storage-driver.js';
 
 export class S3StorageAdapter implements IStorageAdapter {
-  readonly type = 's3' as const;
+  readonly type = StorageDriver.S3;
 
   private client: ReturnType<typeof createS3Client>;
   private bucket: string;

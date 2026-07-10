@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 
 const ui = useUiStore();
 </script>
@@ -14,11 +14,11 @@ const ui = useUiStore();
           class="px-4 py-3 rounded-md shadow-lg text-sm font-medium backdrop-blur-sm border"
           :class="{
             'bg-green-50/90 dark:bg-green-950/90 text-green-800 dark:text-green-200 border-green-200 dark:border-green-800':
-              toast.type === 'success',
+              toast.type === ToastType.SUCCESS,
             'bg-red-50/90 dark:bg-red-950/90 text-red-800 dark:text-red-200 border-red-200 dark:border-red-800':
-              toast.type === 'error',
+              toast.type === ToastType.ERROR,
             'bg-slate-50/90 dark:bg-slate-800/90 text-slate-800 dark:text-slate-200 border-slate-200 dark:border-slate-700':
-              toast.type === 'info',
+              toast.type === ToastType.INFO,
           }"
         >
           {{ toast.message }}

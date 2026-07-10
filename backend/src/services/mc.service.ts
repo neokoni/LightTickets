@@ -1,4 +1,4 @@
-import type { TicketStatus } from '@prisma/client';
+import { CommentSource, type TicketStatus } from '@prisma/client';
 import { getConfig } from '../config.js';
 import { prisma } from '../db.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
@@ -73,7 +73,7 @@ export async function createCommentFromMinecraft(input: {
   const user = await prisma().user.findUnique({ where: { minecraftUuid: input.minecraftUuid } });
   if (!user) throw new NotFoundError('该 Minecraft 账号未绑定');
 
-  return commentService.create(input.ticketId, user.id, input.body, 'minecraft');
+  return commentService.create(input.ticketId, user.id, input.body, CommentSource.minecraft);
 }
 
 export async function closeTicketFromMinecraft(ticketId: number, minecraftUuid: string) {

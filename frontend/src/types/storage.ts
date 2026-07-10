@@ -1,3 +1,10 @@
+export const StorageDriver = {
+  LOCAL: 'local',
+  S3: 's3',
+} as const;
+
+export type StorageDriver = (typeof StorageDriver)[keyof typeof StorageDriver];
+
 export interface StorageS3Config {
   endpoint: string;
   region?: string;
@@ -9,7 +16,7 @@ export interface StorageS3Config {
 }
 
 export interface StorageConfig {
-  driver: 'local' | 's3';
+  driver: StorageDriver;
   uploadDir: string;
   s3?: StorageS3Config;
 }

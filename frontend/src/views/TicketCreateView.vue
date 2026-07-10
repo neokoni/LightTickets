@@ -3,7 +3,7 @@ import { ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { apiCreateTicket } from '@/api/tickets';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { useTicketForm } from '@/composables/useTicketForm';
 import { useMarkdownUpload } from '@/composables/useMarkdownUpload';
 import BaseInput from '@/components/base/BaseInput.vue';
@@ -109,7 +109,7 @@ async function submit() {
       attachmentIds,
     });
 
-    ui.toast(t('ticket.create.created'), 'success');
+    ui.toast(t('ticket.create.created'), ToastType.SUCCESS);
     router.push(`/tickets/${ticket.id}`);
   } catch (e) {
     error.value = e instanceof Error ? e.message : t('common.createFailed');

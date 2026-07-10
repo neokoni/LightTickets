@@ -4,6 +4,7 @@ import { createS3Client } from './storage/s3-client.js';
 import { validateS3Config, type S3Config, type StorageConfig } from '../config.js';
 import { reinitStorageAdapter } from './storage/index.js';
 import { ValidationError } from '../utils/errors.js';
+import { StorageDriver } from '../constants/storage-driver.js';
 
 export type { StorageConfig };
 
@@ -21,7 +22,7 @@ async function ensureAppConfig() {
 export async function getStorageConfig(): Promise<StorageConfig & { s3?: Partial<S3Config> }> {
   const config = await ensureAppConfig();
   const resp: StorageConfig & { s3?: Partial<S3Config> } = {
-    driver: config.storageDriver as 'local' | 's3',
+    driver: config.storageDriver as StorageDriver,
     uploadDir: config.uploadDir,
   };
   if (config.s3Config) {
@@ -32,7 +33,7 @@ export async function getStorageConfig(): Promise<StorageConfig & { s3?: Partial
 }
 
 export async function updateStorageConfig(input: {
-  driver: 'local' | 's3';
+  driver: StorageDriver;
   uploadDir?: string;
   s3?: Partial<S3Config>;
 }): Promise<StorageConfig & { s3?: Partial<S3Config> }> {
@@ -51,7 +52,7 @@ export async function updateStorageConfig(input: {
   }
 
   let s3ConfigJson: string | null = null;
-  if (input.driver === 's3') {
+  if (input.driver === StorageDriver.S3) {
     const parsed: Partial<S3Config> = {
       endpoint: newS3.endpoint,
       region: newS3.region || 'us-east-1',

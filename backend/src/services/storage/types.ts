@@ -1,6 +1,7 @@
 import type { Response } from 'express';
+import type { StorageDriver } from '../../constants/storage-driver.js';
 
-export type StorageType = 'local' | 's3';
+export type StorageType = StorageDriver;
 
 export interface SaveInput {
   buffer: Buffer;

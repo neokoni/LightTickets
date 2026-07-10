@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
 import { apiFetch } from '@/api/client';
-import { useUiStore } from '@/stores/ui';
+import { ToastType, useUiStore } from '@/stores/ui';
 import { useAuthStore } from '@/stores/auth';
 import { usePagination } from '@/composables/usePagination';
 import { handleError } from '@/utils/error';
@@ -79,7 +79,7 @@ async function changeRole(userId: number, role: Role) {
     });
     const idx = users.value.findIndex((u) => u.id === userId);
     if (idx !== -1) users.value[idx].role = role;
-    ui.toast(t('admin.users.roleUpdated'), 'success');
+    ui.toast(t('admin.users.roleUpdated'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e);
   }
@@ -89,7 +89,7 @@ async function deleteUser(userId: number) {
   if (!(await confirm(t('admin.users.deleteConfirm')))) return;
   try {
     await apiFetch(`/users/${userId}`, { method: 'DELETE' });
-    ui.toast(t('admin.users.deleted'), 'success');
+    ui.toast(t('admin.users.deleted'), ToastType.SUCCESS);
     await fetchUsers();
     if (users.value.length === 0 && page.value > 1) {
       page.value--;

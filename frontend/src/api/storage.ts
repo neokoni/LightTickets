@@ -1,12 +1,17 @@
 import { apiFetch } from './client';
-import type { StorageConfig, StorageS3Config, StorageTestResult } from '@/types/storage';
+import type {
+  StorageConfig,
+  StorageDriver,
+  StorageS3Config,
+  StorageTestResult,
+} from '@/types/storage';
 
 export function apiGetStorageConfig() {
   return apiFetch<StorageConfig>('/admin/storage', { method: 'GET' });
 }
 
 export function apiUpdateStorageConfig(data: {
-  driver: 'local' | 's3';
+  driver: StorageDriver;
   uploadDir?: string;
   s3?: Partial<StorageS3Config>;
 }) {

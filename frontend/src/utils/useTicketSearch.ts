@@ -1,4 +1,5 @@
 import type { TicketStatus, TemplateSummary } from '@/types/ticket';
+import { CommentSource } from '@/types/ticket';
 import { STATUS_ALIASES, STATUS_META } from '@/types/ticket';
 import { t } from '@/i18n';
 import type { Server } from '@/types/user';
@@ -173,10 +174,10 @@ function filterDefinitions(): FilterDefinition[] {
       color: FILTER_COLORS.from,
       parse: (value, ctx) => {
         const v = value.toLowerCase();
-        if (v === 'web') return { hasServer: false };
-        if (v === 'minecraft') return { hasServer: true };
-        if (v.startsWith('minecraft:')) {
-          const serverName = v.slice('minecraft:'.length);
+        if (v === CommentSource.WEB) return { hasServer: false };
+        if (v === CommentSource.MINECRAFT) return { hasServer: true };
+        if (v.startsWith(`${CommentSource.MINECRAFT}:`)) {
+          const serverName = v.slice(`${CommentSource.MINECRAFT}:`.length);
           const matched = ctx.servers.find((s) => s.name.toLowerCase() === serverName);
           return matched ? { serverId: matched.id, hasServer: undefined } : null;
         }
@@ -184,20 +185,23 @@ function filterDefinitions(): FilterDefinition[] {
       },
       preview: (value, ctx) => {
         const v = value.toLowerCase();
-        if (v === 'web') return 'Web';
-        if (v === 'minecraft') return 'Minecraft';
-        if (v.startsWith('minecraft:')) {
-          const serverName = v.slice('minecraft:'.length);
+        if (v === CommentSource.WEB) return 'Web';
+        if (v === CommentSource.MINECRAFT) return 'Minecraft';
+        if (v.startsWith(`${CommentSource.MINECRAFT}:`)) {
+          const serverName = v.slice(`${CommentSource.MINECRAFT}:`.length);
           const matched = ctx.servers.find((s) => s.name.toLowerCase() === serverName);
           return matched ? `MC:${matched.name}` : value;
         }
         return value;
       },
       suggestions: (ctx) => [
-        { value: 'web', label: `web (${t('ticket.source.web')})` },
-        { value: 'minecraft', label: `minecraft (${t('ticket.source.minecraftInGame')})` },
+        { value: CommentSource.WEB, label: `web (${t('ticket.source.web')})` },
+        {
+          value: CommentSource.MINECRAFT,
+          label: `minecraft (${t('ticket.source.minecraftInGame')})`,
+        },
         ...ctx.servers.map((s) => ({
-          value: `minecraft:${s.name}`,
+          value: `${CommentSource.MINECRAFT}:${s.name}`,
           label: t('ticket.search.minecraftServerSuggestion', { name: s.name }),
         })),
       ],

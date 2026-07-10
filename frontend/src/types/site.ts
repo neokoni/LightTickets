@@ -1,4 +1,12 @@
 import type { Role } from './ticket';
+import type { StorageDriver } from './storage';
+
+export const DatabaseProvider = {
+  SQLITE: 'sqlite',
+  MYSQL: 'mysql',
+} as const;
+
+export type DatabaseProvider = (typeof DatabaseProvider)[keyof typeof DatabaseProvider];
 
 export interface SiteConfig {
   isSetup: boolean;
@@ -14,7 +22,7 @@ export interface SiteConfig {
 
 export interface SetupPayload {
   db: {
-    provider: 'sqlite' | 'mysql';
+    provider: DatabaseProvider;
     host?: string;
     port?: number;
     username?: string;
@@ -36,7 +44,7 @@ export interface SetupPayload {
     defaultServerName?: string;
   };
   storage?: {
-    driver: 'local' | 's3';
+    driver: StorageDriver;
     s3?: {
       endpoint?: string;
       bucket?: string;
