@@ -140,7 +140,7 @@ CREATE TABLE `app_config` (
     `id` VARCHAR(191) NOT NULL,
     `storage_driver` VARCHAR(191) NOT NULL DEFAULT 'local',
     `upload_dir` VARCHAR(191) NOT NULL DEFAULT 'data/uploads',
-    `s3_config` VARCHAR(191) NULL,
+    `s3_config` VARCHAR(300) NULL,
     `updated_at` DATETIME(3) NOT NULL,
 
     PRIMARY KEY (`id`)
