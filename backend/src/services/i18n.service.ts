@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { NotFoundError } from '../utils/errors.js';
 import { dataPath } from '../paths.js';
 import { LANGUAGE_SOURCE, type LanguageSource } from '../constants/language-source.js';
 
@@ -170,10 +169,8 @@ export function resolveLanguageId(id: string | undefined | null): string {
 
 export function getLanguage(id: string): LanguagePack {
   const languages = loadLanguages();
-  const language = languages.get(id);
-  if (!language) throw new NotFoundError('语言不存在');
-
   const fallback = getDefaultLanguage(languages);
+  const language = languages.get(id) ?? fallback;
   return {
     id: language.id,
     properties: { ...fallback.manifest, ...language.manifest },

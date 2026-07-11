@@ -82,9 +82,11 @@ describe('GET /api/i18n/languages/:id', () => {
     expect(res.body.data.messages['common.cancel']).toBe('取消');
   });
 
-  it('returns 404 for missing language', async () => {
+  it('falls back to zh-CN for missing language', async () => {
     const res = await request(app).get('/api/i18n/languages/missing');
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe('zh-CN');
+    expect(res.body.data.properties.displayName).toBe('简体中文');
   });
 });
