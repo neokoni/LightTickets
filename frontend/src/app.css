@@ -119,27 +119,10 @@ img {
 /* Status tabs horizontal scroll */
 .status-tabs-scroll {
   overflow-y: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-
-.dark .status-tabs-scroll {
-  scrollbar-color: #334155 transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .status-tabs-scroll::-webkit-scrollbar {
-  height: 3px;
-}
-
-.status-tabs-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.status-tabs-scroll::-webkit-scrollbar-thumb {
-  background-color: #cbd5e1;
-  border-radius: 9999px;
-}
-
-.dark .status-tabs-scroll::-webkit-scrollbar-thumb {
-  background-color: #334155;
+  display: none;
 }
