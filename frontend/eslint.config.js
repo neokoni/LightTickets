@@ -22,6 +22,17 @@ export default [
     },
   },
   {
+    files: ['server.mjs'],
+    languageOptions: {
+      globals: {
+        Buffer: 'readonly',
+        URL: 'readonly',
+        console: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
     languageOptions: {
       globals: {
         window: 'readonly',

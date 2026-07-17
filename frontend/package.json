@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
+    "start": "node server.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"src/**/*.{ts,vue}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,vue}\""
+    "format": "prettier --write \"src/**/*.{ts,vue}\" \"server.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,vue}\" \"server.mjs\""
   },
   "dependencies": {
     "@iconify/vue": "^5.0.1",
