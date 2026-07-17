@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, nextTick, watch } from 'vue';
 import MarkdownIt from 'markdown-it';
+import { tasklist } from '@mdit/plugin-tasklist';
 import type { Options } from 'markdown-it';
 import type Renderer from 'markdown-it/lib/renderer.mjs';
 import type Token from 'markdown-it/lib/token.mjs';
@@ -14,7 +15,15 @@ const md = new MarkdownIt({
   html: false,
   linkify: true,
   breaks: true,
-});
+}).use(tasklist, { disabled: true });
+
+md.renderer.rules.checkbox_input = function (tokens, idx) {
+  const token = tokens[idx];
+  const checked = token.attrGet('checked') !== null;
+  const id = md.utils.escapeHtml(token.attrGet('id') || '');
+  const checkedAttribute = checked ? ' checked' : '';
+  return `<input class="sr-only markdown-task-native-checkbox" type="checkbox" id="${id}"${checkedAttribute} disabled><span class="base-checkbox markdown-task-checkbox" data-checked="${checked}" aria-hidden="true"></span>`;
+};
 
 // Open external links in new tab
 const defaultRender =
@@ -199,5 +208,24 @@ watch(
 .markdown-body :deep(a) {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.markdown-body :deep(.task-list-container) {
+  list-style: none;
+  padding-inline-start: 0;
+}
+
+.markdown-body :deep(.task-list-item) {
+  position: relative;
+  list-style: none;
+}
+
+.markdown-body :deep(.task-list-item .task-list-container) {
+  padding-inline-start: 1.5rem;
+}
+
+.markdown-body :deep(.markdown-task-checkbox) {
+  margin-inline-end: 0.5rem;
+  vertical-align: -0.125rem;
 }
 </style>
