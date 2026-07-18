@@ -481,8 +481,12 @@ watch(
         v-for="ticket in store.tickets"
         :key="ticket.id"
         :to="`/tickets/${ticket.id}`"
-        class="flex items-center gap-4 px-5 py-4 sm:px-6 hover:bg-slate-50/80 dark:hover:bg-slate-800/20 transition"
+        class="group relative flex items-center gap-4 px-5 py-4 transition-colors duration-150 hover:bg-slate-100/80 dark:hover:bg-slate-800/70 sm:px-6"
       >
+        <span
+          class="absolute inset-y-3 left-0 w-0.5 rounded-full opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+          :class="STATUS_META[ticket.status].color"
+        />
         <Icon
           :icon="STATUS_META[ticket.status]?.icon || 'lucide:circle'"
           class="w-5 h-5 shrink-0"
@@ -490,9 +494,10 @@ watch(
         />
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
-            <span class="font-medium text-slate-900 dark:text-white truncate">{{
-              ticket.title
-            }}</span>
+            <span
+              class="truncate font-medium text-slate-900 transition-colors duration-150 group-hover:text-slate-950 dark:text-white dark:group-hover:text-slate-100"
+              >{{ ticket.title }}</span
+            >
             <BaseBadge v-for="tl in ticket.labels" :key="tl.labelId" :color="tl.label.color">
               {{ tl.label.name }}
             </BaseBadge>
