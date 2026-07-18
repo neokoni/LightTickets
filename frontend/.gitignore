@@ -28,3 +28,6 @@ dist-ssr
 # Runtime data
 data/
 public/data/
+
+# Local files
+.package-lock.json

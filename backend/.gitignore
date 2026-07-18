@@ -8,3 +8,6 @@ coverage/
 data/
 # test data directory - isolated runtime data for test runs
 data-test/
+
+# Local files
+.package-lock.json
