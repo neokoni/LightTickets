@@ -52,6 +52,7 @@ The runtime server imports Node built-in modules only. A deployment artifact the
 
 ```text
 package.json
+runtime-config.mjs
 server.mjs
 dist/
 ```

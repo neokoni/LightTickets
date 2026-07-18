@@ -5,9 +5,10 @@ import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { DEFAULT_BACKEND_URL } from './runtime-config.mjs';
+
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DIST_DIR = path.join(SERVER_DIR, 'dist');
-const DEFAULT_BACKEND_URL = 'http://127.0.0.1:3000';
 const DEFAULT_PROXY_TIMEOUT_MS = 30_000;
 
 const MIME_TYPES = new Map([

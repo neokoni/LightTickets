@@ -3,6 +3,8 @@ import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
+import { DEFAULT_BACKEND_URL } from './runtime-config.mjs';
+
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
   resolve: {
@@ -13,7 +15,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.BACKEND_URL || 'http://127.0.0.1:3000',
+        target: process.env.BACKEND_URL || DEFAULT_BACKEND_URL,
         changeOrigin: true,
       },
     },

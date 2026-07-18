@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "format": "prettier --write \"src/**/*.{ts,vue}\" \"server.mjs\"",
-    "format:check": "prettier --check \"src/**/*.{ts,vue}\" \"server.mjs\""
+    "format": "prettier --write \"src/**/*.{ts,vue}\" \"*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,vue}\" \"*.mjs\""
   },
   "dependencies": {
     "@iconify/vue": "^5.0.1",
