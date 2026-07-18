@@ -176,7 +176,7 @@ describe('setup.service', () => {
 
     const config = fs.readFileSync(configPath, 'utf-8');
     expect(config).toContain('https://tickets.example.com');
-    expect(config).not.toContain('http://localhost:5173');
+    expect(config).not.toContain('http://localhost:23310');
   });
 
   it('falls back to localhost corsOrigins when access origin is missing or invalid', async () => {
@@ -188,7 +188,7 @@ describe('setup.service', () => {
       accessOrigin: 'not-a-url',
     });
 
-    expect(fs.readFileSync(configPath, 'utf-8')).toContain('http://localhost:5173');
+    expect(fs.readFileSync(configPath, 'utf-8')).toContain('http://localhost:23310');
   });
 
   it('writes explicit mysql fields without hardcoded host or database defaults', async () => {

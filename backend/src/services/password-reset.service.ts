@@ -26,12 +26,12 @@ function t(messages: Record<string, string>, key: string, params: Record<string,
 
 function resolveResetOrigin(requestOrigin?: string): string {
   const trimmed = requestOrigin?.trim();
-  if (!trimmed) return 'http://localhost:5173';
+  if (!trimmed) return 'http://localhost:23310';
   try {
     const url = new URL(trimmed);
     return url.origin;
   } catch {
-    return 'http://localhost:5173';
+    return 'http://localhost:23310';
   }
 }
 

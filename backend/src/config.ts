@@ -3,6 +3,7 @@ import yaml from 'js-yaml';
 import { dataPath } from './paths.js';
 import { DatabaseProvider } from './constants/database-provider.js';
 import type { StorageDriver } from './constants/storage-driver.js';
+import { resolveServerPort } from './server-port.js';
 
 export const CONFIG_PATH = dataPath('config.yml');
 
@@ -122,8 +123,8 @@ export function loadConfig(): AppConfig {
   }
 
   return {
-    port: parseInt(String(server.port ?? '3000'), 10),
-    corsOrigins: server.corsOrigins || ['http://localhost:5173'],
+    port: resolveServerPort(server.port),
+    corsOrigins: server.corsOrigins || ['http://localhost:23310'],
     database: {
       provider: database.provider,
       host: database.host,

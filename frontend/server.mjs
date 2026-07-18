@@ -5,7 +5,7 @@ import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { LT_DEFAULT_SERVER_URL } from './runtime-config.mjs';
+import { LT_DEFAULT_SERVER_URL, LT_DEFAULT_WEB_PORT } from './runtime-config.mjs';
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DIST_DIR = path.join(SERVER_DIR, 'dist');
@@ -265,7 +265,7 @@ export function createFrontendServer({
 
 function startFromEnvironment() {
   const host = process.env.LT_WEB_HOST || '0.0.0.0';
-  const port = parsePort(process.env.LT_WEB_PORT || '4173');
+  const port = parsePort(process.env.LT_WEB_PORT || String(LT_DEFAULT_WEB_PORT));
   const serverUrl = process.env.LT_SERVER_URL || LT_DEFAULT_SERVER_URL;
   const server = createFrontendServer({ serverUrl });
 

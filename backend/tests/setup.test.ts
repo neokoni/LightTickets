@@ -82,7 +82,7 @@ describe('POST /api/setup', () => {
     expect(res.status).toBe(201);
     const config = fs.readFileSync(dataPath('config.yml'), 'utf-8');
     expect(config).toContain('https://tickets.example.com');
-    expect(config).not.toContain('http://localhost:5173');
+    expect(config).not.toContain('http://localhost:23310');
   });
 
   it('falls back to the Host header when Origin is absent', async () => {
@@ -104,7 +104,7 @@ describe('POST /api/setup', () => {
     expect(res.status).toBe(201);
     const config = fs.readFileSync(dataPath('config.yml'), 'utf-8');
     expect(config).toContain('https://tickets.internal:8080');
-    expect(config).not.toContain('http://localhost:5173');
+    expect(config).not.toContain('http://localhost:23310');
   });
 
   it('persists local storage settings during setup', async () => {

@@ -3,6 +3,7 @@ import yaml from 'js-yaml';
 import type { Server } from 'http';
 
 import { CONFIG_PATH, isDatabaseConfigured, getConfig } from './config.js';
+import { resolveServerPort } from './server-port.js';
 import { DEFAULT_SITE_TITLE } from './services/site.js';
 
 function loadSetupServerConfig(): { port?: number } {
@@ -93,7 +94,7 @@ async function startSetupServer() {
 
   app.use(errorHandler);
 
-  const port = parseInt(String(setupConfig.port ?? '3000'), 10);
+  const port = resolveServerPort(setupConfig.port);
 
   server.listen(port, () => {
     console.log(`LightTickets setup server running on port ${port}`);

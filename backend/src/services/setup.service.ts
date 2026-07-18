@@ -9,6 +9,7 @@ import { ROLE } from '../constants/roles.js';
 import { DatabaseProvider } from '../constants/database-provider.js';
 import { StorageDriver } from '../constants/storage-driver.js';
 import { CONFIG_PATH, isDatabaseConfigured, validateS3Config, type S3Config } from '../config.js';
+import { DEFAULT_SERVER_PORT } from '../server-port.js';
 import type { MailConfigInput, PublicMailConfig } from './mail-config.service.js';
 import * as i18nService from './i18n.service.js';
 import * as mailConfigService from './mail-config.service.js';
@@ -365,8 +366,8 @@ export async function completeSetup(input: SetupInput) {
 
   const configData: Required<SetupConfigFile> = {
     server: {
-      port: 3000,
-      corsOrigins: accessOrigin ? [accessOrigin] : ['http://localhost:5173'],
+      port: DEFAULT_SERVER_PORT,
+      corsOrigins: accessOrigin ? [accessOrigin] : ['http://localhost:23310'],
     },
     database: {
       provider: input.db.provider,

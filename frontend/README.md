@@ -8,12 +8,13 @@ npm run dev
 ```
 
 `LT_SERVER_URL` controls the Vite development proxy target and defaults to
-`http://127.0.0.1:3000`.
+`http://127.0.0.1:23320`. `LT_WEB_PORT` controls the Vite listen port and
+defaults to `23310`.
 
 ## Production Build
 
 ```bash
-npm ci
+npm install
 LT_WEB_API_URL=/api npm run build
 ```
 
@@ -24,8 +25,8 @@ rebuilds or modifies that directory.
 
 ```bash
 LT_WEB_HOST=0.0.0.0 \
-LT_WEB_PORT=4173 \
-LT_SERVER_URL=http://127.0.0.1:3000 \
+LT_WEB_PORT=23310 \
+LT_SERVER_URL=http://127.0.0.1:23320 \
 npm start
 ```
 
@@ -41,8 +42,8 @@ Supported runtime environment variables:
 | Variable        | Default                 | Purpose                                |
 | --------------- | ----------------------- | -------------------------------------- |
 | `LT_WEB_HOST`   | `0.0.0.0`               | HTTP listen address                    |
-| `LT_WEB_PORT`   | `4173`                  | HTTP listen port                       |
-| `LT_SERVER_URL` | `http://127.0.0.1:3000` | Server origin used for `/api` proxying |
+| `LT_WEB_PORT`   | `23310`                 | HTTP listen port                       |
+| `LT_SERVER_URL` | `http://127.0.0.1:23320` | Server origin used for `/api` proxying |
 
 ## Minimal Runtime Package
 

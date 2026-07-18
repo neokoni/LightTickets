@@ -1,7 +1,7 @@
 server:
-  port: 3000
+  port: 23320
   corsOrigins:
-    - http://localhost:5173
+    - http://localhost:23310
 
 database:
   # provider 缺失时进入 setup 模式；setup 完成后回写 sqlite 或 mysql。

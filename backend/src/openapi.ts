@@ -892,7 +892,7 @@ const openapi = generator.generateDocument({
     version: '1.2.1',
     description: 'LightTickets API 文档',
   },
-  servers: [{ url: 'http://localhost:3000', description: 'Development server' }],
+  servers: [{ url: 'http://localhost:23320', description: 'Development server' }],
 });
 
 const outputPath = path.resolve('openapi.json');
