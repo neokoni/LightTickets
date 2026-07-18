@@ -39,10 +39,10 @@ async function submit() {
 
 <template>
   <div
-    class="flex min-h-[calc(100vh-16rem)] items-center justify-center px-4 py-10 sm:px-6 lg:px-8 lg:py-16"
+    class="flex min-h-[calc(100vh-16rem)] items-center justify-center px-2 py-10 max-[341px]:px-1 sm:px-6 lg:px-8 lg:py-16"
   >
     <div
-      class="w-full max-w-md rounded-xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-8"
+      class="w-full max-w-md rounded-xl border border-slate-200/80 bg-white/80 px-3 py-6 shadow-sm backdrop-blur max-[341px]:px-1 dark:border-slate-800/80 dark:bg-slate-900/80 sm:p-8"
     >
       <div>
         <p
