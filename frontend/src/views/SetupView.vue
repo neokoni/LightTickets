@@ -161,13 +161,9 @@ async function submit() {
       defaultLanguage: res.setup.defaultLanguage,
       turnstile: { enabled: false, siteKey: '' },
     });
-    // Server restarts after setup — wait for it to come back
-    const ready = await waitForServerReady();
-    if (ready) {
-      router.replace({ name: 'tickets' });
-    } else {
-      error.value = t('setup.error.restartTimeout');
-    }
+    // Server restarts after setup; keep waiting until it is ready.
+    await waitForServerReady();
+    router.replace({ name: 'tickets' });
   } catch (e) {
     error.value = e instanceof Error ? e.message : t('setup.error.failed');
   } finally {

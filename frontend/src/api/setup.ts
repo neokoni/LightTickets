@@ -35,15 +35,14 @@ export async function testMailSettings(): Promise<{ success: boolean; message: s
   });
 }
 
-export async function waitForServerReady(maxAttempts = 30, intervalMs = 1000): Promise<boolean> {
-  for (let i = 0; i < maxAttempts; i++) {
+export async function waitForServerReady(intervalMs = 1000): Promise<void> {
+  for (;;) {
     try {
       const res = await fetch('/api/health', { signal: AbortSignal.timeout(2000) });
-      if (res.ok) return true;
+      if (res.ok) return;
     } catch {
       // Server not ready yet
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
-  return false;
 }

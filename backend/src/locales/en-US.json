@@ -260,7 +260,6 @@
     "setup.database.title": "Database configuration",
     "setup.database.username": "Username",
     "setup.error.failed": "Setup failed. Please try again.",
-    "setup.error.restartTimeout": "Server restart timed out. Please refresh the page manually.",
     "setup.mc.defaultServerName": "Default server name",
     "setup.mc.help": "Leave blank to skip. You can add servers later in Admin > Servers.",
     "setup.mc.title": "Minecraft server (optional)",

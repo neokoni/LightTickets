@@ -260,7 +260,6 @@
     "setup.database.title": "数据库配置",
     "setup.database.username": "用户名",
     "setup.error.failed": "设置失败，请重试。",
-    "setup.error.restartTimeout": "服务器重启超时，请手动刷新页面。",
     "setup.mc.defaultServerName": "默认服务器名称",
     "setup.mc.help": "留空可跳过。之后可在「管理 › 服务器」中添加服务器。",
     "setup.mc.title": "Minecraft 服务器（可选）",
