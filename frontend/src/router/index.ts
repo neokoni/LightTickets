@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useUiStore } from '@/stores/ui';
 import { getSiteConfig } from '@/api/setup';
 import { siteConfig, setSiteConfigCache, setConnectionError } from '@/stores/site';
 import { syncI18nWithDefault } from '@/i18n';
@@ -134,6 +135,9 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
+  const ui = useUiStore();
+
+  ui.startRouteLoading();
 
   // 1. Wait for auth restore
   if (auth.loading) {
@@ -196,6 +200,14 @@ router.beforeEach(async (to) => {
   if (to.meta.admin && !auth.isAdmin) {
     return { name: 'tickets' };
   }
+});
+
+router.afterEach(() => {
+  useUiStore().stopRouteLoading();
+});
+
+router.onError(() => {
+  useUiStore().stopRouteLoading();
 });
 
 export default router;

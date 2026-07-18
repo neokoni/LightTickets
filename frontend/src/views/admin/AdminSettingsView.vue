@@ -7,6 +7,7 @@ import { handleError } from '@/utils/error';
 import { availableLanguages, t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
+import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
@@ -72,7 +73,7 @@ async function save() {
       {{ t('admin.settings.title') }}
     </h2>
 
-    <div v-if="loading" class="py-4 text-center text-slate-400">{{ t('common.loading') }}</div>
+    <BaseLoadingState v-if="loading" />
 
     <div v-else class="space-y-4 max-w-lg">
       <!-- Site Name -->

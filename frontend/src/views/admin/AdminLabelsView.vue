@@ -10,6 +10,7 @@ import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
 import BaseColorPicker from '@/components/base/BaseColorPicker.vue';
+import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
 
 const labels = useLabelsStore();
 const ui = useUiStore();
@@ -59,8 +60,13 @@ async function remove(id: string) {
   }
 }
 
-onMounted(() => {
-  if (!labels.loaded) labels.fetchList();
+onMounted(async () => {
+  if (labels.loaded) return;
+  try {
+    await labels.fetchList();
+  } catch (e) {
+    handleError(e, t('common.loadFailed'));
+  }
 });
 </script>
 
@@ -76,26 +82,29 @@ onMounted(() => {
     </div>
 
     <div class="admin-settings-list">
-      <div v-for="label in labels.labels" :key="label.id" class="admin-settings-list-row">
-        <div class="flex items-center gap-3">
-          <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: label.color }" />
-          <span class="text-sm font-medium text-slate-900 dark:text-white">{{ label.name }}</span>
-          <span v-if="label.description" class="text-xs text-slate-500">{{
-            label.description
-          }}</span>
+      <BaseLoadingState v-if="labels.loading && !labels.loaded" />
+      <template v-else>
+        <div v-for="label in labels.labels" :key="label.id" class="admin-settings-list-row">
+          <div class="flex items-center gap-3">
+            <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: label.color }" />
+            <span class="text-sm font-medium text-slate-900 dark:text-white">{{ label.name }}</span>
+            <span v-if="label.description" class="text-xs text-slate-500">{{
+              label.description
+            }}</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <BaseButton :class="iconButtonClass" @click="openEdit(label)">
+              <Icon icon="lucide:pencil" class="w-4 h-4" />
+            </BaseButton>
+            <BaseButton :class="dangerIconButtonClass" @click="remove(label.id)">
+              <Icon icon="lucide:trash-2" class="w-4 h-4" />
+            </BaseButton>
+          </div>
         </div>
-        <div class="flex items-center gap-1">
-          <BaseButton :class="iconButtonClass" @click="openEdit(label)">
-            <Icon icon="lucide:pencil" class="w-4 h-4" />
-          </BaseButton>
-          <BaseButton :class="dangerIconButtonClass" @click="remove(label.id)">
-            <Icon icon="lucide:trash-2" class="w-4 h-4" />
-          </BaseButton>
+        <div v-if="!labels.labels.length" class="admin-settings-list-empty">
+          {{ t('admin.labels.empty') }}
         </div>
-      </div>
-      <div v-if="!labels.labels.length" class="admin-settings-list-empty">
-        {{ t('admin.labels.empty') }}
-      </div>
+      </template>
     </div>
 
     <BaseModal

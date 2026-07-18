@@ -6,10 +6,16 @@ import { apiGetLabels, apiCreateLabel, apiUpdateLabel, apiDeleteLabel } from '@/
 export const useLabelsStore = defineStore('labels', () => {
   const labels = ref<Label[]>([]);
   const loaded = ref(false);
+  const loading = ref(false);
 
   async function fetchList() {
-    labels.value = await apiGetLabels();
-    loaded.value = true;
+    loading.value = true;
+    try {
+      labels.value = await apiGetLabels();
+      loaded.value = true;
+    } finally {
+      loading.value = false;
+    }
   }
 
   async function create(data: { name: string; color: string; description?: string }) {
@@ -30,5 +36,5 @@ export const useLabelsStore = defineStore('labels', () => {
     labels.value = labels.value.filter((l) => l.id !== id);
   }
 
-  return { labels, loaded, fetchList, create, update, remove };
+  return { labels, loaded, loading, fetchList, create, update, remove };
 });

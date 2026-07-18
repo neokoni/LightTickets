@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue';
 import MarkdownIt from 'markdown-it';
+import { Icon } from '@iconify/vue';
 import AppHeader from './AppHeader.vue';
 import ToastContainer from './ToastContainer.vue';
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue';
 import { siteConfig, siteTitle } from '@/stores/site';
+import { useUiStore } from '@/stores/ui';
+import { t } from '@/i18n';
 
 const md = new MarkdownIt({ html: false, linkify: true });
+const ui = useUiStore();
 
 const defaultLinkOpen =
   md.renderer.rules.link_open ||
@@ -36,6 +40,15 @@ watch(
 <template>
   <div class="min-h-screen flex flex-col text-slate-900 dark:text-slate-100">
     <AppHeader />
+    <Transition name="route-loading">
+      <div
+        v-if="ui.routeLoading"
+        class="fixed left-1/2 top-[4.75rem] z-[70] inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-xs font-medium text-slate-600 ring-1 ring-slate-200/80 backdrop-blur dark:bg-slate-900/90 dark:text-slate-300 dark:ring-slate-800/80"
+      >
+        <Icon icon="lucide:loader-2" class="h-3.5 w-3.5 animate-spin" />
+        <span>{{ t('common.pageLoading') }}</span>
+      </div>
+    </Transition>
     <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
       <slot />
     </main>
@@ -57,3 +70,18 @@ watch(
     <ConfirmDialog />
   </div>
 </template>
+
+<style scoped>
+.route-loading-enter-active,
+.route-loading-leave-active {
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.route-loading-enter-from,
+.route-loading-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -0.25rem);
+}
+</style>

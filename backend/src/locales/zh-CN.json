@@ -150,6 +150,7 @@
     "common.noData": "暂无数据",
     "common.noPreviewContent": "暂无内容可预览",
     "common.operationFailed": "操作失败",
+    "common.pageLoading": "页面加载中...",
     "common.previous": "上一步",
     "common.preview": "预览",
     "common.removeFailed": "移除失败",

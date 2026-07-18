@@ -150,6 +150,7 @@
     "common.noData": "No data",
     "common.noPreviewContent": "No content to preview",
     "common.operationFailed": "Operation failed",
+    "common.pageLoading": "Loading page...",
     "common.previous": "Previous",
     "common.preview": "Preview",
     "common.removeFailed": "Remove failed",

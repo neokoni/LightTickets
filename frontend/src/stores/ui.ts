@@ -31,6 +31,8 @@ export const useUiStore = defineStore('ui', () => {
   );
   const toasts = ref<Toast[]>([]);
   const mobileMenuOpen = ref(false);
+  const routeLoading = ref(false);
+  let routeLoadingTimer: number | undefined;
 
   function setTheme(t: Theme) {
     theme.value = t;
@@ -54,5 +56,29 @@ export const useUiStore = defineStore('ui', () => {
     }, 4000);
   }
 
-  return { theme, toasts, mobileMenuOpen, setTheme, toggleTheme, initTheme, toast };
+  function startRouteLoading() {
+    window.clearTimeout(routeLoadingTimer);
+    routeLoadingTimer = window.setTimeout(() => {
+      routeLoading.value = true;
+    }, 120);
+  }
+
+  function stopRouteLoading() {
+    window.clearTimeout(routeLoadingTimer);
+    routeLoadingTimer = undefined;
+    routeLoading.value = false;
+  }
+
+  return {
+    theme,
+    toasts,
+    mobileMenuOpen,
+    routeLoading,
+    setTheme,
+    toggleTheme,
+    initTheme,
+    toast,
+    startRouteLoading,
+    stopRouteLoading,
+  };
 });
