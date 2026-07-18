@@ -13,3 +13,4 @@ plugin/.DS_Store
 plugin/.gradle/
 plugin/build/
 plugin/run/
+data/
