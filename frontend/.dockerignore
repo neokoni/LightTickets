@@ -1,0 +1,9 @@
+node_modules
+package-lock.json
+dist
+coverage
+.env
+.env.*
+!.env.example
+npm-debug.log*
+*.tsbuildinfo
