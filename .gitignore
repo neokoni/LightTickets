@@ -1,4 +1,5 @@
 node_modules/
+package-lock.json
 dist/
 *.db
 *.db-journal
@@ -12,4 +13,3 @@ plugin/.DS_Store
 plugin/.gradle/
 plugin/build/
 plugin/run/
-
