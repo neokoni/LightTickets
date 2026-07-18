@@ -74,14 +74,11 @@ watch(
 <style scoped>
 .route-loading-enter-active,
 .route-loading-leave-active {
-  transition:
-    opacity 0.16s ease,
-    transform 0.16s ease;
+  transition: opacity 0.16s ease;
 }
 
 .route-loading-enter-from,
 .route-loading-leave-to {
   opacity: 0;
-  transform: translate(-50%, -0.25rem);
 }
 </style>
