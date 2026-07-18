@@ -9,7 +9,7 @@
     "postinstall": "node scripts/generate-client.mjs",
     "prisma:generate": "node scripts/generate-client.mjs",
     "prebuild": "node scripts/generate-client.mjs",
-    "build": "tsc",
+    "build": "tsc && node scripts/copy-locales.mjs",
     "start": "node dist/index.js",
     "test": "vitest",
     "test:run": "vitest run",

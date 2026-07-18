@@ -419,6 +419,9 @@ describe('POST /api/auth/password-reset', () => {
     expect(requestRes.body.data.accepted).toBe(true);
     expect(getTestOutbox()).toHaveLength(1);
     expect(getTestOutbox()[0].to).toBe('reset@example.com');
+    expect(getTestOutbox()[0].subject).toBe('重置你的 LightTickets 密码');
+    expect(getTestOutbox()[0].text).toContain('你好，resetuser');
+    expect(getTestOutbox()[0].text).not.toContain('mail.passwordReset.');
     expect(getTestOutbox()[0].html).toContain('border-radius:12px');
 
     const tokenMatch = getTestOutbox()[0].text.match(/reset-password\?token=([^\s]+)/);
