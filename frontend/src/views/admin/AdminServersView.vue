@@ -25,6 +25,7 @@ const form = ref({ name: '', address: '', description: '' });
 const showEditModal = ref(false);
 const editingServer = ref<Server | null>(null);
 const editForm = ref({ name: '', address: '', description: '' });
+const visibleKeyIds = ref<Set<string>>(new Set());
 
 async function fetchServers() {
   servers.value = await apiGetServers();
@@ -43,6 +44,7 @@ async function create() {
 }
 
 async function regenerate(id: string) {
+  if (!(await confirm(t('admin.servers.regenerateKeyConfirm')))) return;
   try {
     const { apiKey } = await apiRegenerateKey(id);
     const idx = servers.value.findIndex((s) => s.id === id);
@@ -86,6 +88,9 @@ async function remove(id: string) {
   try {
     await apiDeleteServer(id);
     servers.value = servers.value.filter((s) => s.id !== id);
+    const nextVisible = new Set(visibleKeyIds.value);
+    nextVisible.delete(id);
+    visibleKeyIds.value = nextVisible;
     ui.toast(t('admin.servers.deleted'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.deleteFailed'));
@@ -96,10 +101,24 @@ const copiedId = ref<string | null>(null);
 const iconButtonClass =
   '!px-1.5 !py-1.5 border-none text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
 const dangerIconButtonClass = '!px-1.5 !py-1.5 border-none text-slate-400 hover:text-red-500';
-const copyButtonClass =
-  '!absolute !right-3 !top-1/2 !-translate-y-1/2 !w-8 !h-8 !px-1.5 !py-1.5 border-none ' +
-  'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 ' +
-  'opacity-0 group-hover:opacity-100 transition-opacity';
+
+function isKeyVisible(id: string) {
+  return visibleKeyIds.value.has(id);
+}
+
+function toggleKeyVisibility(id: string) {
+  const nextVisible = new Set(visibleKeyIds.value);
+  if (nextVisible.has(id)) {
+    nextVisible.delete(id);
+  } else {
+    nextVisible.add(id);
+  }
+  visibleKeyIds.value = nextVisible;
+}
+
+function maskApiKey(apiKey: string) {
+  return '•'.repeat(Math.min(Math.max(apiKey.length, 16), 32));
+}
 
 async function copyToClipboard(server: Server) {
   try {
@@ -130,73 +149,88 @@ onMounted(fetchServers);
       }}</BaseButton>
     </div>
 
-    <div class="space-y-3">
+    <div class="admin-settings-list">
       <div
         v-for="server in servers"
         :key="server.id"
-        class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-2"
+        class="admin-settings-list-row admin-server-row"
       >
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="font-medium text-slate-900 dark:text-white">{{ server.name }}</h3>
-            <div
-              v-if="server.address || server.description"
-              class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500"
-            >
-              <span v-if="server.address">{{ server.address }}</span>
-              <span v-if="server.description">{{ server.description }}</span>
-            </div>
-          </div>
-          <div class="flex gap-1">
-            <BaseButton
-              :class="iconButtonClass"
-              :title="t('admin.servers.rename')"
-              @click="startEdit(server)"
-            >
-              <Icon icon="lucide:pencil" class="w-4 h-4" />
-            </BaseButton>
-            <BaseButton
-              :class="iconButtonClass"
-              :title="t('admin.servers.regenerateKey')"
-              @click="regenerate(server.id)"
-            >
-              <Icon icon="lucide:refresh-cw" class="w-4 h-4" />
-            </BaseButton>
-            <BaseButton
-              :class="dangerIconButtonClass"
-              :title="t('common.delete')"
-              @click="remove(server.id)"
-            >
-              <Icon icon="lucide:trash-2" class="w-4 h-4" />
-            </BaseButton>
+        <div class="min-w-0">
+          <h3 class="font-medium text-slate-900 dark:text-white">{{ server.name }}</h3>
+          <div
+            v-if="server.address || server.description"
+            class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500"
+          >
+            <span v-if="server.address">{{ server.address }}</span>
+            <span v-if="server.description">{{ server.description }}</span>
           </div>
         </div>
-        <div class="relative flex items-center gap-2 group">
-          <code
-            class="flex-1 px-3 py-3 pr-12 text-xs bg-slate-100 dark:bg-slate-800 rounded-md font-mono truncate"
-            >{{ server.apiKey }}</code
+
+        <div class="admin-server-actions">
+          <BaseButton
+            :class="iconButtonClass"
+            :title="t('admin.servers.rename')"
+            @click="startEdit(server)"
           >
+            <Icon icon="lucide:pencil" class="w-4 h-4" />
+          </BaseButton>
+          <BaseButton
+            :class="iconButtonClass"
+            :title="t('admin.servers.regenerateKey')"
+            @click="regenerate(server.id)"
+          >
+            <Icon icon="lucide:refresh-cw" class="w-4 h-4" />
+          </BaseButton>
+          <BaseButton
+            :class="dangerIconButtonClass"
+            :title="t('common.delete')"
+            @click="remove(server.id)"
+          >
+            <Icon icon="lucide:trash-2" class="w-4 h-4" />
+          </BaseButton>
+        </div>
+
+        <div class="admin-server-key" :data-visible="isKeyVisible(server.id)">
+          <span
+            class="shrink-0 text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400"
+            >{{ t('admin.servers.apiKey') }}</span
+          >
+          <code
+            :class="[
+              'min-w-0 flex-1 font-mono text-xs text-slate-600 dark:text-slate-300',
+              isKeyVisible(server.id) ? 'break-all whitespace-normal' : 'truncate',
+            ]"
+          >
+            {{ isKeyVisible(server.id) ? server.apiKey : maskApiKey(server.apiKey) }}
+          </code>
+          <BaseButton
+            :class="iconButtonClass"
+            :title="
+              isKeyVisible(server.id) ? t('admin.servers.hideKey') : t('admin.servers.showKey')
+            "
+            @click="toggleKeyVisibility(server.id)"
+          >
+            <Icon
+              :icon="isKeyVisible(server.id) ? 'lucide:eye-off' : 'lucide:eye'"
+              class="w-4 h-4"
+            />
+          </BaseButton>
           <BaseButton
             :class="[
-              copyButtonClass,
-              copiedId === server.id
-                ? 'text-green-500 dark:text-green-400'
-                : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200',
+              iconButtonClass,
+              copiedId === server.id ? 'text-green-500 dark:text-green-400' : '',
             ]"
             :title="t('admin.servers.copyKey')"
             @click="copyToClipboard(server)"
           >
             <Icon
-              :icon="copiedId === server.id ? 'lucide:check' : 'lucide:clipboard-copy'"
-              class="w-[18px] h-[18px]"
+              :icon="copiedId === server.id ? 'lucide:check' : 'lucide:clipboard'"
+              class="w-4 h-4"
             />
           </BaseButton>
         </div>
       </div>
-      <div
-        v-if="!servers.length"
-        class="py-8 text-center text-sm text-slate-500 dark:text-slate-400"
-      >
+      <div v-if="!servers.length" class="admin-settings-list-empty">
         {{ t('admin.servers.empty') }}
       </div>
     </div>

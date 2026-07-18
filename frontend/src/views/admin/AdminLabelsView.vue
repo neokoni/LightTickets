@@ -75,14 +75,8 @@ onMounted(() => {
       }}</BaseButton>
     </div>
 
-    <div
-      class="divide-y divide-slate-200 dark:divide-slate-800 border border-slate-200/80 dark:border-slate-800/80 rounded-xl"
-    >
-      <div
-        v-for="label in labels.labels"
-        :key="label.id"
-        class="flex items-center justify-between px-4 py-3"
-      >
+    <div class="admin-settings-list">
+      <div v-for="label in labels.labels" :key="label.id" class="admin-settings-list-row">
         <div class="flex items-center gap-3">
           <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: label.color }" />
           <span class="text-sm font-medium text-slate-900 dark:text-white">{{ label.name }}</span>
@@ -99,10 +93,7 @@ onMounted(() => {
           </BaseButton>
         </div>
       </div>
-      <div
-        v-if="!labels.labels.length"
-        class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400"
-      >
+      <div v-if="!labels.labels.length" class="admin-settings-list-empty">
         {{ t('admin.labels.empty') }}
       </div>
     </div>
