@@ -7,7 +7,7 @@ import type Renderer from 'markdown-it/lib/renderer.mjs';
 import type Token from 'markdown-it/lib/token.mjs';
 import { t } from '@/i18n';
 
-const props = defineProps<{ content: string }>();
+const props = defineProps<{ content: string; compact?: boolean }>();
 
 const containerRef = ref<HTMLElement | null>(null);
 
@@ -84,6 +84,7 @@ watch(
   <div
     ref="containerRef"
     class="markdown-body prose prose-sm dark:prose-invert max-w-none prose-slate prose-blockquote:not-italic prose-blockquote:font-normal"
+    :class="{ 'markdown-body-compact': compact }"
   />
 </template>
 
@@ -208,6 +209,36 @@ watch(
 .markdown-body :deep(a) {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.markdown-body-compact :deep(p) {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.markdown-body-compact :deep(hr) {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border-color: rgb(226 232 240 / 0.8);
+}
+
+.dark .markdown-body-compact :deep(hr) {
+  border-color: rgb(30 41 59 / 0.8);
+}
+
+.markdown-body-compact :deep(ul),
+.markdown-body-compact :deep(ol) {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-body-compact :deep(li) {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.markdown-body-compact :deep(strong) {
+  color: inherit;
 }
 
 .markdown-body :deep(.task-list-container) {

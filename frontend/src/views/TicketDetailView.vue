@@ -332,11 +332,11 @@ watch(
                 {{ t('common.edit') }}
               </BaseButton>
             </div>
-            <div class="p-6">
-              <MarkdownRenderer :content="ticketBody" />
+            <div class="p-4 sm:p-5">
+              <MarkdownRenderer :content="ticketBody" compact />
             </div>
           </div>
-          <div v-else class="p-6 space-y-3">
+          <div v-else class="space-y-3 p-4 sm:p-5">
             <BaseTextarea
               ref="bodyTextareaRef"
               v-model="editBodyValue"
