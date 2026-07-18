@@ -17,6 +17,8 @@ export const useTicketsStore = defineStore('tickets', () => {
   const total = ref(0);
   const currentTicket = ref<Ticket | null>(null);
   const loading = ref(false);
+  const detailLoading = ref(false);
+  let detailRequestId = 0;
 
   const filters = reactive<TicketFilters>({
     page: 1,
@@ -41,8 +43,29 @@ export const useTicketsStore = defineStore('tickets', () => {
     }
   }
 
-  async function fetchDetail(id: number) {
-    currentTicket.value = await apiGetTicket(id);
+  async function fetchDetail(id: number, options: { clearCurrent?: boolean } = {}) {
+    const requestId = ++detailRequestId;
+    if (options.clearCurrent && currentTicket.value?.id !== id) {
+      currentTicket.value = null;
+    }
+    detailLoading.value = true;
+    try {
+      const ticket = await apiGetTicket(id);
+      if (requestId === detailRequestId) {
+        currentTicket.value = ticket;
+      }
+      return ticket;
+    } finally {
+      if (requestId === detailRequestId) {
+        detailLoading.value = false;
+      }
+    }
+  }
+
+  function clearCurrentTicket() {
+    detailRequestId++;
+    currentTicket.value = null;
+    detailLoading.value = false;
   }
 
   function syncTicketUpdate(updated: Ticket) {
@@ -82,9 +105,11 @@ export const useTicketsStore = defineStore('tickets', () => {
     total,
     currentTicket,
     loading,
+    detailLoading,
     filters,
     fetchList,
     fetchDetail,
+    clearCurrentTicket,
     updateStatus,
     closeTicket,
     reopenTicket,

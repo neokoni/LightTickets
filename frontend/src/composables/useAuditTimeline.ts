@@ -1,4 +1,4 @@
-import { ref, computed, type Ref } from 'vue';
+import { ref, computed, unref, type Ref } from 'vue';
 import { apiFetch } from '@/api/client';
 import { useLabelsStore } from '@/stores/labels';
 import { STATUS_META } from '@/types/ticket';
@@ -9,7 +9,7 @@ import type { Ticket } from '@/types/ticket';
 import type { AssignableUser } from '@/types/user';
 
 export function useAuditTimeline(
-  ticketId: number,
+  ticketId: number | Ref<number>,
   comments: Ref<Comment[]>,
   ticket: Ref<Ticket | null>,
   assignableUsers: Ref<AssignableUser[]>,
@@ -17,13 +17,24 @@ export function useAuditTimeline(
   const labels = useLabelsStore();
 
   const auditLogs = ref<AuditLog[]>([]);
+  let auditRequestId = 0;
 
   async function fetchAuditLogs() {
+    const id = unref(ticketId);
+    const requestId = ++auditRequestId;
     try {
-      auditLogs.value = await apiFetch<AuditLog[]>(`/tickets/${ticketId}/audit`);
+      const logs = await apiFetch<AuditLog[]>(`/tickets/${id}/audit`);
+      if (requestId === auditRequestId && unref(ticketId) === id) {
+        auditLogs.value = logs;
+      }
     } catch {
       /* ignore */
     }
+  }
+
+  function resetAuditLogs() {
+    auditRequestId++;
+    auditLogs.value = [];
   }
 
   function isComment(item: Comment | AuditLog): item is Comment {
@@ -138,5 +149,6 @@ export function useAuditTimeline(
     parseLabelData,
     eventIcon,
     fetchAuditLogs,
+    resetAuditLogs,
   };
 }

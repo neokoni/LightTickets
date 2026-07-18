@@ -78,6 +78,17 @@ export function useTicketEdit(
     editingBody.value = false;
   }
 
+  function resetEditing() {
+    editingTitle.value = false;
+    editTitleValue.value = '';
+    editingBody.value = false;
+    editBodyValue.value = '';
+    expandedBodyDiff.value = null;
+    diffOld.value = '';
+    diffNew.value = '';
+    bodyUpload.cleanup();
+  }
+
   function toggleDiff(item: AuditLog) {
     if (expandedBodyDiff.value === item.id) {
       expandedBodyDiff.value = null;
@@ -118,6 +129,7 @@ export function useTicketEdit(
     startEditBody,
     saveBody,
     cancelEditBody,
+    resetEditing,
     toggleDiff,
     onBodyFileDrop,
     onBodyFilePaste,

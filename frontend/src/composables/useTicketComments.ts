@@ -1,4 +1,4 @@
-import { ref, watch, nextTick, type ComponentPublicInstance, type Ref } from 'vue';
+import { ref, watch, nextTick, unref, type ComponentPublicInstance, type Ref } from 'vue';
 import { useMarkdownUpload } from '@/composables/useMarkdownUpload';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { renderTicketRefs } from '@/utils/ticketRef';
@@ -8,7 +8,7 @@ import { apiGetComments, apiCreateComment, apiUpdateCommentBody } from '@/api/co
 import type { Comment } from '@/types/ticket';
 
 export function useTicketComments(
-  ticketId: number,
+  ticketId: number | Ref<number>,
   onAuditRefresh: () => Promise<void>,
   commentTextareaRef: Ref<ComponentPublicInstance | null>,
 ) {
@@ -22,9 +22,13 @@ export function useTicketComments(
   const editCommentValue = ref('');
   const savingComment = ref(false);
   const commentRawBodies = ref<Record<string, string>>({});
+  let commentsRequestId = 0;
 
   async function fetchComments() {
-    const raw = await apiGetComments(ticketId);
+    const id = unref(ticketId);
+    const requestId = ++commentsRequestId;
+    const raw = await apiGetComments(id);
+    if (requestId !== commentsRequestId || unref(ticketId) !== id) return;
     const rawMap: Record<string, string> = {};
     for (const c of raw) {
       rawMap[c.id] = c.body;
@@ -35,11 +39,12 @@ export function useTicketComments(
 
   async function postComment() {
     if (!newComment.value.trim()) return;
+    const id = unref(ticketId);
     let body = newComment.value;
     if (mdUpload.pendingFiles.value.size > 0) {
-      body = await mdUpload.uploadAndReplace(body, ticketId);
+      body = await mdUpload.uploadAndReplace(body, id);
     }
-    const comment = await apiCreateComment(ticketId, body);
+    const comment = await apiCreateComment(id, body);
     commentRawBodies.value[comment.id] = comment.body;
     comments.value.push({ ...comment, body: renderTicketRefs(comment.body) });
     newComment.value = '';
@@ -71,7 +76,11 @@ export function useTicketComments(
     if (!editCommentValue.value.trim()) return;
     savingComment.value = true;
     try {
-      const updated = await apiUpdateCommentBody(ticketId, commentId, editCommentValue.value);
+      const updated = await apiUpdateCommentBody(
+        unref(ticketId),
+        commentId,
+        editCommentValue.value,
+      );
       const idx = comments.value.findIndex((c) => c.id === commentId);
       if (idx !== -1) {
         comments.value[idx] = { ...updated, body: renderTicketRefs(updated.body) };
@@ -128,6 +137,16 @@ export function useTicketComments(
     }
   }
 
+  function resetComments() {
+    commentsRequestId++;
+    comments.value = [];
+    newComment.value = '';
+    editingCommentId.value = null;
+    editCommentValue.value = '';
+    commentRawBodies.value = {};
+    mdUpload.cleanup();
+  }
+
   function onCommentFileDrop(e: DragEvent) {
     const textarea = commentTextareaRef.value?.$el?.querySelector(
       'textarea',
@@ -157,6 +176,7 @@ export function useTicketComments(
     editCommentValue,
     savingComment,
     commentRawBodies,
+    resetComments,
     fetchComments,
     postComment,
     submitComment,

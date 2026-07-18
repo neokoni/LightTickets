@@ -14,6 +14,7 @@ import BaseBadge from '@/components/base/BaseBadge.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
+import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
@@ -36,8 +37,9 @@ const auth = useAuthStore();
 const ui = useUiStore();
 const labels = useLabelsStore();
 
-const id = Number(route.params.id);
+const ticketId = computed(() => Number(route.params.id));
 const ticket = computed(() => store.currentTicket);
+const isCurrentTicketLoaded = computed(() => ticket.value?.id === ticketId.value);
 
 const commentTextareaRef = ref<ComponentPublicInstance | null>(null);
 const titleInputRef = ref<ComponentPublicInstance<{ focus: () => void }> | null>(null);
@@ -90,7 +92,7 @@ const gameContext = computed<GameContext | null>(() => {
 
 let fetchAuditLogs: () => Promise<void> = async () => {};
 
-const commentsComposable = useTicketComments(id, () => fetchAuditLogs(), commentTextareaRef);
+const commentsComposable = useTicketComments(ticketId, () => fetchAuditLogs(), commentTextareaRef);
 const {
   comments,
   newComment,
@@ -99,6 +101,7 @@ const {
   editingCommentId,
   editCommentValue,
   savingComment,
+  resetComments,
   fetchComments,
   postComment,
   submitComment,
@@ -125,9 +128,10 @@ const {
   saveAssignees,
 } = useAssignees(() => ticket.value);
 
-const auditTimeline = useAuditTimeline(id, comments, ticket, assignableUsers);
+const auditTimeline = useAuditTimeline(ticketId, comments, ticket, assignableUsers);
 fetchAuditLogs = auditTimeline.fetchAuditLogs;
-const { timeline, isComment, eventLabel, parseLabelData, eventIcon } = auditTimeline;
+const { timeline, isComment, eventLabel, parseLabelData, eventIcon, resetAuditLogs } =
+  auditTimeline;
 
 const {
   editingTitle,
@@ -143,6 +147,7 @@ const {
   startEditBody,
   saveBody,
   cancelEditBody,
+  resetEditing,
   toggleDiff,
   onBodyFileDrop,
   onBodyFilePaste,
@@ -166,7 +171,7 @@ const visibleStatusOptions = computed(() => {
 
 async function changeStatus(status: TicketStatus) {
   try {
-    await store.updateStatus(id, status);
+    await store.updateStatus(ticketId.value, status);
     ui.toast(t('ticket.detail.statusUpdated'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e);
@@ -179,7 +184,7 @@ async function closeTicket() {
     if (newComment.value.trim()) {
       await postComment();
     }
-    await store.closeTicket(id);
+    await store.closeTicket(ticketId.value);
     await fetchAuditLogs();
     ui.toast(t('ticket.detail.closed'), ToastType.SUCCESS);
   } catch (e) {
@@ -195,7 +200,7 @@ async function reopenTicket() {
     if (newComment.value.trim()) {
       await postComment();
     }
-    await store.reopenTicket(id);
+    await store.reopenTicket(ticketId.value);
     await fetchAuditLogs();
     ui.toast(t('ticket.detail.reopened'), ToastType.SUCCESS);
   } catch (e) {
@@ -205,25 +210,60 @@ async function reopenTicket() {
   }
 }
 
-onMounted(async () => {
-  fetchTemplateNames();
-  fetchAssignableUsers();
-  if (!labels.loaded) labels.fetchList().catch(() => {});
-  await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()]);
+function scrollToRouteHash() {
   if (route.hash && route.hash.startsWith('#comment-')) {
     const commentId = route.hash.slice('#comment-'.length);
     nextTick(() => scrollToComment(commentId));
   }
+}
+
+let detailLoadId = 0;
+
+async function loadTicketDetail(id: number) {
+  const loadId = ++detailLoadId;
+  resetEditing();
+  resetComments();
+  resetAuditLogs();
+  try {
+    await Promise.all([
+      store.fetchDetail(id, { clearCurrent: true }),
+      fetchComments(),
+      fetchAuditLogs(),
+    ]);
+    if (loadId === detailLoadId) {
+      scrollToRouteHash();
+    }
+  } catch (e) {
+    if (loadId === detailLoadId) {
+      handleError(e, t('common.loadFailed'));
+    }
+  }
+}
+
+onMounted(() => {
+  fetchTemplateNames();
+  fetchAssignableUsers();
+  if (!labels.loaded) labels.fetchList().catch(() => {});
 });
 
 usePolling(async () => {
-  await Promise.all([store.fetchDetail(id), fetchComments(), fetchAuditLogs()]);
+  if (!Number.isFinite(ticketId.value)) return;
+  await Promise.all([store.fetchDetail(ticketId.value), fetchComments(), fetchAuditLogs()]);
 }, 10000);
+
+watch(
+  ticketId,
+  (id) => {
+    if (!Number.isFinite(id)) return;
+    loadTicketDetail(id);
+  },
+  { immediate: true },
+);
 
 watch(
   () => route.hash,
   (hash) => {
-    if (hash && hash.startsWith('#comment-')) {
+    if (isCurrentTicketLoaded.value && hash && hash.startsWith('#comment-')) {
       const commentId = hash.slice('#comment-'.length);
       nextTick(() => scrollToComment(commentId));
     }
@@ -232,11 +272,11 @@ watch(
 </script>
 
 <template>
-  <div v-if="!ticket" class="py-12 text-center text-slate-400">
-    <Icon icon="lucide:loader-2" class="w-6 h-6 mx-auto animate-spin" />
+  <div v-if="!isCurrentTicketLoaded" class="flex min-h-[55vh] items-start justify-center pt-16">
+    <BaseLoadingState />
   </div>
 
-  <div v-else class="space-y-6">
+  <div v-else-if="ticket" class="space-y-6">
     <!-- Header (full width, like GitHub issue title) -->
     <div>
       <div v-if="!editingTitle" class="group flex items-center gap-2">
