@@ -44,6 +44,11 @@ export interface RefreshResponse {
   accessToken: string;
 }
 
+export interface RegistrationVerificationResponse {
+  accepted: true;
+  retryAfterSeconds: number;
+}
+
 export interface Server {
   id: string;
   name: string;

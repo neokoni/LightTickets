@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { apiRequestRegistrationVerificationCode } from '@/api/auth';
 import { siteConfig, siteTitle } from '@/stores/site';
 import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
@@ -16,10 +17,41 @@ const username = ref('');
 const email = ref('');
 const password = ref('');
 const confirmPassword = ref('');
+const emailVerificationCode = ref('');
 const turnstileToken = ref('');
 const turnstileWidget = ref<InstanceType<typeof TurnstileWidget> | null>(null);
 const error = ref('');
 const loading = ref(false);
+const codeSending = ref(false);
+const codeSentEmail = ref('');
+const resendSeconds = ref(0);
+let resendTimer: number | null = null;
+
+const normalizedEmail = computed(() => email.value.trim().toLowerCase());
+const currentEmailIsCoolingDown = computed(
+  () => codeSentEmail.value === normalizedEmail.value && resendSeconds.value > 0,
+);
+
+function clearResendTimer() {
+  if (resendTimer !== null) window.clearInterval(resendTimer);
+  resendTimer = null;
+}
+
+function startResendCountdown(seconds: number) {
+  clearResendTimer();
+  resendSeconds.value = seconds;
+  resendTimer = window.setInterval(() => {
+    resendSeconds.value = Math.max(0, resendSeconds.value - 1);
+    if (resendSeconds.value === 0) clearResendTimer();
+  }, 1000);
+}
+
+function resolveRequestError(e: unknown, fallbackKey: string): string {
+  if (e instanceof ApiError && e.isCloudflareChallenge) {
+    return t('auth.requestChallenged', { rayId: e.requestId ?? '-' });
+  }
+  return e instanceof Error ? e.message : t(fallbackKey);
+}
 
 onMounted(() => {
   if (!siteConfig.allowWebRegister) {
@@ -27,27 +59,53 @@ onMounted(() => {
   }
 });
 
+onBeforeUnmount(clearResendTimer);
+
+async function sendVerificationCode() {
+  error.value = '';
+  codeSending.value = true;
+  try {
+    const result = await apiRequestRegistrationVerificationCode(email.value, turnstileToken.value);
+    emailVerificationCode.value = '';
+    codeSentEmail.value = normalizedEmail.value;
+    startResendCountdown(result.retryAfterSeconds);
+  } catch (e) {
+    error.value = resolveRequestError(e, 'auth.register.sendCodeFailed');
+  } finally {
+    codeSending.value = false;
+    turnstileWidget.value?.reset();
+  }
+}
+
 async function submit() {
   error.value = '';
   if (password.value !== confirmPassword.value) {
     error.value = t('auth.passwordMismatch');
     return;
   }
-  if (password.value.length < 6) {
+  if (password.value.length < 8) {
     error.value = t('auth.passwordMinLength');
+    return;
+  }
+  if (
+    siteConfig.registrationEmailVerificationEnabled &&
+    !/^\d{6}$/.test(emailVerificationCode.value)
+  ) {
+    error.value = t('auth.register.codePlaceholder');
     return;
   }
   loading.value = true;
   try {
-    await auth.register(email.value, password.value, username.value, turnstileToken.value);
+    await auth.register(
+      email.value,
+      password.value,
+      username.value,
+      siteConfig.registrationEmailVerificationEnabled ? emailVerificationCode.value : undefined,
+      turnstileToken.value,
+    );
     router.push('/');
   } catch (e) {
-    error.value =
-      e instanceof ApiError && e.isCloudflareChallenge
-        ? t('auth.requestChallenged', { rayId: e.requestId ?? '-' })
-        : e instanceof Error
-          ? e.message
-          : t('auth.register.failed');
+    error.value = resolveRequestError(e, 'auth.register.failed');
     turnstileWidget.value?.reset();
   } finally {
     loading.value = false;
@@ -105,13 +163,55 @@ async function submit() {
           :site-key="siteConfig.turnstile.siteKey"
         />
 
+        <div v-if="siteConfig.registrationEmailVerificationEnabled" class="space-y-1.5">
+          <div class="flex items-end gap-2">
+            <div class="min-w-0 flex-1">
+              <BaseInput
+                v-model="emailVerificationCode"
+                :label="t('auth.register.code')"
+                :placeholder="t('auth.register.codePlaceholder')"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+              />
+            </div>
+            <BaseButton
+              type="button"
+              class="h-[38px] w-[120px] shrink-0"
+              :loading="codeSending"
+              :disabled="
+                !normalizedEmail ||
+                currentEmailIsCoolingDown ||
+                (siteConfig.turnstile.enabled && !turnstileToken)
+              "
+              @click="sendVerificationCode"
+            >
+              {{
+                currentEmailIsCoolingDown
+                  ? t('auth.register.resendIn', { seconds: resendSeconds })
+                  : t('auth.register.sendCode')
+              }}
+            </BaseButton>
+          </div>
+          <p
+            v-if="codeSentEmail && codeSentEmail === normalizedEmail"
+            class="text-xs text-green-600 dark:text-green-400"
+          >
+            {{ t('auth.register.codeSent') }}
+          </p>
+        </div>
+
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
         <BaseButton
           filled
           type="submit"
           :loading="loading"
-          :disabled="siteConfig.turnstile.enabled && !turnstileToken"
+          :disabled="
+            (siteConfig.turnstile.enabled && !turnstileToken) ||
+            (siteConfig.registrationEmailVerificationEnabled &&
+              !/^\d{6}$/.test(emailVerificationCode))
+          "
           class="w-full"
         >
           {{ t('auth.register.title') }}

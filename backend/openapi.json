@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "LightTickets API",
-    "version": "1.2.1",
+    "version": "2.0.0",
     "description": "LightTickets API 文档"
   },
   "servers": [
@@ -168,6 +168,10 @@
                     "minLength": 2,
                     "maxLength": 32
                   },
+                  "emailVerificationCode": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  },
                   "turnstileToken": {
                     "type": "string"
                   }
@@ -184,6 +188,165 @@
         "responses": {
           "200": {
             "description": "Success"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [
+                        400
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [
+                        401
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        false
+                      ]
+                    },
+                    "statusCode": {
+                      "type": "number",
+                      "enum": [
+                        500
+                      ]
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "traceId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "statusCode",
+                    "message",
+                    "traceId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/register/verification-code": {
+      "post": {
+        "summary": "发送注册邮箱验证码",
+        "tags": [
+          "Auth"
+        ],
+        "security": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "turnstileToken": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accepted": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "retryAfterSeconds": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "exclusiveMinimum": true
+                    }
+                  },
+                  "required": [
+                    "accepted",
+                    "retryAfterSeconds"
+                  ]
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",
@@ -8623,6 +8786,9 @@
                     "passwordResetEnabled": {
                       "type": "boolean"
                     },
+                    "registrationEmailVerificationEnabled": {
+                      "type": "boolean"
+                    },
                     "siteName": {
                       "type": "string"
                     },
@@ -8659,6 +8825,7 @@
                     "allowWebRegister",
                     "allowMcRegister",
                     "passwordResetEnabled",
+                    "registrationEmailVerificationEnabled",
                     "siteName",
                     "siteUrl",
                     "footerContent",

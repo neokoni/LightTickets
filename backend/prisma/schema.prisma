@@ -170,6 +170,17 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+model RegistrationEmailVerification {
+  email     String   @id
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@map("registration_email_verifications")
+}
+
 model SetupStatus {
   id               String   @id @default(uuid())
   isSetup          Boolean  @default(false) @map("is_setup")

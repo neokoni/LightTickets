@@ -27,6 +27,7 @@ describe('GET /api/setup/site-config', () => {
     expect(res.body.data.defaultLanguage).toBe('zh-CN');
     expect(res.body.data.turnstile).toEqual({ enabled: false, siteKey: '' });
     expect(res.body.data.passwordResetEnabled).toBe(false);
+    expect(res.body.data.registrationEmailVerificationEnabled).toBe(false);
   });
 
   it('returns footerContent and siteUrl in site config', async () => {
@@ -468,6 +469,7 @@ describe('PATCH /api/setup/settings', () => {
 
     const siteConfig = await request(app).get('/api/setup/site-config');
     expect(siteConfig.body.data.passwordResetEnabled).toBe(true);
+    expect(siteConfig.body.data.registrationEmailVerificationEnabled).toBe(true);
     expect(siteConfig.body.data).not.toHaveProperty('mail');
   });
 

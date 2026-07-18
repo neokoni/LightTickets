@@ -33,9 +33,10 @@ export const useAuthStore = defineStore('auth', () => {
     email: string,
     password: string,
     username: string,
+    emailVerificationCode?: string,
     turnstileToken?: string,
   ) {
-    const res = await apiRegister(email, password, username, turnstileToken);
+    const res = await apiRegister(email, password, username, emailVerificationCode, turnstileToken);
     user.value = res.user;
     setAccessToken(res.accessToken);
   }

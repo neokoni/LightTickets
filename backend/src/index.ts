@@ -79,6 +79,7 @@ async function startSetupServer() {
       isSetup: false,
       requireLogin: false,
       siteName: DEFAULT_SITE_TITLE,
+      registrationEmailVerificationEnabled: false,
       turnstile: { enabled: false, siteKey: '' },
     });
   });

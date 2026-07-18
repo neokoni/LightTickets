@@ -52,6 +52,17 @@ afterEach(() => {
 });
 
 describe('POST /api/auth/register', () => {
+  it('rejects verification-code requests when SMTP is disabled', async () => {
+    clearTestOutbox();
+    const res = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'mail-disabled@example.com' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('邮件服务尚未启用');
+    expect(getTestOutbox()).toHaveLength(0);
+  });
+
   it('creates a new user and returns tokens', async () => {
     const res = await request(app)
       .post('/api/auth/register')
@@ -102,6 +113,123 @@ describe('POST /api/auth/register', () => {
 
     expect(valid.status).toBe(201);
     expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it('requires and consumes an email verification code when SMTP is enabled', async () => {
+    clearTestOutbox();
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
+
+    const codeResponse = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'Verify-Register@example.com' });
+
+    expect(codeResponse.status).toBe(200);
+    expect(codeResponse.body.data).toEqual({ accepted: true, retryAfterSeconds: 60 });
+    expect(getTestOutbox()).toHaveLength(1);
+    expect(getTestOutbox()[0].to).toBe('verify-register@example.com');
+    expect(getTestOutbox()[0].subject).toBe('你的 LightTickets 注册验证码');
+    const code = getTestOutbox()[0].text.match(/\b\d{6}\b/)?.[0];
+    expect(code).toMatch(/^\d{6}$/);
+
+    const missing = await request(app).post('/api/auth/register').send({
+      email: 'verify-register@example.com',
+      password: 'Password123!',
+      username: 'verifyregister',
+    });
+    expect(missing.status).toBe(400);
+    expect(missing.body.message).toBe('请输入邮箱验证码');
+
+    const invalid = await request(app).post('/api/auth/register').send({
+      email: 'verify-register@example.com',
+      password: 'Password123!',
+      username: 'verifyregister',
+      emailVerificationCode: '000000',
+    });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.message).toBe('邮箱验证码错误或已失效，请重新获取');
+
+    const valid = await request(app).post('/api/auth/register').send({
+      email: 'Verify-Register@example.com',
+      password: 'Password123!',
+      username: 'verifyregister',
+      emailVerificationCode: code,
+    });
+    expect(valid.status).toBe(201);
+    expect(valid.body.data.user.email).toBe('verify-register@example.com');
+    await expect(prisma().registrationEmailVerification.count()).resolves.toBe(0);
+  });
+
+  it('limits registration verification emails to once per minute per address', async () => {
+    clearTestOutbox();
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
+
+    const first = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'rate-limit@example.com' });
+    const second = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'RATE-LIMIT@example.com' });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(429);
+    expect(second.body.message).toBe('验证码发送过于频繁，请稍后再试');
+    expect(getTestOutbox()).toHaveLength(1);
+  });
+
+  it('rejects a registration code after five failed attempts', async () => {
+    clearTestOutbox();
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
+    await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'attempt-limit@example.com' });
+    const code = getTestOutbox()[0].text.match(/\b\d{6}\b/)?.[0];
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const invalid = await request(app).post('/api/auth/register').send({
+        email: 'attempt-limit@example.com',
+        password: 'Password123!',
+        username: 'attemptlimit',
+        emailVerificationCode: '000000',
+      });
+      expect(invalid.status).toBe(400);
+    }
+
+    const locked = await request(app).post('/api/auth/register').send({
+      email: 'attempt-limit@example.com',
+      password: 'Password123!',
+      username: 'attemptlimit',
+      emailVerificationCode: code,
+    });
+    expect(locked.status).toBe(400);
+    expect(locked.body.message).toBe('邮箱验证码错误或已失效，请重新获取');
+  });
+
+  it('requires turnstile before sending a registration verification email', async () => {
+    clearTestOutbox();
+    await configureApp({
+      mailConfig: JSON.stringify(mailConfig),
+      turnstileConfig: JSON.stringify(turnstileConfig),
+    });
+
+    const missing = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'turnstile-code@example.com' });
+    expect(missing.status).toBe(400);
+    expect(getTestOutbox()).toHaveLength(0);
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const valid = await request(app).post('/api/auth/register/verification-code').send({
+      email: 'turnstile-code@example.com',
+      turnstileToken: 'valid-token',
+    });
+
+    expect(valid.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(getTestOutbox()).toHaveLength(1);
   });
 });
 

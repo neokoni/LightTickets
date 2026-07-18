@@ -114,7 +114,26 @@ const registerAuthRoutes = () => {
       email: z.string().email(),
       password: z.string().min(8),
       username: z.string().min(2).max(32),
+      emailVerificationCode: z
+        .string()
+        .regex(/^\d{6}$/)
+        .optional(),
       turnstileToken: z.string().optional(),
+    }),
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/auth/register/verification-code',
+    summary: '发送注册邮箱验证码',
+    auth: 'none',
+    tags: ['Auth'],
+    bodySchema: z.object({
+      email: z.string().email(),
+      turnstileToken: z.string().optional(),
+    }),
+    responseSchema: z.object({
+      accepted: z.literal(true),
+      retryAfterSeconds: z.number().int().positive(),
     }),
   });
   registerRoute({
@@ -732,6 +751,7 @@ const registerSetupRoutes = () => {
       allowWebRegister: z.boolean(),
       allowMcRegister: z.boolean(),
       passwordResetEnabled: z.boolean(),
+      registrationEmailVerificationEnabled: z.boolean(),
       siteName: z.string(),
       siteUrl: z.string().nullable(),
       footerContent: z.string().nullable(),
@@ -889,7 +909,7 @@ const openapi = generator.generateDocument({
   openapi: '3.0.0',
   info: {
     title: 'LightTickets API',
-    version: '1.2.1',
+    version: '2.0.0',
     description: 'LightTickets API 文档',
   },
   servers: [{ url: 'http://localhost:23320', description: 'Development server' }],

@@ -6,18 +6,59 @@ import { getConfig } from '../config.js';
 import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../utils/errors.js';
 import { generateTokens } from '../utils/token.js';
 import { USER_PUBLIC_SELECT } from './constants.js';
+import * as mailConfigService from './mail-config.service.js';
+import * as registrationEmailVerificationService from './registration-email-verification.service.js';
 
-export async function register(email: string, password: string, username: string) {
+export async function register(
+  email: string,
+  password: string,
+  username: string,
+  emailVerificationCode?: string,
+) {
+  const normalizedEmail = registrationEmailVerificationService.normalizeEmail(email);
   const existing = await prisma().user.findFirst({
-    where: { OR: [{ email }, { username }] },
+    where: { OR: [{ email: normalizedEmail }, { username }] },
   });
   if (existing) {
-    throw new AppError(409, existing.email === email ? '该邮箱已被注册' : '该用户名已被占用');
+    throw new AppError(
+      409,
+      existing.email === normalizedEmail ? '该邮箱已被注册' : '该用户名已被占用',
+    );
   }
 
+  const mailConfig = await mailConfigService.getFullMailConfig();
+  const verificationRequired = mailConfigService.canSendPasswordResetMail(mailConfig);
+  if (verificationRequired && !emailVerificationCode) {
+    throw new ValidationError('请输入邮箱验证码');
+  }
+  const verificationCodeHash = verificationRequired
+    ? await registrationEmailVerificationService.verifyRegistrationCode(
+        normalizedEmail,
+        emailVerificationCode!,
+      )
+    : null;
+
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = await prisma().user.create({
-    data: { email, passwordHash, username },
+  const user = await prisma().$transaction(async (tx) => {
+    const conflictingUser = await tx.user.findFirst({
+      where: { OR: [{ email: normalizedEmail }, { username }] },
+    });
+    if (conflictingUser) {
+      throw new AppError(
+        409,
+        conflictingUser.email === normalizedEmail ? '该邮箱已被注册' : '该用户名已被占用',
+      );
+    }
+    if (verificationCodeHash) {
+      await registrationEmailVerificationService.consumeRegistrationCode(
+        tx,
+        normalizedEmail,
+        verificationCodeHash,
+      );
+    }
+    return tx.user.create({
+      data: { email: normalizedEmail, passwordHash, username },
+    });
   });
 
   const tokens = generateTokens(user.id, user.role);

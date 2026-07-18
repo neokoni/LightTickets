@@ -7,6 +7,7 @@ import { authLimiter } from '../middleware/rate-limit.js';
 import { ForbiddenError, ValidationError } from '../utils/errors.js';
 import { validate } from '../utils/validate.js';
 import * as passwordResetService from '../services/password-reset.service.js';
+import * as registrationEmailVerificationService from '../services/registration-email-verification.service.js';
 import * as turnstileConfigService from '../services/turnstile-config.service.js';
 
 const router = Router();
@@ -62,9 +63,18 @@ function resolveAccessOrigin(req: Request): string | undefined {
 }
 
 const registerSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email(),
   password: z.string().min(8),
   username: z.string().min(2).max(32),
+  emailVerificationCode: z
+    .string()
+    .regex(/^\d{6}$/)
+    .optional(),
+  turnstileToken: z.string().optional(),
+});
+
+const registrationVerificationRequestSchema = z.object({
+  email: z.string().trim().email(),
   turnstileToken: z.string().optional(),
 });
 
@@ -99,9 +109,30 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
   }
 
   await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
-  const result = await authService.register(data.email, data.password, data.username);
+  const result = await authService.register(
+    data.email,
+    data.password,
+    data.username,
+    data.emailVerificationCode,
+  );
   setRefreshCookie(res, result.refreshToken);
   res.status(201).json(result);
+});
+
+router.post('/register/verification-code', authLimiter, async (req: Request, res: Response) => {
+  const data = validate(registrationVerificationRequestSchema, req.body);
+
+  const { getSiteConfig } = await import('../services/setup.service.js');
+  const config = await getSiteConfig();
+  if (!config.allowWebRegister) {
+    throw new ForbiddenError('网页注册已关闭，请联系管理员');
+  }
+
+  await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
+  const result = await registrationEmailVerificationService.requestRegistrationEmailVerification(
+    data.email,
+  );
+  res.json(result);
 });
 
 router.post('/login', authLimiter, async (req: Request, res: Response) => {

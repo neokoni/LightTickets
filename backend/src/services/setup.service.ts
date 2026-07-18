@@ -59,6 +59,7 @@ export interface SiteConfig {
   allowWebRegister: boolean;
   allowMcRegister: boolean;
   passwordResetEnabled: boolean;
+  registrationEmailVerificationEnabled: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;
@@ -120,6 +121,7 @@ function toSiteConfig(status: {
     allowWebRegister: status.allowWebRegister,
     allowMcRegister: status.allowMcRegister,
     passwordResetEnabled: false,
+    registrationEmailVerificationEnabled: false,
     siteName: resolveSiteTitle(status.siteName),
     siteUrl: status.siteUrl ?? null,
     footerContent: status.footerContent ?? null,
@@ -168,6 +170,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       allowWebRegister: true,
       allowMcRegister: true,
       passwordResetEnabled: false,
+      registrationEmailVerificationEnabled: false,
       siteName: DEFAULT_SITE_TITLE,
       siteUrl: null,
       footerContent: null,
@@ -188,6 +191,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       ]);
       siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(turnstile);
       siteConfig.passwordResetEnabled = mailConfigService.canSendPasswordResetMail(mail);
+      siteConfig.registrationEmailVerificationEnabled = siteConfig.passwordResetEnabled;
       return siteConfig;
     }
 
@@ -215,6 +219,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       ]);
       siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(turnstile);
       siteConfig.passwordResetEnabled = mailConfigService.canSendPasswordResetMail(mail);
+      siteConfig.registrationEmailVerificationEnabled = siteConfig.passwordResetEnabled;
       return siteConfig;
     }
 
@@ -224,6 +229,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       allowWebRegister: status?.allowWebRegister ?? true,
       allowMcRegister: status?.allowMcRegister ?? true,
       passwordResetEnabled: false,
+      registrationEmailVerificationEnabled: false,
       siteName: resolveSiteTitle(status?.siteName),
       siteUrl: status?.siteUrl ?? null,
       footerContent: status?.footerContent ?? null,
@@ -299,6 +305,7 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     allowWebRegister: siteConfig.allowWebRegister,
     allowMcRegister: siteConfig.allowMcRegister,
     passwordResetEnabled: siteConfig.passwordResetEnabled,
+    registrationEmailVerificationEnabled: siteConfig.registrationEmailVerificationEnabled,
     siteName: status?.siteName ?? siteConfig.siteName,
     siteUrl: siteConfig.siteUrl,
     footerContent: siteConfig.footerContent,

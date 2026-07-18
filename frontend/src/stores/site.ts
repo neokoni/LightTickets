@@ -15,6 +15,7 @@ export const siteConfig = reactive<SiteConfigCache>({
   allowWebRegister: true,
   allowMcRegister: true,
   passwordResetEnabled: false,
+  registrationEmailVerificationEnabled: false,
   siteName: '',
   siteUrl: null,
   footerContent: null,
@@ -40,6 +41,7 @@ export function canSendPasswordResetMail(mail: MailSettings): boolean {
 
 export function setPasswordResetEnabledCache(value: boolean) {
   siteConfig.passwordResetEnabled = value;
+  siteConfig.registrationEmailVerificationEnabled = value;
 }
 
 export function setRequireLoginCache(value: boolean) {

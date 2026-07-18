@@ -1,15 +1,34 @@
 import { apiFetch } from './client';
-import type { AuthResponse, RefreshResponse, User } from '@/types/user';
+import type {
+  AuthResponse,
+  RefreshResponse,
+  RegistrationVerificationResponse,
+  User,
+} from '@/types/user';
 
 export function apiRegister(
   email: string,
   password: string,
   username: string,
+  emailVerificationCode?: string,
   turnstileToken?: string,
 ) {
   return apiFetch<AuthResponse>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, username, turnstileToken }),
+    body: JSON.stringify({
+      email,
+      password,
+      username,
+      emailVerificationCode,
+      turnstileToken,
+    }),
+  });
+}
+
+export function apiRequestRegistrationVerificationCode(email: string, turnstileToken?: string) {
+  return apiFetch<RegistrationVerificationResponse>('/auth/register/verification-code', {
+    method: 'POST',
+    body: JSON.stringify({ email, turnstileToken }),
   });
 }
 
