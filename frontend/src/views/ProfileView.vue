@@ -14,8 +14,6 @@ const auth = useAuthStore();
 const ui = useUiStore();
 
 const activeSection = ref<'account' | 'password' | 'minecraft' | 'language'>('account');
-const navButtonClass =
-  '!justify-start !px-4 !py-3 border-none text-sm text-left data-[active=true]:bg-slate-100 data-[active=true]:dark:bg-slate-800 data-[active=true]:text-slate-900 data-[active=true]:dark:text-slate-100 data-[active=true]:font-medium data-[active=false]:text-slate-600 data-[active=false]:dark:text-slate-400 data-[active=false]:hover:text-slate-900 data-[active=false]:dark:hover:text-slate-100';
 const iconButtonClass =
   '!px-0 !py-0 border-none text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
 
@@ -171,11 +169,11 @@ async function changeLanguage(languageId: string) {
 
 <template>
   <div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
-    <nav class="flex md:flex-col gap-1">
+    <nav class="settings-side-nav">
       <BaseButton
         v-for="item in navItems"
         :key="item.key"
-        :class="navButtonClass"
+        class="settings-side-nav-item"
         :data-active="activeSection === item.key"
         @click="activeSection = item.key"
       >

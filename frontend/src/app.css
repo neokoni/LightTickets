@@ -185,6 +185,121 @@ button.base-checkbox:disabled {
   color: #e2e8f0;
 }
 
+/* Shared side navigation for platform and profile settings. */
+.settings-side-nav {
+  display: flex;
+  gap: 0.25rem;
+  margin: -0.25rem;
+  padding: 0.25rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.settings-side-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-side-nav-item {
+  position: relative;
+  display: inline-flex;
+  min-width: max-content;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.625rem;
+  padding: 0.75rem 1rem 0.75rem 1.125rem;
+  color: var(--color-slate-600);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25rem;
+  text-align: left;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 0.5rem;
+  box-shadow: none;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease;
+}
+
+.settings-side-nav-item::before {
+  position: absolute;
+  top: 0.625rem;
+  bottom: 0.625rem;
+  left: 0.375rem;
+  width: 0.1875rem;
+  content: '';
+  background: currentColor;
+  border-radius: 9999px;
+  opacity: 0;
+  transform: scaleY(0.55);
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.settings-side-nav-item > svg,
+.settings-side-nav-item [data-icon] {
+  flex: 0 0 auto;
+}
+
+.settings-side-nav-item:hover {
+  color: var(--color-slate-950);
+  background-color: color-mix(in srgb, var(--color-slate-200) 42%, transparent);
+}
+
+.settings-side-nav-item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-slate-900) 16%, transparent);
+}
+
+.settings-side-nav-item[data-active='true'],
+.settings-side-nav-item.router-link-exact-active {
+  color: var(--color-slate-950);
+  font-weight: 650;
+  background-color: color-mix(in srgb, white 72%, var(--color-slate-100));
+}
+
+.settings-side-nav-item[data-active='true']::before,
+.settings-side-nav-item.router-link-exact-active::before {
+  opacity: 1;
+  transform: scaleY(1);
+}
+
+.dark .settings-side-nav-item {
+  color: var(--color-slate-400);
+}
+
+.dark .settings-side-nav-item:hover {
+  color: var(--color-slate-100);
+  background-color: color-mix(in srgb, var(--color-slate-800) 56%, transparent);
+}
+
+.dark .settings-side-nav-item:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-slate-100) 18%, transparent);
+}
+
+.dark .settings-side-nav-item[data-active='true'],
+.dark .settings-side-nav-item.router-link-exact-active {
+  color: white;
+  background-color: color-mix(in srgb, var(--color-slate-800) 62%, transparent);
+}
+
+@media (min-width: 48rem) {
+  .settings-side-nav {
+    flex-direction: column;
+    overflow: visible;
+  }
+
+  .settings-side-nav-item {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 /* Status tabs horizontal scroll */
 .status-tabs-scroll {
   overflow-y: hidden;

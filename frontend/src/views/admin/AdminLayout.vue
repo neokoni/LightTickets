@@ -19,17 +19,13 @@ const navItems = [
 
 <template>
   <div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
-    <nav class="flex md:flex-col gap-1">
+    <nav class="settings-side-nav">
       <RouterLink
         v-for="item in navItems"
         :key="item.to"
         :to="item.to"
-        class="flex items-center gap-2 px-4 py-3 text-sm rounded-md transition"
-        :class="
-          route.path === item.to
-            ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium'
-            : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
-        "
+        class="settings-side-nav-item"
+        :data-active="route.path === item.to"
       >
         <Icon :icon="item.icon" class="w-4 h-4" />
         {{ t(item.labelKey) }}
