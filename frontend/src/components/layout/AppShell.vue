@@ -43,7 +43,7 @@ watch(
     <Transition name="route-loading">
       <div
         v-if="ui.routeLoading"
-        class="fixed left-1/2 top-[4.75rem] z-[70] inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-xs font-medium text-slate-600 ring-1 ring-slate-200/80 backdrop-blur dark:bg-slate-900/90 dark:text-slate-300 dark:ring-slate-800/80"
+        class="fixed left-1/2 top-[5.5rem] z-[70] inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/90 px-3 py-2 text-xs font-medium text-slate-600 ring-1 ring-slate-200/80 backdrop-blur dark:bg-slate-900/90 dark:text-slate-300 dark:ring-slate-800/80"
       >
         <Icon icon="lucide:loader-2" class="h-3.5 w-3.5 animate-spin" />
         <span>{{ t('common.pageLoading') }}</span>
