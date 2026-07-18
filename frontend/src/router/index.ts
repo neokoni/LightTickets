@@ -127,6 +127,12 @@ const router = createRouter({
           component: () => import('@/views/admin/AdminStorageView.vue'),
           meta: { auth: true, admin: true, titleKey: 'admin.storage.title' },
         },
+        {
+          path: 'about',
+          name: 'admin-about',
+          component: () => import('@/views/admin/AdminAboutView.vue'),
+          meta: { auth: true, admin: true, titleKey: 'admin.about.title' },
+        },
       ],
     },
     {

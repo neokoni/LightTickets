@@ -11,7 +11,9 @@ RUN npm install
 
 COPY . .
 ARG LT_WEB_API_URL=/api
+ARG LT_GIT_COMMIT=unknow
 ENV LT_WEB_API_URL=${LT_WEB_API_URL}
+ENV LT_GIT_COMMIT=${LT_GIT_COMMIT}
 RUN npm run build
 
 FROM node:${NODE_VERSION}-bookworm-slim AS runtime

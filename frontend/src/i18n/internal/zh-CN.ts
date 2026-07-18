@@ -16,6 +16,7 @@ export const fallbackLanguagePack: LanguagePack = {
     direction: fallbackLanguageSummary.direction,
   },
   messages: {
+    'admin.about.title': '关于',
     'admin.settings.allowMcRegister': '允许 Minecraft 注册',
     'admin.settings.allowMcRegisterHelp': '关闭后，服务器插件将无法通过 API 注册新账户',
     'admin.settings.allowWebRegister': '允许网页注册',
@@ -58,6 +59,7 @@ export const fallbackLanguagePack: LanguagePack = {
     'admin.labels.title': '标签管理',
     'admin.labels.updated': '标签已更新',
     'admin.nav.labels': '标签',
+    'admin.nav.about': '关于',
     'admin.nav.mail': '邮件',
     'admin.nav.servers': '服务器',
     'admin.nav.settings': '设置',

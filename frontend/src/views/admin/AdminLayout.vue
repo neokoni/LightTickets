@@ -17,6 +17,7 @@ const navItems = [
   { to: '/admin/mail', labelKey: 'admin.nav.mail', icon: 'lucide:mail' },
   { to: '/admin/turnstile', labelKey: 'admin.nav.turnstile', icon: 'lucide:shield-check' },
   { to: '/admin/storage', labelKey: 'admin.nav.storage', icon: 'lucide:database' },
+  { to: '/admin/about', labelKey: 'admin.nav.about', icon: 'lucide:info' },
 ];
 
 const mobileNavOptions = computed(() =>

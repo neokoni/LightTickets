@@ -5,6 +5,7 @@
     "direction": "ltr"
   },
   "messages": {
+    "admin.about.title": "About",
     "admin.settings.allowMcRegister": "Allow Minecraft registration",
     "admin.settings.allowMcRegisterHelp": "When disabled, server plugins cannot register new accounts through the API",
     "admin.settings.allowWebRegister": "Allow web registration",
@@ -46,6 +47,7 @@
     "admin.labels.title": "Label management",
     "admin.labels.updated": "Label updated",
     "admin.nav.labels": "Labels",
+    "admin.nav.about": "About",
     "admin.nav.mail": "Email",
     "admin.nav.servers": "Servers",
     "admin.nav.settings": "Settings",
