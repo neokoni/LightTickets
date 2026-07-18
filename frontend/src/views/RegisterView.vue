@@ -7,6 +7,7 @@ import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import TurnstileWidget from '@/components/auth/TurnstileWidget.vue';
+import { ApiError } from '@/types/api';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -41,7 +42,12 @@ async function submit() {
     await auth.register(email.value, password.value, username.value, turnstileToken.value);
     router.push('/');
   } catch (e) {
-    error.value = e instanceof Error ? e.message : t('auth.register.failed');
+    error.value =
+      e instanceof ApiError && e.isCloudflareChallenge
+        ? t('auth.requestChallenged', { rayId: e.requestId ?? '-' })
+        : e instanceof Error
+          ? e.message
+          : t('auth.register.failed');
     turnstileWidget.value?.reset();
   } finally {
     loading.value = false;
@@ -101,9 +107,15 @@ async function submit() {
 
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
-        <BaseButton filled type="submit" :loading="loading" class="w-full">{{
-          t('auth.register.title')
-        }}</BaseButton>
+        <BaseButton
+          filled
+          type="submit"
+          :loading="loading"
+          :disabled="siteConfig.turnstile.enabled && !turnstileToken"
+          class="w-full"
+        >
+          {{ t('auth.register.title') }}
+        </BaseButton>
       </form>
 
       <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">

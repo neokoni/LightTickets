@@ -7,6 +7,7 @@ import { t } from '@/i18n';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import TurnstileWidget from '@/components/auth/TurnstileWidget.vue';
+import { ApiError } from '@/types/api';
 
 const router = useRouter();
 const route = useRoute();
@@ -27,7 +28,12 @@ async function submit() {
     const redirect = (route.query.redirect as string) || '/';
     router.push(redirect);
   } catch (e) {
-    error.value = e instanceof Error ? e.message : t('auth.login.failed');
+    error.value =
+      e instanceof ApiError && e.isCloudflareChallenge
+        ? t('auth.requestChallenged', { rayId: e.requestId ?? '-' })
+        : e instanceof Error
+          ? e.message
+          : t('auth.login.failed');
     turnstileWidget.value?.reset();
   } finally {
     loading.value = false;
@@ -80,9 +86,15 @@ async function submit() {
 
         <p v-if="error" class="text-sm text-red-500">{{ error }}</p>
 
-        <BaseButton filled type="submit" :loading="loading" class="w-full">{{
-          t('auth.login.title')
-        }}</BaseButton>
+        <BaseButton
+          filled
+          type="submit"
+          :loading="loading"
+          :disabled="siteConfig.turnstile.enabled && !turnstileToken"
+          class="w-full"
+        >
+          {{ t('auth.login.title') }}
+        </BaseButton>
       </form>
 
       <p

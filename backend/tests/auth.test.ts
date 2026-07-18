@@ -175,6 +175,87 @@ describe('POST /api/auth/login', () => {
 
     expect(valid.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledOnce();
+    const requestBody = fetchMock.mock.calls[0]?.[1]?.body;
+    expect(requestBody).toBeInstanceOf(URLSearchParams);
+    expect((requestBody as URLSearchParams).get('idempotency_key')).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('retries a transient turnstile validation failure with the same idempotency key', async () => {
+    await request(app).post('/api/auth/register').send({
+      email: 'turnstile-retry@example.com',
+      password: 'Password123!',
+      username: 'tretry',
+    });
+    await configureApp({ turnstileConfig: JSON.stringify(turnstileConfig) });
+
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('temporary network failure'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const res = await request(app).post('/api/auth/login').send({
+      emailOrUsername: 'turnstile-retry@example.com',
+      password: 'Password123!',
+      turnstileToken: 'retry-token',
+    });
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstBody = fetchMock.mock.calls[0]?.[1]?.body as URLSearchParams;
+    const secondBody = fetchMock.mock.calls[1]?.[1]?.body as URLSearchParams;
+    expect(firstBody.get('idempotency_key')).toBe(secondBody.get('idempotency_key'));
+  });
+
+  it('returns a standard service-unavailable response when turnstile cannot be reached', async () => {
+    await request(app).post('/api/auth/register').send({
+      email: 'turnstile-unavailable@example.com',
+      password: 'Password123!',
+      username: 'tunavailable',
+    });
+    await configureApp({ turnstileConfig: JSON.stringify(turnstileConfig) });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network unavailable')));
+
+    const res = await request(app).post('/api/auth/login').send({
+      emailOrUsername: 'turnstile-unavailable@example.com',
+      password: 'Password123!',
+      turnstileToken: 'unavailable-token',
+    });
+
+    expect(res.status).toBe(503);
+    expect(res.body).toEqual({
+      success: false,
+      statusCode: 503,
+      message: '人机验证服务暂时不可用，请稍后重试',
+    });
+  });
+
+  it('asks for a new challenge when the turnstile token has expired', async () => {
+    await request(app).post('/api/auth/register').send({
+      email: 'turnstile-expired@example.com',
+      password: 'Password123!',
+      username: 'texpired',
+    });
+    await configureApp({ turnstileConfig: JSON.stringify(turnstileConfig) });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: false, 'error-codes': ['timeout-or-duplicate'] }),
+      }),
+    );
+
+    const res = await request(app).post('/api/auth/login').send({
+      emailOrUsername: 'turnstile-expired@example.com',
+      password: 'Password123!',
+      turnstileToken: 'expired-token',
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('人机验证已过期或无效，请重新验证');
   });
 });
 
