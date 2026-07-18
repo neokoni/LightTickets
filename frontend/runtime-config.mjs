@@ -1,1 +1,1 @@
-export const DEFAULT_BACKEND_URL = 'http://127.0.0.1:3000';
+export const LT_DEFAULT_SERVER_URL = 'http://127.0.0.1:3000';

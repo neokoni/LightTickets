@@ -4,7 +4,7 @@ import { frontendConfig } from '@/config';
 type ApiEnvelope<T> = { success: true; data: T };
 
 function getBaseUrl(): string {
-  return frontendConfig.backendUrl;
+  return frontendConfig.serverUrl;
 }
 
 let accessToken: string | null = null;

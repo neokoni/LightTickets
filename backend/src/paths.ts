@@ -2,9 +2,9 @@ import path from 'path';
 
 // Root directory for all runtime-generated data (config, sqlite db, uploads,
 // templates, generated prisma client). Defaults to 'data' relative to cwd, but
-// can be overridden via LIGHTTICKETS_DATA_DIR so tests use an isolated folder
-// and never clobber production/dev data.
-export const DATA_DIR = path.resolve(process.env.LIGHTTICKETS_DATA_DIR || 'data');
+// can be overridden via LT_SERVER_DATA_DIR so tests and deployments use an
+// isolated folder and never clobber production/dev data.
+export const DATA_DIR = path.resolve(process.env.LT_SERVER_DATA_DIR || 'data');
 
 export function dataPath(...segments: string[]): string {
   return path.resolve(DATA_DIR, ...segments);

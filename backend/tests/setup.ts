@@ -3,7 +3,7 @@ import { beforeEach } from 'vitest';
 
 import { DATA_DIR, dataPath } from '../src/paths.js';
 
-// Tests run against an isolated data directory (LIGHTTICKETS_DATA_DIR, set in
+// Tests run against an isolated data directory (LT_SERVER_DATA_DIR, set in
 // vitest.config.ts) so a run can never touch the real data/ folder — no more
 // clobbering production config.yml, uploads, or the sqlite db.
 const configPath = dataPath('config.yml');

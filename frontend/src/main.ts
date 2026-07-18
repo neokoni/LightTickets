@@ -9,7 +9,7 @@ import './app.css';
 
 async function bootstrap() {
   try {
-    const res = await fetch(frontendConfig.backendUrl + '/health');
+    const res = await fetch(frontendConfig.serverUrl + '/health');
     if (!res.ok) throw new Error();
   } catch {
     const { default: ConnectionErrorView } = await import('./views/ConnectionErrorView.vue');

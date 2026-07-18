@@ -3,9 +3,10 @@ import vue from '@vitejs/plugin-vue';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
-import { DEFAULT_BACKEND_URL } from './runtime-config.mjs';
+import { LT_DEFAULT_SERVER_URL } from './runtime-config.mjs';
 
 export default defineConfig({
+  envPrefix: 'LT_',
   plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {
@@ -15,7 +16,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.BACKEND_URL || DEFAULT_BACKEND_URL,
+        target: process.env.LT_SERVER_URL || LT_DEFAULT_SERVER_URL,
         changeOrigin: true,
       },
     },

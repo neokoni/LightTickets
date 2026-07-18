@@ -5,7 +5,7 @@ import https from 'node:https';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { DEFAULT_BACKEND_URL } from './runtime-config.mjs';
+import { LT_DEFAULT_SERVER_URL } from './runtime-config.mjs';
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DIST_DIR = path.join(SERVER_DIR, 'dist');
@@ -50,14 +50,14 @@ function parsePort(value) {
   return port;
 }
 
-function parseBackendUrl(value) {
+function parseServerUrl(value) {
   const url = new URL(value);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new Error('BACKEND_URL must use http or https');
+    throw new Error('LT_SERVER_URL must use http or https');
   }
-  if (url.username || url.password) throw new Error('BACKEND_URL must not contain credentials');
+  if (url.username || url.password) throw new Error('LT_SERVER_URL must not contain credentials');
   if (url.pathname !== '/' || url.search || url.hash) {
-    throw new Error('BACKEND_URL must be an origin without a path, query, or hash');
+    throw new Error('LT_SERVER_URL must be an origin without a path, query, or hash');
   }
   return url;
 }
@@ -95,7 +95,7 @@ function sendProxyError(response) {
   const body = JSON.stringify({
     success: false,
     statusCode: 502,
-    message: 'Backend service unavailable',
+    message: 'Server service unavailable',
   });
   writeSecurityHeaders(response);
   response.writeHead(502, {
@@ -105,8 +105,8 @@ function sendProxyError(response) {
   response.end(body);
 }
 
-function proxyApiRequest(request, response, backendUrl, timeoutMs) {
-  const target = new URL(request.url || '/api', backendUrl);
+function proxyApiRequest(request, response, serverUrl, timeoutMs) {
+  const target = new URL(request.url || '/api', serverUrl);
   const transport = target.protocol === 'https:' ? https : http;
   const headers = copyHeaders(request.headers);
   headers.host = target.host;
@@ -122,7 +122,7 @@ function proxyApiRequest(request, response, backendUrl, timeoutMs) {
   );
 
   proxyRequest.setTimeout(timeoutMs, () => {
-    proxyRequest.destroy(new Error('Backend request timed out'));
+    proxyRequest.destroy(new Error('Server request timed out'));
   });
   proxyRequest.on('error', (error) => {
     console.error('[frontend] API proxy error:', error.message);
@@ -230,7 +230,7 @@ async function serveDistRequest(request, response, url, distDir, indexPath) {
 
 export function createFrontendServer({
   distDir = DEFAULT_DIST_DIR,
-  backendUrl = DEFAULT_BACKEND_URL,
+  serverUrl = LT_DEFAULT_SERVER_URL,
   proxyTimeoutMs = DEFAULT_PROXY_TIMEOUT_MS,
 } = {}) {
   const resolvedDistDir = path.resolve(distDir);
@@ -244,14 +244,14 @@ export function createFrontendServer({
     throw new Error(`Frontend dist path is not a directory: ${resolvedDistDir}`);
   }
 
-  const parsedBackendUrl = parseBackendUrl(String(backendUrl));
+  const parsedServerUrl = parseServerUrl(String(serverUrl));
   const indexPath = path.join(resolvedDistDir, 'index.html');
 
   return http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url || '/', 'http://frontend.local');
       if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
-        proxyApiRequest(request, response, parsedBackendUrl, proxyTimeoutMs);
+        proxyApiRequest(request, response, parsedServerUrl, proxyTimeoutMs);
         return;
       }
       await serveDistRequest(request, response, url, resolvedDistDir, indexPath);
@@ -264,19 +264,19 @@ export function createFrontendServer({
 }
 
 function startFromEnvironment() {
-  const host = process.env.FRONTEND_HOST || process.env.HOST || '0.0.0.0';
-  const port = parsePort(process.env.FRONTEND_PORT || process.env.PORT || '4173');
-  const backendUrl = process.env.BACKEND_URL || DEFAULT_BACKEND_URL;
-  const server = createFrontendServer({ backendUrl });
+  const host = process.env.LT_WEB_HOST || '0.0.0.0';
+  const port = parsePort(process.env.LT_WEB_PORT || '4173');
+  const serverUrl = process.env.LT_SERVER_URL || LT_DEFAULT_SERVER_URL;
+  const server = createFrontendServer({ serverUrl });
 
   server.once('error', (error) => {
     console.error('[frontend] Failed to start:', error.message);
     process.exitCode = 1;
   });
   server.listen(port, host, () => {
-    const backendOrigin = parseBackendUrl(backendUrl).origin;
+    const serverOrigin = parseServerUrl(serverUrl).origin;
     console.log(`[frontend] Serving ${DEFAULT_DIST_DIR} on http://${host}:${port}`);
-    console.log(`[frontend] Proxying /api to ${backendOrigin}`);
+    console.log(`[frontend] Proxying /api to ${serverOrigin}`);
   });
 }
 

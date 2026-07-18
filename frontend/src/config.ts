@@ -1,3 +1,3 @@
 export const frontendConfig = {
-  backendUrl: import.meta.env.VITE_API_URL || '/api',
+  serverUrl: import.meta.env.LT_WEB_API_URL || '/api',
 };
