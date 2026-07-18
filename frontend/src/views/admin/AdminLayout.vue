@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Icon } from '@iconify/vue';
-import { RouterLink, RouterView, useRoute } from 'vue-router';
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { t } from '@/i18n';
+import BaseSelect from '@/components/base/BaseSelect.vue';
 
 const route = useRoute();
+const router = useRouter();
 
 const navItems = [
   { to: '/admin/labels', labelKey: 'admin.nav.labels', icon: 'lucide:tag' },
@@ -15,11 +18,30 @@ const navItems = [
   { to: '/admin/turnstile', labelKey: 'admin.nav.turnstile', icon: 'lucide:shield-check' },
   { to: '/admin/storage', labelKey: 'admin.nav.storage', icon: 'lucide:database' },
 ];
+
+const mobileNavOptions = computed(() =>
+  navItems.map((item) => ({
+    value: item.to,
+    label: t(item.labelKey),
+    icon: item.icon,
+  })),
+);
+
+const selectedAdminPath = computed({
+  get: () => route.path,
+  set: (path: string) => {
+    if (path !== route.path) router.push(path);
+  },
+});
 </script>
 
 <template>
   <div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
-    <nav class="settings-side-nav">
+    <div class="md:hidden">
+      <BaseSelect v-model="selectedAdminPath" :options="mobileNavOptions" variant="subtle" />
+    </div>
+
+    <nav class="settings-side-nav settings-side-nav-desktop">
       <RouterLink
         v-for="item in navItems"
         :key="item.to"

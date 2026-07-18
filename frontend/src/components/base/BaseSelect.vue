@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
 import { t } from '@/i18n';
 
 const model = defineModel<string>();
 
+type SelectOption = { value: string; label: string; icon?: string };
+
 const props = defineProps<{
   label?: string;
-  options: { value: string; label: string }[];
+  options: SelectOption[];
   placeholder?: string;
   error?: string;
   disabled?: boolean;
+  variant?: 'default' | 'subtle';
 }>();
 
 const open = ref(false);
@@ -34,10 +37,29 @@ function onKeydown(e: KeyboardEvent) {
 onMounted(() => document.addEventListener('mousedown', onClickOutside));
 onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside));
 
+const selectedOption = computed(() => props.options.find((o) => o.value === model.value));
 const selectedLabel = () =>
-  props.options.find((o) => o.value === model.value)?.label ??
-  props.placeholder ??
-  t('common.selectPlaceholder');
+  selectedOption.value?.label ?? props.placeholder ?? t('common.selectPlaceholder');
+
+const buttonStateClass = computed(() => {
+  if (props.error) {
+    return 'border-red-400 dark:border-red-500 focus:ring-2 focus:ring-red-500/40 focus:border-red-500';
+  }
+  if (props.variant === 'subtle') {
+    return open.value
+      ? 'border-slate-300/80 bg-slate-100/45 ring-2 ring-slate-900/10 dark:border-slate-700/80 dark:bg-slate-900/55 dark:ring-slate-100/10'
+      : 'border-slate-200/60 bg-transparent hover:border-slate-300/70 hover:bg-slate-100/45 dark:border-slate-800/70 dark:bg-transparent dark:hover:border-slate-700/80 dark:hover:bg-slate-900/45';
+  }
+  return open.value
+    ? 'border-slate-400 dark:border-slate-600 ring-2 ring-slate-900/20 dark:ring-slate-100/20'
+    : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600';
+});
+
+const dropdownClass = computed(() =>
+  props.variant === 'subtle'
+    ? 'border-slate-200/70 bg-slate-50 dark:border-slate-800/80 dark:bg-slate-950'
+    : 'border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900',
+);
 </script>
 
 <template>
@@ -49,23 +71,25 @@ const selectedLabel = () =>
       <button
         type="button"
         :disabled="disabled"
-        class="w-full flex items-center justify-between px-3 py-2 text-sm rounded-md border bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-        :class="[
-          error
-            ? 'border-red-400 dark:border-red-500 focus:ring-2 focus:ring-red-500/40 focus:border-red-500'
-            : open
-              ? 'border-slate-400 dark:border-slate-600 ring-2 ring-slate-900/20 dark:ring-slate-100/20'
-              : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600',
-        ]"
+        class="flex min-h-10 w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm text-slate-900 transition disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-100"
+        :class="buttonStateClass"
         @click="open = !open"
         @keydown="onKeydown"
       >
-        <span :class="model ? '' : 'text-slate-400 dark:text-slate-500'">{{
-          selectedLabel()
-        }}</span>
+        <span
+          class="flex min-w-0 items-center gap-2"
+          :class="model ? '' : 'text-slate-400 dark:text-slate-500'"
+        >
+          <Icon
+            v-if="selectedOption?.icon"
+            :icon="selectedOption.icon"
+            class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+          />
+          <span class="truncate">{{ selectedLabel() }}</span>
+        </span>
         <Icon
           icon="lucide:chevron-down"
-          class="w-4 h-4 text-slate-400 dark:text-slate-500 transition-transform duration-200"
+          class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 dark:text-slate-500"
           :class="{ 'rotate-180': open }"
         />
       </button>
@@ -80,7 +104,8 @@ const selectedLabel = () =>
       >
         <div
           v-if="open"
-          class="absolute z-50 mt-1 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg overflow-hidden"
+          class="absolute z-50 mt-1 w-full overflow-hidden rounded-md border"
+          :class="dropdownClass"
         >
           <div class="py-1">
             <button
@@ -95,7 +120,14 @@ const selectedLabel = () =>
               "
               @click="select(opt.value)"
             >
-              {{ opt.label }}
+              <span class="flex min-w-0 items-center gap-2">
+                <Icon
+                  v-if="opt.icon"
+                  :icon="opt.icon"
+                  class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+                />
+                <span class="truncate">{{ opt.label }}</span>
+              </span>
             </button>
           </div>
         </div>

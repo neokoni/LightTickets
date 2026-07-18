@@ -198,6 +198,10 @@ button.base-checkbox:disabled {
   -ms-overflow-style: none;
 }
 
+.settings-side-nav-desktop {
+  display: none;
+}
+
 .settings-side-nav::-webkit-scrollbar {
   display: none;
 }
@@ -293,6 +297,10 @@ button.base-checkbox:disabled {
   .settings-side-nav {
     flex-direction: column;
     overflow: visible;
+  }
+
+  .settings-side-nav-desktop {
+    display: flex;
   }
 
   .settings-side-nav-item {

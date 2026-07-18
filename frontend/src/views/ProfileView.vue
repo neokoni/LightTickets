@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '@/stores/auth';
 import { ToastType, useUiStore } from '@/stores/ui';
@@ -23,6 +23,23 @@ const navItems = [
   { key: 'minecraft' as const, labelKey: 'profile.minecraft.title', icon: 'lucide:gamepad-2' },
   { key: 'language' as const, labelKey: 'settings.language.personal', icon: 'lucide:languages' },
 ];
+
+const mobileNavOptions = computed(() =>
+  navItems.map((item) => ({
+    value: item.key,
+    label: t(item.labelKey),
+    icon: item.icon,
+  })),
+);
+
+const selectedProfileSection = computed({
+  get: () => activeSection.value,
+  set: (section: string) => {
+    if (navItems.some((item) => item.key === section)) {
+      activeSection.value = section as typeof activeSection.value;
+    }
+  },
+});
 
 const mcCode = ref('');
 const linking = ref(false);
@@ -169,7 +186,11 @@ async function changeLanguage(languageId: string) {
 
 <template>
   <div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
-    <nav class="settings-side-nav">
+    <div class="md:hidden">
+      <BaseSelect v-model="selectedProfileSection" :options="mobileNavOptions" variant="subtle" />
+    </div>
+
+    <nav class="settings-side-nav settings-side-nav-desktop">
       <BaseButton
         v-for="item in navItems"
         :key="item.key"
