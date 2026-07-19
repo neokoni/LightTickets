@@ -9,11 +9,14 @@ import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
+import BaseToggle from '@/components/base/BaseToggle.vue';
 
 const auth = useAuthStore();
 const ui = useUiStore();
 
-const activeSection = ref<'account' | 'password' | 'minecraft' | 'language'>('account');
+const activeSection = ref<'account' | 'password' | 'minecraft' | 'notifications' | 'language'>(
+  'account',
+);
 const iconButtonClass =
   '!px-0 !py-0 border-none text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
 
@@ -21,6 +24,7 @@ const navItems = [
   { key: 'account' as const, labelKey: 'profile.account.title', icon: 'lucide:user' },
   { key: 'password' as const, labelKey: 'profile.password.title', icon: 'lucide:lock' },
   { key: 'minecraft' as const, labelKey: 'profile.minecraft.title', icon: 'lucide:gamepad-2' },
+  { key: 'notifications' as const, labelKey: 'profile.notifications.title', icon: 'lucide:bell' },
   { key: 'language' as const, labelKey: 'settings.language.personal', icon: 'lucide:languages' },
 ];
 
@@ -61,6 +65,20 @@ const currentPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
 const savingPassword = ref(false);
+const savingNotifications = ref(false);
+
+async function updateEmailNotifications(value: boolean) {
+  if (savingNotifications.value || value === auth.user?.receiveEmailNotifications) return;
+  savingNotifications.value = true;
+  try {
+    await auth.updateEmailNotifications(value);
+    ui.toast(t('profile.notifications.updated'), ToastType.SUCCESS);
+  } catch (e) {
+    handleError(e, t('common.updateFailed'));
+  } finally {
+    savingNotifications.value = false;
+  }
+}
 
 async function saveUsername() {
   const val = usernameInput.value.trim();
@@ -407,6 +425,31 @@ async function changeLanguage(languageId: string) {
               t('profile.minecraft.link')
             }}</BaseButton>
           </form>
+        </div>
+      </template>
+
+      <!-- Notifications -->
+      <template v-if="activeSection === 'notifications'">
+        <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+          {{ t('profile.notifications.title') }}
+        </h2>
+
+        <div
+          class="flex max-w-lg items-center justify-between gap-4 border border-slate-200/80 px-6 py-5 dark:border-slate-800/80"
+        >
+          <div>
+            <p class="text-sm font-medium text-slate-900 dark:text-white">
+              {{ t('profile.notifications.email') }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {{ t('profile.notifications.emailHelp') }}
+            </p>
+          </div>
+          <BaseToggle
+            :model-value="auth.user?.receiveEmailNotifications ?? true"
+            :disabled="savingNotifications"
+            @update:model-value="updateEmailNotifications"
+          />
         </div>
       </template>
 

@@ -7,6 +7,7 @@ import { emitTicketUpdate, emitToAllServers } from '../socket/events.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
 import { isStaffRole } from '../constants/roles.js';
 import * as ticketService from './ticket.service.js';
+import * as ticketNotificationService from './ticket-notification.service.js';
 
 export async function create(
   ticketId: number,
@@ -92,6 +93,11 @@ export async function create(
       emitToAllServers('ticket:comment_created', payload);
     }
   }
+
+  await ticketNotificationService.notifyTicketAuthor(ticketId, authorId, {
+    type: 'comment',
+    body: comment.body,
+  });
 
   return comment;
 }

@@ -50,6 +50,12 @@ const router = createRouter({
       meta: { guest: true, allowAuthenticated: true },
     },
     {
+      path: '/unsubscribe',
+      name: 'unsubscribe',
+      component: () => import('@/views/UnsubscribeView.vue'),
+      meta: { guest: true, allowAuthenticated: true },
+    },
+    {
       path: '/',
       name: 'tickets',
       component: () => import('@/views/TicketListView.vue'),

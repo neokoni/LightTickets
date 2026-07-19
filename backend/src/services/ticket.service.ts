@@ -7,6 +7,7 @@ import { AUDIT_ACTION } from '../constants/audit-actions.js';
 import { isStaffRole } from '../constants/roles.js';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
 import { TEMPLATE_HIDDEN_MODE } from '../constants/ticket-visibility.js';
+import * as ticketNotificationService from './ticket-notification.service.js';
 import {
   emitTicketUpdate,
   emitToAllServers,
@@ -346,6 +347,11 @@ export async function update(
 
   if (statusChanged) {
     await emitStatusChanged(ticket, userId, ticket.status, nextStatus);
+    await ticketNotificationService.notifyTicketAuthor(id, userId, {
+      type: 'status',
+      oldStatus: ticket.status,
+      newStatus: nextStatus,
+    });
     if (ticket.serverId) {
       const hookTicket = await prisma().ticket.findUnique({
         where: { id },
@@ -464,6 +470,11 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
   });
 
   await emitStatusChanged(ticket, userId, ticket.status, TICKET_STATUS.CLOSED);
+  await ticketNotificationService.notifyTicketAuthor(id, userId, {
+    type: 'status',
+    oldStatus: ticket.status,
+    newStatus: TICKET_STATUS.CLOSED,
+  });
 
   if (ticket.serverId) {
     const updatedTicket = await prisma().ticket.findUnique({
@@ -518,6 +529,11 @@ export async function reopenTicket(id: number, userId: number, userRole: string)
   });
 
   await emitStatusChanged(ticket, userId, ticket.status, TICKET_STATUS.OPEN);
+  await ticketNotificationService.notifyTicketAuthor(id, userId, {
+    type: 'status',
+    oldStatus: ticket.status,
+    newStatus: TICKET_STATUS.OPEN,
+  });
 
   return getById(id, { userId, role: userRole });
 }

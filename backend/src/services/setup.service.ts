@@ -68,6 +68,7 @@ export interface SiteConfig {
 }
 
 export interface AdminSettings extends Omit<SiteConfig, 'isSetup'> {
+  sendEmailNotifications: boolean;
   mail: PublicMailConfig;
   turnstile: turnstileConfigService.PublicTurnstileConfig;
 }
@@ -252,6 +253,7 @@ export async function updateSettings(data: {
   siteUrl?: string | null;
   footerContent?: string | null;
   defaultLanguage?: string;
+  sendEmailNotifications?: boolean;
   mail?: MailConfigInput;
   turnstile?: turnstileConfigService.TurnstileConfigInput;
 }) {
@@ -273,6 +275,9 @@ export async function updateSettings(data: {
       ...(data.defaultLanguage !== undefined && {
         defaultLanguage: i18nService.resolveLanguageId(data.defaultLanguage),
       }),
+      ...(data.sendEmailNotifications !== undefined && {
+        sendEmailNotifications: data.sendEmailNotifications,
+      }),
     },
   });
   const mail = data.mail
@@ -290,6 +295,7 @@ export async function updateSettings(data: {
     siteUrl: updated.siteUrl,
     footerContent: updated.footerContent,
     defaultLanguage: i18nService.resolveLanguageId(updated.defaultLanguage),
+    sendEmailNotifications: updated.sendEmailNotifications,
     mail,
     turnstile,
   };
@@ -310,6 +316,7 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     siteUrl: siteConfig.siteUrl,
     footerContent: siteConfig.footerContent,
     defaultLanguage: siteConfig.defaultLanguage,
+    sendEmailNotifications: status?.sendEmailNotifications ?? false,
     turnstile: await turnstileConfigService.getTurnstileConfig(),
     mail: await mailConfigService.getMailConfig(),
   };

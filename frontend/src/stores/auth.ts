@@ -12,6 +12,7 @@ import {
   apiUpdateUsername,
   apiChangePassword,
   apiUpdateEmail,
+  apiUpdateEmailNotifications,
 } from '@/api/auth';
 import { setAccessToken } from '@/api/client';
 
@@ -110,6 +111,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function updateEmailNotifications(receiveEmailNotifications: boolean) {
+    const updated = await apiUpdateEmailNotifications(receiveEmailNotifications);
+    if (user.value) {
+      user.value.receiveEmailNotifications = updated.receiveEmailNotifications;
+    }
+  }
+
   return {
     user,
     loading,
@@ -127,5 +135,6 @@ export const useAuthStore = defineStore('auth', () => {
     updateUsername,
     changePassword,
     updateEmail,
+    updateEmailNotifications,
   };
 });

@@ -76,6 +76,7 @@ export interface SetupResult {
     minecraftUuid?: string;
     minecraftName?: string;
     avatarUrl?: string | null;
+    receiveEmailNotifications: boolean;
     createdAt?: string;
     updatedAt?: string;
   };
@@ -92,6 +93,7 @@ export interface SettingsResult {
   siteUrl: string | null;
   footerContent: string | null;
   defaultLanguage: string;
+  sendEmailNotifications: boolean;
   mail: MailSettings;
   turnstile: TurnstileSettings;
 }
@@ -104,6 +106,7 @@ export interface SettingsPayload {
   siteUrl?: string | null;
   footerContent?: string | null;
   defaultLanguage?: string;
+  sendEmailNotifications?: boolean;
   mail?: MailSettingsPayload;
   turnstile?: TurnstileSettingsPayload;
 }

@@ -151,6 +151,7 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
         siteUrl: z.string().url().nullable().optional(),
         footerContent: z.string().max(2000).nullable().optional(),
         defaultLanguage: z.string().optional(),
+        sendEmailNotifications: z.boolean().optional(),
         mail: z
           .object({
             enabled: z.boolean().optional(),

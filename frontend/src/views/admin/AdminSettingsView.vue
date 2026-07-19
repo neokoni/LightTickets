@@ -20,6 +20,7 @@ const siteName = ref('');
 const siteUrl = ref('');
 const footerContent = ref('');
 const defaultLanguage = ref('zh-CN');
+const sendEmailNotifications = ref(false);
 const loading = ref(false);
 const saving = ref(false);
 
@@ -34,6 +35,7 @@ onMounted(async () => {
     allowMcRegister.value = config.allowMcRegister ?? true;
     footerContent.value = config.footerContent ?? '';
     defaultLanguage.value = config.defaultLanguage;
+    sendEmailNotifications.value = config.sendEmailNotifications;
   } finally {
     loading.value = false;
   }
@@ -50,6 +52,7 @@ async function save() {
       siteUrl: siteUrl.value || null,
       footerContent: footerContent.value || null,
       defaultLanguage: defaultLanguage.value,
+      sendEmailNotifications: sendEmailNotifications.value,
     });
     setRequireLoginCache(result.requireLogin);
     siteConfig.siteName = result.siteName;
@@ -162,6 +165,20 @@ async function save() {
           </p>
         </div>
         <BaseToggle v-model="requireLogin" />
+      </div>
+
+      <div
+        class="flex items-center justify-between gap-4 px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
+      >
+        <div>
+          <p class="text-sm font-medium text-slate-900 dark:text-white">
+            {{ t('admin.settings.sendEmailNotifications') }}
+          </p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {{ t('admin.settings.sendEmailNotificationsHelp') }}
+          </p>
+        </div>
+        <BaseToggle v-model="sendEmailNotifications" />
       </div>
 
       <BaseButton filled :loading="saving" @click="save">{{

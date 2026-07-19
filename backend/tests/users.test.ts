@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
+import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
 
 const app = createApp();
 
@@ -84,6 +85,55 @@ describe('PATCH /api/users/me/avatar', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ avatarUrl: 'not-a-url' });
 
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('email notification preferences', () => {
+  it('defaults to enabled and lets the user update the preference', async () => {
+    const { token, user } = await createUserAndGetToken('notifications@test.com');
+    expect(user.receiveEmailNotifications).toBe(true);
+
+    const res = await request(app)
+      .patch('/api/users/me/notifications')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ receiveEmailNotifications: false });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.receiveEmailNotifications).toBe(false);
+    expect(
+      await prisma().user.findUnique({
+        where: { id: user.id },
+        select: { receiveEmailNotifications: true },
+      }),
+    ).toEqual({ receiveEmailNotifications: false });
+  });
+
+  it('requires a boolean preference value', async () => {
+    const { token } = await createUserAndGetToken('notifications-invalid@test.com');
+    const res = await request(app)
+      .patch('/api/users/me/notifications')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ receiveEmailNotifications: 'yes' });
+    expect(res.status).toBe(400);
+  });
+
+  it('unsubscribes with a signed public token', async () => {
+    const { user } = await createUserAndGetToken('unsubscribe@test.com');
+    const res = await request(app)
+      .post('/api/users/email-notifications/unsubscribe')
+      .send({ token: createUnsubscribeToken(user.id) });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ unsubscribed: true });
+    const updated = await prisma().user.findUnique({ where: { id: user.id } });
+    expect(updated?.receiveEmailNotifications).toBe(false);
+  });
+
+  it('rejects an invalid unsubscribe token', async () => {
+    const res = await request(app)
+      .post('/api/users/email-notifications/unsubscribe')
+      .send({ token: 'invalid' });
     expect(res.status).toBe(400);
   });
 });

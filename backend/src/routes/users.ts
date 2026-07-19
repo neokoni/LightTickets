@@ -6,8 +6,17 @@ import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
+import * as ticketNotificationService from '../services/ticket-notification.service.js';
 
 const router = Router();
+
+const unsubscribeSchema = z.object({ token: z.string().min(1) });
+
+router.post('/email-notifications/unsubscribe', async (req: Request, res: Response) => {
+  const data = validate(unsubscribeSchema, req.body);
+  const result = await ticketNotificationService.unsubscribe(data.token);
+  res.json(result);
+});
 
 router.get('/', authMiddleware, requireRole(ROLE.ADMIN), async (req: Request, res: Response) => {
   const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
@@ -68,6 +77,19 @@ router.patch('/me/email', authMiddleware, async (req: Request, res: Response) =>
   const data = validate(emailSchema, req.body);
 
   const user = await userService.updateEmail(req.user!.userId, data.email);
+  res.json(user);
+});
+
+const notificationSettingsSchema = z.object({
+  receiveEmailNotifications: z.boolean(),
+});
+
+router.patch('/me/notifications', authMiddleware, async (req: Request, res: Response) => {
+  const data = validate(notificationSettingsSchema, req.body);
+  const user = await userService.updateEmailNotifications(
+    req.user!.userId,
+    data.receiveEmailNotifications,
+  );
   res.json(user);
 });
 

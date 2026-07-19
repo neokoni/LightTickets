@@ -476,6 +476,10 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 - `PATCH /api/users/me/username`
 - `PATCH /api/users/me/password`
 - `PATCH /api/users/me/email`
+- `PATCH /api/users/me/notifications`：登录用户更新个人邮件通知偏好，请求体为
+  `{ "receiveEmailNotifications": boolean }`，新用户默认 `true`
+- `POST /api/users/email-notifications/unsubscribe`：公开接口，请求体为邮件中的签名
+  `{ "token": string }`；成功后关闭对应用户的个人邮件通知。访问邮件链接本身不会直接退订，需在网页确认
 - `PATCH /api/users/:id/role`：管理员修改角色
 - `DELETE /api/users/:id`：管理员删除用户，不能删除自己
 
@@ -492,6 +496,7 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 `GET /api/setup/settings`
 
 需要 `admin`。返回站点设置、邮件设置和 Turnstile 设置；邮件密码和 Turnstile Secret Key 只返回是否已设置，不返回明文。
+`sendEmailNotifications` 表示是否发送议题回复和状态变更邮件，默认 `false`。
 
 `PATCH /api/setup/settings`
 
@@ -527,6 +532,8 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 ```
 
 `mail.password` 不传或传空时保留原密码；关闭邮件只需设置 `mail.enabled=false`。SMTP 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
+议题邮件通知仅在 SMTP 配置可用、平台 `sendEmailNotifications=true`、议题创建者个人
+`receiveEmailNotifications=true` 且操作者不是创建者本人时发送。发送失败不会影响回复或状态变更操作。
 `turnstile.secretKey` 不传或传空时保留原 Secret Key；关闭 Turnstile 只需设置 `turnstile.enabled=false`。Turnstile 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
 
 `POST /api/setup/settings/mail/test`

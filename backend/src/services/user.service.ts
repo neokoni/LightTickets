@@ -103,3 +103,14 @@ export async function updateEmail(userId: number, email: string) {
     select: USER_PUBLIC_SELECT,
   });
 }
+
+export async function updateEmailNotifications(userId: number, receiveEmailNotifications: boolean) {
+  const user = await prisma().user.findUnique({ where: { id: userId }, select: { id: true } });
+  if (!user) throw new NotFoundError('用户不存在');
+
+  return prisma().user.update({
+    where: { id: userId },
+    data: { receiveEmailNotifications },
+    select: USER_PUBLIC_SELECT,
+  });
+}

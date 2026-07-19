@@ -281,6 +281,7 @@ describe('PATCH /api/setup/settings', () => {
       fromAddress: '',
     });
     expect(res.body.data.mail).not.toHaveProperty('password');
+    expect(res.body.data.sendEmailNotifications).toBe(false);
     expect(res.body.data.turnstile).toMatchObject({
       enabled: false,
       siteKey: '',
@@ -312,6 +313,28 @@ describe('PATCH /api/setup/settings', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.requireLogin).toBe(true);
+  });
+
+  it('allows admin to enable ticket email notifications', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'notification-settings@test.com',
+          password: 'admin123',
+          username: 'notificationsettings',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({ sendEmailNotifications: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.sendEmailNotifications).toBe(true);
+    expect((await prisma().setupStatus.findFirst())?.sendEmailNotifications).toBe(true);
   });
 
   it('rejects non-admin user', async () => {

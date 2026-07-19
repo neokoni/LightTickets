@@ -7,6 +7,7 @@ export const USER_PUBLIC_SELECT = {
   minecraftUuid: true,
   minecraftName: true,
   avatarUrl: true,
+  receiveEmailNotifications: true,
   role: true,
   createdAt: true,
   updatedAt: true,

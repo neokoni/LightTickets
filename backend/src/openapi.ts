@@ -789,6 +789,23 @@ const registerUserRoutes = () => {
   });
   registerRoute({
     method: 'patch',
+    path: '/api/users/me/notifications',
+    summary: '更新个人邮件通知设置',
+    auth: 'jwt',
+    tags: ['Users'],
+    bodySchema: z.object({ receiveEmailNotifications: z.boolean() }),
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/users/email-notifications/unsubscribe',
+    summary: '通过邮件链接关闭个人邮件通知',
+    auth: 'none',
+    tags: ['Users'],
+    bodySchema: z.object({ token: z.string().min(1) }),
+    responseSchema: z.object({ unsubscribed: z.literal(true) }),
+  });
+  registerRoute({
+    method: 'patch',
     path: '/api/users/{userId}/role',
     summary: '更改用户角色',
     auth: 'admin',
@@ -904,6 +921,7 @@ const registerSetupRoutes = () => {
       siteUrl: z.string().url().nullable().optional(),
       footerContent: z.string().max(2000).nullable().optional(),
       defaultLanguage: z.string().optional(),
+      sendEmailNotifications: z.boolean().optional(),
       mail: z
         .object({
           enabled: z.boolean().optional(),

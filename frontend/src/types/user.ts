@@ -27,6 +27,7 @@ export interface User {
   minecraftUuid?: string;
   minecraftName?: string;
   avatarUrl?: string | null;
+  receiveEmailNotifications: boolean;
   role: Role;
   createdAt?: string;
   updatedAt?: string;

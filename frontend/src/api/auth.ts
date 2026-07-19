@@ -105,3 +105,17 @@ export function apiUpdateEmail(email: string) {
     body: JSON.stringify({ email }),
   });
 }
+
+export function apiUpdateEmailNotifications(receiveEmailNotifications: boolean) {
+  return apiFetch<User>('/users/me/notifications', {
+    method: 'PATCH',
+    body: JSON.stringify({ receiveEmailNotifications }),
+  });
+}
+
+export function apiUnsubscribeEmailNotifications(token: string) {
+  return apiFetch<{ unsubscribed: true }>('/users/email-notifications/unsubscribe', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
