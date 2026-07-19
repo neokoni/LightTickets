@@ -108,7 +108,7 @@ onBeforeUnmount(() => {
   z-index: 1;
   height: 2.5px;
   border-radius: 9999px;
-  background-color: #0f172a;
+  background-color: currentColor;
   opacity: 0;
   pointer-events: none;
 }
@@ -119,9 +119,5 @@ onBeforeUnmount(() => {
     width 0.28s ease,
     transform 0.28s ease,
     opacity 0.15s ease;
-}
-
-:global(.dark) .sliding-tabs-indicator {
-  background-color: #e2e8f0;
 }
 </style>
