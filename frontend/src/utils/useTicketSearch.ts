@@ -31,6 +31,7 @@ export interface ParsedQuery {
   type?: string;
   labelId?: string;
   serverId?: string;
+  serverName?: string;
   hasServer?: boolean;
   authorName?: string;
   search: string;
@@ -177,9 +178,13 @@ function filterDefinitions(): FilterDefinition[] {
         if (v === CommentSource.WEB) return { hasServer: false };
         if (v === CommentSource.MINECRAFT) return { hasServer: true };
         if (v.startsWith(`${CommentSource.MINECRAFT}:`)) {
-          const serverName = v.slice(`${CommentSource.MINECRAFT}:`.length);
-          const matched = ctx.servers.find((s) => s.name.toLowerCase() === serverName);
-          return matched ? { serverId: matched.id, hasServer: undefined } : null;
+          const serverName = value.slice(`${CommentSource.MINECRAFT}:`.length);
+          const matched = ctx.servers.find(
+            (s) => s.name.toLowerCase() === serverName.toLowerCase(),
+          );
+          return matched
+            ? { serverId: matched.id, hasServer: undefined }
+            : { serverName, hasServer: undefined };
         }
         return null;
       },
@@ -225,7 +230,7 @@ export function normalizeKey(raw: string): FilterDefinition | null {
 export function tokenize(raw: string): SearchToken[] {
   if (!raw.trim()) return [];
   const tokens: SearchToken[] = [];
-  const regex = /(\S+):\s*(\S+)/g;
+  const regex = /([^\s:]+):\s*(\S+)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
 
@@ -332,7 +337,7 @@ export function getSuggestions(
   const ctx: FilterContext = { labels, templates, servers };
   const defs = filterDefinitions();
   const textBefore = raw.slice(0, cursorPos);
-  const keyMatch = textBefore.match(/(?:^|\s)(\S+):\s*([^\s:]*)$/);
+  const keyMatch = textBefore.match(/(?:^|\s)([^\s:]+):\s*(\S*)$/);
 
   if (keyMatch) {
     const rawKey = keyMatch[1];
@@ -392,7 +397,7 @@ export function applySuggestion(
   }
 
   if (type === 'value') {
-    const match = textBefore.match(/(?:^|\s)(\S+:)\s*([^\s:]*)$/);
+    const match = textBefore.match(/(?:^|\s)([^\s:]+:)\s*(\S*)$/);
     if (match) {
       const keyColonIdx = textBefore.lastIndexOf(match[1]);
       const prefix = textBefore.slice(0, keyColonIdx + match[1].length);

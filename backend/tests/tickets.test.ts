@@ -181,6 +181,47 @@ describe('GET /api/tickets', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.tickets.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('filters Minecraft tickets by exact server name', async () => {
+    const token = await createUserAndGetToken('server-name-filter@test.com');
+    const author = await prisma().user.findUniqueOrThrow({
+      where: { email: 'server-name-filter@test.com' },
+    });
+    const [testServer, otherServer] = await Promise.all([
+      prisma().server.create({ data: { name: 'Test', apiKey: 'server-name-test-key' } }),
+      prisma().server.create({ data: { name: 'Other', apiKey: 'server-name-other-key' } }),
+    ]);
+    const [matchingTicket] = await Promise.all([
+      prisma().ticket.create({
+        data: {
+          title: 'Test server ticket',
+          body: 'Body',
+          template: 'bug_report',
+          authorId: author.id,
+          serverId: testServer.id,
+        },
+      }),
+      prisma().ticket.create({
+        data: {
+          title: 'Other server ticket',
+          body: 'Body',
+          template: 'bug_report',
+          authorId: author.id,
+          serverId: otherServer.id,
+        },
+      }),
+    ]);
+
+    const res = await request(app)
+      .get('/api/tickets?serverName=Test')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.total).toBe(1);
+    expect(res.body.data.tickets.map((ticket: { id: number }) => ticket.id)).toEqual([
+      matchingTicket.id,
+    ]);
+  });
 });
 
 describe('GET /api/tickets/:id', () => {

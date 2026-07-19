@@ -112,6 +112,7 @@ interface ListTicketsInput {
   authorId?: number;
   authorName?: string;
   serverId?: string;
+  serverName?: string;
   hasServer?: boolean;
   labelId?: string;
   search?: string;
@@ -222,6 +223,7 @@ export async function list(input: ListTicketsInput) {
   if (input.authorId) where.authorId = input.authorId;
   if (input.authorName) where.author = { username: { contains: input.authorName } };
   if (input.serverId) where.serverId = input.serverId;
+  if (input.serverName) where.server = { name: input.serverName };
   if (input.hasServer !== undefined) where.serverId = input.hasServer ? { not: null } : null;
   if (input.labelId) where.labels = { some: { labelId: input.labelId } };
   if (input.search) {

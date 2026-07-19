@@ -27,6 +27,7 @@ export const useTicketsStore = defineStore('tickets', () => {
     type: undefined,
     labelId: undefined,
     serverId: undefined,
+    serverName: undefined,
     hasServer: undefined,
     authorName: undefined,
     search: '',

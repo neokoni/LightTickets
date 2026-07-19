@@ -99,12 +99,20 @@ function syncFromQuery() {
   if (q.type) store.filters.type = q.type as string;
   if (q.labelId) store.filters.labelId = q.labelId as string;
   if (q.serverId) store.filters.serverId = q.serverId as string;
+  if (q.serverName) store.filters.serverName = q.serverName as string;
   if (q.hasServer !== undefined) store.filters.hasServer = q.hasServer === 'true';
   if (q.authorName) store.filters.authorName = q.authorName as string;
   if (q.page) store.filters.page = Number(q.page);
   if (q.search) {
     searchRaw.value = q.search as string;
-  } else if (q.type || q.labelId || q.serverId || q.hasServer !== undefined || q.authorName) {
+  } else if (
+    q.type ||
+    q.labelId ||
+    q.serverId ||
+    q.serverName ||
+    q.hasServer !== undefined ||
+    q.authorName
+  ) {
     searchRaw.value = buildSearchFromQuery(q);
   }
 }
@@ -119,6 +127,8 @@ function buildSearchFromQuery(q: Record<string, unknown>): string {
   if (q.serverId) {
     const server = servers.value.find((s) => s.id === q.serverId);
     if (server) parts.push(`from:minecraft:${server.name}`);
+  } else if (q.serverName) {
+    parts.push(`from:minecraft:${q.serverName}`);
   } else if (q.hasServer === 'true') {
     parts.push('from:minecraft');
   } else if (q.hasServer === 'false') {
@@ -135,6 +145,7 @@ function syncToQuery() {
   if (store.filters.type) query.type = store.filters.type;
   if (store.filters.labelId) query.labelId = store.filters.labelId;
   if (store.filters.serverId) query.serverId = store.filters.serverId;
+  if (store.filters.serverName) query.serverName = store.filters.serverName;
   if (store.filters.hasServer !== undefined) query.hasServer = String(store.filters.hasServer);
   if (store.filters.authorName) query.authorName = store.filters.authorName;
   if (store.filters.page && store.filters.page > 1) query.page = String(store.filters.page);
@@ -160,6 +171,7 @@ function applyFilters() {
   store.filters.type = parsed.type;
   store.filters.labelId = parsed.labelId;
   store.filters.serverId = parsed.serverId;
+  store.filters.serverName = parsed.serverName;
   store.filters.hasServer = parsed.hasServer;
   store.filters.authorName = parsed.authorName;
   store.filters.search = parsed.search;

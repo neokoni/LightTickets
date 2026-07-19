@@ -1,4 +1,3 @@
-import type { TicketStatus } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -8,7 +7,7 @@ import * as attachmentService from '../services/attachment.service.js';
 import { authMiddleware, conditionalAuthMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { ValidationError } from '../utils/errors.js';
-import { validate, parseId, parsePagination } from '../utils/validate.js';
+import { validate, parseId, paginationSchema } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
 
@@ -23,6 +22,32 @@ const createSchema = z.object({
   hidden: z.boolean().optional(),
 });
 
+const ticketStatusSchema = z.enum([
+  TICKET_STATUS.OPEN,
+  TICKET_STATUS.IN_PROGRESS,
+  TICKET_STATUS.CLOSED,
+  TICKET_STATUS.INVALID,
+]);
+
+const listQuerySchema = paginationSchema.extend({
+  statuses: z
+    .union([z.string(), z.array(z.string())])
+    .transform((value) => (Array.isArray(value) ? value : value.split(',')))
+    .pipe(z.array(ticketStatusSchema))
+    .optional(),
+  type: z.string().optional(),
+  authorId: z.coerce.number().int().positive().optional(),
+  authorName: z.string().optional(),
+  serverId: z.string().optional(),
+  serverName: z.string().min(1).optional(),
+  hasServer: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+  labelId: z.string().optional(),
+  search: z.string().optional(),
+});
+
 router.post('/', authMiddleware, async (req: Request, res: Response) => {
   const data = validate(createSchema, req.body);
 
@@ -34,25 +59,9 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
 });
 
 router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) => {
-  const hasServer = req.query.hasServer !== undefined ? req.query.hasServer === 'true' : undefined;
-  const statusesParam = req.query.statuses as string | string[] | undefined;
-  const statuses: TicketStatus[] | undefined = statusesParam
-    ? Array.isArray(statusesParam)
-      ? (statusesParam as TicketStatus[])
-      : (statusesParam.split(',') as TicketStatus[])
-    : undefined;
-  const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
+  const query = validate(listQuerySchema, req.query);
   const result = await ticketService.list({
-    page,
-    pageSize,
-    statuses,
-    type: req.query.type as string | undefined,
-    authorId: req.query.authorId ? Number(req.query.authorId) : undefined,
-    authorName: req.query.authorName as string,
-    serverId: req.query.serverId as string,
-    hasServer,
-    labelId: req.query.labelId as string,
-    search: req.query.search as string,
+    ...query,
     viewer: req.user ? { userId: req.user.userId, role: req.user.role } : undefined,
   });
   res.json(result);

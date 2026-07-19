@@ -229,6 +229,19 @@ const registerTicketRoutes = () => {
     summary: '获取议题列表',
     auth: 'conditional',
     tags: ['Tickets'],
+    querySchema: z.object({
+      page: z.coerce.number().int().positive().optional(),
+      pageSize: z.coerce.number().int().min(1).max(100).optional(),
+      statuses: z.string().optional(),
+      type: z.string().optional(),
+      authorId: z.coerce.number().int().positive().optional(),
+      authorName: z.string().optional(),
+      serverId: z.string().optional(),
+      serverName: z.string().optional(),
+      hasServer: z.enum(['true', 'false']).optional(),
+      labelId: z.string().optional(),
+      search: z.string().optional(),
+    }),
   });
   registerRoute({
     method: 'get',

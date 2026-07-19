@@ -331,6 +331,7 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 - `authorId`
 - `authorName`
 - `serverId`
+- `serverName`：精确匹配 Minecraft 服务器名称
 - `hasServer`：`true` / `false`
 - `labelId`
 - `search`

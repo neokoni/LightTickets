@@ -160,6 +160,7 @@ export interface TicketFilters {
   authorId?: string;
   authorName?: string;
   serverId?: string;
+  serverName?: string;
   hasServer?: boolean | string;
   labelId?: string;
   search?: string;
