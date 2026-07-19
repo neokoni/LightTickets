@@ -53,7 +53,7 @@ const selectedSuggestionIdx = ref(0);
 // immediately fill the first value ("status:open") instead of just the key.
 const suggestionNavigated = ref(false);
 const tabButtonClass =
-  '!px-3 !py-2 !rounded-none border-none text-sm font-medium transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/70 whitespace-nowrap shrink-0';
+  '!px-3 !py-2 !rounded-md border-none text-sm font-medium transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/70 whitespace-nowrap shrink-0';
 const chipButtonClass = '!px-0 !py-0 border-none ml-0.5 hover:opacity-70';
 const suggestionButtonClass =
   '!w-full !justify-start !px-3 !py-1.5 border-none text-sm text-left transition cursor-pointer';
