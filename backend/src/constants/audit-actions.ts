@@ -7,6 +7,7 @@ export const AUDIT_ACTION = {
   LABEL_REMOVE: 'label_remove',
   ASSIGN: 'assign',
   ASSIGNEES_CHANGE: 'assignees_change',
+  VISIBILITY_CHANGE: 'visibility_change',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];

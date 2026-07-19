@@ -53,8 +53,9 @@ public class TicketInfo {
     private void run(Player player, int ticketId, int commentPage) {
         HttpUtils.Resp resp;
         try {
-            resp = ApiClient.requestWithStatus(ApiEndpoint.TICKET_DETAIL,
-                    Map.of("id", String.valueOf(ticketId)));
+            resp = ApiClient.requestWithStatus(ApiEndpoint.MC_TICKET_DETAIL,
+                    Map.of("id", String.valueOf(ticketId)),
+                    Map.of("minecraftUuid", player.getUniqueId().toString()), null);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -126,7 +127,7 @@ public class TicketInfo {
     }
 
     private void displayComments(Player player, int ticketId, int authorId, int page) {
-        JsonArray comments = fetchComments(ticketId);
+        JsonArray comments = fetchComments(player, ticketId);
         if (comments == null) {
             return;
         }
@@ -173,10 +174,11 @@ public class TicketInfo {
         sendCommentAddButton(player, ticketId);
     }
 
-    private JsonArray fetchComments(int ticketId) {
+    private JsonArray fetchComments(Player player, int ticketId) {
         try {
             HttpUtils.Resp resp = ApiClient.requestWithStatus(
-                    ApiEndpoint.TICKET_COMMENTS, Map.of("id", String.valueOf(ticketId)));
+                    ApiEndpoint.MC_TICKET_COMMENTS, Map.of("id", String.valueOf(ticketId)),
+                    Map.of("minecraftUuid", player.getUniqueId().toString()), null);
             if (resp == null || resp.body() == null || resp.body().isEmpty()) {
                 return null;
             }

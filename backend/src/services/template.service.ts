@@ -3,6 +3,7 @@ import path from 'path';
 import yaml from 'js-yaml';
 import { NotFoundError, AppError, ValidationError } from '../utils/errors.js';
 import { dataPath } from '../paths.js';
+import { TEMPLATE_HIDDEN_MODE, type TemplateHiddenMode } from '../constants/ticket-visibility.js';
 
 const defaultTemplatesDir = path.resolve('templates');
 const dataTemplatesDir = dataPath('templates');
@@ -40,6 +41,7 @@ export interface TemplateDefinition {
   description: string;
   title_prefix?: string;
   enabled?: boolean;
+  hidden: TemplateHiddenMode;
   labels: string[];
   body: TemplateField[];
   completion_hooks: CompletionHook[];
@@ -50,6 +52,7 @@ export interface TemplateSummary {
   name_i18n: string;
   description: string;
   labels: string[];
+  hidden: TemplateHiddenMode;
 }
 
 export interface AdminTemplate {
@@ -61,6 +64,7 @@ export interface AdminTemplate {
   body: string;
   completionHooks: string;
   enabled: boolean;
+  hidden: TemplateHiddenMode;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -165,6 +169,7 @@ function loadTemplateFile(filePath: string, nameKey: string): CachedTemplate {
     body: def.body,
     completion_hooks: Array.isArray(def.completion_hooks) ? def.completion_hooks : [],
     enabled: def.enabled ?? true,
+    hidden: normalizeTemplateHiddenMode(def.hidden),
   };
 
   return {
@@ -175,6 +180,13 @@ function loadTemplateFile(filePath: string, nameKey: string): CachedTemplate {
     createdAt: stat.birthtime,
     updatedAt: stat.mtime,
   };
+}
+
+export function normalizeTemplateHiddenMode(value: unknown): TemplateHiddenMode {
+  if (value === true || value === false || value === TEMPLATE_HIDDEN_MODE.OPTIONAL) return value;
+  if (value === 'optinal') return TEMPLATE_HIDDEN_MODE.OPTIONAL;
+  if (value === undefined || value === null) return TEMPLATE_HIDDEN_MODE.PUBLIC;
+  throw new ValidationError('hidden 必须为 true、false 或 optional');
 }
 
 function ensureDataTemplatesInitialized(): void {
@@ -221,6 +233,7 @@ export function list(): TemplateSummary[] {
       name_i18n: entry.definition.name,
       description: entry.definition.description,
       labels: entry.definition.labels,
+      hidden: entry.definition.hidden,
     });
   }
   return result;
@@ -237,6 +250,7 @@ export function get(
     description: def.description,
     title_prefix: def.title_prefix,
     labels: def.labels,
+    hidden: def.hidden,
     body: def.body,
   };
 }
@@ -296,6 +310,7 @@ function toAdminTemplate(entry: CachedTemplate): AdminTemplate {
     body: yaml.dump(entry.definition.body, { lineWidth: -1, noRefs: true }),
     completionHooks: yaml.dump(entry.definition.completion_hooks, { lineWidth: -1, noRefs: true }),
     enabled: entry.enabled,
+    hidden: entry.definition.hidden,
     createdAt: entry.createdAt,
     updatedAt: entry.updatedAt,
   };
@@ -343,6 +358,7 @@ function writeTemplateFile(
     body: string;
     completionHooks?: string;
     enabled?: boolean;
+    hidden?: TemplateHiddenMode;
   },
 ): void {
   assertValidTemplateName(name);
@@ -362,6 +378,7 @@ function writeTemplateFile(
     body: bodyParsed as TemplateField[],
     completion_hooks: hooksParsed as CompletionHook[],
     enabled: data.enabled ?? true,
+    hidden: normalizeTemplateHiddenMode(data.hidden),
   };
   if (data.titlePrefix) template.title_prefix = data.titlePrefix;
 
@@ -379,6 +396,7 @@ export async function adminCreate(data: {
   body: string;
   completionHooks?: string;
   enabled?: boolean;
+  hidden?: TemplateHiddenMode;
 }): Promise<AdminTemplate> {
   assertValidTemplateName(data.name);
   if (cache.has(data.name) || fs.existsSync(templatePath(data.name)))
@@ -399,6 +417,7 @@ export async function adminUpdate(
     body?: string;
     completionHooks?: string;
     enabled?: boolean;
+    hidden?: TemplateHiddenMode;
   },
 ): Promise<AdminTemplate> {
   const existing = cache.get(name);
@@ -413,6 +432,7 @@ export async function adminUpdate(
     body: data.body ?? current.body,
     completionHooks: data.completionHooks ?? current.completionHooks,
     enabled: data.enabled ?? current.enabled,
+    hidden: data.hidden ?? current.hidden,
   });
 
   await initTemplates();

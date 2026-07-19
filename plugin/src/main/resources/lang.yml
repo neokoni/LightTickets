@@ -87,6 +87,8 @@ ticket:
   empty_body: "无内容"
   attach_info_prompt: "<color:#ffdbab>是否附加当前玩家信息 (世界/坐标/游戏模式)? 发送 <color:#96bfff>yes <gray>或 <color:#96bfff>no"
   attach_info_invalid: "<color:#ff8181>请发送 <color:#96bfff>yes <gray>或 <color:#96bfff>no"
+  visibility_prompt: "<color:#ffdbab>是否隐藏此议题? 发送 <color:#96bfff>yes <gray>或 <color:#96bfff>no"
+  visibility_invalid: "<color:#ff8181>请发送 <color:#96bfff>yes <gray>或 <color:#96bfff>no"
   err_single_required: "请输入一个选项编号"
   err_multi_required: "请输入至少一个选项编号"
   err_range: "编号范围为 1-{max}"

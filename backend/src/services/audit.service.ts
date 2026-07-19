@@ -1,11 +1,10 @@
 import { prisma } from '../db.js';
-import { NotFoundError } from '../utils/errors.js';
 import type { AuditAction } from '../constants/audit-actions.js';
 import { USER_BRIEF_SELECT } from './constants.js';
+import * as ticketService from './ticket.service.js';
 
-export async function listByTicket(ticketId: number) {
-  const ticket = await prisma().ticket.findUnique({ where: { id: ticketId } });
-  if (!ticket) throw new NotFoundError('议题不存在');
+export async function listByTicket(ticketId: number, viewer?: ticketService.TicketViewer) {
+  await ticketService.assertTicketVisible(ticketId, viewer);
 
   return prisma().auditLog.findMany({
     where: { ticketId },

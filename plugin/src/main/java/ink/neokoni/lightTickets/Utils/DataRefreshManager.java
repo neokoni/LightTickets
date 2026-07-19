@@ -130,8 +130,8 @@ public class DataRefreshManager {
 
     private static void refreshTicketList(UUID uuid) {
         String resp = ApiClient.get(ApiEndpoint.MC_TICKET_LIST,
-                Map.of("uuid", uuid.toString()),
-                Map.of("page", "1", "pageSize", "10"));
+                null,
+                Map.of("minecraftUuid", uuid.toString(), "page", "1", "pageSize", "10"));
         if (resp == null || resp.isEmpty()) return;
 
         JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);

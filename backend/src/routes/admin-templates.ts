@@ -10,6 +10,10 @@ import { ROLE } from '../constants/roles.js';
 const router = Router();
 router.use(authMiddleware, requireRole(ROLE.ADMIN));
 
+const hiddenModeSchema = z
+  .union([z.boolean(), z.literal('optional'), z.literal('optinal')])
+  .transform((value) => templateService.normalizeTemplateHiddenMode(value));
+
 const createSchema = z.object({
   name: z.string().min(1).max(50),
   nameI18n: z.string().min(1).max(100),
@@ -19,7 +23,10 @@ const createSchema = z.object({
   body: z.string().min(1),
   completionHooks: z.string().optional(),
   enabled: z.boolean().optional(),
+  hidden: hiddenModeSchema.optional(),
 });
+
+const updateSchema = createSchema.omit({ name: true }).partial();
 
 // GET /api/admin/templates
 router.get('/', async (_req: Request, res: Response) => {
@@ -42,7 +49,8 @@ router.post('/', async (req: Request, res: Response) => {
 
 // PATCH /api/admin/templates/:name
 router.patch('/:name', async (req: Request, res: Response) => {
-  const tmpl = await templateService.adminUpdate(String(req.params.name), req.body);
+  const data = validate(updateSchema, req.body);
+  const tmpl = await templateService.adminUpdate(String(req.params.name), data);
   res.json(tmpl);
 });
 

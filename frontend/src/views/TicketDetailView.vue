@@ -17,6 +17,7 @@ import BaseInput from '@/components/base/BaseInput.vue';
 import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
+import BaseToggle from '@/components/base/BaseToggle.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import TicketLabels from '@/components/tickets/TicketLabels.vue';
@@ -30,6 +31,8 @@ import { useAssignees } from '@/composables/useAssignees';
 import { useTicketComments } from '@/composables/useTicketComments';
 import { useTicketEdit } from '@/composables/useTicketEdit';
 import { useAuditTimeline } from '@/composables/useAuditTimeline';
+import NotFoundView from '@/views/NotFoundView.vue';
+import { ApiError } from '@/types/api';
 
 const route = useRoute();
 const store = useTicketsStore();
@@ -40,6 +43,8 @@ const labels = useLabelsStore();
 const ticketId = computed(() => Number(route.params.id));
 const ticket = computed(() => store.currentTicket);
 const isCurrentTicketLoaded = computed(() => ticket.value?.id === ticketId.value);
+const notFound = ref(false);
+const visibilitySaving = ref(false);
 
 const commentTextareaRef = ref<ComponentPublicInstance | null>(null);
 const titleInputRef = ref<ComponentPublicInstance<{ focus: () => void }> | null>(null);
@@ -178,6 +183,19 @@ async function changeStatus(status: TicketStatus) {
   }
 }
 
+async function changeVisibility(hidden: boolean) {
+  visibilitySaving.value = true;
+  try {
+    await store.updateVisibility(ticketId.value, hidden);
+    await fetchAuditLogs();
+    ui.toast(t('ticket.visibility.updated'), ToastType.SUCCESS);
+  } catch (e) {
+    handleError(e);
+  } finally {
+    visibilitySaving.value = false;
+  }
+}
+
 async function closeTicket() {
   submitting.value = true;
   try {
@@ -224,6 +242,7 @@ async function loadTicketDetail(id: number) {
   resetEditing();
   resetComments();
   resetAuditLogs();
+  notFound.value = false;
   try {
     await Promise.all([
       store.fetchDetail(id, { clearCurrent: true }),
@@ -235,7 +254,12 @@ async function loadTicketDetail(id: number) {
     }
   } catch (e) {
     if (loadId === detailLoadId) {
-      handleError(e, t('common.loadFailed'));
+      if (e instanceof ApiError && e.statusCode === 404) {
+        notFound.value = true;
+        store.clearCurrentTicket();
+      } else {
+        handleError(e, t('common.loadFailed'));
+      }
     }
   }
 }
@@ -247,7 +271,7 @@ onMounted(() => {
 });
 
 usePolling(async () => {
-  if (!Number.isFinite(ticketId.value)) return;
+  if (!Number.isFinite(ticketId.value) || notFound.value) return;
   await Promise.all([store.fetchDetail(ticketId.value), fetchComments(), fetchAuditLogs()]);
 }, 10000);
 
@@ -272,7 +296,12 @@ watch(
 </script>
 
 <template>
-  <div v-if="!isCurrentTicketLoaded" class="flex min-h-[55vh] items-start justify-center pt-16">
+  <NotFoundView v-if="notFound" />
+
+  <div
+    v-else-if="!isCurrentTicketLoaded"
+    class="flex min-h-[55vh] items-start justify-center pt-16"
+  >
     <BaseLoadingState />
   </div>
 
@@ -560,6 +589,7 @@ watch(
                   item.action !== AUDIT_ACTION.LABEL_ADD &&
                   item.action !== AUDIT_ACTION.LABEL_REMOVE &&
                   item.action !== AUDIT_ACTION.ASSIGNEES_CHANGE &&
+                  item.action !== AUDIT_ACTION.VISIBILITY_CHANGE &&
                   (item.oldValue || item.newValue)
                 "
                 class="ml-5.5 mt-1 flex items-center gap-1"
@@ -704,6 +734,32 @@ watch(
             >
               {{ opt.label }}
             </BaseButton>
+          </div>
+        </div>
+
+        <!-- Visibility (staff/admin only) -->
+        <div
+          v-if="auth.isStaff"
+          class="px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur space-y-3"
+        >
+          <h3
+            class="text-xs font-semibold tracking-[0.18em] uppercase text-slate-500 dark:text-slate-400"
+          >
+            {{ t('ticket.visibility.title') }}
+          </h3>
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <Icon :icon="ticket.hidden ? 'lucide:eye-off' : 'lucide:eye'" class="w-4 h-4" />
+              <span>{{
+                ticket.hidden ? t('ticket.visibility.hidden') : t('ticket.visibility.public')
+              }}</span>
+            </div>
+            <BaseToggle
+              :model-value="ticket.hidden"
+              :disabled="visibilitySaving"
+              :title="t('ticket.visibility.toggle')"
+              @update:model-value="changeVisibility"
+            />
           </div>
         </div>
 

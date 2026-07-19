@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import path from 'path';
 import { getStorageAdapter } from './storage/index.js';
 import type { Response } from 'express';
+import * as ticketService from './ticket.service.js';
 
 const MAGIC_BYTES: Record<string, number[][]> = {
   'image/png': [[0x89, 0x50, 0x4e, 0x47]],
@@ -50,14 +51,14 @@ export async function saveUploadedFile(input: {
   uploadedBy: number;
   ticketId?: number;
   commentId?: string;
+  userRole?: string;
 }) {
   validateMagicBytes(input.file.buffer, input.file.mimetype);
   if (input.ticketId) {
-    const ticket = await prisma().ticket.findUnique({
-      where: { id: input.ticketId },
-      select: { id: true },
+    await ticketService.assertTicketVisible(input.ticketId, {
+      userId: input.uploadedBy,
+      role: input.userRole ?? 'player',
     });
-    if (!ticket) throw new NotFoundError('议题不存在');
   }
   if (input.commentId) {
     const comment = await prisma().comment.findUnique({
@@ -65,6 +66,10 @@ export async function saveUploadedFile(input: {
       select: { id: true, ticketId: true },
     });
     if (!comment) throw new NotFoundError('评论不存在');
+    await ticketService.assertTicketVisible(comment.ticketId, {
+      userId: input.uploadedBy,
+      role: input.userRole ?? 'player',
+    });
   }
 
   const ext = path.extname(input.file.originalname);
@@ -105,15 +110,33 @@ export async function deleteAttachment(id: string) {
   await deleteById(id);
 }
 
-export async function listByTicket(ticketId: number) {
+export async function listByTicket(ticketId: number, viewer?: ticketService.TicketViewer) {
+  await ticketService.assertTicketVisible(ticketId, viewer);
   return prisma().attachment.findMany({
     where: { ticketId },
     orderBy: { createdAt: 'desc' },
   });
 }
 
-export async function serve(id: string, res: Response) {
-  const attachment = await getById(id);
+async function getVisibleAttachment(id: string, viewer?: ticketService.TicketViewer) {
+  const attachment = await prisma().attachment.findUnique({
+    where: { id },
+    include: { comment: { select: { ticketId: true } } },
+  });
+  if (!attachment) throw new NotFoundError('附件不存在');
+  const ticketId = attachment.ticketId ?? attachment.comment?.ticketId;
+  if (ticketId !== undefined && ticketId !== null) {
+    await ticketService.assertTicketVisible(ticketId, viewer);
+  }
+  return attachment;
+}
+
+export async function assertAttachmentVisible(id: string, viewer?: ticketService.TicketViewer) {
+  return getVisibleAttachment(id, viewer);
+}
+
+export async function serve(id: string, res: Response, viewer?: ticketService.TicketViewer) {
+  const attachment = await getVisibleAttachment(id, viewer);
   const adapter = await getStorageAdapter();
   await adapter.serve(res, attachment.path, attachment.filename);
 }

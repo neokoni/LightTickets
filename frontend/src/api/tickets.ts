@@ -34,7 +34,10 @@ export function apiCreateTicket(data: CreateTicketPayload) {
   });
 }
 
-export function apiUpdateTicket(id: number, data: { status?: TicketStatus; assigneeId?: string }) {
+export function apiUpdateTicket(
+  id: number,
+  data: { status?: TicketStatus; assigneeId?: number; hidden?: boolean },
+) {
   return apiFetch<Ticket>(`/tickets/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),

@@ -106,6 +106,11 @@ public class Templates {
             String description = obj.has("description") ? obj.get("description").getAsString() : "";
             String titlePrefix = obj.has("title_prefix") && !obj.get("title_prefix").isJsonNull()
                     ? obj.get("title_prefix").getAsString() : "";
+            String hiddenMode = "false";
+            if (obj.has("hidden") && !obj.get("hidden").isJsonNull()) {
+                hiddenMode = obj.get("hidden").getAsString();
+                if ("optinal".equals(hiddenMode)) hiddenMode = "optional";
+            }
 
             List<String> labels = new ArrayList<>();
             if (obj.has("labels") && obj.get("labels").isJsonArray()) {
@@ -122,7 +127,7 @@ public class Templates {
                 }
             }
 
-            return new TemplateData(key, name, description, titlePrefix, labels, fields);
+            return new TemplateData(key, name, description, titlePrefix, labels, fields, hiddenMode);
         } catch (Exception e) {
             LogUtils.warning("templates.parse_failed",
                     Map.of("{key}", key, "{message}", LogUtils.exceptionText(e)));

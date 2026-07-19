@@ -1,5 +1,6 @@
 export type Role = 'player' | 'staff' | 'admin';
 export type TicketStatus = 'open' | 'in_progress' | 'closed' | 'invalid';
+export type TemplateHiddenMode = boolean | 'optional';
 
 export const CommentSource = {
   WEB: 'web',
@@ -79,6 +80,7 @@ export interface Ticket {
   body: string;
   template: string;
   status: TicketStatus;
+  hidden: boolean;
   authorId: number;
   serverId?: string;
   gameContext?: string | null;
@@ -130,6 +132,7 @@ export interface TemplateDefinition {
   title_prefix?: string;
   labels: string[];
   body: TemplateField[];
+  hidden: TemplateHiddenMode;
 }
 
 export interface TemplateSummary {
@@ -137,6 +140,7 @@ export interface TemplateSummary {
   name_i18n: string;
   description: string;
   labels: string[];
+  hidden: TemplateHiddenMode;
 }
 
 export interface CreateTicketPayload {
@@ -145,6 +149,7 @@ export interface CreateTicketPayload {
   formData: Record<string, string>;
   serverId?: string;
   attachmentIds?: string[];
+  hidden?: boolean;
 }
 
 export interface TicketFilters {

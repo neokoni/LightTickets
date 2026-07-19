@@ -6,13 +6,16 @@ import * as attachmentService from './attachment.service.js';
 import { emitTicketUpdate, emitToAllServers } from '../socket/events.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
 import { isStaffRole } from '../constants/roles.js';
+import * as ticketService from './ticket.service.js';
 
 export async function create(
   ticketId: number,
   authorId: number,
   body: string,
   source: CommentSource = CommentSource.web,
+  userRole = 'player',
 ) {
+  await ticketService.assertTicketVisible(ticketId, { userId: authorId, role: userRole });
   const ticket = await prisma().ticket.findUnique({
     where: { id: ticketId },
     include: {
@@ -93,7 +96,8 @@ export async function create(
   return comment;
 }
 
-export async function listByTicket(ticketId: number) {
+export async function listByTicket(ticketId: number, viewer?: ticketService.TicketViewer) {
+  await ticketService.assertTicketVisible(ticketId, viewer);
   return prisma().comment.findMany({
     where: { ticketId },
     orderBy: { createdAt: 'asc' },
@@ -103,12 +107,13 @@ export async function listByTicket(ticketId: number) {
   });
 }
 
-export async function updateBody(id: string, userId: number, body: string) {
+export async function updateBody(id: string, userId: number, body: string, userRole: string) {
   const comment = await prisma().comment.findUnique({
     where: { id },
     include: { author: { select: { id: true } } },
   });
   if (!comment) throw new NotFoundError('评论不存在');
+  await ticketService.assertTicketVisible(comment.ticketId, { userId, role: userRole });
   if (comment.authorId !== userId) throw new ForbiddenError('无权操作此评论');
 
   const updated = await prisma().comment.update({
@@ -133,9 +138,10 @@ export async function updateBody(id: string, userId: number, body: string) {
 export async function deleteComment(id: string, userId: number, userRole: string) {
   const comment = await prisma().comment.findUnique({
     where: { id },
-    select: { id: true, authorId: true },
+    select: { id: true, authorId: true, ticketId: true },
   });
   if (!comment) throw new NotFoundError('评论不存在');
+  await ticketService.assertTicketVisible(comment.ticketId, { userId, role: userRole });
 
   const isAuthor = comment.authorId === userId;
   const isStaff = isStaffRole(userRole);

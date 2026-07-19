@@ -109,6 +109,10 @@ export function useAuditTimeline(
       title_change: t('ticket.timeline.titleChanged'),
       body_change: t('ticket.timeline.bodyChanged'),
       comment_edit: t('ticket.timeline.commentEdited'),
+      visibility_change:
+        item.newValue === 'true'
+          ? t('ticket.timeline.visibilityHidden')
+          : t('ticket.timeline.visibilityPublic'),
     };
     return map[item.action] || item.action;
   }
@@ -136,6 +140,7 @@ export function useAuditTimeline(
       title_change: 'lucide:type',
       body_change: 'lucide:file-text',
       comment_edit: 'lucide:message-square-pen',
+      visibility_change: item.newValue === 'true' ? 'lucide:eye-off' : 'lucide:eye',
     };
     return map[item.action] || 'lucide:dot';
   }

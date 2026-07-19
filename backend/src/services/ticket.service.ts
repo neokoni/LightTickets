@@ -6,6 +6,7 @@ import { TICKET_INCLUDE_BASE, TICKET_INCLUDE_DETAIL, USER_BRIEF_SELECT } from '.
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
 import { isStaffRole } from '../constants/roles.js';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
+import { TEMPLATE_HIDDEN_MODE } from '../constants/ticket-visibility.js';
 import {
   emitTicketUpdate,
   emitToAllServers,
@@ -100,6 +101,7 @@ interface CreateTicketInput {
   authorId: number;
   gameContext?: string;
   attachmentIds?: string[];
+  hidden?: boolean;
 }
 
 interface ListTicketsInput {
@@ -113,16 +115,60 @@ interface ListTicketsInput {
   hasServer?: boolean;
   labelId?: string;
   search?: string;
+  viewer?: TicketViewer;
+}
+
+export interface TicketViewer {
+  userId?: number;
+  role?: string;
+}
+
+type TicketVisibility = { hidden: boolean; authorId: number };
+
+export function canViewTicket(ticket: TicketVisibility, viewer?: TicketViewer): boolean {
+  return (
+    !ticket.hidden ||
+    ticket.authorId === viewer?.userId ||
+    (viewer?.role !== undefined && isStaffRole(viewer.role))
+  );
+}
+
+function visibilityWhere(viewer?: TicketViewer): Prisma.TicketWhereInput {
+  if (viewer?.role !== undefined && isStaffRole(viewer.role)) return {};
+  if (viewer?.userId !== undefined) {
+    return { OR: [{ hidden: false }, { authorId: viewer.userId }] };
+  }
+  return { hidden: false };
+}
+
+export async function assertTicketVisible(id: number, viewer?: TicketViewer) {
+  const ticket = await prisma().ticket.findUnique({
+    where: { id },
+    select: { id: true, hidden: true, authorId: true },
+  });
+  if (!ticket || !canViewTicket(ticket, viewer)) throw new NotFoundError('议题不存在');
+  return ticket;
+}
+
+export function resolveTicketHidden(
+  mode: ReturnType<typeof templateService.normalizeTemplateHiddenMode>,
+  requested: boolean | undefined,
+): boolean {
+  if (mode === TEMPLATE_HIDDEN_MODE.OPTIONAL) {
+    if (requested === undefined) throw new ValidationError('此模板必须选择议题可见性');
+    return requested;
+  }
+  return mode;
 }
 
 export async function create(input: CreateTicketInput) {
   let title = input.title;
   let body = input.body;
+  const def = templateService.getDefinition(input.template);
+  if (!def) throw new ValidationError('无效的模板');
+  const hidden = resolveTicketHidden(def.hidden, input.hidden);
 
   if (body === undefined) {
-    const def = templateService.getDefinition(input.template);
-    if (!def) throw new ValidationError('无效的模板');
-
     body = templateService.renderBody(def, input.formData || {});
     if (def.title_prefix && !title.startsWith(def.title_prefix)) {
       title = def.title_prefix + title;
@@ -141,6 +187,7 @@ export async function create(input: CreateTicketInput) {
         gameContext: input.gameContext ?? null,
         authorId: input.authorId,
         serverId: input.serverId,
+        hidden,
       },
       include: TICKET_INCLUDE_BASE,
     });
@@ -168,7 +215,7 @@ export async function create(input: CreateTicketInput) {
 export async function list(input: ListTicketsInput) {
   const page = input.page || 1;
   const pageSize = input.pageSize || 20;
-  const where: Prisma.TicketWhereInput = {};
+  const where: Prisma.TicketWhereInput = visibilityWhere(input.viewer);
 
   if (input.statuses && input.statuses.length > 0) where.status = { in: input.statuses };
   if (input.type) where.template = input.type;
@@ -177,8 +224,11 @@ export async function list(input: ListTicketsInput) {
   if (input.serverId) where.serverId = input.serverId;
   if (input.hasServer !== undefined) where.serverId = input.hasServer ? { not: null } : null;
   if (input.labelId) where.labels = { some: { labelId: input.labelId } };
-  if (input.search)
-    where.OR = [{ title: { contains: input.search } }, { body: { contains: input.search } }];
+  if (input.search) {
+    where.AND = [
+      { OR: [{ title: { contains: input.search } }, { body: { contains: input.search } }] },
+    ];
+  }
 
   const [tickets, total] = await Promise.all([
     prisma().ticket.findMany({
@@ -194,7 +244,7 @@ export async function list(input: ListTicketsInput) {
   return { tickets, total, page, pageSize };
 }
 
-export async function getById(id: number) {
+export async function getById(id: number, viewer?: TicketViewer) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
     include: {
@@ -204,7 +254,7 @@ export async function getById(id: number) {
       server: { select: { id: true, name: true } },
     },
   });
-  if (!ticket) throw new NotFoundError('议题不存在');
+  if (!ticket || !canViewTicket(ticket, viewer)) throw new NotFoundError('议题不存在');
   return ticket;
 }
 
@@ -212,7 +262,7 @@ export async function update(
   id: number,
   userId: number,
   userRole: string,
-  data: { status?: TicketStatus; assigneeId?: number },
+  data: { status?: TicketStatus; assigneeId?: number; hidden?: boolean },
 ) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
@@ -222,6 +272,7 @@ export async function update(
     },
   });
   if (!ticket) throw new NotFoundError('议题不存在');
+  if (!canViewTicket(ticket, { userId, role: userRole })) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
   const isStaff = isStaffRole(userRole);
@@ -242,11 +293,16 @@ export async function update(
     }
   }
   if (data.assigneeId && isStaff) updateData.assigneeId = data.assigneeId;
+  if (data.hidden !== undefined) {
+    if (!isStaff) throw new ForbiddenError('只有管理员或管理组可以更改议题可见性');
+    updateData.hidden = data.hidden;
+  }
 
   const nextStatus = data.status;
   const nextAssigneeId = data.assigneeId;
   const statusChanged = nextStatus !== undefined && nextStatus !== ticket.status;
   const assigneeChanged = nextAssigneeId !== undefined && nextAssigneeId !== ticket.assigneeId;
+  const visibilityChanged = data.hidden !== undefined && data.hidden !== ticket.hidden;
 
   const updated = await prisma().$transaction(async (tx) => {
     const updatedTicket = await tx.ticket.update({
@@ -270,6 +326,16 @@ export async function update(
         AUDIT_ACTION.ASSIGN,
         ticket.assigneeId != null ? String(ticket.assigneeId) : 'unassigned',
         String(nextAssigneeId),
+      );
+    }
+    if (visibilityChanged) {
+      await createAudit(
+        tx,
+        id,
+        userId,
+        AUDIT_ACTION.VISIBILITY_CHANGE,
+        String(ticket.hidden),
+        String(data.hidden),
       );
     }
 
@@ -300,6 +366,7 @@ export async function updateBody(id: number, userId: number, userRole: string, b
     include: { author: { select: { id: true } } },
   });
   if (!ticket) throw new NotFoundError('议题不存在');
+  if (!canViewTicket(ticket, { userId, role: userRole })) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
   const isStaff = isStaffRole(userRole);
@@ -327,6 +394,7 @@ export async function updateTitle(id: number, userId: number, userRole: string, 
     include: { author: { select: { id: true } } },
   });
   if (!ticket) throw new NotFoundError('议题不存在');
+  if (!canViewTicket(ticket, { userId, role: userRole })) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
   const isStaff = isStaffRole(userRole);
@@ -368,6 +436,7 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
     },
   });
   if (!ticket) throw new NotFoundError('议题不存在');
+  if (!canViewTicket(ticket, { userId, role: userRole })) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
   const isStaff = isStaffRole(userRole);
@@ -406,7 +475,7 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
     }
   }
 
-  return getById(id);
+  return getById(id, { userId, role: userRole });
 }
 
 export async function reopenTicket(id: number, userId: number, userRole: string) {
@@ -418,6 +487,7 @@ export async function reopenTicket(id: number, userId: number, userRole: string)
     },
   });
   if (!ticket) throw new NotFoundError('议题不存在');
+  if (!canViewTicket(ticket, { userId, role: userRole })) throw new NotFoundError('议题不存在');
 
   const isAuthor = ticket.authorId === userId;
   const isStaff = isStaffRole(userRole);
@@ -447,7 +517,7 @@ export async function reopenTicket(id: number, userId: number, userRole: string)
 
   await emitStatusChanged(ticket, userId, ticket.status, TICKET_STATUS.OPEN);
 
-  return getById(id);
+  return getById(id, { userId, role: userRole });
 }
 
 export async function setAssignees(id: number, userId: number, assigneeIds: number[]) {
@@ -483,5 +553,5 @@ export async function setAssignees(id: number, userId: number, assigneeIds: numb
     }
   });
 
-  return getById(id);
+  return getById(id, { userId, role: 'staff' });
 }

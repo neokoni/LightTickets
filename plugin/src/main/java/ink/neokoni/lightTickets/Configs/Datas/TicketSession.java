@@ -21,6 +21,7 @@ public class TicketSession {
     private int z;
     private String gameMode;
     private boolean includeContext;
+    private Boolean hidden;
 
     public TicketSession(Player player, TemplateData template,
                          String world, int x, int y, int z, String gameMode) {
@@ -35,6 +36,11 @@ public class TicketSession {
         this.z = z;
         this.gameMode = gameMode;
         this.includeContext = false;
+        this.hidden = switch (template.getHiddenMode()) {
+            case "true" -> true;
+            case "false" -> false;
+            default -> null;
+        };
     }
 
     public boolean isTitleStep() {
@@ -45,8 +51,13 @@ public class TicketSession {
         return step == template.getFields().size() + 1;
     }
 
+    public boolean isVisibilityStep() {
+        return "optional".equals(template.getHiddenMode()) && step == template.getFields().size() + 2;
+    }
+
     public boolean isFinished() {
-        return step > template.getFields().size() + 1;
+        int lastStep = template.getFields().size() + ("optional".equals(template.getHiddenMode()) ? 2 : 1);
+        return step > lastStep;
     }
 
     public TemplateField currentField() {

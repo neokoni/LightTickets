@@ -1,0 +1,1 @@
+ALTER TABLE `tickets` ADD COLUMN `hidden` BOOLEAN NOT NULL DEFAULT false;

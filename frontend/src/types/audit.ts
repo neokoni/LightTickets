@@ -7,6 +7,7 @@ export const AUDIT_ACTION = {
   LABEL_REMOVE: 'label_remove',
   ASSIGN: 'assign',
   ASSIGNEES_CHANGE: 'assignees_change',
+  VISIBILITY_CHANGE: 'visibility_change',
 } as const;
 
 export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];
@@ -20,4 +21,5 @@ export const AUDIT_ACTION_META: Record<AuditAction, { labelKey: string; icon: st
   label_remove: { labelKey: 'audit.action.labelRemove', icon: 'lucide:tag-off' },
   assign: { labelKey: 'audit.action.assign', icon: 'lucide:user-plus' },
   assignees_change: { labelKey: 'audit.action.assigneesChange', icon: 'lucide:users' },
+  visibility_change: { labelKey: 'audit.action.visibilityChange', icon: 'lucide:eye' },
 };

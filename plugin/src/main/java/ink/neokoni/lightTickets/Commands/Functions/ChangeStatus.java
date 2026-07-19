@@ -131,7 +131,7 @@ public class ChangeStatus {
     private boolean canChangeTicket(Player player, int ticketId, TicketStatus nextStatus) {
         if (isStatusAdmin(player)) return true;
 
-        JsonObject ticket = fetchTicket(ticketId);
+        JsonObject ticket = fetchTicket(player, ticketId);
         if (ticket == null) return false;
 
         TicketStatus currentStatus = TicketStatus.fromKey(ticket.has("status") && !ticket.get("status").isJsonNull()
@@ -153,10 +153,11 @@ public class ChangeStatus {
                 && account.get("id").getAsInt() == authorId;
     }
 
-    private JsonObject fetchTicket(int ticketId) {
+    private JsonObject fetchTicket(Player player, int ticketId) {
         try {
             HttpUtils.Resp resp = ApiClient.requestWithStatus(
-                    ApiEndpoint.TICKET_DETAIL, Map.of("id", String.valueOf(ticketId)));
+                    ApiEndpoint.MC_TICKET_DETAIL, Map.of("id", String.valueOf(ticketId)),
+                    Map.of("minecraftUuid", player.getUniqueId().toString()), null);
             if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) return null;
             return JsonUtils.fromJson(resp.body(), JsonObject.class);
         } catch (RuntimeException e) {

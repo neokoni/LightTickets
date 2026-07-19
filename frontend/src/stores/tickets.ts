@@ -78,6 +78,10 @@ export const useTicketsStore = defineStore('tickets', () => {
     syncTicketUpdate(await apiUpdateTicket(id, { status }));
   }
 
+  async function updateVisibility(id: number, hidden: boolean) {
+    syncTicketUpdate(await apiUpdateTicket(id, { hidden }));
+  }
+
   async function closeTicket(id: number) {
     syncTicketUpdate(await apiCloseTicket(id));
   }
@@ -111,6 +115,7 @@ export const useTicketsStore = defineStore('tickets', () => {
     fetchDetail,
     clearCurrentTicket,
     updateStatus,
+    updateVisibility,
     closeTicket,
     reopenTicket,
     updateTitle,

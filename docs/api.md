@@ -82,6 +82,9 @@
 
 返回单个模板定义。
 
+模板包含 `hidden` 创建策略：`true` 表示始终隐藏，`false` 表示始终公开，`optional`
+表示创建者必须选择。读取模板 YAML 时兼容历史误拼 `optinal`，API 统一返回 `optional`。
+
 ## 初始化与认证
 
 ### 初始化站点
@@ -302,7 +305,8 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
     "reproduce": "复现步骤"
   },
   "serverId": "server-id",
-  "attachmentIds": ["attachment-id"]
+  "attachmentIds": ["attachment-id"],
+  "hidden": true
 }
 ```
 
@@ -313,6 +317,7 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 - `formData`：字符串键值对象
 - `serverId`：可选
 - `attachmentIds`：可选，预上传附件 ID 列表；创建成功后关联到该议题
+- `hidden`：仅当模板策略为 `optional` 时必填；其他策略由后端强制决定
 
 ### 议题列表
 
@@ -330,11 +335,16 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 - `labelId`
 - `search`
 
+未登录用户只能看到公开议题；普通用户还能看到自己创建的隐藏议题；`staff` / `admin`
+可看到全部议题。
+
 ### 议题详情
 
 `GET /api/tickets/:id`
 
 可选认证。
+
+隐藏议题对无权用户返回 `404`。同一规则适用于评论、审计日志和附件读取，避免通过关联资源绕过。
 
 ### 更新议题状态 / 负责人
 
@@ -345,11 +355,13 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 ```json
 {
   "status": "in_progress",
-  "assigneeId": 2
+  "assigneeId": 2,
+  "hidden": false
 }
 ```
 
 作者可在规则内开关自己的议题；`staff` / `admin` 可处理任意状态和负责人。
+只有 `staff` / `admin` 可更改 `hidden`，更改会写入议题审计日志。
 
 ### 更新正文
 
@@ -619,6 +631,7 @@ X-Server-Key: <server.apiKey>
   "body": "正文",
   "template": "bug_report",
   "formData": {},
+  "hidden": true,
   "context": {
     "world": "world",
     "x": 1,
@@ -631,13 +644,19 @@ X-Server-Key: <server.apiKey>
 
 ### MC 议题与评论
 
-- `GET /api/mc/tickets/:uuid`
+- `GET /api/mc/tickets?minecraftUuid=<uuid>`：`minecraftUuid` 可选；不提供时只返回公开议题
+- `GET /api/mc/tickets/:uuid`：上一版本兼容路径
+- `GET /api/mc/tickets/:id/detail?minecraftUuid=<uuid>`
+- `GET /api/mc/tickets/:id/comments?minecraftUuid=<uuid>`
 - `GET /api/mc/user/:uuid`
 - `POST /api/mc/comments`
 - `POST /api/mc/tickets/:id/close`
 - `POST /api/mc/tickets/:id/reopen`
 - `POST /api/mc/tickets/:id/status`
 - `POST /api/mc/unlink`
+
+MC 读取接口始终需要服务器 API Key，但玩家身份上下文 `minecraftUuid` 可选。提供已绑定 UUID 后，
+玩家可以读取自己创建的隐藏议题，`staff` / `admin` 可以读取全部；未提供或未绑定时按公开访问处理。
 
 ## OpenAPI
 

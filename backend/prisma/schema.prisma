@@ -63,6 +63,7 @@ model Ticket {
   formData    String?          @map("form_data")
   gameContext String?          @map("game_context")
   status      TicketStatus     @default(open)
+  hidden      Boolean          @default(false)
   authorId    Int              @map("author_id")
   serverId    String?          @map("server_id")
   assigneeId  Int?             @map("assignee_id")

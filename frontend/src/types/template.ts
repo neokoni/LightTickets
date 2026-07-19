@@ -1,3 +1,5 @@
+import type { TemplateHiddenMode } from './ticket';
+
 export interface AdminTemplate {
   name: string;
   nameI18n: string;
@@ -7,6 +9,7 @@ export interface AdminTemplate {
   body: string;
   completionHooks: string;
   enabled: boolean;
+  hidden: TemplateHiddenMode;
   createdAt: string;
   updatedAt: string;
 }

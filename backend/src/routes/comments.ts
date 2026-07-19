@@ -12,7 +12,10 @@ const createSchema = z.object({
 });
 
 router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) => {
-  const comments = await commentService.listByTicket(parseId(String(req.params.id)));
+  const comments = await commentService.listByTicket(
+    parseId(String(req.params.id)),
+    req.user ? { userId: req.user.userId, role: req.user.role } : undefined,
+  );
   res.json(comments);
 });
 
@@ -23,6 +26,8 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     parseId(String(req.params.id)),
     req.user!.userId,
     data.body,
+    undefined,
+    req.user!.role,
   );
   res.status(201).json(comment);
 });
@@ -38,6 +43,7 @@ router.patch('/:commentId/body', authMiddleware, async (req: Request, res: Respo
     String(req.params.commentId),
     req.user!.userId,
     data.body,
+    req.user!.role,
   );
   res.json(comment);
 });

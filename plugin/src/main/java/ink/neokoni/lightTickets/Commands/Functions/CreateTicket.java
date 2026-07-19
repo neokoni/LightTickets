@@ -102,6 +102,11 @@ public class CreateTicket {
             return;
         }
 
+        if (session.isVisibilityStep()) {
+            player.sendMessage(LangUtils.getLang("ticket.visibility_prompt"));
+            return;
+        }
+
         TemplateField field = session.currentField();
         if (field == null) {
             submitTicket(player, session);
@@ -182,6 +187,9 @@ public class CreateTicket {
         reqBody.addProperty("body", body);
         reqBody.addProperty("template", template.getKey());
         reqBody.add("formData", formData);
+        if (session.getHidden() != null) {
+            reqBody.addProperty("hidden", session.getHidden());
+        }
         if (session.isIncludeContext()) {
             JsonObject context = new JsonObject();
             context.addProperty("world", session.getWorld());

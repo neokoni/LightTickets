@@ -43,10 +43,39 @@ export async function getLinkedUser(minecraftUuid: string) {
 }
 
 export async function listTicketsForMinecraft(input: { page?: number; pageSize?: number }) {
+  return listTicketsForMinecraftViewer(input);
+}
+
+export async function listTicketsForMinecraftViewer(input: {
+  page?: number;
+  pageSize?: number;
+  minecraftUuid?: string;
+}) {
+  const viewer = await getOptionalViewer(input.minecraftUuid);
   return ticketService.list({
     page: input.page,
     pageSize: input.pageSize,
+    viewer,
   });
+}
+
+async function getOptionalViewer(
+  minecraftUuid?: string,
+): Promise<ticketService.TicketViewer | undefined> {
+  if (!minecraftUuid) return undefined;
+  const user = await prisma().user.findUnique({
+    where: { minecraftUuid },
+    select: { id: true, role: true },
+  });
+  return user ? { userId: user.id, role: user.role } : undefined;
+}
+
+export async function getTicketForMinecraft(ticketId: number, minecraftUuid?: string) {
+  return ticketService.getById(ticketId, await getOptionalViewer(minecraftUuid));
+}
+
+export async function listCommentsForMinecraft(ticketId: number, minecraftUuid?: string) {
+  return commentService.listByTicket(ticketId, await getOptionalViewer(minecraftUuid));
 }
 
 export async function createTicketFromMinecraft(input: {
@@ -57,6 +86,7 @@ export async function createTicketFromMinecraft(input: {
   formData?: Record<string, string>;
   context?: Record<string, unknown>;
   serverId: string;
+  hidden?: boolean;
 }) {
   const user = await prisma().user.findUnique({ where: { minecraftUuid: input.minecraftUuid } });
   if (!user) throw new NotFoundError('Player not linked to any account');
@@ -69,6 +99,7 @@ export async function createTicketFromMinecraft(input: {
     authorId: user.id,
     serverId: input.serverId,
     gameContext: input.context ? JSON.stringify(input.context) : undefined,
+    hidden: input.hidden,
   });
 }
 
@@ -80,7 +111,13 @@ export async function createCommentFromMinecraft(input: {
   const user = await prisma().user.findUnique({ where: { minecraftUuid: input.minecraftUuid } });
   if (!user) throw new NotFoundError('该 Minecraft 账号未绑定');
 
-  return commentService.create(input.ticketId, user.id, input.body, CommentSource.minecraft);
+  return commentService.create(
+    input.ticketId,
+    user.id,
+    input.body,
+    CommentSource.minecraft,
+    user.role,
+  );
 }
 
 export async function closeTicketFromMinecraft(ticketId: number, minecraftUuid: string) {

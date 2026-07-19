@@ -82,6 +82,10 @@ public class TicketChatListener implements Listener {
             handleInfoInput(player, session, input);
             return;
         }
+        if (session.isVisibilityStep()) {
+            handleVisibilityInput(player, session, input);
+            return;
+        }
 
         TemplateField field = session.currentField();
         if (field == null) {
@@ -140,6 +144,20 @@ public class TicketChatListener implements Listener {
             session.setIncludeContext(false);
         } else {
             player.sendMessage(LangUtils.getLang("ticket.attach_info_invalid"));
+            return;
+        }
+        session.setStep(session.getStep() + 1);
+        CreateTicket.promptNext(player, session);
+    }
+
+    private void handleVisibilityInput(Player player, TicketSession session, String input) {
+        String lower = input.toLowerCase();
+        if (lower.equals("yes") || lower.equals("y")) {
+            session.setHidden(true);
+        } else if (lower.equals("no") || lower.equals("n")) {
+            session.setHidden(false);
+        } else {
+            player.sendMessage(LangUtils.getLang("ticket.visibility_invalid"));
             return;
         }
         session.setStep(session.getStep() + 1);

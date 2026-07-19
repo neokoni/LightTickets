@@ -10,6 +10,7 @@ import { requireRole } from '../middleware/role.js';
 import { ValidationError } from '../utils/errors.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
+import { TICKET_STATUS } from '../constants/ticket-status.js';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ const createSchema = z.object({
   formData: z.record(z.string(), z.string()),
   serverId: z.string().optional(),
   attachmentIds: z.array(z.string()).optional(),
+  hidden: z.boolean().optional(),
 });
 
 router.post('/', authMiddleware, async (req: Request, res: Response) => {
@@ -51,26 +53,47 @@ router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) =
     hasServer,
     labelId: req.query.labelId as string,
     search: req.query.search as string,
+    viewer: req.user ? { userId: req.user.userId, role: req.user.role } : undefined,
   });
   res.json(result);
 });
 
 router.get('/:id', conditionalAuthMiddleware, async (req: Request, res: Response) => {
-  const ticket = await ticketService.getById(parseId(String(req.params.id)));
+  const ticket = await ticketService.getById(
+    parseId(String(req.params.id)),
+    req.user ? { userId: req.user.userId, role: req.user.role } : undefined,
+  );
   res.json(ticket);
 });
 
 router.get('/:id/attachments', authMiddleware, async (req: Request, res: Response) => {
-  const list = await attachmentService.listByTicket(parseId(String(req.params.id)));
+  const list = await attachmentService.listByTicket(parseId(String(req.params.id)), {
+    userId: req.user!.userId,
+    role: req.user!.role,
+  });
   res.json(list.map((a) => ({ ...a, url: `/api/attachments/${a.id}` })));
 });
 
+const updateSchema = z.object({
+  status: z
+    .enum([
+      TICKET_STATUS.OPEN,
+      TICKET_STATUS.IN_PROGRESS,
+      TICKET_STATUS.CLOSED,
+      TICKET_STATUS.INVALID,
+    ])
+    .optional(),
+  assigneeId: z.number().int().positive().optional(),
+  hidden: z.boolean().optional(),
+});
+
 router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
+  const data = validate(updateSchema, req.body);
   const ticket = await ticketService.update(
     parseId(String(req.params.id)),
     req.user!.userId,
     req.user!.role,
-    req.body,
+    data,
   );
   res.json(ticket);
 });

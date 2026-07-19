@@ -8,6 +8,7 @@ import {
 } from '../src/services/constants.js';
 import { ROLE, isAdminRole, isStaffRole } from '../src/constants/roles.js';
 import { TICKET_STATUS, canTransitionTicketStatus } from '../src/constants/ticket-status.js';
+import { TEMPLATE_HIDDEN_MODE } from '../src/constants/ticket-visibility.js';
 import { ALLOWED_MIME_TYPES } from '../src/constants/upload.js';
 
 describe('USER_PUBLIC_SELECT', () => {
@@ -128,6 +129,12 @@ describe('TICKET_STATUS', () => {
   it('does not allow unsupported transition targets', () => {
     expect(canTransitionTicketStatus('open', 'invalid')).toBe(false);
     expect(canTransitionTicketStatus('closed', 'invalid')).toBe(false);
+  });
+});
+
+describe('TEMPLATE_HIDDEN_MODE', () => {
+  it('defines forced and creator-selected visibility policies', () => {
+    expect(TEMPLATE_HIDDEN_MODE).toEqual({ HIDDEN: true, PUBLIC: false, OPTIONAL: 'optional' });
   });
 });
 

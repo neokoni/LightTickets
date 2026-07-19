@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { apiCreateTicket } from '@/api/tickets';
@@ -36,6 +36,12 @@ const mdUpload = useMarkdownUpload();
 
 const loading = ref(false);
 const error = ref('');
+const visibilityChoice = ref('');
+const visibilityRequired = computed(() => selectedTemplate.value?.hidden === 'optional');
+const visibilityOptions = computed(() => [
+  { value: 'public', label: t('ticket.visibility.public'), icon: 'lucide:eye' },
+  { value: 'hidden', label: t('ticket.visibility.hidden'), icon: 'lucide:eye-off' },
+]);
 const templateButtonClass =
   '!justify-start !items-start !p-4 border border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-900/70 backdrop-blur hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/80 dark:hover:bg-slate-800/20 text-left';
 const iconButtonClass = '!px-0 !py-0 border-none text-slate-400 hover:text-red-500';
@@ -51,6 +57,10 @@ watch(
   },
   { deep: true },
 );
+
+watch(selectedTemplate, () => {
+  visibilityChoice.value = '';
+});
 
 function getEventTextarea(e: DragEvent | ClipboardEvent): HTMLTextAreaElement | null {
   if (e.target instanceof HTMLTextAreaElement) return e.target;
@@ -107,6 +117,7 @@ async function submit() {
       template: selectedTemplateName.value,
       formData: submittedFormData,
       attachmentIds,
+      ...(visibilityRequired.value && { hidden: visibilityChoice.value === 'hidden' }),
     });
 
     ui.toast(t('ticket.create.created'), ToastType.SUCCESS);
@@ -166,6 +177,14 @@ async function submit() {
           {{ t('ticket.create.titlePrefixHelp', { prefix: selectedTemplate.title_prefix }) }}
         </p>
       </div>
+
+      <BaseSelect
+        v-if="visibilityRequired"
+        v-model="visibilityChoice"
+        :label="t('ticket.visibility.createLabel')"
+        :placeholder="t('ticket.visibility.createPlaceholder')"
+        :options="visibilityOptions"
+      />
 
       <div v-for="field in selectedTemplate.body" :key="field.id || field.attributes.label">
         <!-- markdown -->
@@ -267,7 +286,7 @@ async function submit() {
           filled
           type="submit"
           :loading="loading"
-          :disabled="!allFieldsValid || !title.trim()"
+          :disabled="!allFieldsValid || !title.trim() || (visibilityRequired && !visibilityChoice)"
         >
           {{ t('ticket.create.submit') }}
         </BaseButton>

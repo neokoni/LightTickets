@@ -62,8 +62,9 @@ public class TicketList {
         String resp;
         try {
             resp = ApiClient.get(ApiEndpoint.MC_TICKET_LIST,
-                    Map.of("uuid", player.getUniqueId().toString()),
-                    Map.of("page", String.valueOf(page), "pageSize", "10"));
+                    null,
+                    Map.of("minecraftUuid", player.getUniqueId().toString(),
+                           "page", String.valueOf(page), "pageSize", "10"));
         } catch (RuntimeException e) {
             if (page == 1 && displayCacheFallback(player)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",

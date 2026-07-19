@@ -9,7 +9,10 @@ const router = Router({ mergeParams: true });
 router.use(conditionalAuthMiddleware);
 
 router.get('/', async (req: Request, res: Response) => {
-  const logs = await auditService.listByTicket(parseId(String(req.params.ticketId)));
+  const logs = await auditService.listByTicket(
+    parseId(String(req.params.ticketId)),
+    req.user ? { userId: req.user.userId, role: req.user.role } : undefined,
+  );
   res.json(logs);
 });
 

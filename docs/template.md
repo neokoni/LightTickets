@@ -8,10 +8,17 @@
 name: "显示名称"            # 必填，创建议题时展示的模板名
 description: "模板描述"      # 必填，模板用途说明
 title_prefix: "[前缀] "     # 可选，自动拼接到议题标题前
+hidden: false               # 可选，true / false / optional，默认 false
 labels: []                  # 可选，关联标签 ID 列表
 body: []                    # 必填，表单字段定义数组
 completion_hooks: []        # 可选，状态变更时触发的钩子
 ```
+
+`hidden` 控制通过该模板创建的议题可见性：
+
+- `true`：议题始终隐藏，仅发起者、`staff` 和 `admin` 可见。
+- `false`：议题始终公开。
+- `optional`：创建者必须在创建时选择公开或隐藏。读取时兼容误拼 `optinal`，保存时统一写为 `optional`。
 
 ## body 字段类型
 

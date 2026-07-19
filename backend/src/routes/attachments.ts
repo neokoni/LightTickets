@@ -20,6 +20,7 @@ router.post(
       uploadedBy: req.user!.userId,
       ticketId: req.body.ticketId ? Number(req.body.ticketId) : undefined,
       commentId: req.body.commentId,
+      userRole: req.user!.role,
     });
 
     res.status(201).json(attachment);
@@ -27,11 +28,18 @@ router.post(
 );
 
 router.get('/:id', conditionalAuthMiddleware, async (req: Request, res: Response) => {
-  await attachmentService.serve(String(req.params.id), res);
+  await attachmentService.serve(
+    String(req.params.id),
+    res,
+    req.user ? { userId: req.user.userId, role: req.user.role } : undefined,
+  );
 });
 
 router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
-  const attachment = await attachmentService.getById(String(req.params.id));
+  const attachment = await attachmentService.assertAttachmentVisible(String(req.params.id), {
+    userId: req.user!.userId,
+    role: req.user!.role,
+  });
   if (attachment.uploadedBy !== req.user!.userId && req.user!.role !== ROLE.ADMIN) {
     throw new ForbiddenError('只能删除自己上传的附件');
   }

@@ -11,7 +11,9 @@ import BaseInput from '@/components/base/BaseInput.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
+import BaseSelect from '@/components/base/BaseSelect.vue';
 import type { AdminTemplate } from '@/types/template';
+import type { TemplateHiddenMode } from '@/types/ticket';
 import { apiGetAdminTemplate } from '@/api/templates';
 
 const templates = useTemplatesStore();
@@ -29,6 +31,7 @@ const form = ref({
   body: '',
   completionHooks: '[]',
   enabled: true,
+  hidden: 'false',
 });
 
 const iconButtonClass =
@@ -46,6 +49,7 @@ function openCreate() {
     body: '',
     completionHooks: '[]',
     enabled: true,
+    hidden: 'false',
   };
   showModal.value = true;
 }
@@ -62,6 +66,7 @@ async function openEdit(tmpl: AdminTemplate) {
     body: full.body,
     completionHooks: full.completionHooks,
     enabled: full.enabled,
+    hidden: String(full.hidden),
   };
   showModal.value = true;
 }
@@ -77,10 +82,11 @@ async function save() {
         body: form.value.body,
         completionHooks: form.value.completionHooks,
         enabled: form.value.enabled,
+        hidden: serializeHiddenMode(),
       });
       ui.toast(t('admin.templates.updated'), ToastType.SUCCESS);
     } else {
-      await templates.create(form.value);
+      await templates.create({ ...form.value, hidden: serializeHiddenMode() });
       ui.toast(t('admin.templates.created'), ToastType.SUCCESS);
     }
     showModal.value = false;
@@ -88,6 +94,17 @@ async function save() {
     handleError(e);
   }
 }
+
+function serializeHiddenMode(): TemplateHiddenMode {
+  if (form.value.hidden === 'optional') return 'optional';
+  return form.value.hidden === 'true';
+}
+
+const hiddenModeOptions = [
+  { value: 'false', label: t('admin.templates.visibilityPublic'), icon: 'lucide:eye' },
+  { value: 'true', label: t('admin.templates.visibilityHidden'), icon: 'lucide:eye-off' },
+  { value: 'optional', label: t('admin.templates.visibilityOptional'), icon: 'lucide:settings-2' },
+];
 
 async function toggleEnabled(tmpl: AdminTemplate) {
   try {
@@ -215,6 +232,12 @@ onMounted(() => {
           v-model="form.labels"
           :label="t('admin.templates.labelsJson')"
           placeholder='["bug"]'
+        />
+
+        <BaseSelect
+          v-model="form.hidden"
+          :label="t('admin.templates.visibility')"
+          :options="hiddenModeOptions"
         />
 
         <div class="flex items-center justify-between gap-4">

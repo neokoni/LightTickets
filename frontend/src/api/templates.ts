@@ -1,5 +1,6 @@
 import { apiFetch } from './client';
 import type { AdminTemplate } from '@/types/template';
+import type { TemplateHiddenMode } from '@/types/ticket';
 
 export function apiGetAdminTemplates() {
   return apiFetch<AdminTemplate[]>('/admin/templates');
@@ -18,6 +19,7 @@ export function apiCreateAdminTemplate(data: {
   body: string;
   completionHooks?: string;
   enabled?: boolean;
+  hidden?: TemplateHiddenMode;
 }) {
   return apiFetch<AdminTemplate>('/admin/templates', {
     method: 'POST',
@@ -35,6 +37,7 @@ export function apiUpdateAdminTemplate(
     body?: string;
     completionHooks?: string;
     enabled?: boolean;
+    hidden?: TemplateHiddenMode;
   },
 ) {
   return apiFetch<AdminTemplate>(`/admin/templates/${encodeURIComponent(name)}`, {

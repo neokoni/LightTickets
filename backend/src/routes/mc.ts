@@ -31,6 +31,7 @@ const mcTicketSchema = z.object({
   body: z.string().min(1),
   template: z.string().min(1),
   formData: z.record(z.string(), z.string()).optional(),
+  hidden: z.boolean().optional(),
   context: z
     .object({
       world: z.string().optional(),
@@ -84,18 +85,52 @@ router.post('/tickets', async (req: Request, res: Response) => {
     formData: data.formData || {},
     serverId: req.server!.id,
     context: data.context,
+    hidden: data.hidden,
   });
 
   res.status(201).json(ticket);
 });
 
-router.get('/tickets/:uuid', async (req: Request, res: Response) => {
+const mcViewerSchema = z.object({
+  minecraftUuid: z.string().min(1).optional(),
+});
+
+async function listMinecraftTickets(req: Request, res: Response, minecraftUuid?: string) {
   const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
-  const result = await mcService.listTicketsForMinecraft({
+  const result = await mcService.listTicketsForMinecraftViewer({
     page,
     pageSize,
+    minecraftUuid,
   });
   res.json(result);
+}
+
+router.get('/tickets', async (req: Request, res: Response) => {
+  const query = validate(mcViewerSchema, req.query);
+  await listMinecraftTickets(req, res, query.minecraftUuid);
+});
+
+// Backward-compatible path for plugins from the previous release.
+router.get('/tickets/:uuid', async (req: Request, res: Response) => {
+  await listMinecraftTickets(req, res, String(req.params.uuid));
+});
+
+router.get('/tickets/:id/detail', async (req: Request, res: Response) => {
+  const query = validate(mcViewerSchema, req.query);
+  const ticket = await mcService.getTicketForMinecraft(
+    parseId(String(req.params.id)),
+    query.minecraftUuid,
+  );
+  res.json(ticket);
+});
+
+router.get('/tickets/:id/comments', async (req: Request, res: Response) => {
+  const query = validate(mcViewerSchema, req.query);
+  const comments = await mcService.listCommentsForMinecraft(
+    parseId(String(req.params.id)),
+    query.minecraftUuid,
+  );
+  res.json(comments);
 });
 
 router.get('/user/:uuid', async (req: Request, res: Response) => {

@@ -28,6 +28,7 @@ interface RouteDef {
   auth: AuthType;
   tags: string[];
   bodySchema?: z.ZodType;
+  querySchema?: z.ZodObject;
   responseSchema?: z.ZodType;
 }
 
@@ -44,6 +45,7 @@ function registerRoute(def: RouteDef) {
           ? [{ [apiKeySecurityScheme.name]: [] }]
           : [{ [jwtSecurityScheme.name]: [] }],
     request: {
+      ...(def.querySchema && { query: def.querySchema }),
       ...(def.bodySchema && {
         body: {
           content: { 'application/json': { schema: def.bodySchema } },
@@ -218,6 +220,7 @@ const registerTicketRoutes = () => {
       formData: z.record(z.string(), z.unknown()),
       serverId: z.string().optional(),
       attachmentIds: z.array(z.string()).optional(),
+      hidden: z.boolean().optional(),
     }),
   });
   registerRoute({
@@ -243,6 +246,7 @@ const registerTicketRoutes = () => {
     bodySchema: z.object({
       status: z.string().optional(),
       assigneeId: z.number().optional(),
+      hidden: z.boolean().optional(),
     }),
   });
   registerRoute({
@@ -515,15 +519,44 @@ const registerMcRoutes = () => {
       title: z.string(),
       template: z.string(),
       formData: z.record(z.string(), z.unknown()),
+      hidden: z.boolean().optional(),
       gameContext: z.string().optional(),
     }),
   });
   registerRoute({
     method: 'get',
-    path: '/api/mc/tickets/{uuid}',
-    summary: 'MC 获取玩家议题',
+    path: '/api/mc/tickets',
+    summary: 'MC 获取可见议题',
     auth: 'apiKey',
     tags: ['MC'],
+    querySchema: z.object({
+      minecraftUuid: z.string().optional(),
+      page: z.coerce.number().int().positive().optional(),
+      pageSize: z.coerce.number().int().positive().optional(),
+    }),
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/mc/tickets/{uuid}',
+    summary: 'MC 获取玩家可见议题（兼容路径）',
+    auth: 'apiKey',
+    tags: ['MC'],
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/mc/tickets/{id}/detail',
+    summary: 'MC 获取议题详情',
+    auth: 'apiKey',
+    tags: ['MC'],
+    querySchema: z.object({ minecraftUuid: z.string().optional() }),
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/mc/tickets/{id}/comments',
+    summary: 'MC 获取议题评论',
+    auth: 'apiKey',
+    tags: ['MC'],
+    querySchema: z.object({ minecraftUuid: z.string().optional() }),
   });
   registerRoute({
     method: 'get',
@@ -577,6 +610,15 @@ const registerTemplateRoutes = () => {
     summary: '获取模板列表',
     auth: 'none',
     tags: ['Templates'],
+    responseSchema: z.array(
+      z.object({
+        name: z.string(),
+        name_i18n: z.string(),
+        description: z.string(),
+        labels: z.array(z.string()),
+        hidden: z.union([z.boolean(), z.literal('optional')]),
+      }),
+    ),
   });
   registerRoute({
     method: 'get',
@@ -614,6 +656,7 @@ const registerTemplateRoutes = () => {
       body: z.string(),
       completionHooks: z.string().optional(),
       enabled: z.boolean().optional(),
+      hidden: z.union([z.boolean(), z.literal('optional')]).optional(),
     }),
   });
   registerRoute({
@@ -622,6 +665,16 @@ const registerTemplateRoutes = () => {
     summary: '更新模板',
     auth: 'admin',
     tags: ['Admin Templates'],
+    bodySchema: z.object({
+      nameI18n: z.string().optional(),
+      description: z.string().optional(),
+      titlePrefix: z.string().optional(),
+      labels: z.string().optional(),
+      body: z.string().optional(),
+      completionHooks: z.string().optional(),
+      enabled: z.boolean().optional(),
+      hidden: z.union([z.boolean(), z.literal('optional')]).optional(),
+    }),
   });
   registerRoute({
     method: 'delete',
