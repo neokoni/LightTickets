@@ -224,7 +224,11 @@ async function changeSetupLanguage(languageId: string) {
       <!-- Step 1: Welcome -->
       <div v-if="step === 1">
         <div class="text-center py-6">
-          <img src="/icons/lighttickets.svg" :alt="setupSiteTitle" class="w-16 h-16 mx-auto mb-4" />
+          <img
+            src="/icons/lighttickets.svg"
+            :alt="setupSiteTitle"
+            class="app-logo w-16 h-16 mx-auto mb-4"
+          />
           <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
             {{ t('setup.welcome') }}
           </h2>

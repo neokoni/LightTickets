@@ -19,7 +19,7 @@ const VERSION_LABEL = APP_VERSION === 'unknow' ? APP_VERSION : `v${APP_VERSION}`
       <img
         src="/icons/lighttickets.svg"
         :alt="DEFAULT_SITE_TITLE"
-        class="h-12 w-12 shrink-0 dark:invert"
+        class="app-logo h-12 w-12 shrink-0"
       />
       <div class="min-w-0">
         <p class="break-words text-xl font-semibold text-slate-950 dark:text-white">
