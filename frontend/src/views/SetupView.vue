@@ -185,10 +185,20 @@ async function changeSetupLanguage(languageId: string) {
     <div class="absolute top-4 right-4">
       <BaseButton
         :class="themeButtonClass"
-        :aria-label="ui.theme === Theme.DARK ? t('theme.light') : t('theme.dark')"
+        :aria-label="t('theme.select', { theme: t(`theme.${ui.theme}`) })"
+        :title="t(`theme.${ui.theme}`)"
         @click="ui.toggleTheme()"
       >
-        <Icon :icon="ui.theme === Theme.DARK ? 'lucide:sun' : 'lucide:moon'" class="w-5 h-5" />
+        <Icon
+          :icon="
+            ui.theme === Theme.SYSTEM
+              ? 'lucide:monitor-cog'
+              : ui.theme === Theme.DARK
+                ? 'lucide:moon'
+                : 'lucide:sun'
+          "
+          class="w-5 h-5"
+        />
       </BaseButton>
     </div>
     <div

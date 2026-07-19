@@ -75,13 +75,20 @@ function handleLogout() {
       <div class="ml-auto flex items-center gap-2">
         <button
           class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-transparent text-slate-700 transition hover:text-slate-900 dark:border-slate-800 dark:text-slate-200 dark:hover:text-slate-100"
-          :aria-label="ui.theme === Theme.DARK ? t('theme.light') : t('theme.dark')"
+          :aria-label="t('theme.select', { theme: t(`theme.${ui.theme}`) })"
+          :title="t(`theme.${ui.theme}`)"
           @click="ui.toggleTheme()"
         >
           <Transition name="theme-icon" mode="out-in">
             <Icon
               :key="ui.theme"
-              :icon="ui.theme === Theme.DARK ? 'lucide:sun' : 'lucide:moon'"
+              :icon="
+                ui.theme === Theme.SYSTEM
+                  ? 'lucide:monitor-cog'
+                  : ui.theme === Theme.DARK
+                    ? 'lucide:moon'
+                    : 'lucide:sun'
+              "
               class="h-4 w-4"
             />
           </Transition>

@@ -8,28 +8,25 @@ import { initI18n } from './i18n';
 import './app.css';
 
 async function bootstrap() {
+  const pinia = createPinia();
+  const ui = useUiStore(pinia);
+  ui.initTheme();
+
   try {
     const res = await fetch(frontendConfig.serverUrl + '/health');
     if (!res.ok) throw new Error();
   } catch {
     const { default: ConnectionErrorView } = await import('./views/ConnectionErrorView.vue');
     const app = createApp(ConnectionErrorView);
-    const pinia = createPinia();
     app.use(pinia);
-    const ui = useUiStore();
-    ui.initTheme();
     app.mount('#app');
     return;
   }
 
   const app = createApp(App);
-  const pinia = createPinia();
   app.use(pinia);
   await initI18n();
   app.use(router);
-
-  const ui = useUiStore();
-  ui.initTheme();
 
   app.mount('#app');
 }

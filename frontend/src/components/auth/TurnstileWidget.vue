@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useUiStore, type Theme } from '@/stores/ui';
+import { useUiStore, type ResolvedTheme } from '@/stores/ui';
 import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 
@@ -13,7 +13,7 @@ declare global {
         element: HTMLElement,
         options: {
           sitekey: string;
-          theme: Theme;
+          theme: ResolvedTheme;
           size: 'flexible';
           retry: 'never';
           'refresh-expired': 'auto';
@@ -109,7 +109,7 @@ async function renderWidget() {
   try {
     widgetId = window.turnstile.render(container.value, {
       sitekey: props.siteKey,
-      theme: ui.theme,
+      theme: ui.resolvedTheme,
       size: 'flexible',
       retry: 'never',
       'refresh-expired': 'auto',
@@ -156,7 +156,7 @@ function reset() {
 
 onMounted(() => void renderWidget());
 watch(
-  () => [props.siteKey, ui.theme] as const,
+  () => [props.siteKey, ui.resolvedTheme] as const,
   () => void renderWidget(),
 );
 

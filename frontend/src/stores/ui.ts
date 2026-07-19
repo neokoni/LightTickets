@@ -2,11 +2,13 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
 export const Theme = {
+  SYSTEM: 'system',
   LIGHT: 'light',
   DARK: 'dark',
 } as const;
 
 export type Theme = (typeof Theme)[keyof typeof Theme];
+export type ResolvedTheme = Exclude<Theme, typeof Theme.SYSTEM>;
 
 export const ToastType = {
   SUCCESS: 'success',
@@ -22,30 +24,57 @@ export interface Toast {
   type: ToastType;
 }
 
+const THEME_STORAGE_KEY = 'lt-theme';
+
 let toastId = 0;
 
 export const useUiStore = defineStore('ui', () => {
+  const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
   const theme = ref<Theme>(
-    (localStorage.getItem('lt-theme') as Theme | null) ||
-      (window.matchMedia('(prefers-color-scheme: dark)').matches ? Theme.DARK : Theme.LIGHT),
+    Object.values(Theme).includes(storedTheme as Theme) ? (storedTheme as Theme) : Theme.SYSTEM,
   );
+  const resolvedTheme = ref<ResolvedTheme>(resolveTheme(theme.value));
   const toasts = ref<Toast[]>([]);
   const mobileMenuOpen = ref(false);
   const routeLoading = ref(false);
   let routeLoadingTimer: number | undefined;
+  let themeListenerAttached = false;
+
+  function resolveTheme(value: Theme): ResolvedTheme {
+    if (value === Theme.SYSTEM) {
+      return systemThemeQuery.matches ? Theme.DARK : Theme.LIGHT;
+    }
+    return value;
+  }
+
+  function applyTheme(value: Theme) {
+    resolvedTheme.value = resolveTheme(value);
+    document.documentElement.classList.toggle('dark', resolvedTheme.value === Theme.DARK);
+  }
 
   function setTheme(t: Theme) {
     theme.value = t;
-    localStorage.setItem('lt-theme', t);
-    document.documentElement.classList.toggle('dark', t === Theme.DARK);
+    localStorage.setItem(THEME_STORAGE_KEY, t);
+    applyTheme(t);
   }
 
   function toggleTheme() {
-    setTheme(theme.value === Theme.DARK ? Theme.LIGHT : Theme.DARK);
+    const themes: Theme[] = [Theme.SYSTEM, Theme.LIGHT, Theme.DARK];
+    const currentIndex = themes.indexOf(theme.value);
+    setTheme(themes[(currentIndex + 1) % themes.length]);
   }
 
   function initTheme() {
-    document.documentElement.classList.toggle('dark', theme.value === Theme.DARK);
+    applyTheme(theme.value);
+    if (!themeListenerAttached) {
+      systemThemeQuery.addEventListener('change', handleSystemThemeChange);
+      themeListenerAttached = true;
+    }
+  }
+
+  function handleSystemThemeChange() {
+    if (theme.value === Theme.SYSTEM) applyTheme(theme.value);
   }
 
   function toast(message: string, type: ToastType = ToastType.INFO) {
@@ -71,6 +100,7 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     theme,
+    resolvedTheme,
     toasts,
     mobileMenuOpen,
     routeLoading,
