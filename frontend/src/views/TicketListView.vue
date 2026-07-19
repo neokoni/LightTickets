@@ -30,6 +30,7 @@ import BasePagination from '@/components/base/BasePagination.vue';
 import BaseBadge from '@/components/base/BaseBadge.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
+import BaseSlidingTabs from '@/components/base/BaseSlidingTabs.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 
 const router = useRouter();
@@ -52,7 +53,7 @@ const selectedSuggestionIdx = ref(0);
 // immediately fill the first value ("status:open") instead of just the key.
 const suggestionNavigated = ref(false);
 const tabButtonClass =
-  '!px-3 !py-2 !rounded-none border-none -mb-px text-sm font-medium transition whitespace-nowrap shrink-0';
+  '!px-3 !py-2 !rounded-none border-none text-sm font-medium transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/70 whitespace-nowrap shrink-0';
 const chipButtonClass = '!px-0 !py-0 border-none ml-0.5 hover:opacity-70';
 const suggestionButtonClass =
   '!w-full !justify-start !px-3 !py-1.5 border-none text-sm text-left transition cursor-pointer';
@@ -350,7 +351,8 @@ watch(
     </div>
 
     <!-- Status tabs -->
-    <div
+    <BaseSlidingTabs
+      :active-key="tabStatus ?? 'all'"
       class="status-tabs-scroll flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 overflow-x-auto"
     >
       <BaseButton
@@ -359,19 +361,18 @@ watch(
         :has-hover="false"
         :class="[
           tabButtonClass,
-          'nav-link',
           (!tabStatus && tab.key === 'all') || tabStatus === tab.key
             ? 'nav-link-active'
             : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300',
         ]"
         @click="setStatus(tab.key)"
       >
-        <span class="nav-link-text inline-flex items-center gap-1.5">
+        <span class="inline-flex items-center gap-1.5" :data-sliding-tab="tab.key">
           <Icon :icon="tab.icon" class="w-4 h-4" />
           {{ t(tab.labelKey) }}
         </span>
       </BaseButton>
-    </div>
+    </BaseSlidingTabs>
 
     <!-- Search with filter chips -->
     <div class="space-y-2">

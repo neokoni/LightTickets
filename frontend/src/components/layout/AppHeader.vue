@@ -6,6 +6,7 @@ import { useAuthStore } from '@/stores/auth';
 import { Theme, useUiStore } from '@/stores/ui';
 import { siteConfig, siteTitle } from '@/stores/site';
 import { t } from '@/i18n';
+import BaseSlidingTabs from '@/components/base/BaseSlidingTabs.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 
 const auth = useAuthStore();
@@ -51,26 +52,38 @@ function handleLogout() {
         </div>
       </RouterLink>
 
-      <nav
+      <BaseSlidingTabs
         v-if="auth.isAuthenticated || !siteConfig.requireLogin"
+        as="nav"
+        :active-key="
+          route.path === '/' || route.path.startsWith('/tickets')
+            ? 'tickets'
+            : route.path.startsWith('/admin')
+              ? 'admin'
+              : ''
+        "
         class="hidden items-center gap-1 lg:flex"
       >
         <RouterLink
           to="/"
-          class="nav-link px-2 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 lg:px-2.5 lg:text-base"
+          class="nav-link rounded-md px-2 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70 lg:px-2.5 lg:text-base"
           :class="{ 'nav-link-active': route.path === '/' || route.path.startsWith('/tickets') }"
         >
-          <span class="nav-link-text">{{ t('nav.tickets') }}</span>
+          <span class="inline-flex items-center" data-sliding-tab="tickets">{{
+            t('nav.tickets')
+          }}</span>
         </RouterLink>
         <RouterLink
           v-if="auth.isAdmin"
           to="/admin"
-          class="nav-link px-2 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 lg:px-2.5 lg:text-base"
+          class="nav-link rounded-md px-2 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100/80 dark:text-slate-200 dark:hover:bg-slate-800/70 lg:px-2.5 lg:text-base"
           :class="{ 'nav-link-active': route.path.startsWith('/admin') }"
         >
-          <span class="nav-link-text">{{ t('nav.admin') }}</span>
+          <span class="inline-flex items-center" data-sliding-tab="admin">{{
+            t('nav.admin')
+          }}</span>
         </RouterLink>
-      </nav>
+      </BaseSlidingTabs>
 
       <div class="ml-auto flex items-center gap-2">
         <button

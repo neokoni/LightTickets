@@ -134,52 +134,15 @@ button.base-checkbox:disabled {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-slate-100) 20%, transparent);
 }
 
-/* Navigation link underline animation */
+/* Navigation link layout */
 .nav-link {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.nav-link-text {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
-.nav-link-text::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  bottom: -4px;
-  width: 72%;
-  height: 2.5px;
-  background-color: #0f172a;
-  border-radius: 9999px;
-  transform-origin: left;
-  transform: scaleX(0);
-  transition: transform 0.28s ease;
-}
-
-.nav-link:hover .nav-link-text::after {
-  transform: scaleX(1);
-}
-
-.nav-link:active .nav-link-text::after {
-  transform: scaleX(1.16);
-}
-
-.nav-link-active .nav-link-text::after {
-  transform: scaleX(1);
-}
-
 .nav-link-active {
   color: #0f172a;
-}
-
-.dark .nav-link-text::after {
-  background-color: #e2e8f0;
 }
 
 .dark .nav-link-active {
