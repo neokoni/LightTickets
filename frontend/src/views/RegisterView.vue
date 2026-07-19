@@ -177,7 +177,7 @@ async function submit() {
             </div>
             <BaseButton
               type="button"
-              class="h-[38px] w-[120px] shrink-0"
+              class="h-[38px] w-36 shrink-0"
               :loading="codeSending"
               :disabled="
                 !normalizedEmail ||
