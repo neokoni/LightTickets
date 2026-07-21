@@ -14,6 +14,7 @@ import type { MailConfigInput, PublicMailConfig } from './mail-config.service.js
 import * as i18nService from './i18n.service.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as turnstileConfigService from './turnstile-config.service.js';
+import * as federatedAuthProviderService from './federatedauth-provider.service.js';
 import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 
 type SetupConfigFile = {
@@ -27,7 +28,11 @@ type SetupConfigFile = {
     database?: string;
     args?: string;
   };
-  security?: { jwtSecret?: string; jwtRefreshSecret?: string };
+  security?: {
+    jwtSecret?: string;
+    jwtRefreshSecret?: string;
+    externalEncryptionKey?: string;
+  };
 };
 
 function readYaml(filePath: string): SetupConfigFile {
@@ -65,6 +70,12 @@ export interface SiteConfig {
   footerContent: string | null;
   defaultLanguage: string;
   turnstile: turnstileConfigService.TurnstilePublicConfig;
+  federatedAuthProviders: Array<{
+    slug: string;
+    name: string;
+    iconUrl: string | null;
+    allowRegistration: boolean;
+  }>;
 }
 
 export interface AdminSettings extends Omit<SiteConfig, 'isSetup'> {
@@ -128,6 +139,7 @@ function toSiteConfig(status: {
     footerContent: status.footerContent ?? null,
     defaultLanguage,
     turnstile: { enabled: false, siteKey: '' },
+    federatedAuthProviders: [],
   };
 }
 
@@ -177,6 +189,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       footerContent: null,
       defaultLanguage: i18nService.DEFAULT_LANGUAGE_ID,
       turnstile: { enabled: false, siteKey: '' },
+      federatedAuthProviders: [],
     };
   }
 
@@ -186,13 +199,15 @@ export async function getSiteConfig(): Promise<SiteConfig> {
     const status = await prisma.setupStatus.findFirst();
     if (status?.isSetup) {
       const siteConfig = toSiteConfig(status);
-      const [turnstile, mail] = await Promise.all([
+      const [turnstile, mail, providers] = await Promise.all([
         turnstileConfigService.getTurnstileConfig(),
         mailConfigService.getMailConfig(),
+        federatedAuthProviderService.listPublicProviders(),
       ]);
       siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(turnstile);
       siteConfig.passwordResetEnabled = mailConfigService.canSendPasswordResetMail(mail);
       siteConfig.registrationEmailVerificationEnabled = siteConfig.passwordResetEnabled;
+      siteConfig.federatedAuthProviders = providers;
       return siteConfig;
     }
 
@@ -214,13 +229,15 @@ export async function getSiteConfig(): Promise<SiteConfig> {
 
       console.warn('[setup] Recovered missing setup status from existing users');
       const siteConfig = toSiteConfig(recovered);
-      const [turnstile, mail] = await Promise.all([
+      const [turnstile, mail, providers] = await Promise.all([
         turnstileConfigService.getTurnstileConfig(),
         mailConfigService.getMailConfig(),
+        federatedAuthProviderService.listPublicProviders(),
       ]);
       siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(turnstile);
       siteConfig.passwordResetEnabled = mailConfigService.canSendPasswordResetMail(mail);
       siteConfig.registrationEmailVerificationEnabled = siteConfig.passwordResetEnabled;
+      siteConfig.federatedAuthProviders = providers;
       return siteConfig;
     }
 
@@ -236,6 +253,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       footerContent: status?.footerContent ?? null,
       defaultLanguage: i18nService.resolveLanguageId(status?.defaultLanguage),
       turnstile: { enabled: false, siteKey: '' },
+      federatedAuthProviders: [],
     };
   } catch (e: unknown) {
     const error = e instanceof Error ? e : new Error(String(e));
@@ -319,6 +337,7 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     sendEmailNotifications: status?.sendEmailNotifications ?? false,
     turnstile: await turnstileConfigService.getTurnstileConfig(),
     mail: await mailConfigService.getMailConfig(),
+    federatedAuthProviders: siteConfig.federatedAuthProviders,
   };
 }
 
@@ -389,6 +408,7 @@ export async function completeSetup(input: SetupInput) {
     security: {
       jwtSecret: crypto.randomBytes(32).toString('hex'),
       jwtRefreshSecret: crypto.randomBytes(32).toString('hex'),
+      externalEncryptionKey: crypto.randomBytes(32).toString('hex'),
     },
   };
 
@@ -410,6 +430,8 @@ export async function completeSetup(input: SetupInput) {
     if (existing.security?.jwtSecret) configData.security.jwtSecret = existing.security.jwtSecret;
     if (existing.security?.jwtRefreshSecret)
       configData.security.jwtRefreshSecret = existing.security.jwtRefreshSecret;
+    if (existing.security?.externalEncryptionKey)
+      configData.security.externalEncryptionKey = existing.security.externalEncryptionKey;
   }
 
   fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });

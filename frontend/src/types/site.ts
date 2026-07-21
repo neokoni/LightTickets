@@ -1,5 +1,6 @@
 import type { Role } from './ticket';
 import type { StorageDriver } from './storage';
+import type { FederatedAuthPublicProvider } from './federatedauth';
 
 export const DatabaseProvider = {
   SQLITE: 'sqlite',
@@ -20,6 +21,7 @@ export interface SiteConfig {
   footerContent: string | null;
   defaultLanguage: string;
   turnstile: TurnstilePublicConfig;
+  federatedAuthProviders: FederatedAuthPublicProvider[];
 }
 
 export interface SetupPayload {
@@ -96,6 +98,7 @@ export interface SettingsResult {
   sendEmailNotifications: boolean;
   mail: MailSettings;
   turnstile: TurnstileSettings;
+  federatedAuthProviders: FederatedAuthPublicProvider[];
 }
 
 export interface SettingsPayload {

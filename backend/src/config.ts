@@ -1,4 +1,5 @@
 import fs from 'fs';
+import crypto from 'crypto';
 import yaml from 'js-yaml';
 import { dataPath } from './paths.js';
 import { DatabaseProvider } from './constants/database-provider.js';
@@ -47,6 +48,7 @@ interface DatabaseConfig {
 interface SecurityConfig {
   jwtSecret: string;
   jwtRefreshSecret: string;
+  externalEncryptionKey: string;
 }
 
 export interface AppConfig {
@@ -57,6 +59,22 @@ export interface AppConfig {
   accessTokenExpiry: string;
   refreshTokenExpiry: string;
   linkCodeExpiry: number;
+}
+
+function ensureExternalEncryptionKey(raw: ConfigFile): string {
+  const existing = raw.security?.externalEncryptionKey?.trim();
+  if (existing) {
+    if (!/^[a-f\d]{64}$/i.test(existing)) {
+      throw new Error('config.yml security.externalEncryptionKey 必须是 32 字节十六进制密钥');
+    }
+    return existing;
+  }
+
+  const generated = crypto.randomBytes(32).toString('hex');
+  raw.security = { ...raw.security, externalEncryptionKey: generated };
+  fs.writeFileSync(CONFIG_PATH, yaml.dump(raw, { lineWidth: -1 }), { mode: 0o600 });
+  fs.chmodSync(CONFIG_PATH, 0o600);
+  return generated;
 }
 
 const S3_REQUIRED_FIELDS = ['endpoint', 'bucket', 'accessKeyId', 'secretAccessKey'] as const;
@@ -121,6 +139,7 @@ export function loadConfig(): AppConfig {
   if (!jwtSecret || !jwtRefreshSecret) {
     throw new Error('config.yml 缺少 security.jwtSecret 或 security.jwtRefreshSecret');
   }
+  const externalEncryptionKey = ensureExternalEncryptionKey(raw);
 
   return {
     port: resolveServerPort(server.port),
@@ -134,7 +153,7 @@ export function loadConfig(): AppConfig {
       database: database.database,
       args: database.args,
     },
-    security: { jwtSecret, jwtRefreshSecret },
+    security: { jwtSecret, jwtRefreshSecret, externalEncryptionKey },
     accessTokenExpiry: '2h',
     refreshTokenExpiry: '7d',
     linkCodeExpiry: 5 * 60 * 1000,

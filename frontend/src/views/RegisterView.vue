@@ -9,6 +9,7 @@ import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import TurnstileWidget from '@/components/auth/TurnstileWidget.vue';
 import { ApiError } from '@/types/api';
+import FederatedAuthButtons from '@/components/auth/FederatedAuthButtons.vue';
 
 const router = useRouter();
 const auth = useAuthStore();
@@ -217,6 +218,17 @@ async function submit() {
           {{ t('auth.register.title') }}
         </BaseButton>
       </form>
+
+      <template
+        v-if="siteConfig.federatedAuthProviders.some((provider) => provider.allowRegistration)"
+      >
+        <div class="my-6 flex items-center gap-3 text-xs text-slate-400">
+          <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+          {{ t('federatedauth.or') }}
+          <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+        </div>
+        <FederatedAuthButtons registration-only />
+      </template>
 
       <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
         {{ t('auth.hasAccount') }}

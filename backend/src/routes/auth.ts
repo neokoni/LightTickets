@@ -9,39 +9,14 @@ import { validate } from '../utils/validate.js';
 import * as passwordResetService from '../services/password-reset.service.js';
 import * as registrationEmailVerificationService from '../services/registration-email-verification.service.js';
 import * as turnstileConfigService from '../services/turnstile-config.service.js';
+import {
+  REFRESH_COOKIE_NAME,
+  clearRefreshCookie,
+  parseCookies,
+  setRefreshCookie,
+} from '../utils/auth-cookies.js';
 
 const router = Router();
-const REFRESH_COOKIE_NAME = 'lt_refresh_token';
-
-function parseCookies(header: string | undefined): Record<string, string> {
-  if (!header) return {};
-  return Object.fromEntries(
-    header
-      .split(';')
-      .map((part) => part.trim().split('='))
-      .filter(([key, value]) => key && value)
-      .map(([key, value]) => [key, decodeURIComponent(value)]),
-  );
-}
-
-function setRefreshCookie(res: Response, refreshToken: string): void {
-  res.cookie(REFRESH_COOKIE_NAME, refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/api/auth',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-}
-
-function clearRefreshCookie(res: Response): void {
-  res.clearCookie(REFRESH_COOKIE_NAME, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/api/auth',
-  });
-}
 
 function resolveAccessOrigin(req: Request): string | undefined {
   const origin = req.get('origin');

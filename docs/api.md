@@ -57,6 +57,29 @@
 
 返回 setup 状态、站点名、注册策略、页脚等公开配置。`registrationEmailVerificationEnabled`
 表示当前 SMTP 是否可用于网页注册邮箱验证。
+`federatedAuthProviders` 仅包含已启用 Provider 的公开名称、图标、slug 与注册开关，不包含端点、Client ID 或密钥。
+
+### 外部登录
+
+`POST /api/auth/federatedauth/:slug/start` 创建一次性登录流程并返回授权地址；回调地址为
+`GET /api/auth/federatedauth/:slug/callback`。流程使用 HttpOnly 浏览器绑定 Cookie、state，默认使用
+PKCE；OIDC 额外校验 nonce 和 ID Token。
+
+未绑定身份不会按 Provider 邮箱匹配本地账户。允许注册时，回调进入本地账户创建流程，用户必须
+自行填写邮箱、用户名和至少 8 位的本地密码；本地邮箱验证码策略与普通网页注册一致。账户和身份绑定
+在同一数据库事务中创建。
+
+已登录用户可通过 `/api/users/me/federatedauth/*` 主动绑定或解绑身份。管理员通过
+`/api/admin/federatedauth/providers/*` 管理 Provider。高级 OAuth 选项包括关闭 PKCE、选择
+`client_secret_basic`/`client_secret_post`/bcrypt `$2y$` Secret 方式，以及自定义 Access Token 和
+用户信息 JSON Path。所有非标准行为默认关闭，不根据域名自动启用或回退。
+
+管理员可调用 `DELETE /api/admin/federatedauth/providers/:id/identities` 一次解除该 Provider 的全部
+身份绑定。该操作只删除外部身份关系，本地账户及其密码、议题等数据均保留；Provider 仍需另行删除。
+
+外部登录数据库变更均为新增表，`security.externalEncryptionKey` 也是向后兼容的新增配置项；回滚到
+不含此功能的版本时旧程序会忽略这些内容。升级前仍应备份数据库和 `config.yml`，回滚不得删除绑定表或
+更换加密密钥，以便恢复新版本后继续读取既有 Provider 密钥。
 
 ### 语言列表
 

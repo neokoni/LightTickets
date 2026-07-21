@@ -7,6 +7,11 @@ import { requireRole } from '../middleware/role.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
 import * as ticketNotificationService from '../services/ticket-notification.service.js';
+import * as federatedAuthService from '../services/federatedauth.service.js';
+import { federatedAuthStartSchema, federatedAuthUnlinkSchema } from '../schemas/federatedauth.js';
+import { FEDERATED_AUTH_INTENT } from '../constants/federatedauth.js';
+import { setFederatedAuthFlowCookie } from '../utils/federatedauth-cookies.js';
+import { authLimiter } from '../middleware/rate-limit.js';
 
 const router = Router();
 
@@ -92,6 +97,46 @@ router.patch('/me/notifications', authMiddleware, async (req: Request, res: Resp
   );
   res.json(user);
 });
+
+const federatedAuthParamsSchema = z.object({ value: z.string().min(1) });
+
+router.get('/me/federatedauth', authMiddleware, async (req: Request, res: Response) => {
+  res.json(await federatedAuthService.listFederatedAuthIdentities(req.user!.userId));
+});
+
+router.post(
+  '/me/federatedauth/:value/start',
+  authLimiter,
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { value } = validate(federatedAuthParamsSchema, req.params);
+    const data = validate(federatedAuthStartSchema, req.body);
+    const result = await federatedAuthService.startFederatedAuth({
+      slug: value,
+      intent: FEDERATED_AUTH_INTENT.LINK,
+      userId: req.user!.userId,
+      returnTo: data.returnTo,
+    });
+    setFederatedAuthFlowCookie(res, result.browser);
+    res.json({ authorizationUrl: result.authorizationUrl });
+  },
+);
+
+router.delete(
+  '/me/federatedauth/:value',
+  authLimiter,
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const { value } = validate(federatedAuthParamsSchema, req.params);
+    const data = validate(federatedAuthUnlinkSchema, req.body);
+    await federatedAuthService.unlinkFederatedAuthIdentity(
+      req.user!.userId,
+      value,
+      data.currentPassword,
+    );
+    res.status(204).end();
+  },
+);
 
 const roleSchema = z.object({
   role: z.enum([ROLE.PLAYER, ROLE.STAFF, ROLE.ADMIN]),

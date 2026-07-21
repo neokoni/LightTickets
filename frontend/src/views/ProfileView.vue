@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '@/stores/auth';
 import { ToastType, useUiStore } from '@/stores/ui';
@@ -10,13 +11,22 @@ import BaseButton from '@/components/base/BaseButton.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
+import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
+import {
+  apiListFederatedAuthIdentities,
+  apiStartFederatedAuthLink,
+  apiUnlinkFederatedAuth,
+} from '@/api/federatedauth';
+import { siteConfig } from '@/stores/site';
+import type { FederatedAuthIdentity } from '@/types/federatedauth';
 
 const auth = useAuthStore();
 const ui = useUiStore();
+const route = useRoute();
 
-const activeSection = ref<'account' | 'password' | 'minecraft' | 'notifications' | 'language'>(
-  'account',
-);
+const activeSection = ref<
+  'account' | 'password' | 'minecraft' | 'federatedauth' | 'notifications' | 'language'
+>('account');
 const iconButtonClass =
   '!px-0 !py-0 border-none text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
 
@@ -24,6 +34,11 @@ const navItems = [
   { key: 'account' as const, labelKey: 'profile.account.title', icon: 'lucide:user' },
   { key: 'password' as const, labelKey: 'profile.password.title', icon: 'lucide:lock' },
   { key: 'minecraft' as const, labelKey: 'profile.minecraft.title', icon: 'lucide:gamepad-2' },
+  {
+    key: 'federatedauth' as const,
+    labelKey: 'profile.federatedauth.title',
+    icon: 'lucide:key-round',
+  },
   { key: 'notifications' as const, labelKey: 'profile.notifications.title', icon: 'lucide:bell' },
   { key: 'language' as const, labelKey: 'settings.language.personal', icon: 'lucide:languages' },
 ];
@@ -66,6 +81,56 @@ const newPassword = ref('');
 const confirmPassword = ref('');
 const savingPassword = ref(false);
 const savingNotifications = ref(false);
+const federatedAuthIdentities = ref<FederatedAuthIdentity[]>([]);
+const federatedAuthLoading = ref(false);
+const federatedAuthLinking = ref<string | null>(null);
+const federatedAuthUnlinking = ref<string | null>(null);
+const federatedAuthPassword = ref('');
+
+const availableFederatedAuthProviders = computed(() => {
+  const bound = new Set(federatedAuthIdentities.value.map((identity) => identity.provider.slug));
+  return siteConfig.federatedAuthProviders.filter((provider) => !bound.has(provider.slug));
+});
+
+async function loadFederatedAuth() {
+  federatedAuthLoading.value = true;
+  try {
+    federatedAuthIdentities.value = await apiListFederatedAuthIdentities();
+  } catch (e) {
+    handleError(e, t('common.loadFailed'));
+  } finally {
+    federatedAuthLoading.value = false;
+  }
+}
+
+async function linkFederatedAuth(slug: string) {
+  federatedAuthLinking.value = slug;
+  try {
+    const result = await apiStartFederatedAuthLink(slug);
+    window.location.assign(result.authorizationUrl);
+  } catch (e) {
+    handleError(e, t('federatedauth.startFailed'));
+    federatedAuthLinking.value = null;
+  }
+}
+
+async function unlinkFederatedAuth(identityId: string) {
+  federatedAuthUnlinking.value = identityId;
+  try {
+    await apiUnlinkFederatedAuth(identityId, federatedAuthPassword.value);
+    federatedAuthPassword.value = '';
+    federatedAuthUnlinking.value = null;
+    await loadFederatedAuth();
+    ui.toast(t('profile.federatedauth.unlinked'), ToastType.SUCCESS);
+  } catch (e) {
+    handleError(e, t('profile.federatedauth.unlinkFailed'));
+  }
+}
+
+onMounted(async () => {
+  if (route.query.section === 'federatedauth') activeSection.value = 'federatedauth';
+  await loadFederatedAuth();
+});
 
 async function updateEmailNotifications(value: boolean) {
   if (savingNotifications.value || value === auth.user?.receiveEmailNotifications) return;
@@ -425,6 +490,101 @@ async function changeLanguage(languageId: string) {
               t('profile.minecraft.link')
             }}</BaseButton>
           </form>
+        </div>
+      </template>
+
+      <!-- Notifications -->
+      <template v-if="activeSection === 'federatedauth'">
+        <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+          {{ t('profile.federatedauth.title') }}
+        </h2>
+        <p class="max-w-lg text-sm text-slate-500 dark:text-slate-400">
+          {{ t('profile.federatedauth.description') }}
+        </p>
+        <BaseLoadingState v-if="federatedAuthLoading" />
+        <div v-else class="max-w-lg space-y-4">
+          <div
+            v-for="identity in federatedAuthIdentities"
+            :key="identity.id"
+            class="rounded-lg border border-slate-200 p-4 dark:border-slate-800"
+          >
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <img
+                  v-if="identity.provider.iconUrl"
+                  :src="identity.provider.iconUrl"
+                  :alt="identity.provider.name"
+                  class="h-8 w-8 rounded object-contain"
+                />
+                <div class="min-w-0">
+                  <p class="font-medium text-slate-900 dark:text-white">
+                    {{ identity.provider.name }}
+                  </p>
+                  <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {{
+                      identity.usernameHint ||
+                      identity.emailHint ||
+                      t('profile.federatedauth.bound')
+                    }}
+                  </p>
+                </div>
+              </div>
+              <BaseButton size="sm" variant="danger" @click="federatedAuthUnlinking = identity.id">
+                {{ t('profile.federatedauth.unlink') }}
+              </BaseButton>
+            </div>
+            <form
+              v-if="federatedAuthUnlinking === identity.id"
+              class="mt-4 flex gap-2"
+              @submit.prevent="unlinkFederatedAuth(identity.id)"
+            >
+              <BaseInput
+                v-model="federatedAuthPassword"
+                type="password"
+                class="min-w-0 flex-1"
+                :placeholder="t('profile.password.currentPlaceholder')"
+              />
+              <BaseButton
+                type="submit"
+                size="sm"
+                variant="danger"
+                :disabled="!federatedAuthPassword"
+              >
+                {{ t('common.confirm') }}
+              </BaseButton>
+              <BaseButton
+                size="sm"
+                @click="
+                  federatedAuthUnlinking = null;
+                  federatedAuthPassword = '';
+                "
+              >
+                {{ t('common.cancel') }}
+              </BaseButton>
+            </form>
+          </div>
+          <p
+            v-if="!federatedAuthIdentities.length"
+            class="text-sm text-slate-500 dark:text-slate-400"
+          >
+            {{ t('profile.federatedauth.empty') }}
+          </p>
+
+          <div v-if="availableFederatedAuthProviders.length" class="space-y-2">
+            <p class="text-sm font-medium text-slate-900 dark:text-white">
+              {{ t('profile.federatedauth.add') }}
+            </p>
+            <BaseButton
+              v-for="provider in availableFederatedAuthProviders"
+              :key="provider.slug"
+              class="w-full"
+              :loading="federatedAuthLinking === provider.slug"
+              :disabled="federatedAuthLinking !== null"
+              @click="linkFederatedAuth(provider.slug)"
+            >
+              {{ t('profile.federatedauth.bindProvider', { provider: provider.name }) }}
+            </BaseButton>
+          </div>
         </div>
       </template>
 

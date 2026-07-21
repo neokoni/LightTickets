@@ -161,6 +161,7 @@ async function submit() {
       footerContent: null,
       defaultLanguage: res.setup.defaultLanguage,
       turnstile: { enabled: false, siteKey: '' },
+      federatedAuthProviders: [],
     });
     // Server restarts after setup; keep waiting until it is ready.
     await waitForServerReady();

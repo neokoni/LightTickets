@@ -8,6 +8,7 @@ import BaseInput from '@/components/base/BaseInput.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import TurnstileWidget from '@/components/auth/TurnstileWidget.vue';
 import { ApiError } from '@/types/api';
+import FederatedAuthButtons from '@/components/auth/FederatedAuthButtons.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -19,6 +20,7 @@ const turnstileToken = ref('');
 const turnstileWidget = ref<InstanceType<typeof TurnstileWidget> | null>(null);
 const error = ref('');
 const loading = ref(false);
+const federatedAuthFailed = route.query.federatedauth === 'failed';
 
 async function submit() {
   error.value = '';
@@ -96,6 +98,19 @@ async function submit() {
           {{ t('auth.login.title') }}
         </BaseButton>
       </form>
+
+      <p v-if="federatedAuthFailed" class="mt-4 text-sm text-red-500">
+        {{ t('federatedauth.callbackFailed') }}
+      </p>
+
+      <template v-if="siteConfig.federatedAuthProviders.length">
+        <div class="my-6 flex items-center gap-3 text-xs text-slate-400">
+          <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+          {{ t('federatedauth.or') }}
+          <span class="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+        </div>
+        <FederatedAuthButtons />
+      </template>
 
       <p
         v-if="siteConfig.passwordResetEnabled"

@@ -22,6 +22,8 @@ import templateRoutes from './routes/templates.js';
 import adminTemplateRoutes from './routes/admin-templates.js';
 import adminStorageRoutes from './routes/admin-storage.js';
 import userRoutes from './routes/users.js';
+import federatedAuthRoutes from './routes/federatedauth.js';
+import adminFederatedAuthRoutes from './routes/admin-federatedauth.js';
 import { initTemplates } from './services/template.service.js';
 
 export function createApp() {
@@ -64,10 +66,12 @@ export function createApp() {
 
   app.use('/api/setup', createSetupRoutes());
   app.use('/api/auth', authRoutes);
+  app.use('/api/auth/federatedauth', federatedAuthRoutes);
   app.use('/api/i18n', i18nRoutes);
   app.use('/api/templates', templateRoutes);
   app.use('/api/admin/templates', adminTemplateRoutes);
   app.use('/api/admin/storage', adminStorageRoutes);
+  app.use('/api/admin/federatedauth', adminFederatedAuthRoutes);
   app.use('/api/tickets', ticketRoutes);
   app.use('/api/tickets/:id/comments', commentRoutes);
   app.use('/api/tickets/:ticketId/audit', auditRoutes);

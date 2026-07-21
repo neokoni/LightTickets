@@ -112,6 +112,10 @@ vi.mock('../src/services/template.service.js', () => ({
   initTemplates: vi.fn(),
 }));
 
+vi.mock('../src/services/federatedauth-provider.service.js', () => ({
+  listPublicProviders: vi.fn(() => Promise.resolve([])),
+}));
+
 vi.mock('../src/utils/token.js', () => ({
   generateTokens: vi.fn(() => ({ accessToken: 'access', refreshToken: 'refresh' })),
 }));
@@ -163,6 +167,7 @@ describe('setup.service', () => {
     expect(result.accessToken).toBe('access');
     expect(fs.existsSync(configPath)).toBe(true);
     expect(fs.readFileSync(configPath, 'utf-8')).toContain('provider: sqlite');
+    expect(fs.readFileSync(configPath, 'utf-8')).toContain('externalEncryptionKey');
   });
 
   it('uses the real access origin for corsOrigins when provided', async () => {

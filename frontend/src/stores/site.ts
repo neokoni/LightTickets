@@ -21,6 +21,7 @@ export const siteConfig = reactive<SiteConfigCache>({
   footerContent: null,
   defaultLanguage: 'zh-CN',
   turnstile: { enabled: false, siteKey: '' },
+  federatedAuthProviders: [],
   connectionError: false,
 });
 

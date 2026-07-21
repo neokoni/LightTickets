@@ -20,6 +20,22 @@ enum CommentSource {
   minecraft
 }
 
+enum FederatedAuthProtocol {
+  oidc
+  oauth
+}
+
+enum FederatedAuthIntent {
+  login
+  link
+}
+
+enum FederatedAuthSecretMode {
+  basic
+  post
+  bcrypt
+}
+
 model User {
   id                  Int                  @id @default(autoincrement())
   email               String               @unique
@@ -39,8 +55,101 @@ model User {
   attachments         Attachment[]
   auditLogs           AuditLog[]
   passwordResetTokens PasswordResetToken[]
+  federatedAuthIdentities FederatedAuthIdentity[]
+  federatedAuthFlows FederatedAuthFlow[]
 
   @@map("users")
+}
+
+model FederatedAuthProvider {
+  id                    String                  @id @default(uuid())
+  slug                  String                  @unique
+  name                  String
+  iconUrl               String?                 @map("icon_url")
+  protocol              FederatedAuthProtocol
+  issuer                String?
+  authorizationEndpoint String?                 @map("authorization_endpoint")
+  tokenEndpoint         String?                 @map("token_endpoint")
+  userInfoEndpoint      String?                 @map("user_info_endpoint")
+  redirectUri           String                  @map("redirect_uri")
+  clientId              String                  @map("client_id")
+  clientSecretEncrypted String?                 @map("client_secret_encrypted")
+  scope                 String
+  subjectPath           String                  @map("subject_path")
+  usernamePath          String?                 @map("username_path")
+  emailPath             String?                 @map("email_path")
+  avatarPath            String?                 @map("avatar_path")
+  authorizationParams   String?                 @map("authorization_params")
+  pkce                  Boolean                 @default(true)
+  secretMode            FederatedAuthSecretMode @default(basic) @map("secret_mode")
+  accessTokenPath       String                  @default("access_token") @map("access_token_path")
+  enabled               Boolean                 @default(false)
+  allowRegistration     Boolean                 @default(false) @map("allow_registration")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
+  identities            FederatedAuthIdentity[]
+  flows                 FederatedAuthFlow[]
+  registrations         FederatedAuthRegistration[]
+
+  @@map("federated_auth_providers")
+}
+
+model FederatedAuthIdentity {
+  id           String                @id @default(uuid())
+  userId       Int                   @map("user_id")
+  providerId   String                @map("provider_id")
+  subject      String
+  usernameHint String?               @map("username_hint")
+  emailHint    String?               @map("email_hint")
+  avatarUrl    String?               @map("avatar_url")
+  lastLoginAt  DateTime?             @map("last_login_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+  user         User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  provider     FederatedAuthProvider @relation(fields: [providerId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([providerId, subject])
+  @@unique([userId, providerId])
+  @@index([userId])
+  @@map("federated_auth_identities")
+}
+
+model FederatedAuthFlow {
+  id                 String                @id @default(uuid())
+  stateHash          String                @unique @map("state_hash")
+  browserHash        String                @map("browser_hash")
+  providerId         String                @map("provider_id")
+  intent             FederatedAuthIntent
+  userId             Int?                  @map("user_id")
+  returnTo           String                @map("return_to")
+  payloadEncrypted   String                @map("payload_encrypted")
+  expiresAt          DateTime              @map("expires_at")
+  usedAt             DateTime?             @map("used_at")
+  createdAt          DateTime              @default(now()) @map("created_at")
+  provider           FederatedAuthProvider @relation(fields: [providerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  user               User?                 @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([expiresAt])
+  @@index([userId])
+  @@map("federated_auth_flows")
+}
+
+model FederatedAuthRegistration {
+  id           String                @id @default(uuid())
+  tokenHash    String                @unique @map("token_hash")
+  providerId   String                @map("provider_id")
+  subject      String
+  usernameHint String?               @map("username_hint")
+  emailHint    String?               @map("email_hint")
+  avatarUrl    String?               @map("avatar_url")
+  expiresAt    DateTime              @map("expires_at")
+  usedAt       DateTime?             @map("used_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  provider     FederatedAuthProvider @relation(fields: [providerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([providerId, subject])
+  @@index([expiresAt])
+  @@map("federated_auth_registrations")
 }
 
 model Server {

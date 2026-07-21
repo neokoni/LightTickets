@@ -38,6 +38,10 @@ initPrisma();
 const prisma = () => getPrisma();
 
 beforeEach(async () => {
+  await prisma().federatedAuthRegistration.deleteMany();
+  await prisma().federatedAuthFlow.deleteMany();
+  await prisma().federatedAuthIdentity.deleteMany();
+  await prisma().federatedAuthProvider.deleteMany();
   await prisma().setupStatus.deleteMany();
   await prisma().appConfig.deleteMany();
   await prisma().auditLog.deleteMany();

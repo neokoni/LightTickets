@@ -19,3 +19,5 @@ security:
   # 空值仅用于 setup 模式；setup 完成后自动生成并回写。
   jwtSecret: ""
   jwtRefreshSecret: ""
+  # 外部登录 Provider 密钥的主加密密钥；setup 或首次升级启动时自动生成。
+  externalEncryptionKey: ""

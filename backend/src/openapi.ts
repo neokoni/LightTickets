@@ -4,6 +4,14 @@ import path from 'path';
 import fs from 'fs';
 import { DatabaseProvider } from './constants/database-provider.js';
 import { StorageDriver } from './constants/storage-driver.js';
+import {
+  federatedAuthProviderCreateSchema,
+  federatedAuthProviderUpdateSchema,
+  federatedAuthRegistrationSchema,
+  federatedAuthStartSchema,
+  federatedAuthUnlinkSchema,
+  federatedAuthVerificationSchema,
+} from './schemas/federatedauth.js';
 
 const registry = new OpenAPIRegistry();
 
@@ -30,6 +38,9 @@ interface RouteDef {
   bodySchema?: z.ZodType;
   querySchema?: z.ZodObject;
   responseSchema?: z.ZodType;
+  paramsSchema?: z.ZodObject;
+  successStatus?: '200' | '201' | '204' | '303';
+  successDescription?: string;
 }
 
 function registerRoute(def: RouteDef) {
@@ -45,6 +56,7 @@ function registerRoute(def: RouteDef) {
           ? [{ [apiKeySecurityScheme.name]: [] }]
           : [{ [jwtSecurityScheme.name]: [] }],
     request: {
+      ...(def.paramsSchema && { params: def.paramsSchema }),
       ...(def.querySchema && { query: def.querySchema }),
       ...(def.bodySchema && {
         body: {
@@ -55,13 +67,15 @@ function registerRoute(def: RouteDef) {
     responses: {
       ...(def.responseSchema
         ? {
-            '200': {
-              description: 'Success',
+            [def.successStatus ?? '200']: {
+              description: def.successDescription ?? 'Success',
               content: { 'application/json': { schema: def.responseSchema } },
             },
           }
         : {
-            '200': { description: 'Success' },
+            [def.successStatus ?? '200']: {
+              description: def.successDescription ?? 'Success',
+            },
           }),
       '400': {
         description: 'Bad Request',
@@ -843,6 +857,14 @@ const registerSetupRoutes = () => {
         enabled: z.boolean(),
         siteKey: z.string(),
       }),
+      federatedAuthProviders: z.array(
+        z.object({
+          slug: z.string(),
+          name: z.string(),
+          iconUrl: z.string().nullable(),
+          allowRegistration: z.boolean(),
+        }),
+      ),
     }),
   });
   registerRoute({
@@ -973,6 +995,138 @@ const registerHealthRoute = () => {
   });
 };
 
+const registerFederatedAuthRoutes = () => {
+  const slugParams = z.object({ slug: z.string().min(1) });
+  const idParams = z.object({ id: z.string().uuid() });
+  const identityParams = z.object({ identityId: z.string().uuid() });
+  registerRoute({
+    method: 'post',
+    path: '/api/auth/federatedauth/{slug}/start',
+    summary: '开始外部登录',
+    auth: 'none',
+    tags: ['外部登录'],
+    bodySchema: federatedAuthStartSchema,
+    paramsSchema: slugParams,
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/auth/federatedauth/{slug}/callback',
+    summary: '处理外部登录回调',
+    auth: 'none',
+    tags: ['外部登录'],
+    paramsSchema: slugParams,
+    querySchema: z.object({
+      code: z.string().optional(),
+      state: z.string().optional(),
+      error: z.string().optional(),
+      error_description: z.string().optional(),
+    }),
+    successStatus: '303',
+    successDescription: 'Redirect to the frontend completion or registration page',
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/auth/federatedauth/registration/session',
+    summary: '获取外部登录注册会话',
+    auth: 'none',
+    tags: ['外部登录'],
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/auth/federatedauth/registration/verification-code',
+    summary: '发送外部登录本地账户注册邮箱验证码',
+    auth: 'none',
+    tags: ['外部登录'],
+    bodySchema: federatedAuthVerificationSchema,
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/auth/federatedauth/registration/complete',
+    summary: '创建本地账户并绑定外部登录身份',
+    auth: 'none',
+    tags: ['外部登录'],
+    bodySchema: federatedAuthRegistrationSchema,
+    successStatus: '201',
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/users/me/federatedauth',
+    summary: '列出当前账户的外部登录绑定',
+    auth: 'jwt',
+    tags: ['外部登录'],
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/users/me/federatedauth/{slug}/start',
+    summary: '开始绑定外部登录身份',
+    auth: 'jwt',
+    tags: ['外部登录'],
+    bodySchema: federatedAuthStartSchema,
+    paramsSchema: slugParams,
+  });
+  registerRoute({
+    method: 'delete',
+    path: '/api/users/me/federatedauth/{identityId}',
+    summary: '解绑外部登录身份',
+    auth: 'jwt',
+    tags: ['外部登录'],
+    bodySchema: federatedAuthUnlinkSchema,
+    paramsSchema: identityParams,
+    successStatus: '204',
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/admin/federatedauth/providers',
+    summary: '列出外部登录 Provider',
+    auth: 'admin',
+    tags: ['外部登录'],
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/admin/federatedauth/providers',
+    summary: '创建外部登录 Provider',
+    auth: 'admin',
+    tags: ['外部登录'],
+    bodySchema: federatedAuthProviderCreateSchema,
+    successStatus: '201',
+  });
+  registerRoute({
+    method: 'patch',
+    path: '/api/admin/federatedauth/providers/{id}',
+    summary: '更新外部登录 Provider',
+    auth: 'admin',
+    tags: ['外部登录'],
+    bodySchema: federatedAuthProviderUpdateSchema,
+    paramsSchema: idParams,
+  });
+  registerRoute({
+    method: 'delete',
+    path: '/api/admin/federatedauth/providers/{id}',
+    summary: '删除外部登录 Provider',
+    auth: 'admin',
+    tags: ['外部登录'],
+    paramsSchema: idParams,
+    successStatus: '204',
+  });
+  registerRoute({
+    method: 'delete',
+    path: '/api/admin/federatedauth/providers/{id}/identities',
+    summary: '解绑外部登录 Provider 的全部身份',
+    auth: 'admin',
+    tags: ['外部登录'],
+    paramsSchema: idParams,
+    responseSchema: z.object({ unlinked: z.number().int().nonnegative() }),
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/admin/federatedauth/providers/{id}/test',
+    summary: '测试外部登录 Provider 配置',
+    auth: 'admin',
+    tags: ['外部登录'],
+    paramsSchema: idParams,
+  });
+};
+
 registerHealthRoute();
 registerAuthRoutes();
 registerI18nRoutes();
@@ -986,6 +1140,7 @@ registerTemplateRoutes();
 registerStorageRoutes();
 registerUserRoutes();
 registerSetupRoutes();
+registerFederatedAuthRoutes();
 
 const generator = new OpenApiGeneratorV3(registry.definitions);
 

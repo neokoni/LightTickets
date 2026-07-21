@@ -16,6 +16,7 @@ const navItems = [
   { to: '/admin/settings', labelKey: 'admin.nav.settings', icon: 'lucide:settings' },
   { to: '/admin/mail', labelKey: 'admin.nav.mail', icon: 'lucide:mail' },
   { to: '/admin/turnstile', labelKey: 'admin.nav.turnstile', icon: 'lucide:shield-check' },
+  { to: '/admin/federatedauth', labelKey: 'admin.nav.federatedauth', icon: 'lucide:key-round' },
   { to: '/admin/storage', labelKey: 'admin.nav.storage', icon: 'lucide:database' },
   { to: '/admin/about', labelKey: 'admin.nav.about', icon: 'lucide:info' },
 ];
@@ -37,7 +38,7 @@ const selectedAdminPath = computed({
 </script>
 
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6">
+  <div class="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-[200px_minmax(0,1fr)]">
     <div class="md:hidden">
       <BaseSelect v-model="selectedAdminPath" :options="mobileNavOptions" variant="subtle" />
     </div>
@@ -54,7 +55,7 @@ const selectedAdminPath = computed({
         {{ t(item.labelKey) }}
       </RouterLink>
     </nav>
-    <div>
+    <div class="min-w-0">
       <RouterView />
     </div>
   </div>

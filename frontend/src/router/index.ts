@@ -38,6 +38,18 @@ const router = createRouter({
       meta: { guest: true },
     },
     {
+      path: '/federatedauth/complete',
+      name: 'federatedauth-complete',
+      component: () => import('@/views/FederatedAuthCompleteView.vue'),
+      meta: { public: true },
+    },
+    {
+      path: '/federatedauth/register',
+      name: 'federatedauth-register',
+      component: () => import('@/views/FederatedAuthRegisterView.vue'),
+      meta: { guest: true },
+    },
+    {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/ForgotPasswordView.vue'),
@@ -126,6 +138,12 @@ const router = createRouter({
           name: 'admin-turnstile',
           component: () => import('@/views/admin/AdminTurnstileView.vue'),
           meta: { auth: true, admin: true, titleKey: 'admin.turnstile.title' },
+        },
+        {
+          path: 'federatedauth',
+          name: 'admin-federatedauth',
+          component: () => import('@/views/admin/AdminFederatedAuthView.vue'),
+          meta: { auth: true, admin: true, titleKey: 'admin.federatedauth.title' },
         },
         {
           path: 'storage',

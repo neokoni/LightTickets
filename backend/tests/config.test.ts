@@ -35,6 +35,25 @@ describe('config', () => {
     expect(config.port).toBe(3000);
     expect(config.security.jwtSecret).toBe('test-jwt-secret');
     expect(config.database.provider).toBe('sqlite');
+    expect(config.security.externalEncryptionKey).toMatch(/^[a-f\d]{64}$/);
+  });
+
+  it('loadConfig persists a missing FederatedAuth encryption key with restricted permissions', async () => {
+    const { loadConfig } = await import('../src/config.js');
+    const config = loadConfig();
+    const persisted = fs.readFileSync(configPath, 'utf-8');
+    expect(persisted).toContain(config.security.externalEncryptionKey);
+    expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+  });
+
+  it('loadConfig rejects an invalid FederatedAuth encryption key', async () => {
+    fs.writeFileSync(
+      configPath,
+      `${minimalConfig.trim()}\n  externalEncryptionKey: "invalid"\n`,
+      'utf-8',
+    );
+    const { loadConfig } = await import('../src/config.js');
+    expect(() => loadConfig()).toThrow(/externalEncryptionKey/);
   });
 
   it('loadConfig sets process.env.DATABASE_URL', async () => {
