@@ -570,7 +570,7 @@ async function changeLanguage(languageId: string) {
             {{ t('profile.federatedauth.empty') }}
           </p>
 
-          <div v-if="availableFederatedAuthProviders.length" class="space-y-2">
+          <div class="space-y-2">
             <p class="text-sm font-medium text-slate-900 dark:text-white">
               {{ t('profile.federatedauth.add') }}
             </p>
@@ -584,6 +584,18 @@ async function changeLanguage(languageId: string) {
             >
               {{ t('profile.federatedauth.bindProvider', { provider: provider.name }) }}
             </BaseButton>
+            <p
+              v-if="!availableFederatedAuthProviders.length"
+              class="text-sm text-slate-500 dark:text-slate-400"
+            >
+              {{
+                t(
+                  siteConfig.federatedAuthProviders.length
+                    ? 'profile.federatedauth.allBound'
+                    : 'profile.federatedauth.unavailable',
+                )
+              }}
+            </p>
           </div>
         </div>
       </template>
