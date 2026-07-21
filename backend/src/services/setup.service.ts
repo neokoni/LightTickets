@@ -14,7 +14,9 @@ import type { MailConfigInput, PublicMailConfig } from './mail-config.service.js
 import * as i18nService from './i18n.service.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as turnstileConfigService from './turnstile-config.service.js';
+import * as rateLimitConfigService from './rate-limit-config.service.js';
 import * as federatedAuthProviderService from './federatedauth-provider.service.js';
+import type { RateLimitConfigInput } from '../schemas/rate-limit.js';
 import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 
 type SetupConfigFile = {
@@ -82,6 +84,8 @@ export interface AdminSettings extends Omit<SiteConfig, 'isSetup'> {
   sendEmailNotifications: boolean;
   mail: PublicMailConfig;
   turnstile: turnstileConfigService.PublicTurnstileConfig;
+  rateLimit: Awaited<ReturnType<typeof rateLimitConfigService.getRateLimitConfig>>;
+  rateLimitDefaults: ReturnType<typeof rateLimitConfigService.getDefaultRateLimitConfig>;
 }
 
 export interface SiteConfigInput {
@@ -274,6 +278,7 @@ export async function updateSettings(data: {
   sendEmailNotifications?: boolean;
   mail?: MailConfigInput;
   turnstile?: turnstileConfigService.TurnstileConfigInput;
+  rateLimit?: RateLimitConfigInput;
 }) {
   const { getPrisma } = await import('../db.js');
   const prisma = getPrisma();
@@ -304,6 +309,9 @@ export async function updateSettings(data: {
   const turnstile = data.turnstile
     ? await turnstileConfigService.updateTurnstileConfig(data.turnstile)
     : await turnstileConfigService.getTurnstileConfig();
+  const rateLimit = data.rateLimit
+    ? await rateLimitConfigService.updateRateLimitConfig(data.rateLimit)
+    : await rateLimitConfigService.getRateLimitConfig();
 
   return {
     requireLogin: updated.requireLogin,
@@ -316,6 +324,8 @@ export async function updateSettings(data: {
     sendEmailNotifications: updated.sendEmailNotifications,
     mail,
     turnstile,
+    rateLimit,
+    rateLimitDefaults: rateLimitConfigService.getDefaultRateLimitConfig(),
   };
 }
 
@@ -337,6 +347,8 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     sendEmailNotifications: status?.sendEmailNotifications ?? false,
     turnstile: await turnstileConfigService.getTurnstileConfig(),
     mail: await mailConfigService.getMailConfig(),
+    rateLimit: await rateLimitConfigService.getRateLimitConfig(),
+    rateLimitDefaults: rateLimitConfigService.getDefaultRateLimitConfig(),
     federatedAuthProviders: siteConfig.federatedAuthProviders,
   };
 }

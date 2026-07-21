@@ -288,6 +288,96 @@ describe('PATCH /api/setup/settings', () => {
       secretKeySet: false,
     });
     expect(res.body.data.turnstile).not.toHaveProperty('secretKey');
+    expect(res.body.data.rateLimit).toEqual({
+      global: { windowSeconds: 60, maxRequests: 100 },
+      auth: { windowSeconds: 60, maxRequests: 10 },
+      email: { cooldownSeconds: 60 },
+    });
+    expect(res.body.data.rateLimitDefaults).toEqual(res.body.data.rateLimit);
+  });
+
+  it('allows admin to update rate limit settings', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-rate-limit@test.com',
+          password: 'admin123',
+          username: 'settingsratelimit',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        rateLimit: {
+          global: { windowSeconds: 120, maxRequests: 250 },
+          auth: { windowSeconds: 60, maxRequests: 12 },
+          email: { cooldownSeconds: 90 },
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.rateLimit).toEqual({
+      global: { windowSeconds: 120, maxRequests: 250 },
+      auth: { windowSeconds: 60, maxRequests: 12 },
+      email: { cooldownSeconds: 90 },
+    });
+    expect(JSON.parse((await prisma().appConfig.findFirst())!.rateLimitConfig!)).toEqual(
+      res.body.data.rateLimit,
+    );
+  });
+
+  it('rejects invalid rate limit settings', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-rate-limit-invalid@test.com',
+          password: 'admin123',
+          username: 'settingsratelimitinvalid',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({ rateLimit: { auth: { windowSeconds: 0 } } });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('merges legacy email cooldown settings using the larger value', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-rate-limit-legacy@test.com',
+          password: 'admin123',
+          username: 'settingsratelimitlegacy',
+        },
+      });
+    const appConfig = await prisma().appConfig.findFirst();
+    await prisma().appConfig.update({
+      where: { id: appConfig!.id },
+      data: {
+        rateLimitConfig: JSON.stringify({
+          registrationEmail: { cooldownSeconds: 90 },
+          passwordResetEmail: { cooldownSeconds: 180 },
+        }),
+      },
+    });
+
+    const res = await request(app)
+      .get('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.rateLimit.email.cooldownSeconds).toBe(180);
   });
 
   it('allows admin to update requireLogin setting', async () => {

@@ -6,11 +6,11 @@ import * as setupService from './setup.service.js';
 import * as i18nService from './i18n.service.js';
 import * as mailService from './mail.service.js';
 import * as mailConfigService from './mail-config.service.js';
+import * as rateLimitConfigService from './rate-limit-config.service.js';
 import { resolveSiteTitle } from './site.js';
 
 const RESET_TOKEN_BYTES = 32;
 const RESET_TOKEN_EXPIRY_MS = 30 * 60 * 1000;
-const RESET_EMAIL_SEND_INTERVAL_MS = 60 * 1000;
 
 function tokenHash(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -131,6 +131,9 @@ export async function requestPasswordReset(
   });
   if (!user) return;
 
+  const rateLimitConfig = await rateLimitConfigService.getRateLimitConfig();
+  const cooldownMs = rateLimitConfig.email.cooldownSeconds * 1_000;
+
   const rawToken = crypto.randomBytes(RESET_TOKEN_BYTES).toString('base64url');
   const hash = tokenHash(rawToken);
   const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
@@ -147,7 +150,7 @@ export async function requestPasswordReset(
     const recentToken = await tx.passwordResetToken.findFirst({
       where: {
         userId: user.id,
-        createdAt: { gte: new Date(Date.now() - RESET_EMAIL_SEND_INTERVAL_MS) },
+        createdAt: { gte: new Date(Date.now() - cooldownMs) },
       },
       select: { id: true },
     });

@@ -9,6 +9,7 @@ import { validate } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
 import { DatabaseProvider } from '../constants/database-provider.js';
 import { StorageDriver } from '../constants/storage-driver.js';
+import { rateLimitConfigInputSchema } from '../schemas/rate-limit.js';
 
 interface SetupRouteOptions {
   onSetupComplete?: () => void | Promise<void>;
@@ -171,6 +172,7 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
             secretKey: z.string().nullable().optional(),
           })
           .optional(),
+        rateLimit: rateLimitConfigInputSchema.optional(),
       });
       const data = validate(schema, req.body);
 

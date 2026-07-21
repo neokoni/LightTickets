@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "LightTickets API",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "LightTickets API 文档"
   },
   "servers": [
@@ -10223,6 +10223,55 @@
                         "nullable": true
                       }
                     }
+                  },
+                  "rateLimit": {
+                    "type": "object",
+                    "properties": {
+                      "global": {
+                        "type": "object",
+                        "properties": {
+                          "windowSeconds": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 86400
+                          },
+                          "maxRequests": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "auth": {
+                        "type": "object",
+                        "properties": {
+                          "windowSeconds": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 86400
+                          },
+                          "maxRequests": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "email": {
+                        "type": "object",
+                        "properties": {
+                          "cooldownSeconds": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 86400
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 }
               }
@@ -10231,7 +10280,153 @@
         },
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rateLimit": {
+                      "type": "object",
+                      "properties": {
+                        "global": {
+                          "type": "object",
+                          "properties": {
+                            "windowSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            },
+                            "maxRequests": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "windowSeconds",
+                            "maxRequests"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "auth": {
+                          "type": "object",
+                          "properties": {
+                            "windowSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            },
+                            "maxRequests": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "windowSeconds",
+                            "maxRequests"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "email": {
+                          "type": "object",
+                          "properties": {
+                            "cooldownSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            }
+                          },
+                          "required": [
+                            "cooldownSeconds"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "global",
+                        "auth",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rateLimitDefaults": {
+                      "type": "object",
+                      "properties": {
+                        "global": {
+                          "type": "object",
+                          "properties": {
+                            "windowSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            },
+                            "maxRequests": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "windowSeconds",
+                            "maxRequests"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "auth": {
+                          "type": "object",
+                          "properties": {
+                            "windowSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            },
+                            "maxRequests": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "windowSeconds",
+                            "maxRequests"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "email": {
+                          "type": "object",
+                          "properties": {
+                            "cooldownSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            }
+                          },
+                          "required": [
+                            "cooldownSeconds"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "global",
+                        "auth",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "rateLimit",
+                    "rateLimitDefaults"
+                  ],
+                  "additionalProperties": {
+                    "nullable": true
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",
@@ -10347,7 +10542,153 @@
         ],
         "responses": {
           "200": {
-            "description": "Success"
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rateLimit": {
+                      "type": "object",
+                      "properties": {
+                        "global": {
+                          "type": "object",
+                          "properties": {
+                            "windowSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            },
+                            "maxRequests": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "windowSeconds",
+                            "maxRequests"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "auth": {
+                          "type": "object",
+                          "properties": {
+                            "windowSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            },
+                            "maxRequests": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "windowSeconds",
+                            "maxRequests"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "email": {
+                          "type": "object",
+                          "properties": {
+                            "cooldownSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            }
+                          },
+                          "required": [
+                            "cooldownSeconds"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "global",
+                        "auth",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rateLimitDefaults": {
+                      "type": "object",
+                      "properties": {
+                        "global": {
+                          "type": "object",
+                          "properties": {
+                            "windowSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            },
+                            "maxRequests": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "windowSeconds",
+                            "maxRequests"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "auth": {
+                          "type": "object",
+                          "properties": {
+                            "windowSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            },
+                            "maxRequests": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 100000
+                            }
+                          },
+                          "required": [
+                            "windowSeconds",
+                            "maxRequests"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "email": {
+                          "type": "object",
+                          "properties": {
+                            "cooldownSeconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 86400
+                            }
+                          },
+                          "required": [
+                            "cooldownSeconds"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "global",
+                        "auth",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "rateLimit",
+                    "rateLimitDefaults"
+                  ],
+                  "additionalProperties": {
+                    "nullable": true
+                  }
+                }
+              }
+            }
           },
           "400": {
             "description": "Bad Request",

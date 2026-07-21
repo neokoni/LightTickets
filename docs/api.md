@@ -199,7 +199,7 @@ Turnstile 时同样必须传 `turnstileToken`。
 }
 ```
 
-验证码为 6 位数字，10 分钟内有效、最多允许 5 次错误尝试，同一邮箱每 60 秒只能发送一次。
+验证码为 6 位数字，10 分钟内有效、最多允许 5 次错误尝试。同一邮箱默认每 60 秒只能发送一次，管理员可在限流策略中调整；`retryAfterSeconds` 返回当前生效的冷却秒数。
 请求验证码使用的 Turnstile token 已被消费，最终注册前需要由组件刷新取得新 token。
 
 `POST /api/auth/register`
@@ -244,7 +244,7 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 
 `POST /api/auth/password-reset/request`
 
-公开接口，挂认证限流。SMTP 需先在管理后台邮件配置中手动启用；初始化流程不包含邮件配置。同一账号每分钟最多发送一封密码重置邮件。
+公开接口，挂认证限流。SMTP 需先在管理后台邮件配置中手动启用；初始化流程不包含邮件配置。同一账号默认每 60 秒最多发送一封密码重置邮件，管理员可在限流策略中调整。
 
 请求体：
 
@@ -518,8 +518,9 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 
 `GET /api/setup/settings`
 
-需要 `admin`。返回站点设置、邮件设置和 Turnstile 设置；邮件密码和 Turnstile Secret Key 只返回是否已设置，不返回明文。
+需要 `admin`。返回站点设置、邮件设置、Turnstile 设置和限流策略；邮件密码和 Turnstile Secret Key 只返回是否已设置，不返回明文。
 `sendEmailNotifications` 表示是否发送议题回复和状态变更邮件，默认 `false`。
+`rateLimit` 是当前生效值，`rateLimitDefaults` 是内置默认值，管理页输入框的 placeholder 直接使用后者。
 
 `PATCH /api/setup/settings`
 
@@ -550,6 +551,19 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
     "enabled": true,
     "siteKey": "0x4AAAA...",
     "secretKey": "secret"
+  },
+  "rateLimit": {
+    "global": {
+      "windowSeconds": 60,
+      "maxRequests": 100
+    },
+    "auth": {
+      "windowSeconds": 60,
+      "maxRequests": 10
+    },
+    "email": {
+      "cooldownSeconds": 60
+    }
   }
 }
 ```
@@ -558,6 +572,10 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 议题邮件通知仅在 SMTP 配置可用、平台 `sendEmailNotifications=true`、议题创建者个人
 `receiveEmailNotifications=true` 且操作者不是创建者本人时发送。发送失败不会影响回复或状态变更操作。
 `turnstile.secretKey` 不传或传空时保留原 Secret Key；关闭 Turnstile 只需设置 `turnstile.enabled=false`。Turnstile 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
+
+限流策略保存在数据库 `AppConfig` 中，修改后立即应用。全局限流按 IP 统计所有 API 请求；认证限流按 IP 统计所有挂载认证限流器的接口并共享额度。请求窗口内前 `maxRequests` 次放行，之后返回 429，到窗口结束后重新计数。注册验证码和密码重置邮件统一读取 `email.cooldownSeconds`；前者按规范化邮箱统计，后者按用户账号统计。所有秒数和请求额度必须为正整数；秒数最大 86400，请求额度最大 100000。
+
+内置默认策略为：全局每 60 秒 100 次、认证接口每 60 秒 10 次、邮件发送冷却 60 秒。默认值只在后端 `constants/rate-limit.ts` 定义，API、业务逻辑和管理页共同读取该定义。读取已保存的旧版分项邮件配置时会取两项冷却时间中的较大值作为统一配置。
 
 `POST /api/setup/settings/mail/test`
 

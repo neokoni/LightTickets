@@ -176,6 +176,27 @@ describe('POST /api/auth/register', () => {
     expect(getTestOutbox()).toHaveLength(1);
   });
 
+  it('uses the configured registration email cooldown', async () => {
+    clearTestOutbox();
+    await configureApp({
+      mailConfig: JSON.stringify(mailConfig),
+      rateLimitConfig: JSON.stringify({
+        email: { cooldownSeconds: 120 },
+      }),
+    });
+
+    const first = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'configured-rate-limit@example.com' });
+    const second = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'configured-rate-limit@example.com' });
+
+    expect(first.status).toBe(200);
+    expect(first.body.data.retryAfterSeconds).toBe(120);
+    expect(second.status).toBe(429);
+  });
+
   it('rejects a registration code after five failed attempts', async () => {
     clearTestOutbox();
     await configureApp({ mailConfig: JSON.stringify(mailConfig) });
@@ -519,6 +540,37 @@ describe('POST /api/auth/password-reset', () => {
     expect(second.status).toBe(429);
     expect(getTestOutbox()).toHaveLength(1);
     await expect(prisma().passwordResetToken.count()).resolves.toBe(1);
+  });
+
+  it('uses the configured password reset email cooldown', async () => {
+    clearTestOutbox();
+    await request(app).post('/api/auth/register').send({
+      email: 'configured-reset-limit@example.com',
+      password: 'Password123!',
+      username: 'configuredresetlimit',
+    });
+    await configureApp({
+      mailConfig: JSON.stringify(mailConfig),
+      rateLimitConfig: JSON.stringify({
+        email: { cooldownSeconds: 120 },
+      }),
+    });
+
+    const first = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'configuredresetlimit' });
+    const token = await prisma().passwordResetToken.findFirst();
+    await prisma().passwordResetToken.update({
+      where: { id: token!.id },
+      data: { createdAt: new Date(Date.now() - 90_000) },
+    });
+    const second = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'configuredresetlimit' });
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(429);
+    expect(getTestOutbox()).toHaveLength(1);
   });
 
   it('rejects reset requests when mail is disabled', async () => {

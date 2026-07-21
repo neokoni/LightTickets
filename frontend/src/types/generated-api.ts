@@ -6182,7 +6182,38 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              rateLimit: {
+                global: {
+                  windowSeconds: number;
+                  maxRequests: number;
+                };
+                auth: {
+                  windowSeconds: number;
+                  maxRequests: number;
+                };
+                email: {
+                  cooldownSeconds: number;
+                };
+              };
+              rateLimitDefaults: {
+                global: {
+                  windowSeconds: number;
+                  maxRequests: number;
+                };
+                auth: {
+                  windowSeconds: number;
+                  maxRequests: number;
+                };
+                email: {
+                  cooldownSeconds: number;
+                };
+              };
+            } & {
+              [key: string]: unknown;
+            };
+          };
         };
         /** @description Bad Request */
         400: {
@@ -6272,6 +6303,19 @@ export interface paths {
               siteKey?: string;
               secretKey?: string | null;
             };
+            rateLimit?: {
+              global?: {
+                windowSeconds?: number;
+                maxRequests?: number;
+              };
+              auth?: {
+                windowSeconds?: number;
+                maxRequests?: number;
+              };
+              email?: {
+                cooldownSeconds?: number;
+              };
+            };
           };
         };
       };
@@ -6281,7 +6325,38 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              rateLimit: {
+                global: {
+                  windowSeconds: number;
+                  maxRequests: number;
+                };
+                auth: {
+                  windowSeconds: number;
+                  maxRequests: number;
+                };
+                email: {
+                  cooldownSeconds: number;
+                };
+              };
+              rateLimitDefaults: {
+                global: {
+                  windowSeconds: number;
+                  maxRequests: number;
+                };
+                auth: {
+                  windowSeconds: number;
+                  maxRequests: number;
+                };
+                email: {
+                  cooldownSeconds: number;
+                };
+              };
+            } & {
+              [key: string]: unknown;
+            };
+          };
         };
         /** @description Bad Request */
         400: {

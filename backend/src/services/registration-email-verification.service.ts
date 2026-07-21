@@ -6,11 +6,11 @@ import { AppError, ValidationError } from '../utils/errors.js';
 import * as i18nService from './i18n.service.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as mailService from './mail.service.js';
+import * as rateLimitConfigService from './rate-limit-config.service.js';
 import * as setupService from './setup.service.js';
 import { resolveSiteTitle } from './site.js';
 
 const CODE_EXPIRY_MS = 10 * 60 * 1000;
-const CODE_SEND_INTERVAL_MS = 60 * 1000;
 const MAX_CODE_ATTEMPTS = 5;
 const CODE_DIGITS = 6;
 
@@ -89,8 +89,13 @@ function buildVerificationEmail(input: { siteName: string; code: string; languag
   return { subject, html, text };
 }
 
-async function reserveCode(email: string, codeHash: string, now: Date): Promise<void> {
-  const cutoff = new Date(now.getTime() - CODE_SEND_INTERVAL_MS);
+async function reserveCode(
+  email: string,
+  codeHash: string,
+  now: Date,
+  cooldownSeconds: number,
+): Promise<void> {
+  const cutoff = new Date(now.getTime() - cooldownSeconds * 1_000);
   const expiresAt = new Date(now.getTime() + CODE_EXPIRY_MS);
   const updated = await prisma().registrationEmailVerification.updateMany({
     where: { email, createdAt: { lte: cutoff } },
@@ -130,10 +135,12 @@ export async function requestRegistrationEmailVerification(email: string): Promi
   const code = createCode();
   const codeHash = createCodeHash(normalizedEmail, code);
   const now = new Date();
+  const rateLimitConfig = await rateLimitConfigService.getRateLimitConfig();
+  const { cooldownSeconds } = rateLimitConfig.email;
   await prisma().registrationEmailVerification.deleteMany({
     where: { expiresAt: { lte: now } },
   });
-  await reserveCode(normalizedEmail, codeHash, now);
+  await reserveCode(normalizedEmail, codeHash, now, cooldownSeconds);
 
   try {
     const siteConfig = await setupService.getSiteConfig();
@@ -157,7 +164,7 @@ export async function requestRegistrationEmailVerification(email: string): Promi
 
   return {
     accepted: true,
-    retryAfterSeconds: Math.floor(CODE_SEND_INTERVAL_MS / 1000),
+    retryAfterSeconds: cooldownSeconds,
   };
 }
 

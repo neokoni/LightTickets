@@ -98,6 +98,8 @@ export interface SettingsResult {
   sendEmailNotifications: boolean;
   mail: MailSettings;
   turnstile: TurnstileSettings;
+  rateLimit: RateLimitConfig;
+  rateLimitDefaults: RateLimitConfig;
   federatedAuthProviders: FederatedAuthPublicProvider[];
 }
 
@@ -112,6 +114,28 @@ export interface SettingsPayload {
   sendEmailNotifications?: boolean;
   mail?: MailSettingsPayload;
   turnstile?: TurnstileSettingsPayload;
+  rateLimit?: RateLimitConfigPayload;
+}
+
+export interface RequestRateLimitRule {
+  windowSeconds: number;
+  maxRequests: number;
+}
+
+export interface EmailRateLimitRule {
+  cooldownSeconds: number;
+}
+
+export interface RateLimitConfig {
+  global: RequestRateLimitRule;
+  auth: RequestRateLimitRule;
+  email: EmailRateLimitRule;
+}
+
+export interface RateLimitConfigPayload {
+  global?: Partial<RequestRateLimitRule>;
+  auth?: Partial<RequestRateLimitRule>;
+  email?: Partial<EmailRateLimitRule>;
 }
 
 export interface MailSettings {

@@ -12,6 +12,7 @@ import {
   federatedAuthUnlinkSchema,
   federatedAuthVerificationSchema,
 } from './schemas/federatedauth.js';
+import { rateLimitConfigInputSchema, rateLimitConfigSchema } from './schemas/rate-limit.js';
 
 const registry = new OpenAPIRegistry();
 
@@ -836,6 +837,13 @@ const registerUserRoutes = () => {
 };
 
 const registerSetupRoutes = () => {
+  const rateLimitSettingsResponseSchema = z
+    .object({
+      rateLimit: rateLimitConfigSchema,
+      rateLimitDefaults: rateLimitConfigSchema,
+    })
+    .passthrough();
+
   registerRoute({
     method: 'get',
     path: '/api/setup/site-config',
@@ -963,7 +971,9 @@ const registerSetupRoutes = () => {
           secretKey: z.string().nullable().optional(),
         })
         .optional(),
+      rateLimit: rateLimitConfigInputSchema.optional(),
     }),
+    responseSchema: rateLimitSettingsResponseSchema,
   });
   registerRoute({
     method: 'get',
@@ -971,6 +981,7 @@ const registerSetupRoutes = () => {
     summary: '获取管理端站点设置',
     auth: 'admin',
     tags: ['Setup'],
+    responseSchema: rateLimitSettingsResponseSchema,
   });
   registerRoute({
     method: 'post',
@@ -1148,7 +1159,7 @@ const openapi = generator.generateDocument({
   openapi: '3.0.0',
   info: {
     title: 'LightTickets API',
-    version: '1.0.0',
+    version: '1.0.1',
     description: 'LightTickets API 文档',
   },
   servers: [{ url: 'http://localhost:23320', description: 'Development server' }],

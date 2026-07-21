@@ -140,6 +140,12 @@ const router = createRouter({
           meta: { auth: true, admin: true, titleKey: 'admin.turnstile.title' },
         },
         {
+          path: 'rate-limit',
+          name: 'admin-rate-limit',
+          component: () => import('@/views/admin/AdminRateLimitView.vue'),
+          meta: { auth: true, admin: true, titleKey: 'admin.rateLimit.title' },
+        },
+        {
           path: 'federatedauth',
           name: 'admin-federatedauth',
           component: () => import('@/views/admin/AdminFederatedAuthView.vue'),

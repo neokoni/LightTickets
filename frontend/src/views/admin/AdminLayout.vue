@@ -16,6 +16,7 @@ const navItems = [
   { to: '/admin/settings', labelKey: 'admin.nav.settings', icon: 'lucide:settings' },
   { to: '/admin/mail', labelKey: 'admin.nav.mail', icon: 'lucide:mail' },
   { to: '/admin/turnstile', labelKey: 'admin.nav.turnstile', icon: 'lucide:shield-check' },
+  { to: '/admin/rate-limit', labelKey: 'admin.nav.rateLimit', icon: 'lucide:gauge' },
   { to: '/admin/federatedauth', labelKey: 'admin.nav.federatedauth', icon: 'lucide:key-round' },
   { to: '/admin/storage', labelKey: 'admin.nav.storage', icon: 'lucide:database' },
   { to: '/admin/about', labelKey: 'admin.nav.about', icon: 'lucide:info' },
