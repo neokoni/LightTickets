@@ -389,7 +389,10 @@ async function unlinkAll(provider: FederatedAuthProvider) {
       v-model="modalOpen"
       :title="editing ? t('admin.federatedauth.edit') : t('admin.federatedauth.create')"
     >
-      <form class="max-h-[70vh] space-y-4 overflow-y-auto pr-1" @submit.prevent="save">
+      <form
+        class="scrollbar-hidden max-h-[70vh] space-y-4 overflow-y-auto pr-1"
+        @submit.prevent="save"
+      >
         <div class="grid gap-4 sm:grid-cols-2">
           <BaseInput
             v-model="form.slug"

@@ -165,6 +165,11 @@ button.base-checkbox:disabled {
   padding: 0.25rem;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+.settings-side-nav,
+.status-tabs-scroll,
+.scrollbar-hidden {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -173,7 +178,9 @@ button.base-checkbox:disabled {
   display: none;
 }
 
-.settings-side-nav::-webkit-scrollbar {
+.settings-side-nav::-webkit-scrollbar,
+.status-tabs-scroll::-webkit-scrollbar,
+.scrollbar-hidden::-webkit-scrollbar {
   display: none;
 }
 
@@ -369,10 +376,4 @@ button.base-checkbox:disabled {
 /* Status tabs horizontal scroll */
 .status-tabs-scroll {
   overflow-y: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.status-tabs-scroll::-webkit-scrollbar {
-  display: none;
 }

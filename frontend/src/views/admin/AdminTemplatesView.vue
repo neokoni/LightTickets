@@ -203,7 +203,7 @@ onMounted(() => {
       v-model="showModal"
       :title="editingName ? t('admin.templates.editTitle') : t('admin.templates.create')"
     >
-      <form class="space-y-4 max-h-[70vh] overflow-y-auto" @submit.prevent="save">
+      <form class="scrollbar-hidden max-h-[70vh] space-y-4 overflow-y-auto" @submit.prevent="save">
         <BaseInput
           v-model="form.name"
           :label="t('admin.templates.key')"
