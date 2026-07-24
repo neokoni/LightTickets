@@ -8,7 +8,7 @@ import { dataPath } from '../src/paths.js';
 const app = createApp();
 
 const templatesDir = dataPath('templates');
-const testTemplateNames = ['custom_test', 'dup_tmpl', 'patch_tmpl', 'delete_tmpl'];
+const testTemplateNames = ['custom_test', 'dup_tmpl', 'patch_tmpl', 'delete_tmpl', 'labeled_tmpl'];
 
 afterEach(() => {
   for (const name of testTemplateNames) {
@@ -183,6 +183,46 @@ describe('POST /api/admin/templates', () => {
       });
 
     expect(res.status).toBe(409);
+  });
+
+  it('adds template labels referenced by id or legacy name when a ticket is created', async () => {
+    const token = await setupAndGetAdmin();
+    const label = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'template-label', color: '#3b82f6' });
+    const legacyLabel = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'legacy-template-label', color: '#22c55e' });
+
+    const template = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'labeled_tmpl',
+        nameI18n: 'Labeled Template',
+        description: 'Adds a label',
+        labels: JSON.stringify([label.body.data.id, legacyLabel.body.data.name]),
+        body: '- type: input\n  id: reason\n  attributes:\n    label: Reason',
+      });
+    expect(template.status).toBe(201);
+
+    const userToken = await createUserAndGetToken('labeled-ticket@tmpl.test');
+    const ticket = await request(app)
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        title: 'Labeled ticket',
+        template: 'labeled_tmpl',
+        formData: { reason: 'Testing labels' },
+      });
+
+    expect(ticket.status).toBe(201);
+    expect(ticket.body.data.labels).toHaveLength(2);
+    expect(
+      ticket.body.data.labels.map((ticketLabel: { labelId: string }) => ticketLabel.labelId),
+    ).toEqual(expect.arrayContaining([label.body.data.id, legacyLabel.body.data.id]));
   });
 });
 

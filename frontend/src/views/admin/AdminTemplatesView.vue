@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useTemplatesStore } from '@/stores/templates';
+import { useLabelsStore } from '@/stores/labels';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { useConfirm } from '@/composables/useConfirm';
@@ -12,6 +13,7 @@ import BaseModal from '@/components/base/BaseModal.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
+import BaseMultiSelect from '@/components/base/BaseMultiSelect.vue';
 import type {
   AdminTemplate,
   EditableTemplateCompletionHook,
@@ -23,6 +25,7 @@ import type { TemplateField, TemplateHiddenMode } from '@/types/ticket';
 import { apiGetAdminTemplate } from '@/api/templates';
 
 const templates = useTemplatesStore();
+const labels = useLabelsStore();
 const ui = useUiStore();
 const { confirm } = useConfirm();
 
@@ -45,7 +48,7 @@ const form = ref({
   nameI18n: '',
   description: '',
   titlePrefix: '',
-  labels: '[]',
+  labels: [] as string[],
   enabled: true,
   hidden: 'false',
 });
@@ -62,7 +65,7 @@ function openCreate() {
     nameI18n: '',
     description: '',
     titlePrefix: '',
-    labels: '[]',
+    labels: [],
     enabled: true,
     hidden: 'false',
   };
@@ -81,16 +84,20 @@ function openCreate() {
 async function openEdit(tmpl: AdminTemplate) {
   try {
     guiSourceSyncEnabled.value = false;
-    const full = await apiGetAdminTemplate(tmpl.name);
+    const [full] = await Promise.all([
+      apiGetAdminTemplate(tmpl.name),
+      labels.loaded ? Promise.resolve() : labels.fetchList(),
+    ]);
     const parsed = JSON.parse(full.body) as TemplateField[];
     const parsedHooks = JSON.parse(full.completionHooks) as TemplateCompletionHook[];
+    const parsedLabels = JSON.parse(full.labels) as unknown;
     editingName.value = full.name;
     form.value = {
       name: full.name,
       nameI18n: full.nameI18n,
       description: full.description,
       titlePrefix: full.titlePrefix || '',
-      labels: full.labels,
+      labels: normalizeLabelReferences(parsedLabels),
       enabled: full.enabled,
       hidden: String(full.hidden),
     };
@@ -122,7 +129,7 @@ async function save() {
         nameI18n: form.value.nameI18n,
         description: form.value.description,
         titlePrefix: form.value.titlePrefix,
-        labels: form.value.labels,
+        labels: JSON.stringify(form.value.labels),
         body: serializeFields(),
         completionHooks: serializeHooks(),
         enabled: form.value.enabled,
@@ -132,6 +139,7 @@ async function save() {
     } else {
       await templates.create({
         ...form.value,
+        labels: JSON.stringify(form.value.labels),
         body: serializeFields(),
         completionHooks: serializeHooks(),
         source: source.value,
@@ -148,6 +156,21 @@ async function save() {
 function serializeHiddenMode(): TemplateHiddenMode {
   if (form.value.hidden === 'optional') return 'optional';
   return form.value.hidden === 'true';
+}
+
+function normalizeLabelReferences(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return Array.from(
+    new Set(
+      value.flatMap((reference) => {
+        if (typeof reference !== 'string') return [];
+        const label = labels.labels.find(
+          (candidate) => candidate.id === reference || candidate.name === reference,
+        );
+        return label ? [label.id] : [];
+      }),
+    ),
+  );
 }
 
 function emptyField(type: EditableTemplateField['type']): EditableTemplateField {
@@ -364,12 +387,6 @@ function serializeHooks(): string {
 }
 
 function labelsForSource(): unknown {
-  try {
-    const parsed = JSON.parse(form.value.labels || '[]') as unknown;
-    if (Array.isArray(parsed) && parsed.every((label) => typeof label === 'string')) return parsed;
-  } catch {
-    // Keep invalid input visible in the generated source so backend validation can reject it.
-  }
   return form.value.labels;
 }
 
@@ -548,8 +565,15 @@ async function remove(name: string) {
   }
 }
 
-onMounted(() => {
-  if (!templates.loaded) templates.fetchList();
+onMounted(async () => {
+  try {
+    await Promise.all([
+      templates.loaded ? Promise.resolve() : templates.fetchList(),
+      labels.loaded ? Promise.resolve() : labels.fetchList(),
+    ]);
+  } catch (e) {
+    handleError(e, t('common.loadFailed'));
+  }
 });
 </script>
 
@@ -680,11 +704,27 @@ onMounted(() => {
                 :label="t('admin.templates.titlePrefix')"
                 placeholder="[Bug] "
               />
-              <BaseInput
-                v-model="form.labels"
-                :label="t('admin.templates.labelsJson')"
-                placeholder='["bug"]'
-              />
+              <div class="space-y-2">
+                <BaseMultiSelect
+                  v-model="form.labels"
+                  :label="t('admin.templates.labels')"
+                  :options="
+                    labels.labels.map((label) => ({
+                      value: label.id,
+                      label: label.name,
+                      color: label.color,
+                    }))
+                  "
+                  :placeholder="t('admin.templates.labelsPlaceholder')"
+                  :empty-text="t('admin.templates.labelsEmpty')"
+                  :no-results-text="t('admin.templates.labelsNoResults')"
+                  :all-selected-text="t('admin.templates.labelsAllSelected')"
+                  :remove-title="t('admin.templates.labelsRemove')"
+                />
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                  {{ t('admin.templates.labelsHelp') }}
+                </p>
+              </div>
               <BaseSelect
                 v-model="form.hidden"
                 :label="t('admin.templates.visibility')"

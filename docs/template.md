@@ -14,6 +14,11 @@ body: []                    # 必填，表单字段定义数组
 completion_hooks: []        # 可选，状态变更时触发的钩子
 ```
 
+`labels` 中应填写平台“标签管理”创建的标签 ID。管理后台的可视化模板编辑器会在标签输入栏
+聚焦后提供现有标签候选项，点击候选项添加，点击已选标签移除。使用模板创建议题时，仍然
+存在的标签会自动关联到新议题；为兼容旧模板，后端也会按标签名称解析旧值。已删除或无法
+匹配的标签引用会被忽略。
+
 `hidden` 控制通过该模板创建的议题可见性：
 
 - `true`：议题始终隐藏，仅发起者、`staff` 和 `admin` 可见。
@@ -147,6 +152,24 @@ completion_hooks:
 | `minimessage` | 向议题作者发送 MiniMessage 格式消息 | `messages` 或 `message` |
 
 `type` 可省略，省略时自动推断：有 `commands` 字段则为 `command`，否则为 `minimessage`。
+
+管理后台编辑完成钩子时，每个命令或消息输入框对应一个独立元素。在当前输入框按回车会新增
+并聚焦下一个元素，不会把多项内容合并成带 `\n` 的字符串。MiniMessage 仅填写一条消息时
+序列化为 `message`，填写多条消息时序列化为 `messages` YAML 列表，例如：
+
+```yaml
+messages:
+  - abc
+  - def
+```
+
+命令同样会保存为独立列表元素：
+
+```yaml
+commands:
+  - tell {player_name} first
+  - say second
+```
 
 ### 可用占位符变量
 

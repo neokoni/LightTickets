@@ -178,8 +178,29 @@ export async function create(input: CreateTicketInput) {
   }
 
   const attachmentIds = Array.from(new Set(input.attachmentIds ?? []));
+  const labelReferences = Array.from(new Set(def.labels));
 
   return prisma().$transaction(async (tx) => {
+    const availableTemplateLabels =
+      labelReferences.length > 0
+        ? await tx.label.findMany({
+            where: {
+              OR: [{ id: { in: labelReferences } }, { name: { in: labelReferences } }],
+            },
+            select: { id: true, name: true },
+          })
+        : [];
+    const templateLabels = Array.from(
+      new Map(
+        labelReferences.flatMap((reference) => {
+          const label =
+            availableTemplateLabels.find((candidate) => candidate.id === reference) ??
+            availableTemplateLabels.find((candidate) => candidate.name === reference);
+          return label ? [[label.id, label] as const] : [];
+        }),
+      ).values(),
+    );
+
     const ticket = await tx.ticket.create({
       data: {
         title,
@@ -190,6 +211,9 @@ export async function create(input: CreateTicketInput) {
         authorId: input.authorId,
         serverId: input.serverId,
         hidden,
+        labels: {
+          create: templateLabels.map((label) => ({ labelId: label.id })),
+        },
       },
       include: TICKET_INCLUDE_BASE,
     });
