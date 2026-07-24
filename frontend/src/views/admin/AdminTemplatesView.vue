@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, nextTick, ref, watch, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useTemplatesStore } from '@/stores/templates';
 import { ToastType, useUiStore } from '@/stores/ui';
@@ -250,10 +250,11 @@ function emptyHook(
 
 function deserializeHook(hook: TemplateCompletionHook): EditableTemplateCompletionHook {
   const type = hook.type ?? (hook.commands ? 'command' : 'minimessage');
-  const contents =
+  const rawContents =
     type === 'command'
       ? (hook.commands ?? [])
       : (hook.messages ?? (hook.message ? [hook.message] : []));
+  const contents = rawContents.flatMap((content) => content.split(/\r?\n/));
   return {
     ...emptyHook(type),
     event: hook.event === 'invalid' ? 'invalid' : 'closed',
@@ -279,6 +280,22 @@ function moveHook(index: number, offset: -1 | 1) {
 
 function addHookContent(hook: EditableTemplateCompletionHook) {
   hook.contents.push('');
+}
+
+function insertHookContentAfter(
+  hook: EditableTemplateCompletionHook,
+  index: number,
+  event: KeyboardEvent,
+) {
+  if (event.isComposing) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const currentRow = (event.target as HTMLElement).closest('[data-hook-content-row]');
+  hook.contents.splice(index + 1, 0, '');
+  void nextTick(() => {
+    const nextInput = currentRow?.nextElementSibling?.querySelector('input');
+    if (nextInput instanceof HTMLInputElement) nextInput.focus();
+  });
 }
 
 function removeHookContent(hook: EditableTemplateCompletionHook, index: number) {
@@ -329,9 +346,16 @@ function onDragEnd() {
 function serializeHook(hook: EditableTemplateCompletionHook): TemplateCompletionHook {
   const result: TemplateCompletionHook = { event: hook.event, type: hook.type };
   if (hook.condition.trim()) result.if = hook.condition.trim();
-  const contents = hook.contents.filter((content) => content.trim());
-  if (hook.type === 'command') result.commands = contents;
-  else result.messages = contents;
+  const contents = hook.contents
+    .flatMap((content) => content.split(/\r?\n/))
+    .filter((content) => content.trim());
+  if (hook.type === 'command') {
+    result.commands = contents;
+  } else if (contents.length === 1) {
+    result.message = contents[0];
+  } else {
+    result.messages = contents;
+  }
   return result;
 }
 
@@ -431,6 +455,16 @@ const canSave = computed(() => {
   if (editingName.value && sourceChanged.value) return !!source.value.trim();
   return !!form.value.name.trim() && !!form.value.nameI18n.trim() && fields.value.length > 0;
 });
+
+function submitOnInputEnter(event: KeyboardEvent) {
+  if (event.isComposing || !(event.target instanceof HTMLInputElement)) return;
+  event.preventDefault();
+  if (!canSave.value) return;
+  const form = event.currentTarget;
+  if (form && 'requestSubmit' in form && typeof form.requestSubmit === 'function') {
+    form.requestSubmit();
+  }
+}
 
 const editorNavItems = [
   { key: 'basic' as const, labelKey: 'admin.templates.section.basic', icon: 'lucide:info' },
@@ -585,6 +619,7 @@ onMounted(() => {
       <form
         class="flex h-[calc(100vh-10rem)] min-h-0 max-h-[52rem] flex-col"
         @submit.prevent="save"
+        @keydown.enter="submitOnInputEnter"
       >
         <div
           class="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] gap-5 md:grid-cols-[200px_minmax(0,1fr)] md:grid-rows-1 md:gap-6"
@@ -978,12 +1013,13 @@ onMounted(() => {
                     <div
                       v-for="(_, contentIndex) in hook.contents"
                       :key="contentIndex"
+                      data-hook-content-row
                       class="flex items-start gap-2"
+                      @keydown.enter="insertHookContentAfter(hook, contentIndex, $event)"
                     >
-                      <BaseTextarea
+                      <BaseInput
                         v-model="hook.contents[contentIndex]"
-                        class="min-w-0 flex-1 [&_textarea]:font-mono"
-                        :rows="2"
+                        class="min-w-0 flex-1 [&_input]:font-mono"
                         :placeholder="
                           hook.type === 'command'
                             ? t('admin.templates.commandPlaceholder')
