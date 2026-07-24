@@ -18,6 +18,42 @@ const props = defineProps<{
 
 const open = ref(false);
 const wrapperEl = ref<HTMLElement>();
+const triggerEl = ref<HTMLElement>();
+const dropdownEl = ref<HTMLElement>();
+const placement = ref<'top' | 'bottom'>('bottom');
+const dropdownStyle = ref<Record<string, string>>({});
+const DROPDOWN_MAX_HEIGHT = 240;
+const DROPDOWN_GAP = 4;
+const VIEWPORT_PADDING = 12;
+
+function updatePlacement() {
+  if (!triggerEl.value) return;
+  const rect = triggerEl.value.getBoundingClientRect();
+  const spaceAbove = rect.top - VIEWPORT_PADDING - DROPDOWN_GAP;
+  const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_PADDING - DROPDOWN_GAP;
+  const desiredHeight = Math.min(DROPDOWN_MAX_HEIGHT, props.options.length * 40 + 8);
+  placement.value = spaceBelow >= desiredHeight || spaceBelow >= spaceAbove ? 'bottom' : 'top';
+  const availableSpace = placement.value === 'bottom' ? spaceBelow : spaceAbove;
+  const width = Math.min(rect.width, window.innerWidth - VIEWPORT_PADDING * 2);
+  const left = Math.min(
+    Math.max(rect.left, VIEWPORT_PADDING),
+    window.innerWidth - VIEWPORT_PADDING - width,
+  );
+
+  dropdownStyle.value = {
+    left: `${left}px`,
+    width: `${width}px`,
+    maxHeight: `${Math.max(48, Math.min(DROPDOWN_MAX_HEIGHT, availableSpace))}px`,
+    ...(placement.value === 'bottom'
+      ? { top: `${rect.bottom + DROPDOWN_GAP}px`, bottom: 'auto' }
+      : { top: 'auto', bottom: `${window.innerHeight - rect.top + DROPDOWN_GAP}px` }),
+  };
+}
+
+function toggleOpen() {
+  open.value = !open.value;
+  if (open.value) updatePlacement();
+}
 
 function select(value: string) {
   model.value = value;
@@ -25,7 +61,8 @@ function select(value: string) {
 }
 
 function onClickOutside(e: MouseEvent) {
-  if (wrapperEl.value && !wrapperEl.value.contains(e.target as Node)) {
+  const target = e.target as Node;
+  if (wrapperEl.value && !wrapperEl.value.contains(target) && !dropdownEl.value?.contains(target)) {
     open.value = false;
   }
 }
@@ -34,8 +71,20 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Escape') open.value = false;
 }
 
-onMounted(() => document.addEventListener('mousedown', onClickOutside));
-onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside));
+function onViewportChange() {
+  if (open.value) updatePlacement();
+}
+
+onMounted(() => {
+  document.addEventListener('mousedown', onClickOutside);
+  window.addEventListener('resize', onViewportChange);
+  window.addEventListener('scroll', onViewportChange, true);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', onClickOutside);
+  window.removeEventListener('resize', onViewportChange);
+  window.removeEventListener('scroll', onViewportChange, true);
+});
 
 const selectedOption = computed(() => props.options.find((o) => o.value === model.value));
 const selectedLabel = () =>
@@ -69,11 +118,12 @@ const dropdownClass = computed(() =>
     }}</label>
     <div class="relative">
       <button
+        ref="triggerEl"
         type="button"
         :disabled="disabled"
         class="flex min-h-10 w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm text-slate-900 transition disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-100"
         :class="buttonStateClass"
-        @click="open = !open"
+        @click="toggleOpen"
         @keydown="onKeydown"
       >
         <span
@@ -93,26 +143,31 @@ const dropdownClass = computed(() =>
           :class="{ 'rotate-180': open }"
         />
       </button>
+    </div>
+    <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
 
+    <Teleport to="body">
       <Transition
         enter-active-class="transition duration-150 ease-out"
-        enter-from-class="opacity-0 -translate-y-1"
-        enter-to-class="opacity-100 translate-y-0"
+        enter-from-class="opacity-0 scale-[0.98]"
+        enter-to-class="opacity-100 scale-100"
         leave-active-class="transition duration-100 ease-in"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 -translate-y-1"
+        leave-from-class="opacity-100 scale-100"
+        leave-to-class="opacity-0 scale-[0.98]"
       >
         <div
           v-if="open"
-          class="absolute z-50 mt-1 w-full overflow-hidden rounded-md border"
-          :class="dropdownClass"
+          ref="dropdownEl"
+          class="scrollbar-hidden fixed z-[110] overflow-x-hidden overflow-y-auto overscroll-contain rounded-md border"
+          :class="[dropdownClass, placement === 'bottom' ? 'origin-top' : 'origin-bottom']"
+          :style="dropdownStyle"
         >
           <div class="py-1">
             <button
               v-for="opt in options"
               :key="opt.value"
               type="button"
-              class="w-full px-3 py-2 text-sm text-left transition cursor-pointer"
+              class="w-full cursor-pointer px-3 py-2 text-left text-sm transition"
               :class="
                 opt.value === model
                   ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium'
@@ -132,7 +187,6 @@ const dropdownClass = computed(() =>
           </div>
         </div>
       </Transition>
-    </div>
-    <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
+    </Teleport>
   </div>
 </template>
