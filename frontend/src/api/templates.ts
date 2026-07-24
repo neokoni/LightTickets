@@ -18,6 +18,7 @@ export function apiCreateAdminTemplate(data: {
   labels?: string;
   body: string;
   completionHooks?: string;
+  source?: string;
   enabled?: boolean;
   hidden?: TemplateHiddenMode;
 }) {
@@ -36,6 +37,7 @@ export function apiUpdateAdminTemplate(
     labels?: string;
     body?: string;
     completionHooks?: string;
+    source?: string;
     enabled?: boolean;
     hidden?: TemplateHiddenMode;
   },

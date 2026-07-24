@@ -2,7 +2,7 @@
   "openapi": "3.0.0",
   "info": {
     "title": "LightTickets API",
-    "version": "1.0.1",
+    "version": "1.0.0",
     "description": "LightTickets API 文档"
   },
   "servers": [
@@ -7396,6 +7396,9 @@
                   "completionHooks": {
                     "type": "string"
                   },
+                  "source": {
+                    "type": "string"
+                  },
                   "enabled": {
                     "type": "boolean"
                   },
@@ -7679,6 +7682,9 @@
                     "type": "string"
                   },
                   "completionHooks": {
+                    "type": "string"
+                  },
+                  "source": {
                     "type": "string"
                   },
                   "enabled": {

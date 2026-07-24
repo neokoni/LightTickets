@@ -598,6 +598,9 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 - `PATCH /:name`
 - `DELETE /:name`
 
+`GET /:name` 返回 `source` 字段，其中包含模板文件的完整 YAML 原文。`PATCH /:name`
+可单独提交 `{ "source": "..." }` 直接更新原文；后端会在写入前解析并校验模板结构。
+
 ### 存储配置
 
 挂载路径：`/api/admin/storage`，需要 `admin`。

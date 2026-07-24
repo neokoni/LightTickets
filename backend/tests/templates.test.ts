@@ -113,12 +113,32 @@ describe('GET /api/admin/templates/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('name');
     expect(res.body.data).toHaveProperty('body');
+    expect(res.body.data.source).toContain('body:');
+    expect(JSON.parse(res.body.data.body)).toBeInstanceOf(Array);
+    expect(JSON.parse(res.body.data.completionHooks)).toBeInstanceOf(Array);
   });
 });
 
 describe('POST /api/admin/templates', () => {
   it('creates a new template', async () => {
     const token = await setupAndGetAdmin();
+    const source = [
+      'name: Custom Test',
+      'description: A test template',
+      'body:',
+      '  - type: input',
+      '    id: reason',
+      '    validations:',
+      '      required: true',
+      '    attributes:',
+      '      label: Reason',
+      'completion_hooks:',
+      '  - event: closed',
+      '    type: command',
+      '    commands:',
+      '      - say completed',
+      '',
+    ].join('\n');
 
     const res = await request(app)
       .post('/api/admin/templates')
@@ -128,10 +148,18 @@ describe('POST /api/admin/templates', () => {
         nameI18n: 'Custom Test',
         description: 'A test template',
         body: '- type: input\n  id: reason\n  validations:\n    required: true\n  attributes:\n    label: Reason',
+        completionHooks: JSON.stringify([
+          { event: 'closed', type: 'command', commands: ['say completed'] },
+        ]),
+        source,
       });
 
     expect(res.status).toBe(201);
     expect(res.body.data.name).toBe('custom_test');
+    expect(res.body.data.source).toBe(source);
+    expect(JSON.parse(res.body.data.completionHooks)).toEqual([
+      { event: 'closed', type: 'command', commands: ['say completed'] },
+    ]);
   });
 
   it('rejects duplicate template name', async () => {
@@ -179,6 +207,36 @@ describe('PATCH /api/admin/templates/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.description).toBe('Updated description');
+
+    const source = [
+      'name: Raw Update',
+      'description: Updated from YAML source',
+      'body:',
+      '  - type: markdown',
+      '    attributes:',
+      '      value: Direct edit',
+      'completion_hooks: []',
+      '',
+    ].join('\n');
+    const sourceRes = await request(app)
+      .patch(`/api/admin/templates/${created.body.data.name}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ source });
+
+    expect(sourceRes.status).toBe(200);
+    expect(sourceRes.body.data.description).toBe('Updated from YAML source');
+    expect(sourceRes.body.data.source).toBe(source);
+
+    const invalidRes = await request(app)
+      .patch(`/api/admin/templates/${created.body.data.name}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ source: 'name: [invalid' });
+    expect(invalidRes.status).toBe(400);
+
+    const unchanged = await request(app)
+      .get(`/api/admin/templates/${created.body.data.name}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(unchanged.body.data.source).toBe(source);
   });
 });
 

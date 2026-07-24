@@ -22,11 +22,15 @@ const createSchema = z.object({
   labels: z.string().optional(),
   body: z.string().min(1),
   completionHooks: z.string().optional(),
+  source: z.string().min(1).optional(),
   enabled: z.boolean().optional(),
   hidden: hiddenModeSchema.optional(),
 });
 
-const updateSchema = createSchema.omit({ name: true }).partial();
+const updateSchema = createSchema
+  .omit({ name: true })
+  .partial()
+  .extend({ source: z.string().min(1).optional() });
 
 // GET /api/admin/templates
 router.get('/', async (_req: Request, res: Response) => {

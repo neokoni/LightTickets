@@ -4557,6 +4557,7 @@ export interface paths {
             labels?: string;
             body: string;
             completionHooks?: string;
+            source?: string;
             enabled?: boolean;
             hidden?: boolean | 'optional';
           };
@@ -4782,6 +4783,7 @@ export interface paths {
             labels?: string;
             body?: string;
             completionHooks?: string;
+            source?: string;
             enabled?: boolean;
             hidden?: boolean | 'optional';
           };

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
 
-defineProps<{
+const props = defineProps<{
   title?: string;
+  size?: 'default' | 'wide';
 }>();
 
 const modelValue = defineModel<boolean>({ required: true });
@@ -14,7 +15,8 @@ const modelValue = defineModel<boolean>({ required: true });
       <div v-if="modelValue" class="fixed inset-0 z-[90] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="modelValue = false" />
         <div
-          class="relative w-full max-w-lg rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 shadow-sm backdrop-blur"
+          class="relative flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/95"
+          :class="props.size === 'wide' ? 'max-w-6xl' : 'max-w-lg'"
         >
           <div
             v-if="title"
@@ -28,7 +30,7 @@ const modelValue = defineModel<boolean>({ required: true });
               <Icon icon="lucide:x" class="w-5 h-5" />
             </button>
           </div>
-          <div class="p-6">
+          <div class="min-h-0 flex-1 overflow-hidden p-6">
             <slot />
           </div>
           <div

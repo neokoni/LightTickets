@@ -237,4 +237,4 @@ completion_hooks:
 
 ## 管理后台编辑
 
-管理后台的「模板管理」页面中，`body` 和 `completion_hooks` 字段以 YAML 格式编辑，提交时自动校验并转换为 JSON 存入数据库，同时同步写回 `backend/templates/<name>.yml` 文件。
+管理后台的「模板管理」编辑窗口分为「基础信息」「表单字段」「完成钩子」「编辑原文」四个分区，移动端可通过下拉框切换。`body` 和 `completion_hooks` 都会自动反序列化为结构化编辑器；保存时再自动序列化，由后端校验后同步写回 `data/templates/<name>.yml` 文件。表单字段和完成钩子均在列表底部选择类型后添加，并支持拖拽或箭头排序。表单字段支持 `input`、`textarea`、`markdown`、`checkboxes` 和 `dropdown`；完成钩子可配置事件、类型、条件以及命令或消息列表。空的可选配置不会写入模板。「编辑原文」会在 GUI 内容变化时实时生成完整 YAML，也可直接修改；保存前会由后端解析并校验，GUI 与原文均有修改时以最后发生的修改为准。

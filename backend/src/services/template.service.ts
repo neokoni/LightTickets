@@ -63,6 +63,7 @@ export interface AdminTemplate {
   labels: string;
   body: string;
   completionHooks: string;
+  source: string;
   enabled: boolean;
   hidden: TemplateHiddenMode;
   createdAt: Date;
@@ -153,15 +154,28 @@ function shouldRunHook(hook: CompletionHook, variables: Record<string, string>):
   }
 }
 
-function loadTemplateFile(filePath: string, nameKey: string): CachedTemplate {
-  const raw = fs.readFileSync(filePath, 'utf-8');
+function parseTemplateSource(raw: string): TemplateDefinition {
   const def = yaml.load(raw) as Partial<TemplateDefinition> | null;
-  if (!def || !def.name || !def.description || !Array.isArray(def.body)) {
+  if (
+    !def ||
+    typeof def.name !== 'string' ||
+    !def.name ||
+    typeof def.description !== 'string' ||
+    !def.description ||
+    !Array.isArray(def.body)
+  ) {
     throw new Error('missing required fields: name, description, or body');
   }
+  if (
+    (def.labels !== undefined &&
+      (!Array.isArray(def.labels) || !def.labels.every((label) => typeof label === 'string'))) ||
+    (def.completion_hooks !== undefined && !Array.isArray(def.completion_hooks)) ||
+    (def.enabled !== undefined && typeof def.enabled !== 'boolean')
+  ) {
+    throw new Error('invalid optional template fields');
+  }
 
-  const stat = fs.statSync(filePath);
-  const definition: TemplateDefinition = {
+  return {
     name: def.name,
     description: def.description,
     title_prefix: def.title_prefix,
@@ -171,6 +185,23 @@ function loadTemplateFile(filePath: string, nameKey: string): CachedTemplate {
     enabled: def.enabled ?? true,
     hidden: normalizeTemplateHiddenMode(def.hidden),
   };
+}
+
+function writeTemplateSource(name: string, source: string): void {
+  assertValidTemplateName(name);
+  try {
+    parseTemplateSource(source);
+  } catch {
+    throw new ValidationError('模板原文不是有效的 YAML 模板');
+  }
+  fs.mkdirSync(dataTemplatesDir, { recursive: true });
+  fs.writeFileSync(templatePath(name), source, 'utf-8');
+}
+
+function loadTemplateFile(filePath: string, nameKey: string): CachedTemplate {
+  const raw = fs.readFileSync(filePath, 'utf-8');
+  const definition = parseTemplateSource(raw);
+  const stat = fs.statSync(filePath);
 
   return {
     name: nameKey,
@@ -307,8 +338,11 @@ function toAdminTemplate(entry: CachedTemplate): AdminTemplate {
     description: entry.definition.description,
     titlePrefix: entry.definition.title_prefix ?? null,
     labels: JSON.stringify(entry.definition.labels),
-    body: yaml.dump(entry.definition.body, { lineWidth: -1, noRefs: true }),
-    completionHooks: yaml.dump(entry.definition.completion_hooks, { lineWidth: -1, noRefs: true }),
+    // JSON is also valid YAML and gives the admin field builder a deterministic
+    // representation that can be deserialized without shipping a second YAML parser.
+    body: JSON.stringify(entry.definition.body, null, 2),
+    completionHooks: JSON.stringify(entry.definition.completion_hooks, null, 2),
+    source: fs.readFileSync(entry.filePath, 'utf-8'),
     enabled: entry.enabled,
     hidden: entry.definition.hidden,
     createdAt: entry.createdAt,
@@ -395,6 +429,7 @@ export async function adminCreate(data: {
   labels?: string;
   body: string;
   completionHooks?: string;
+  source?: string;
   enabled?: boolean;
   hidden?: TemplateHiddenMode;
 }): Promise<AdminTemplate> {
@@ -402,7 +437,8 @@ export async function adminCreate(data: {
   if (cache.has(data.name) || fs.existsSync(templatePath(data.name)))
     throw new AppError(409, '模板 key 已存在');
 
-  writeTemplateFile(data.name, data);
+  if (data.source !== undefined) writeTemplateSource(data.name, data.source);
+  else writeTemplateFile(data.name, data);
   await initTemplates();
   return adminGet(data.name);
 }
@@ -416,12 +452,20 @@ export async function adminUpdate(
     labels?: string;
     body?: string;
     completionHooks?: string;
+    source?: string;
     enabled?: boolean;
     hidden?: TemplateHiddenMode;
   },
 ): Promise<AdminTemplate> {
   const existing = cache.get(name);
   if (!existing) throw new NotFoundError('模板不存在');
+
+  if (data.source !== undefined) {
+    writeTemplateSource(name, data.source);
+    await initTemplates();
+    return adminGet(name);
+  }
+
   const current = toAdminTemplate(existing);
 
   writeTemplateFile(name, {
