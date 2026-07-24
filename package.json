@@ -2,13 +2,21 @@
   "name": "lighttickets",
   "private": true,
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev": "concurrently -n server,web \"cd backend && npm run dev\" \"cd frontend && npm run dev\""
   },
   "lint-staged": {
-    "backend/src/**/*.ts": ["backend/node_modules/.bin/eslint --fix", "backend/node_modules/.bin/prettier --write"],
-    "frontend/src/**/*.{ts,vue}": ["frontend/node_modules/.bin/eslint --fix", "frontend/node_modules/.bin/prettier --write"]
+    "backend/src/**/*.ts": [
+      "backend/node_modules/.bin/eslint --fix",
+      "backend/node_modules/.bin/prettier --write"
+    ],
+    "frontend/src/**/*.{ts,vue}": [
+      "frontend/node_modules/.bin/eslint --fix",
+      "frontend/node_modules/.bin/prettier --write"
+    ]
   },
   "devDependencies": {
+    "concurrently": "^10.0.3",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8"
   }
