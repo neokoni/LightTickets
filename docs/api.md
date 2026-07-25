@@ -65,7 +65,7 @@
 `GET /api/auth/federatedauth/:slug/callback`。流程使用 HttpOnly 浏览器绑定 Cookie、state，默认使用
 PKCE；OIDC 额外校验 nonce 和 ID Token。
 
-未绑定身份不会按 Provider 邮箱匹配本地账户。允许注册时，回调进入本地账户创建流程，用户必须
+未绑定身份不会按 Provider 邮箱匹配账户。允许注册时，回调进入账户创建流程，用户必须
 自行填写邮箱、用户名和至少 8 位的本地密码；本地邮箱验证码策略与普通网页注册一致。账户和身份绑定
 在同一数据库事务中创建。
 
@@ -75,7 +75,7 @@ PKCE；OIDC 额外校验 nonce 和 ID Token。
 用户信息 JSON Path。所有非标准行为默认关闭，不根据域名自动启用或回退。
 
 管理员可调用 `DELETE /api/admin/federatedauth/providers/:id/identities` 一次解除该 Provider 的全部
-身份绑定。该操作只删除外部身份关系，本地账户及其密码、议题等数据均保留；Provider 仍需另行删除。
+身份绑定。该操作只删除外部身份关系，账户及其密码、议题等数据均保留；Provider 仍需另行删除。
 
 外部登录数据库变更均为新增表，`security.externalEncryptionKey` 也是向后兼容的新增配置项；回滚到
 不含此功能的版本时旧程序会忽略这些内容。升级前仍应备份数据库和 `config.yml`，回滚不得删除绑定表或
