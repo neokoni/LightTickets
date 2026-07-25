@@ -72,7 +72,15 @@ async function save() {
 async function testMail() {
   testingMail.value = true;
   try {
-    const result = await testMailSettings();
+    const result = await testMailSettings({
+      host: mailHost.value,
+      port: mailPort.value,
+      secure: mailSecure.value,
+      username: mailUsername.value || null,
+      ...(mailPassword.value && { password: mailPassword.value }),
+      fromName: mailFromName.value,
+      fromAddress: mailFromAddress.value,
+    });
     ui.toast(
       result.success ? t('admin.settings.smtpTestSuccess') : result.message,
       result.success ? ToastType.SUCCESS : ToastType.ERROR,

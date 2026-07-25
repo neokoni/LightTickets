@@ -75,19 +75,23 @@ function parseMailConfig(raw: string | null): MailConfig {
   }
 }
 
-function validateMailConfig(config: MailConfig): void {
-  if (!config.enabled) return;
-
+function validateMailTransportConfig(config: MailConfig): void {
   if (!config.host) throw new ValidationError('SMTP 主机不能为空');
   if (!Number.isInteger(config.port) || config.port <= 0) {
     throw new ValidationError('SMTP 端口无效');
   }
+  if (config.username && !config.password) {
+    throw new ValidationError('SMTP 密码不能为空');
+  }
+}
+
+function validateMailConfig(config: MailConfig): void {
+  if (!config.enabled) return;
+
+  validateMailTransportConfig(config);
   if (!config.fromAddress) throw new ValidationError('发件邮箱不能为空');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(config.fromAddress)) {
     throw new ValidationError('发件邮箱格式无效');
-  }
-  if (config.username && !config.password) {
-    throw new ValidationError('SMTP 密码不能为空');
   }
 }
 
@@ -123,10 +127,8 @@ export async function getMailConfig(): Promise<PublicMailConfig> {
   return toPublicMailConfig(await getFullMailConfig());
 }
 
-export async function updateMailConfig(input: MailConfigInput): Promise<PublicMailConfig> {
-  const existing = await ensureAppConfig();
-  const current = parseMailConfig(existing.mailConfig);
-  const next: MailConfig = {
+function mergeMailConfig(current: MailConfig, input: MailConfigInput): MailConfig {
+  return {
     enabled: input.enabled ?? current.enabled,
     host: input.host !== undefined ? input.host.trim() : current.host,
     port: input.port ?? current.port,
@@ -141,6 +143,18 @@ export async function updateMailConfig(input: MailConfigInput): Promise<PublicMa
     fromName: input.fromName !== undefined ? input.fromName.trim() : current.fromName,
     fromAddress: input.fromAddress !== undefined ? input.fromAddress.trim() : current.fromAddress,
   };
+}
+
+export async function resolveMailConfigForTest(input: MailConfigInput = {}): Promise<MailConfig> {
+  const config = mergeMailConfig(await getFullMailConfig(), input);
+  validateMailTransportConfig(config);
+  return config;
+}
+
+export async function updateMailConfig(input: MailConfigInput): Promise<PublicMailConfig> {
+  const existing = await ensureAppConfig();
+  const current = parseMailConfig(existing.mailConfig);
+  const next = mergeMailConfig(current, input);
 
   validateMailConfig(next);
 

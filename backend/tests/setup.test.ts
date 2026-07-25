@@ -718,7 +718,7 @@ describe('PATCH /api/setup/settings', () => {
       .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
       .send({
         mail: {
-          enabled: true,
+          enabled: false,
           host: 'smtp.example.com',
           port: 587,
           username: 'mailer',
@@ -730,6 +730,77 @@ describe('PATCH /api/setup/settings', () => {
     const res = await request(app)
       .post('/api/setup/settings/mail/test')
       .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+  });
+
+  it('tests unsaved mail settings without enabling or persisting them', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-mail-test-unsaved@test.com',
+          password: 'admin123',
+          username: 'settingsmailtestunsaved',
+        },
+      });
+    const before = await prisma().appConfig.findFirst({ select: { mailConfig: true } });
+
+    const res = await request(app)
+      .post('/api/setup/settings/mail/test')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        mail: {
+          host: 'smtp.current.example.com',
+          port: 587,
+          secure: false,
+          username: 'mailer',
+          password: 'current-secret',
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const after = await prisma().appConfig.findFirst({ select: { mailConfig: true } });
+    expect(after?.mailConfig).toBe(before?.mailConfig);
+  });
+
+  it('uses current page settings with a saved password fallback', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-mail-test-password@test.com',
+          password: 'admin123',
+          username: 'settingsmailtestpassword',
+        },
+      });
+
+    await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        mail: {
+          enabled: false,
+          username: 'mailer',
+          password: 'saved-secret',
+        },
+      });
+
+    const res = await request(app)
+      .post('/api/setup/settings/mail/test')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        mail: {
+          host: 'smtp.current.example.com',
+          port: 465,
+          secure: true,
+          username: 'mailer',
+        },
+      });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);

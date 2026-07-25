@@ -10,6 +10,7 @@ import { ROLE } from '../constants/roles.js';
 import { DatabaseProvider } from '../constants/database-provider.js';
 import { StorageDriver } from '../constants/storage-driver.js';
 import { rateLimitConfigInputSchema } from '../schemas/rate-limit.js';
+import { mailConfigInputSchema, mailTestSchema } from '../schemas/mail.js';
 
 interface SetupRouteOptions {
   onSetupComplete?: () => void | Promise<void>;
@@ -153,18 +154,7 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
         footerContent: z.string().max(2000).nullable().optional(),
         defaultLanguage: z.string().optional(),
         sendEmailNotifications: z.boolean().optional(),
-        mail: z
-          .object({
-            enabled: z.boolean().optional(),
-            host: z.string().optional(),
-            port: z.number().int().positive().optional(),
-            secure: z.boolean().optional(),
-            username: z.string().nullable().optional(),
-            password: z.string().nullable().optional(),
-            fromName: z.string().optional(),
-            fromAddress: z.string().email().or(z.literal('')).optional(),
-          })
-          .optional(),
+        mail: mailConfigInputSchema.optional(),
         turnstile: z
           .object({
             enabled: z.boolean().optional(),
@@ -185,8 +175,9 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
     '/settings/mail/test',
     authMiddleware,
     requireRole(ROLE.ADMIN),
-    async (_req: Request, res: Response) => {
-      const result = await mailService.testMailConfig();
+    async (req: Request, res: Response) => {
+      const data = validate(mailTestSchema, req.body ?? {});
+      const result = await mailService.testMailConfig(data.mail);
       res.json(result);
     },
   );

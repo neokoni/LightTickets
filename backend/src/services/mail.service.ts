@@ -82,11 +82,10 @@ export async function sendMail(message: SentMail): Promise<void> {
   await transporter.sendMail(buildMailOptions(config, message));
 }
 
-export async function verifyMailConfig(): Promise<void> {
-  const config = await mailConfigService.getFullMailConfig();
-  if (!config.enabled) {
-    throw new ValidationError('邮件服务尚未启用');
-  }
+export async function verifyMailConfig(
+  input: mailConfigService.MailConfigInput = {},
+): Promise<void> {
+  const config = await mailConfigService.resolveMailConfigForTest(input);
 
   if (process.env.NODE_ENV === 'test' || process.env.VITEST) return;
 
@@ -94,9 +93,11 @@ export async function verifyMailConfig(): Promise<void> {
   await transporter.verify();
 }
 
-export async function testMailConfig(): Promise<{ success: boolean; message: string }> {
+export async function testMailConfig(
+  input?: mailConfigService.MailConfigInput,
+): Promise<{ success: boolean; message: string }> {
   try {
-    await verifyMailConfig();
+    await verifyMailConfig(input);
     return { success: true, message: 'SMTP 连接成功' };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'SMTP 连接失败';

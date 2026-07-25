@@ -579,7 +579,9 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 
 `POST /api/setup/settings/mail/test`
 
-需要 `admin`。使用已保存的 SMTP 配置执行 Nodemailer 连接验证，返回：
+需要 `admin`。请求体可通过 `mail` 传入当前页面的 SMTP 配置；传入字段优先，未传字段从数据库
+中的已保存配置补齐（空密码会保留已保存密码）。测试不要求邮件服务已经启用，也不会保存传入
+配置。随后执行 Nodemailer 连接验证并返回：
 
 ```json
 {

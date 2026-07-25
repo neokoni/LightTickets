@@ -6185,7 +6185,22 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody?: {
+        content: {
+          'application/json': {
+            mail?: {
+              enabled?: boolean;
+              host?: string;
+              port?: number;
+              secure?: boolean;
+              username?: string | null;
+              password?: string | null;
+              fromName?: string;
+              fromAddress?: string | '';
+            };
+          };
+        };
+      };
       responses: {
         /** @description Success */
         200: {

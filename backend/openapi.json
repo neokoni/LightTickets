@@ -10275,7 +10275,8 @@
                           }
                         ]
                       }
-                    }
+                    },
+                    "additionalProperties": false
                   },
                   "turnstile": {
                     "type": "object",
@@ -10608,6 +10609,63 @@
             "bearerAuth": []
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mail": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "host": {
+                        "type": "string"
+                      },
+                      "port": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "exclusiveMinimum": true
+                      },
+                      "secure": {
+                        "type": "boolean"
+                      },
+                      "username": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "password": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "fromName": {
+                        "type": "string"
+                      },
+                      "fromAddress": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "email"
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              ""
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",

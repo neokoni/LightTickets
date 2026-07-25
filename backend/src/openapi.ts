@@ -14,6 +14,7 @@ import {
 } from './schemas/federatedauth.js';
 import { rateLimitConfigInputSchema, rateLimitConfigSchema } from './schemas/rate-limit.js';
 import { labelCreateSchema, labelIdentifierSchema, labelUpdateSchema } from './schemas/label.js';
+import { mailConfigInputSchema, mailTestSchema } from './schemas/mail.js';
 
 const registry = new OpenAPIRegistry();
 
@@ -953,18 +954,7 @@ const registerSetupRoutes = () => {
       footerContent: z.string().max(2000).nullable().optional(),
       defaultLanguage: z.string().optional(),
       sendEmailNotifications: z.boolean().optional(),
-      mail: z
-        .object({
-          enabled: z.boolean().optional(),
-          host: z.string().optional(),
-          port: z.number().int().positive().optional(),
-          secure: z.boolean().optional(),
-          username: z.string().nullable().optional(),
-          password: z.string().nullable().optional(),
-          fromName: z.string().optional(),
-          fromAddress: z.string().email().or(z.literal('')).optional(),
-        })
-        .optional(),
+      mail: mailConfigInputSchema.optional(),
       turnstile: z
         .object({
           enabled: z.boolean().optional(),
@@ -982,6 +972,7 @@ const registerSetupRoutes = () => {
     summary: '获取管理端站点设置',
     auth: 'admin',
     tags: ['Setup'],
+    bodySchema: mailTestSchema,
     responseSchema: rateLimitSettingsResponseSchema,
   });
   registerRoute({
