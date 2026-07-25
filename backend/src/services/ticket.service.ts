@@ -181,25 +181,13 @@ export async function create(input: CreateTicketInput) {
   const labelReferences = Array.from(new Set(def.labels));
 
   return prisma().$transaction(async (tx) => {
-    const availableTemplateLabels =
+    const templateLabels =
       labelReferences.length > 0
         ? await tx.label.findMany({
-            where: {
-              OR: [{ id: { in: labelReferences } }, { name: { in: labelReferences } }],
-            },
-            select: { id: true, name: true },
+            where: { id: { in: labelReferences } },
+            select: { id: true },
           })
         : [];
-    const templateLabels = Array.from(
-      new Map(
-        labelReferences.flatMap((reference) => {
-          const label =
-            availableTemplateLabels.find((candidate) => candidate.id === reference) ??
-            availableTemplateLabels.find((candidate) => candidate.name === reference);
-          return label ? [[label.id, label] as const] : [];
-        }),
-      ).values(),
-    );
 
     const ticket = await tx.ticket.create({
       data: {

@@ -51,13 +51,6 @@ export interface GameContext {
   gameMode?: string;
 }
 
-export interface Label {
-  id: string;
-  name: string;
-  color: string;
-  description?: string;
-}
-
 export interface TicketLabel {
   ticketId: number;
   labelId: string;
@@ -165,3 +158,4 @@ export interface TicketFilters {
   labelId?: string;
   search?: string;
 }
+import type { Label } from './label';

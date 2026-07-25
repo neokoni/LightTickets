@@ -164,9 +164,7 @@ function normalizeLabelReferences(value: unknown): string[] {
     new Set(
       value.flatMap((reference) => {
         if (typeof reference !== 'string') return [];
-        const label = labels.labels.find(
-          (candidate) => candidate.id === reference || candidate.name === reference,
-        );
+        const label = labels.labels.find((candidate) => candidate.id === reference);
         return label ? [label.id] : [];
       }),
     ),

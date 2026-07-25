@@ -193,7 +193,7 @@ model Ticket {
 }
 
 model Label {
-  id          String        @id @default(uuid())
+  id          String        @id
   name        String        @unique
   color       String
   description String?

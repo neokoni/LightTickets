@@ -473,11 +473,11 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 ## 标签
 
 - `GET /api/labels`
-- `POST /api/labels`，需要 `admin`
+- `POST /api/labels`，需要 `admin`，请求体包含必填的唯一标识符 `id`（如 `bug`）、`name` 和 `color`
 - `PATCH /api/labels/:id`，需要 `admin`
 - `DELETE /api/labels/:id`，需要 `admin`
 
-标签颜色格式为 hex，如 `#22c55e`。
+标签标识符只能包含字母、数字、下划线和短横线，创建后不可修改；标签颜色格式为 hex，如 `#22c55e`。
 
 ## 服务器管理
 

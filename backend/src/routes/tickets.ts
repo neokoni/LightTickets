@@ -6,10 +6,10 @@ import * as labelService from '../services/label.service.js';
 import * as attachmentService from '../services/attachment.service.js';
 import { authMiddleware, conditionalAuthMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
-import { ValidationError } from '../utils/errors.js';
 import { validate, parseId, paginationSchema } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
+import { labelIdentifierSchema } from '../schemas/label.js';
 
 const router = Router();
 
@@ -21,6 +21,8 @@ const createSchema = z.object({
   attachmentIds: z.array(z.string()).optional(),
   hidden: z.boolean().optional(),
 });
+
+const ticketLabelSchema = z.object({ labelId: labelIdentifierSchema });
 
 const ticketStatusSchema = z.enum([
   TICKET_STATUS.OPEN,
@@ -184,8 +186,7 @@ router.post(
   authMiddleware,
   requireRole(ROLE.STAFF),
   async (req: Request, res: Response) => {
-    const { labelId } = req.body;
-    if (!labelId) throw new ValidationError('标签ID不能为空');
+    const { labelId } = validate(ticketLabelSchema, req.body);
     await labelService.addToTicketWithAudit(
       parseId(String(req.params.id)),
       labelId,
@@ -200,9 +201,10 @@ router.delete(
   authMiddleware,
   requireRole(ROLE.STAFF),
   async (req: Request, res: Response) => {
+    const labelId = validate(labelIdentifierSchema, String(req.params.labelId));
     await labelService.removeFromTicketWithAudit(
       parseId(String(req.params.id)),
-      String(req.params.labelId),
+      labelId,
       req.user!.userId,
     );
     res.status(204).end();

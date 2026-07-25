@@ -3650,18 +3650,27 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
+                  },
                   "name": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 50
                   },
                   "color": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
                   },
                   "description": {
                     "type": "string"
                   }
                 },
                 "required": [
+                  "id",
                   "name",
                   "color"
                 ]
@@ -3787,6 +3796,19 @@
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "pattern": "^[a-zA-Z0-9_-]+$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -3794,10 +3816,13 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
                   },
                   "color": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
                   },
                   "description": {
                     "type": "string"
@@ -3921,6 +3946,19 @@
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "pattern": "^[a-zA-Z0-9_-]+$"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
           }
         ],
         "responses": {
@@ -4048,7 +4086,10 @@
                 "type": "object",
                 "properties": {
                   "labelId": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50,
+                    "pattern": "^[a-zA-Z0-9_-]+$"
                   }
                 },
                 "required": [
@@ -4174,6 +4215,27 @@
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "pattern": "^[a-zA-Z0-9_-]+$"
+            },
+            "required": true,
+            "name": "labelId",
+            "in": "path"
           }
         ],
         "responses": {

@@ -2234,6 +2234,7 @@ export interface paths {
       requestBody?: {
         content: {
           'application/json': {
+            id: string;
             name: string;
             color: string;
             description?: string;
@@ -2317,7 +2318,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -2384,7 +2387,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: {
@@ -2555,7 +2560,10 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+          labelId: string;
+        };
         cookie?: never;
       };
       requestBody?: never;

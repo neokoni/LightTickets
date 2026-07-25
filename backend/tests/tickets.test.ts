@@ -476,7 +476,7 @@ describe('POST /api/tickets/:id/labels', () => {
     const label = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'test-label', color: '#ef4444' });
+      .send({ id: 'test-label', name: 'Test label', color: '#ef4444' });
 
     const res = await request(app)
       .post(`/api/tickets/${created.body.data.id}/labels`)
@@ -509,7 +509,7 @@ describe('DELETE /api/tickets/:id/labels/:labelId', () => {
     const label = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${adminToken}`)
-      .send({ name: 'remove-me', color: '#000000' });
+      .send({ id: 'remove-me', name: 'Remove me', color: '#000000' });
 
     await request(app)
       .post(`/api/tickets/${created.body.data.id}/labels`)

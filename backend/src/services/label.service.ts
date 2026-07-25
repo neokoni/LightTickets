@@ -2,11 +2,15 @@ import { prisma } from '../db.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
 
-export async function create(name: string, color: string, description?: string) {
-  const existing = await prisma().label.findUnique({ where: { name } });
-  if (existing) throw new AppError(409, '标签已存在');
+export async function create(id: string, name: string, color: string, description?: string) {
+  const existing = await prisma().label.findFirst({
+    where: { OR: [{ id }, { name }] },
+    select: { id: true, name: true },
+  });
+  if (existing?.id === id) throw new AppError(409, '标签标识符已存在');
+  if (existing) throw new AppError(409, '标签名称已存在');
 
-  return prisma().label.create({ data: { name, color, description } });
+  return prisma().label.create({ data: { id, name, color, description } });
 }
 
 export async function getById(id: string) {

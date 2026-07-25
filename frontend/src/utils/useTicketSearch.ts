@@ -3,7 +3,7 @@ import { CommentSource } from '@/types/ticket';
 import { STATUS_ALIASES, STATUS_META } from '@/types/ticket';
 import { t } from '@/i18n';
 import type { Server } from '@/types/user';
-import type { Label } from '@/types/ticket';
+import type { Label } from '@/types/label';
 
 export interface SearchToken {
   raw: string;
@@ -158,15 +158,15 @@ function filterDefinitions(): FilterDefinition[] {
       color: FILTER_COLORS.label,
       parse: (value, ctx) => {
         const v = value.toLowerCase();
-        const matched = ctx.labels.find((l) => l.name.toLowerCase() === v);
+        const matched = ctx.labels.find((l) => l.id.toLowerCase() === v);
         return matched ? { labelId: matched.id } : null;
       },
       preview: (value, ctx) => {
         const v = value.toLowerCase();
-        const matched = ctx.labels.find((l) => l.name.toLowerCase() === v);
+        const matched = ctx.labels.find((l) => l.id.toLowerCase() === v);
         return matched ? matched.name : value;
       },
-      suggestions: (ctx) => ctx.labels.map((l) => ({ value: l.name, label: l.name })),
+      suggestions: (ctx) => ctx.labels.map((l) => ({ value: l.id, label: `${l.id} (${l.name})` })),
     },
     {
       key: 'from',

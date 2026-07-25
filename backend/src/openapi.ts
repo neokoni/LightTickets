@@ -13,6 +13,7 @@ import {
   federatedAuthVerificationSchema,
 } from './schemas/federatedauth.js';
 import { rateLimitConfigInputSchema, rateLimitConfigSchema } from './schemas/rate-limit.js';
+import { labelCreateSchema, labelIdentifierSchema, labelUpdateSchema } from './schemas/label.js';
 
 const registry = new OpenAPIRegistry();
 
@@ -382,6 +383,9 @@ const registerCommentRoutes = () => {
 };
 
 const registerLabelRoutes = () => {
+  const labelParamsSchema = z.object({ id: labelIdentifierSchema });
+  const ticketParamsSchema = z.object({ id: z.string(), labelId: labelIdentifierSchema });
+
   registerRoute({
     method: 'get',
     path: '/api/labels',
@@ -395,11 +399,7 @@ const registerLabelRoutes = () => {
     summary: '创建标签',
     auth: 'admin',
     tags: ['Labels'],
-    bodySchema: z.object({
-      name: z.string().min(1),
-      color: z.string(),
-      description: z.string().optional(),
-    }),
+    bodySchema: labelCreateSchema,
   });
   registerRoute({
     method: 'patch',
@@ -407,11 +407,8 @@ const registerLabelRoutes = () => {
     summary: '更新标签',
     auth: 'admin',
     tags: ['Labels'],
-    bodySchema: z.object({
-      name: z.string().optional(),
-      color: z.string().optional(),
-      description: z.string().optional(),
-    }),
+    paramsSchema: labelParamsSchema,
+    bodySchema: labelUpdateSchema,
   });
   registerRoute({
     method: 'delete',
@@ -419,21 +416,23 @@ const registerLabelRoutes = () => {
     summary: '删除标签',
     auth: 'admin',
     tags: ['Labels'],
+    paramsSchema: labelParamsSchema,
   });
   registerRoute({
     method: 'post',
     path: '/api/tickets/{id}/labels',
     summary: '为议题添加标签',
-    auth: 'jwt',
+    auth: 'staff',
     tags: ['Labels'],
-    bodySchema: z.object({ labelId: z.string() }),
+    bodySchema: z.object({ labelId: labelIdentifierSchema }),
   });
   registerRoute({
     method: 'delete',
     path: '/api/tickets/{id}/labels/{labelId}',
     summary: '从议题移除标签',
-    auth: 'jwt',
+    auth: 'staff',
     tags: ['Labels'],
+    paramsSchema: ticketParamsSchema,
   });
 };
 

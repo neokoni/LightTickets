@@ -46,10 +46,11 @@ describe('POST /api/labels', () => {
     const res = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'bug', color: '#ef4444', description: 'Bug reports' });
+      .send({ id: 'bug', name: 'Bug', color: '#ef4444', description: 'Bug reports' });
 
     expect(res.status).toBe(201);
-    expect(res.body.data.name).toBe('bug');
+    expect(res.body.data.id).toBe('bug');
+    expect(res.body.data.name).toBe('Bug');
     expect(res.body.data.color).toBe('#ef4444');
   });
 
@@ -58,7 +59,7 @@ describe('POST /api/labels', () => {
     const res = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'test', color: 'red' });
+      .send({ id: 'test', name: 'test', color: 'red' });
 
     expect(res.status).toBe(400);
   });
@@ -68,9 +69,43 @@ describe('POST /api/labels', () => {
     const res = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${token}`)
-      .send({ color: '#ef4444' });
+      .send({ id: 'test', color: '#ef4444' });
 
     expect(res.status).toBe(400);
+  });
+
+  it('rejects missing identifier', async () => {
+    const token = await createAdminAndGetToken('admin-identifier@test.com');
+    const res = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Test', color: '#ef4444' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects an invalid identifier', async () => {
+    const token = await createAdminAndGetToken('admin-invalid-identifier@test.com');
+    const res = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 'invalid identifier', name: 'Test', color: '#ef4444' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('rejects a duplicate identifier', async () => {
+    const token = await createAdminAndGetToken('admin-duplicate-identifier@test.com');
+    await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 'duplicate', name: 'First', color: '#ef4444' });
+    const res = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 'duplicate', name: 'Second', color: '#22c55e' });
+
+    expect(res.status).toBe(409);
   });
 });
 
@@ -80,7 +115,12 @@ describe('PATCH /api/labels/:id', () => {
     const created = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'patch-me', color: '#ef4444', description: 'Original' });
+      .send({
+        id: 'patch-me',
+        name: 'Patch me',
+        color: '#ef4444',
+        description: 'Original',
+      });
 
     const res = await request(app)
       .patch(`/api/labels/${created.body.data.id}`)
@@ -97,7 +137,7 @@ describe('DELETE /api/labels/:id', () => {
     const created = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'delete-me', color: '#ef4444' });
+      .send({ id: 'delete-me', name: 'Delete me', color: '#ef4444' });
 
     const res = await request(app)
       .delete(`/api/labels/${created.body.data.id}`)

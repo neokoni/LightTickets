@@ -185,16 +185,20 @@ describe('POST /api/admin/templates', () => {
     expect(res.status).toBe(409);
   });
 
-  it('adds template labels referenced by id or legacy name when a ticket is created', async () => {
+  it('adds template labels referenced by their identifiers when a ticket is created', async () => {
     const token = await setupAndGetAdmin();
     const label = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'template-label', color: '#3b82f6' });
-    const legacyLabel = await request(app)
+      .send({ id: 'template-label', name: 'Template label', color: '#3b82f6' });
+    const secondaryLabel = await request(app)
       .post('/api/labels')
       .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'legacy-template-label', color: '#22c55e' });
+      .send({
+        id: 'secondary-template-label',
+        name: 'Secondary template label',
+        color: '#22c55e',
+      });
 
     const template = await request(app)
       .post('/api/admin/templates')
@@ -203,7 +207,7 @@ describe('POST /api/admin/templates', () => {
         name: 'labeled_tmpl',
         nameI18n: 'Labeled Template',
         description: 'Adds a label',
-        labels: JSON.stringify([label.body.data.id, legacyLabel.body.data.name]),
+        labels: JSON.stringify([label.body.data.id, secondaryLabel.body.data.id]),
         body: '- type: input\n  id: reason\n  attributes:\n    label: Reason',
       });
     expect(template.status).toBe(201);
@@ -222,7 +226,7 @@ describe('POST /api/admin/templates', () => {
     expect(ticket.body.data.labels).toHaveLength(2);
     expect(
       ticket.body.data.labels.map((ticketLabel: { labelId: string }) => ticketLabel.labelId),
-    ).toEqual(expect.arrayContaining([label.body.data.id, legacyLabel.body.data.id]));
+    ).toEqual(expect.arrayContaining([label.body.data.id, secondaryLabel.body.data.id]));
   });
 });
 

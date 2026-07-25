@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { Label } from '@/types/ticket';
+import type { CreateLabelPayload, Label, UpdateLabelPayload } from '@/types/label';
 import { apiGetLabels, apiCreateLabel, apiUpdateLabel, apiDeleteLabel } from '@/api/labels';
 
 export const useLabelsStore = defineStore('labels', () => {
@@ -18,13 +18,13 @@ export const useLabelsStore = defineStore('labels', () => {
     }
   }
 
-  async function create(data: { name: string; color: string; description?: string }) {
+  async function create(data: CreateLabelPayload) {
     const label = await apiCreateLabel(data);
     labels.value.push(label);
     return label;
   }
 
-  async function update(id: string, data: { name?: string; color?: string; description?: string }) {
+  async function update(id: string, data: UpdateLabelPayload) {
     const label = await apiUpdateLabel(id, data);
     const idx = labels.value.findIndex((l) => l.id === id);
     if (idx !== -1) labels.value[idx] = label;
