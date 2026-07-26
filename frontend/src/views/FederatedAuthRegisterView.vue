@@ -145,15 +145,21 @@ async function submit() {
         </div>
 
         <form class="mt-6 space-y-4" @submit.prevent="submit">
-          <BaseInput v-model="username" :label="t('user.username')" />
-          <BaseInput v-model="email" :label="t('user.email')" type="email" />
+          <BaseInput v-model="username" :label="t('user.username')" required />
+          <BaseInput v-model="email" :label="t('user.email')" type="email" required />
           <BaseInput
             v-model="password"
             :label="t('auth.password')"
+            required
             type="password"
             :placeholder="t('auth.passwordMinLength')"
           />
-          <BaseInput v-model="confirmPassword" :label="t('auth.confirmPassword')" type="password" />
+          <BaseInput
+            v-model="confirmPassword"
+            :label="t('auth.confirmPassword')"
+            type="password"
+            required
+          />
           <TurnstileWidget
             v-if="siteConfig.turnstile.enabled"
             ref="turnstileWidget"
@@ -165,6 +171,7 @@ async function submit() {
               v-model="emailVerificationCode"
               class="min-w-0 flex-1"
               :label="t('auth.register.code')"
+              required
               inputmode="numeric"
               maxlength="6"
             />

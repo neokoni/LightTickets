@@ -401,38 +401,29 @@ async function changeLanguage(languageId: string) {
         </h2>
 
         <div class="space-y-4 max-w-lg">
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-900 dark:text-white">{{
-              t('profile.password.current')
-            }}</label>
-            <BaseInput
-              v-model="currentPassword"
-              type="password"
-              :placeholder="t('profile.password.currentPlaceholder')"
-            />
-          </div>
+          <BaseInput
+            v-model="currentPassword"
+            :label="t('profile.password.current')"
+            type="password"
+            required
+            :placeholder="t('profile.password.currentPlaceholder')"
+          />
 
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-900 dark:text-white">{{
-              t('profile.password.new')
-            }}</label>
-            <BaseInput
-              v-model="newPassword"
-              type="password"
-              :placeholder="t('profile.password.minLength')"
-            />
-          </div>
+          <BaseInput
+            v-model="newPassword"
+            :label="t('profile.password.new')"
+            type="password"
+            required
+            :placeholder="t('profile.password.minLength')"
+          />
 
-          <div class="space-y-1.5">
-            <label class="text-sm font-medium text-slate-900 dark:text-white">{{
-              t('profile.password.confirmNew')
-            }}</label>
-            <BaseInput
-              v-model="confirmPassword"
-              type="password"
-              :placeholder="t('profile.password.confirmPlaceholder')"
-            />
-          </div>
+          <BaseInput
+            v-model="confirmPassword"
+            :label="t('profile.password.confirmNew')"
+            type="password"
+            required
+            :placeholder="t('profile.password.confirmPlaceholder')"
+          />
 
           <BaseButton size="sm" :loading="savingPassword" @click="changePassword">{{
             t('profile.password.update')

@@ -397,43 +397,52 @@ async function unlinkAll(provider: FederatedAuthProvider) {
           <BaseInput
             v-model="form.slug"
             :label="t('admin.federatedauth.slug')"
+            required
             :disabled="!!editing?.identityCount"
           />
-          <BaseInput v-model="form.name" :label="t('admin.federatedauth.name')" />
+          <BaseInput v-model="form.name" :label="t('admin.federatedauth.name')" required />
         </div>
         <BaseInput v-model="form.iconUrl" :label="t('admin.federatedauth.iconUrl')" />
         <BaseSelect
           v-model="form.protocol"
           :label="t('admin.federatedauth.protocol')"
+          required
           :options="protocolOptions"
           :disabled="!!editing?.identityCount"
           @update:model-value="changeProtocol"
         />
-        <BaseInput v-if="form.protocol === 'oidc'" v-model="form.issuer" label="Issuer" />
+        <BaseInput v-if="form.protocol === 'oidc'" v-model="form.issuer" label="Issuer" required />
         <template v-else>
           <BaseInput
             v-model="form.authorizationEndpoint"
             :label="t('admin.federatedauth.authorizationEndpoint')"
+            required
           />
-          <BaseInput v-model="form.tokenEndpoint" :label="t('admin.federatedauth.tokenEndpoint')" />
+          <BaseInput
+            v-model="form.tokenEndpoint"
+            :label="t('admin.federatedauth.tokenEndpoint')"
+            required
+          />
           <BaseInput
             v-model="form.userInfoEndpoint"
             :label="t('admin.federatedauth.userInfoEndpoint')"
+            required
           />
         </template>
         <BaseInput
           v-model="form.redirectUri"
           :label="t('admin.federatedauth.redirectUri')"
+          required
           :placeholder="suggestedRedirect(form.slug)"
         />
-        <BaseInput v-model="form.clientId" label="Client ID" />
+        <BaseInput v-model="form.clientId" label="Client ID" required />
         <BaseInput
           v-model="form.clientSecret"
           label="Client Secret"
           type="password"
           :placeholder="editing?.clientSecretSet ? t('admin.federatedauth.keepSecret') : ''"
         />
-        <BaseInput v-model="form.scope" label="Scope" />
+        <BaseInput v-model="form.scope" label="Scope" :required="form.protocol === 'oidc'" />
 
         <BaseButton
           type="button"
@@ -453,7 +462,11 @@ async function unlinkAll(provider: FederatedAuthProvider) {
           :inert="advancedOpen ? undefined : true"
         >
           <div class="grid gap-3 sm:grid-cols-2">
-            <BaseInput v-model="form.subjectPath" :label="t('admin.federatedauth.subjectPath')" />
+            <BaseInput
+              v-model="form.subjectPath"
+              :label="t('admin.federatedauth.subjectPath')"
+              required
+            />
             <BaseInput v-model="form.usernamePath" :label="t('admin.federatedauth.usernamePath')" />
             <BaseInput v-model="form.emailPath" :label="t('admin.federatedauth.emailPath')" />
             <BaseInput v-model="form.avatarPath" :label="t('admin.federatedauth.avatarPath')" />
@@ -468,11 +481,13 @@ async function unlinkAll(provider: FederatedAuthProvider) {
           <BaseSelect
             v-model="form.secretMode"
             :label="t('admin.federatedauth.secretMode')"
+            required
             :options="secretModeOptions"
           />
           <BaseInput
             v-model="form.accessTokenPath"
             :label="t('admin.federatedauth.accessTokenPath')"
+            required
           />
           <BaseTextarea
             v-model="form.authorizationParams"

@@ -64,6 +64,7 @@ async function submit() {
         <BaseInput
           v-model="emailOrUsername"
           :label="t('auth.emailOrUsername')"
+          required
           :placeholder="t('auth.emailOrUsernamePlaceholder')"
         />
         <TurnstileWidget

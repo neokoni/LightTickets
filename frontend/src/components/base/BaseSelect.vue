@@ -14,6 +14,7 @@ const props = defineProps<{
   error?: string;
   disabled?: boolean;
   variant?: 'default' | 'subtle';
+  required?: boolean;
 }>();
 
 const open = ref(false);
@@ -113,14 +114,15 @@ const dropdownClass = computed(() =>
 
 <template>
   <div ref="wrapperEl" class="min-w-0 space-y-1.5">
-    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">{{
-      label
-    }}</label>
+    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+      {{ label }}<span v-if="required" class="base-field-required" aria-hidden="true">*</span>
+    </label>
     <div class="relative -m-0.5 p-0.5">
       <button
         ref="triggerEl"
         type="button"
         :disabled="disabled"
+        :aria-required="required || undefined"
         class="flex min-h-10 w-full cursor-pointer items-center justify-between rounded-md border px-3 py-2 text-sm text-slate-900 transition disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-100"
         :class="buttonStateClass"
         @click="toggleOpen"

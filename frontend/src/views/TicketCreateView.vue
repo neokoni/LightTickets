@@ -168,6 +168,7 @@ async function submit() {
         <BaseInput
           v-model="title"
           :label="t('ticket.create.fieldTitle')"
+          required
           :placeholder="t('ticket.create.titlePlaceholder')"
         />
         <p
@@ -182,6 +183,7 @@ async function submit() {
         v-if="visibilityRequired"
         v-model="visibilityChoice"
         :label="t('ticket.visibility.createLabel')"
+        required
         :placeholder="t('ticket.visibility.createPlaceholder')"
         :options="visibilityOptions"
       />
@@ -200,6 +202,7 @@ async function submit() {
           v-else-if="field.type === 'input'"
           :model-value="formValues[field.id || ''] || ''"
           :label="field.attributes.label || ''"
+          :required="field.validations?.required === true"
           :placeholder="field.attributes.placeholder"
           @update:model-value="setFieldValue(field.id || '', String($event || ''))"
         />
@@ -209,6 +212,7 @@ async function submit() {
           v-else-if="field.type === 'textarea'"
           :model-value="formValues[field.id || ''] || ''"
           :label="field.attributes.label || ''"
+          :required="field.validations?.required === true"
           :placeholder="field.attributes.placeholder"
           :rows="6"
           uploadable
@@ -222,6 +226,12 @@ async function submit() {
         <fieldset v-else-if="field.type === 'checkboxes'" class="space-y-2">
           <legend class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
             {{ field.attributes.label }}
+            <span
+              v-if="field.validations?.required === true"
+              class="base-field-required"
+              aria-hidden="true"
+              >*</span
+            >
           </legend>
           <label
             v-for="option in field.attributes.options"
@@ -250,6 +260,7 @@ async function submit() {
         <BaseSelect
           v-else-if="field.type === 'dropdown'"
           :label="field.attributes.label"
+          :required="field.validations?.required === true"
           :placeholder="field.attributes.placeholder || t('common.selectPlaceholderWithDots')"
           :model-value="formValues[field.id || ''] || ''"
           :options="

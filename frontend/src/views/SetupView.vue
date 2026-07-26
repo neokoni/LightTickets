@@ -277,6 +277,7 @@ async function changeSetupLanguage(languageId: string) {
           <BaseInput
             v-model="mysqlFields.host"
             :label="t('setup.database.host')"
+            required
             placeholder="localhost"
           />
           <BaseInput
@@ -287,6 +288,7 @@ async function changeSetupLanguage(languageId: string) {
           <BaseInput
             v-model="mysqlFields.username"
             :label="t('setup.database.username')"
+            required
             placeholder="root"
           />
           <BaseInput
@@ -298,6 +300,7 @@ async function changeSetupLanguage(languageId: string) {
           <BaseInput
             v-model="mysqlFields.database"
             :label="t('setup.database.database')"
+            required
             placeholder="lighttickets"
             class="col-span-2"
           />
@@ -315,9 +318,10 @@ async function changeSetupLanguage(languageId: string) {
         <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
           {{ t('setup.storage.title') }}
         </h2>
-        <label class="text-sm font-medium text-slate-900 dark:text-white">{{
-          t('setup.storage.driver')
-        }}</label>
+        <label class="text-sm font-medium text-slate-900 dark:text-white">
+          {{ t('setup.storage.driver')
+          }}<span class="base-field-required" aria-hidden="true">*</span>
+        </label>
         <div class="flex gap-3">
           <BaseButton
             :class="storageButtonClass"
@@ -347,22 +351,26 @@ async function changeSetupLanguage(languageId: string) {
           <BaseInput
             v-model="payload.storage!.s3!.endpoint"
             :label="t('setup.storage.endpoint')"
+            required
             placeholder="http://localhost:9000"
           />
           <BaseInput
             v-model="payload.storage!.s3!.bucket"
             :label="t('setup.storage.bucket')"
+            required
             placeholder="lighttickets"
           />
           <div class="grid grid-cols-2 gap-3">
             <BaseInput
               v-model="payload.storage!.s3!.accessKeyId"
-              label="Access Key ID *"
+              label="Access Key ID"
+              required
               placeholder="minioadmin"
             />
             <BaseInput
               v-model="payload.storage!.s3!.secretAccessKey"
-              label="Secret Access Key *"
+              label="Secret Access Key"
+              required
               type="password"
               placeholder="minioadmin"
             />
@@ -370,6 +378,7 @@ async function changeSetupLanguage(languageId: string) {
           <BaseInput
             v-model.number="payload.storage!.s3!.presignExpiry"
             :label="t('setup.storage.presignExpiry')"
+            required
             type="number"
             min="60"
             placeholder="300"
@@ -398,17 +407,20 @@ async function changeSetupLanguage(languageId: string) {
         <BaseInput
           v-model="payload.admin.username"
           :label="t('setup.admin.username')"
+          required
           placeholder="admin"
         />
         <BaseInput
           v-model="payload.admin.email"
           :label="t('setup.admin.email')"
+          required
           placeholder="admin@example.com"
           type="email"
         />
         <BaseInput
           v-model="payload.admin.password"
           :label="t('setup.admin.password')"
+          required
           :placeholder="t('setup.admin.passwordPlaceholder')"
           type="password"
         />
@@ -422,6 +434,7 @@ async function changeSetupLanguage(languageId: string) {
         <BaseInput
           v-model="payload.site!.siteName"
           :label="t('setup.site.name')"
+          required
           :placeholder="setupSiteTitle"
         />
         <BaseInput
@@ -432,6 +445,7 @@ async function changeSetupLanguage(languageId: string) {
         <BaseSelect
           :model-value="activeLanguage"
           :label="t('settings.language.default')"
+          required
           :options="
             availableLanguages.map((language) => ({
               value: language.id,

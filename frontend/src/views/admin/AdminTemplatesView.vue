@@ -774,6 +774,7 @@ onMounted(async () => {
               <BaseInput
                 v-model="form.name"
                 :label="t('admin.templates.key')"
+                required
                 placeholder="bug_report"
                 :disabled="!!editingName"
               />
@@ -783,11 +784,13 @@ onMounted(async () => {
               <BaseInput
                 v-model="form.nameI18n"
                 :label="t('admin.templates.displayName')"
+                required
                 :placeholder="t('admin.templates.displayNamePlaceholder')"
               />
               <BaseInput
                 v-model="form.description"
                 :label="t('common.description')"
+                required
                 :placeholder="t('admin.templates.descriptionPlaceholder')"
               />
               <BaseInput
@@ -819,6 +822,7 @@ onMounted(async () => {
               <BaseSelect
                 v-model="form.hidden"
                 :label="t('admin.templates.visibility')"
+                required
                 :options="hiddenModeOptions"
               />
               <div
@@ -1112,11 +1116,13 @@ onMounted(async () => {
                     <BaseSelect
                       v-model="hook.event"
                       :label="t('admin.templates.hookEvent')"
+                      required
                       :options="hookEventOptions"
                     />
                     <BaseSelect
                       v-model="hook.type"
                       :label="t('admin.templates.hookType')"
+                      required
                       :options="hookTypeOptions"
                     />
                   </div>
@@ -1126,11 +1132,13 @@ onMounted(async () => {
                       <BaseInput
                         v-model="hook.title"
                         :label="t('admin.templates.selectionTitle')"
+                        required
                         :placeholder="t('admin.templates.selectionTitlePlaceholder')"
                       />
                       <BaseSelect
                         v-model="hook.visibility"
                         :label="t('admin.templates.selectionVisibility')"
+                        required
                         :options="selectionVisibilityOptions"
                       />
                     </div>
@@ -1166,16 +1174,19 @@ onMounted(async () => {
                           <BaseSelect
                             v-model="field.type"
                             :label="t('admin.templates.newFieldType')"
+                            required
                             :options="selectionFieldTypeOptions"
                           />
                           <BaseInput
                             v-model="field.id"
                             :label="t('admin.templates.fieldId')"
+                            required
                             placeholder="result"
                           />
                           <BaseInput
                             v-model="field.label"
                             :label="t('admin.templates.fieldLabel')"
+                            required
                           />
                           <BaseInput
                             v-model="field.description"
@@ -1273,6 +1284,7 @@ onMounted(async () => {
                             v-model="action.type"
                             class="min-w-0 flex-1"
                             :label="t('admin.templates.actionType')"
+                            required
                             :options="hookActionTypeOptions"
                           />
                           <BaseButton
@@ -1427,6 +1439,7 @@ onMounted(async () => {
               <BaseTextarea
                 v-model="source"
                 :label="t('admin.templates.sourceLabel')"
+                required
                 :rows="28"
                 spellcheck="false"
                 class="[&_textarea]:min-h-[28rem] [&_textarea]:font-mono"

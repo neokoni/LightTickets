@@ -77,6 +77,7 @@ async function save() {
           <BaseInput
             v-model.number="config.global.windowSeconds"
             :label="t('admin.rateLimit.windowSeconds')"
+            required
             type="number"
             min="1"
             max="86400"
@@ -85,6 +86,7 @@ async function save() {
           <BaseInput
             v-model.number="config.global.maxRequests"
             :label="t('admin.rateLimit.maxRequests')"
+            required
             type="number"
             min="1"
             max="100000"
@@ -108,6 +110,7 @@ async function save() {
           <BaseInput
             v-model.number="config.auth.windowSeconds"
             :label="t('admin.rateLimit.windowSeconds')"
+            required
             type="number"
             min="1"
             max="86400"
@@ -116,6 +119,7 @@ async function save() {
           <BaseInput
             v-model.number="config.auth.maxRequests"
             :label="t('admin.rateLimit.maxRequests')"
+            required
             type="number"
             min="1"
             max="100000"
@@ -138,6 +142,7 @@ async function save() {
         <BaseInput
           v-model.number="config.email.cooldownSeconds"
           :label="t('admin.rateLimit.cooldownSeconds')"
+          required
           type="number"
           min="1"
           max="86400"

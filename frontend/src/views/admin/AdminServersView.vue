@@ -252,6 +252,7 @@ onMounted(fetchServers);
         <BaseInput
           v-model="form.name"
           :label="t('common.name')"
+          required
           :placeholder="t('admin.servers.namePlaceholder')"
         />
         <BaseInput
@@ -274,6 +275,7 @@ onMounted(fetchServers);
         <BaseInput
           v-model="editForm.name"
           :label="t('common.name')"
+          required
           :placeholder="t('admin.servers.namePlaceholder')"
         />
         <BaseInput

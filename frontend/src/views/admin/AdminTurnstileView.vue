@@ -104,11 +104,13 @@ async function save() {
         <BaseInput
           v-model="siteKey"
           :label="t('admin.turnstile.siteKey')"
+          required
           placeholder="0x4AAAA..."
         />
         <BaseInput
           v-model="secretKey"
           :label="t('admin.turnstile.secretKey')"
+          :required="!secretKeySet"
           type="password"
           :placeholder="
             secretKeySet ? t('admin.turnstile.secretKeyKeep') : t('admin.turnstile.secretKey')

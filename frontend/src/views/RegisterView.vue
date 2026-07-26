@@ -138,22 +138,30 @@ async function submit() {
       </div>
 
       <form class="mt-6 space-y-4" @submit.prevent="submit">
-        <BaseInput v-model="username" :label="t('user.username')" placeholder="your_name" />
+        <BaseInput
+          v-model="username"
+          :label="t('user.username')"
+          placeholder="your_name"
+          required
+        />
         <BaseInput
           v-model="email"
           :label="t('user.email')"
+          required
           type="email"
           placeholder="you@example.com"
         />
         <BaseInput
           v-model="password"
           :label="t('auth.password')"
+          required
           type="password"
           :placeholder="t('auth.passwordMinLength')"
         />
         <BaseInput
           v-model="confirmPassword"
           :label="t('auth.confirmPassword')"
+          required
           type="password"
           :placeholder="t('auth.confirmPasswordPlaceholder')"
         />
@@ -170,6 +178,7 @@ async function submit() {
               <BaseInput
                 v-model="emailVerificationCode"
                 :label="t('auth.register.code')"
+                required
                 :placeholder="t('auth.register.codePlaceholder')"
                 inputmode="numeric"
                 autocomplete="one-time-code"

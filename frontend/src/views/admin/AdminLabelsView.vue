@@ -138,11 +138,16 @@ onMounted(async () => {
         <p v-else class="-mt-3 text-xs text-slate-500">
           {{ t('admin.labels.identifierHelp') }}
         </p>
-        <BaseInput v-model="form.name" :label="t('common.name')" placeholder="bug, feature..." />
+        <BaseInput
+          v-model="form.name"
+          :label="t('common.name')"
+          placeholder="bug, feature..."
+          required
+        />
         <div class="space-y-1.5">
-          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">{{
-            t('common.color')
-          }}</label>
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            {{ t('common.color') }}<span class="base-field-required" aria-hidden="true">*</span>
+          </label>
           <BaseColorPicker v-model="form.color" />
         </div>
         <BaseInput

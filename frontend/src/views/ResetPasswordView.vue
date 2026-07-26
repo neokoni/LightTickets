@@ -71,12 +71,14 @@ async function submit() {
         <BaseInput
           v-model="password"
           :label="t('profile.password.new')"
+          required
           type="password"
           :placeholder="t('profile.password.minLength')"
         />
         <BaseInput
           v-model="confirmPassword"
           :label="t('profile.password.confirmNew')"
+          required
           type="password"
           :placeholder="t('profile.password.confirmPlaceholder')"
         />

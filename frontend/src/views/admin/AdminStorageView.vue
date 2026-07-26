@@ -134,9 +134,10 @@ async function testConnection() {
     <div v-else class="space-y-4 max-w-lg">
       <!-- Driver selection -->
       <div class="space-y-2">
-        <label class="text-sm font-medium text-slate-900 dark:text-white">{{
-          t('setup.storage.driver')
-        }}</label>
+        <label class="text-sm font-medium text-slate-900 dark:text-white">
+          {{ t('setup.storage.driver')
+          }}<span class="base-field-required" aria-hidden="true">*</span>
+        </label>
         <div class="grid grid-cols-2 gap-3">
           <BaseButton
             :class="storageButtonClass"
@@ -167,20 +168,28 @@ async function testConnection() {
           <BaseInput
             v-model="s3.endpoint"
             :label="t('setup.storage.endpoint')"
+            required
             placeholder="http://localhost:9000"
           />
 
           <BaseInput
             v-model="s3.bucket"
             :label="t('setup.storage.bucket')"
+            required
             placeholder="lighttickets"
           />
 
           <div class="grid grid-cols-2 gap-3">
-            <BaseInput v-model="s3.accessKeyId" label="Access Key ID *" placeholder="minioadmin" />
+            <BaseInput
+              v-model="s3.accessKeyId"
+              label="Access Key ID"
+              placeholder="minioadmin"
+              required
+            />
             <BaseInput
               v-model="s3.secretAccessKey"
-              label="Secret Access Key *"
+              label="Secret Access Key"
+              :required="!secretMasked"
               type="password"
               :placeholder="secretMasked ? t('admin.storage.secretKeepPlaceholder') : 'minioadmin'"
             />
@@ -189,6 +198,7 @@ async function testConnection() {
           <BaseInput
             v-model.number="s3.presignExpiry"
             :label="t('setup.storage.presignExpiry')"
+            required
             type="number"
             min="60"
             placeholder="300"

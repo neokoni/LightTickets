@@ -126,11 +126,13 @@ async function testMail() {
           <BaseInput
             v-model="mailHost"
             :label="t('admin.settings.smtpHost')"
+            required
             placeholder="smtp.example.com"
           />
           <BaseInput
             v-model.number="mailPort"
             :label="t('admin.settings.smtpPort')"
+            required
             type="number"
             min="1"
             placeholder="587"
@@ -160,6 +162,7 @@ async function testMail() {
           <BaseInput
             v-model="mailPassword"
             :label="t('admin.settings.smtpPassword')"
+            :required="!!mailUsername && !mailPasswordSet"
             type="password"
             :placeholder="
               mailPasswordSet
@@ -178,6 +181,7 @@ async function testMail() {
           <BaseInput
             v-model="mailFromAddress"
             :label="t('admin.settings.mailFromAddress')"
+            required
             type="email"
             placeholder="noreply@example.com"
           />

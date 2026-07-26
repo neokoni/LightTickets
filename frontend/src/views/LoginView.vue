@@ -70,12 +70,14 @@ async function submit() {
         <BaseInput
           v-model="emailOrUsername"
           :label="t('auth.emailOrUsername')"
+          required
           type="text"
           :placeholder="t('auth.emailOrUsernamePlaceholder')"
         />
         <BaseInput
           v-model="password"
           :label="t('auth.password')"
+          required
           type="password"
           placeholder="••••••••"
         />

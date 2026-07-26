@@ -20,6 +20,7 @@ const props = defineProps<{
   noResultsText: string;
   allSelectedText: string;
   removeTitle?: string;
+  required?: boolean;
 }>();
 
 const query = ref('');
@@ -82,10 +83,13 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
 
 <template>
   <div ref="wrapperEl" class="min-w-0 space-y-2">
+    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+      {{ label }}<span v-if="required" class="base-field-required" aria-hidden="true">*</span>
+    </label>
     <div class="relative">
       <BaseInput
         v-model="query"
-        :label="label"
+        :aria-required="required || undefined"
         :placeholder="placeholder"
         autocomplete="off"
         @focus="open = true"

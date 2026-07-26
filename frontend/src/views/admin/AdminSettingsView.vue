@@ -83,6 +83,7 @@ async function save() {
       <BaseInput
         v-model="siteName"
         :label="t('admin.settings.siteName')"
+        required
         maxlength="100"
         :placeholder="siteTitle"
       />
@@ -98,6 +99,7 @@ async function save() {
       <BaseSelect
         v-model="defaultLanguage"
         :label="t('settings.language.default')"
+        required
         :options="
           availableLanguages.map((language) => ({
             value: language.id,

@@ -148,6 +148,7 @@ function statusLabel(status: TicketCompletionHook['status']): string {
             v-if="field.type === 'input' && field.id"
             v-model="textValuesFor(hook)[field.id]"
             :label="fieldLabel(field)"
+            :required="field.validations?.required === true"
             :placeholder="field.attributes.placeholder"
             :error="errors[hook.id]?.[field.id]"
           />
@@ -155,6 +156,7 @@ function statusLabel(status: TicketCompletionHook['status']): string {
             v-else-if="field.type === 'textarea' && field.id"
             v-model="textValuesFor(hook)[field.id]"
             :label="fieldLabel(field)"
+            :required="field.validations?.required === true"
             :placeholder="field.attributes.placeholder"
             :error="errors[hook.id]?.[field.id]"
             :rows="3"
@@ -163,6 +165,7 @@ function statusLabel(status: TicketCompletionHook['status']): string {
             v-else-if="field.type === 'dropdown' && field.id"
             v-model="textValuesFor(hook)[field.id]"
             :label="fieldLabel(field)"
+            :required="field.validations?.required === true"
             :options="optionsFor(field).map((option) => ({ value: option, label: option }))"
             :placeholder="t('common.selectPlaceholder')"
             :error="errors[hook.id]?.[field.id]"
@@ -170,6 +173,12 @@ function statusLabel(status: TicketCompletionHook['status']): string {
           <fieldset v-else-if="field.type === 'checkboxes' && field.id" class="space-y-2">
             <legend class="text-sm font-medium text-slate-700 dark:text-slate-300">
               {{ fieldLabel(field) }}
+              <span
+                v-if="field.validations?.required === true"
+                class="base-field-required"
+                aria-hidden="true"
+                >*</span
+              >
             </legend>
             <label
               v-for="option in optionsFor(field)"
