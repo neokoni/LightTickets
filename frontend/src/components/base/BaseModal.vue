@@ -14,11 +14,11 @@ const modelValue = defineModel<boolean>({ required: true });
     <Transition name="modal">
       <div
         v-if="modelValue"
-        class="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto p-4"
+        class="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm"
+        @click.self="modelValue = false"
       >
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="modelValue = false" />
         <div
-          class="relative flex max-h-[calc(100dvh-2rem)] w-full flex-col rounded-xl border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/95"
+          class="modal-panel relative flex max-h-[calc(100dvh-2rem)] w-full flex-col rounded-xl border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/95"
           :class="props.size === 'wide' ? 'max-w-6xl' : 'max-w-lg'"
         >
           <div
@@ -51,13 +51,21 @@ const modelValue = defineModel<boolean>({ required: true });
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition:
-    opacity 0.2s ease,
-    transform 0.2s ease;
+  transition: opacity 0.2s ease;
 }
+
+.modal-enter-active .modal-panel,
+.modal-leave-active .modal-panel {
+  transition: transform 0.2s ease;
+}
+
 .modal-enter-from,
 .modal-leave-to {
   opacity: 0;
+}
+
+.modal-enter-from .modal-panel,
+.modal-leave-to .modal-panel {
   transform: scale(0.95);
 }
 </style>
