@@ -96,7 +96,7 @@ async function removeLabel(labelId: string) {
     <div v-if="auth.isStaff" ref="dropdownEl" class="relative">
       <button
         type="button"
-        class="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 backdrop-blur-sm hover:border-slate-400 dark:hover:border-slate-600 transition"
+        class="w-full flex items-center justify-between px-2.5 py-1.5 text-xs rounded-md border border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-700 dark:text-slate-300 backdrop-blur-sm ring-inset hover:border-slate-400 dark:hover:border-slate-600 transition"
         :class="
           dropdownOpen
             ? 'border-slate-400 dark:border-slate-600 ring-2 ring-slate-900/20 dark:ring-slate-100/20'
@@ -124,13 +124,13 @@ async function removeLabel(labelId: string) {
           v-if="dropdownOpen"
           class="absolute z-50 mt-1 w-full rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg overflow-hidden"
         >
-          <div class="py-1">
+          <div class="base-dropdown-list">
             <template v-if="unassignedLabels.length">
               <button
                 v-for="label in unassignedLabels"
                 :key="label.id"
                 type="button"
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-left transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                class="base-dropdown-option w-full flex items-center gap-2 px-3 py-2 text-sm text-left"
                 @mousedown.prevent
                 @click="addLabel(label.id)"
               >

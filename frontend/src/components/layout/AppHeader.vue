@@ -126,16 +126,16 @@ function handleLogout() {
             </button>
             <div
               v-if="profileMenuOpen"
-              class="absolute right-0 top-full mt-1 w-48 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg"
+              class="base-dropdown-list absolute right-0 top-full mt-1 w-48 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg"
             >
               <RouterLink
                 to="/profile"
-                class="block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
+                class="base-dropdown-option block px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
                 @click="profileMenuOpen = false"
                 >{{ t('nav.profile') }}</RouterLink
               >
               <button
-                class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                class="base-dropdown-option w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 @click="handleLogout"
               >
                 {{ t('nav.logout') }}

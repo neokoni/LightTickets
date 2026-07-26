@@ -72,17 +72,14 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
             v-if="sizeOpen"
             class="absolute bottom-full mb-1 left-0 z-50 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg overflow-hidden"
           >
-            <div class="py-1">
+            <div class="base-dropdown-list">
               <button
                 v-for="s in sizes"
                 :key="s"
                 type="button"
-                class="w-full px-3 py-1.5 text-xs text-left whitespace-nowrap transition cursor-pointer"
-                :class="
-                  s === pageSize
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                "
+                class="base-dropdown-option w-full px-3 py-1.5 text-xs text-left whitespace-nowrap cursor-pointer"
+                :data-selected="s === pageSize"
+                :class="s === pageSize ? 'font-medium' : 'text-slate-600 dark:text-slate-400'"
                 @click="pickSize(s)"
               >
                 {{ t('pagination.pageSize', { size: s }) }}

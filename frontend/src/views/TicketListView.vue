@@ -56,7 +56,7 @@ const tabButtonClass =
   '!px-3 !py-2 !rounded-md border-none text-sm font-medium transition-colors hover:bg-slate-100/80 dark:hover:bg-slate-800/70 whitespace-nowrap shrink-0';
 const chipButtonClass = '!px-0 !py-0 border-none ml-0.5 hover:opacity-70';
 const suggestionButtonClass =
-  '!w-full !justify-start !px-3 !py-1.5 border-none text-sm text-left transition cursor-pointer';
+  'base-dropdown-option !w-full !justify-start !rounded-md !px-3 !py-1.5 border-none text-sm text-left cursor-pointer';
 
 const tabStatus = ref<TicketStatus | undefined>();
 
@@ -454,15 +454,17 @@ watch(
                     : ''
               }}
             </div>
-            <div class="py-1 max-h-48 overflow-y-auto">
+            <div class="base-dropdown-list max-h-48 overflow-y-auto">
               <BaseButton
                 v-for="(item, idx) in suggestions.items"
                 :key="item.value"
+                :has-hover="false"
+                :data-selected="suggestionArmed && idx === selectedSuggestionIdx"
                 :class="[
                   suggestionButtonClass,
                   suggestionArmed && idx === selectedSuggestionIdx
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60',
+                    ? ''
+                    : 'text-slate-700 dark:text-slate-300',
                 ]"
                 @mousedown.prevent="clickSuggestion(item)"
               >

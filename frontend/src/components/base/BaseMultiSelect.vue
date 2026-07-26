@@ -81,7 +81,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
 </script>
 
 <template>
-  <div ref="wrapperEl" class="space-y-2">
+  <div ref="wrapperEl" class="min-w-0 space-y-2">
     <div class="relative">
       <BaseInput
         v-model="query"
@@ -101,7 +101,7 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
       >
         <div
           v-if="open"
-          class="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+          class="base-dropdown-list absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"
           role="listbox"
         >
           <template v-if="candidateOptions.length">
@@ -110,7 +110,8 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
               :key="option.value"
               type="button"
               role="option"
-              class="!flex !w-full !justify-start !rounded-none !border-0 !px-3 !py-2 !text-left !text-sm !font-normal"
+              :has-hover="false"
+              class="base-dropdown-option !flex !w-full !justify-start !rounded-md !border-0 !px-3 !py-2 !text-left !text-sm !font-normal"
               @mousedown.prevent
               @click="add(option.value)"
             >

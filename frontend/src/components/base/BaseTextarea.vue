@@ -66,21 +66,22 @@ function onPaste(e: ClipboardEvent) {
         {{ t('common.preview') }}
       </button>
     </div>
-    <textarea
-      v-if="!previewable || mode === 'write'"
-      v-model="model"
-      v-bind="attrs"
-      :placeholder="placeholder"
-      :rows="rows || 4"
-      class="w-full px-3 py-2 text-sm rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-900/20 focus:border-slate-400 dark:focus:ring-slate-100/20 dark:focus:border-slate-600 resize-y transition"
-      :class="{ 'border-red-400 dark:border-red-500': error, 'rounded-t-none': previewable }"
-      @dragover="uploadable ? onDragover($event) : undefined"
-      @drop="uploadable ? onDrop($event) : undefined"
-      @paste="uploadable ? onPaste($event) : undefined"
-    />
+    <div v-if="!previewable || mode === 'write'" class="-m-0.5 p-0.5">
+      <textarea
+        v-model="model"
+        v-bind="attrs"
+        :placeholder="placeholder"
+        :rows="rows || 4"
+        class="w-full px-3 py-2 text-sm !rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-slate-900/25 focus:border-slate-500 dark:focus:ring-slate-100/25 dark:focus:border-slate-500 resize-y transition"
+        :class="{ 'border-red-400 dark:border-red-500': error }"
+        @dragover="uploadable ? onDragover($event) : undefined"
+        @drop="uploadable ? onDrop($event) : undefined"
+        @paste="uploadable ? onPaste($event) : undefined"
+      />
+    </div>
     <div
       v-else
-      class="min-h-[6rem] px-3 py-2 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-t-none overflow-auto"
+      class="min-h-[6rem] px-3 py-2 !rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-auto"
       :class="{ 'border-red-400 dark:border-red-500': error }"
     >
       <MarkdownRenderer v-if="model" :content="model" />

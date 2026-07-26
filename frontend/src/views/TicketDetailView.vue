@@ -332,7 +332,7 @@ watch(
         <BaseInput
           ref="titleInputRef"
           v-model="editTitleValue"
-          class="flex-1 [&_input]:text-3xl [&_input]:font-bold [&_input]:tracking-tight [&_input]:text-slate-950 dark:[&_input]:text-white sm:[&_input]:text-4xl [&_input]:bg-transparent [&_input]:border-x-0 [&_input]:border-t-0 [&_input]:rounded-none [&_input]:px-0 [&_input]:border-b-2 [&_input]:border-slate-300 dark:[&_input]:border-slate-600 [&_input]:focus:border-slate-500 dark:[&_input]:focus:border-slate-400 [&_input]:pb-1"
+          class="flex-1 [&_input]:text-3xl [&_input]:font-bold [&_input]:tracking-tight [&_input]:text-slate-950 dark:[&_input]:text-white sm:[&_input]:text-4xl [&_input]:bg-transparent [&_input]:border-b-2 [&_input]:border-slate-300 dark:[&_input]:border-slate-600 [&_input]:focus:border-slate-500 dark:[&_input]:focus:border-slate-400 [&_input]:pb-1"
           @keydown.enter="saveTitle"
           @keydown.escape="cancelEditTitle"
         />
@@ -857,7 +857,7 @@ watch(
               <label
                 v-for="u in filteredAssignableUsers"
                 :key="u.id"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 <BaseCheckbox
                   :checked="selectedAssigneeIds.includes(u.id)"

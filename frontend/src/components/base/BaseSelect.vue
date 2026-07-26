@@ -112,11 +112,11 @@ const dropdownClass = computed(() =>
 </script>
 
 <template>
-  <div ref="wrapperEl" class="space-y-1.5">
+  <div ref="wrapperEl" class="min-w-0 space-y-1.5">
     <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">{{
       label
     }}</label>
-    <div class="relative">
+    <div class="relative -m-0.5 p-0.5">
       <button
         ref="triggerEl"
         type="button"
@@ -158,21 +158,18 @@ const dropdownClass = computed(() =>
         <div
           v-if="open"
           ref="dropdownEl"
-          class="scrollbar-hidden fixed z-[110] overflow-x-hidden overflow-y-auto overscroll-contain rounded-md border"
+          class="scrollbar-hidden fixed z-110 overflow-x-hidden overflow-y-auto overscroll-contain rounded-lg border"
           :class="[dropdownClass, placement === 'bottom' ? 'origin-top' : 'origin-bottom']"
           :style="dropdownStyle"
         >
-          <div class="py-1">
+          <div class="base-dropdown-list">
             <button
               v-for="opt in options"
               :key="opt.value"
               type="button"
-              class="w-full cursor-pointer px-3 py-2 text-left text-sm transition"
-              :class="
-                opt.value === model
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium'
-                  : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-              "
+              class="base-dropdown-option base-select-option flex min-h-11 w-full cursor-pointer items-center p-3 text-left text-[15px] leading-5"
+              :data-selected="opt.value === model"
+              :class="opt.value === model ? 'font-medium' : 'text-slate-700 dark:text-slate-300'"
               @click="select(opt.value)"
             >
               <span class="flex min-w-0 items-center gap-2">
