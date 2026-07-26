@@ -14,6 +14,18 @@ interface PopupOrigin {
 
 let originTrackerConsumers = 0;
 let lastPointerOrigin: PopupOrigin | null = null;
+const openModalStack: object[] = [];
+
+function registerOpenModal(token: object) {
+  const existingIndex = openModalStack.indexOf(token);
+  if (existingIndex !== -1) openModalStack.splice(existingIndex, 1);
+  openModalStack.push(token);
+}
+
+function unregisterOpenModal(token: object) {
+  const index = openModalStack.indexOf(token);
+  if (index !== -1) openModalStack.splice(index, 1);
+}
 
 function getTriggerElement(target: Node | null): HTMLElement | null {
   const element = target as HTMLElement | null;
@@ -57,6 +69,7 @@ const props = defineProps<{
 }>();
 
 const modelValue = defineModel<boolean>({ required: true });
+const modalToken = {};
 const modalOffsetX = ref('0px');
 const modalOffsetY = ref('0px');
 
@@ -74,16 +87,41 @@ function captureModalOrigin() {
   modalOffsetY.value = origin ? `${origin.y - viewportHeight / 2}px` : '0px';
 }
 
+function closeOnEscape(event: KeyboardEvent) {
+  if (
+    event.key !== 'Escape' ||
+    !modelValue.value ||
+    openModalStack[openModalStack.length - 1] !== modalToken
+  )
+    return;
+
+  event.preventDefault();
+  modelValue.value = false;
+}
+
 watch(
   modelValue,
   (open, wasOpen) => {
-    if (open && !wasOpen) captureModalOrigin();
+    if (open) {
+      if (!wasOpen) captureModalOrigin();
+      registerOpenModal(modalToken);
+    } else {
+      unregisterOpenModal(modalToken);
+    }
   },
-  { flush: 'sync' },
+  { flush: 'sync', immediate: true },
 );
 
-onMounted(startOriginTracker);
-onBeforeUnmount(stopOriginTracker);
+onMounted(() => {
+  startOriginTracker();
+  document.addEventListener('keydown', closeOnEscape);
+});
+
+onBeforeUnmount(() => {
+  stopOriginTracker();
+  unregisterOpenModal(modalToken);
+  document.removeEventListener('keydown', closeOnEscape);
+});
 </script>
 
 <template>

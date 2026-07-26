@@ -69,7 +69,10 @@ function onClickOutside(e: MouseEvent) {
 }
 
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') open.value = false;
+  if (e.key === 'Escape' && open.value) {
+    e.stopPropagation();
+    open.value = false;
+  }
 }
 
 function onViewportChange() {
