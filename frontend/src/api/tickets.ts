@@ -6,6 +6,8 @@ import type {
   TemplateDefinition,
   TicketFilters,
   CreateTicketPayload,
+  CompletionHookValue,
+  TicketCompletionHook,
 } from '@/types/ticket';
 import type { PaginatedResponse } from '@/types/api';
 
@@ -57,6 +59,20 @@ export function apiCloseTicket(id: number) {
 
 export function apiReopenTicket(id: number) {
   return apiFetch<Ticket>(`/tickets/${id}/reopen`, { method: 'POST' });
+}
+
+export function apiCompleteTicketHook(
+  ticketId: number,
+  hookId: string,
+  values: Record<string, CompletionHookValue>,
+) {
+  return apiFetch<TicketCompletionHook>(
+    `/tickets/${ticketId}/completion-hooks/${hookId}/complete`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ values }),
+    },
+  );
 }
 
 export function apiGetTemplates() {

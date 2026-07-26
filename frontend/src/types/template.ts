@@ -19,7 +19,14 @@ export interface EditableTemplateField {
 }
 
 export type TemplateCompletionHookEvent = 'closed' | 'invalid';
-export type TemplateCompletionHookType = 'command' | 'minimessage';
+export type TemplateCompletionHookType = 'command' | 'minimessage' | 'selection';
+
+export interface TemplateCompletionHookAction {
+  type: 'command' | 'minimessage';
+  commands?: string[];
+  messages?: string[];
+  message?: string;
+}
 
 export interface TemplateCompletionHook {
   event: TemplateCompletionHookEvent;
@@ -28,6 +35,16 @@ export interface TemplateCompletionHook {
   commands?: string[];
   messages?: string[];
   message?: string;
+  title?: string;
+  visibility?: 'public' | 'staff';
+  fields?: TemplateField[];
+  actions?: TemplateCompletionHookAction[];
+}
+
+export interface EditableTemplateHookAction {
+  editorKey: number;
+  type: TemplateCompletionHookAction['type'];
+  contents: string[];
 }
 
 export interface EditableTemplateCompletionHook {
@@ -36,6 +53,12 @@ export interface EditableTemplateCompletionHook {
   type: TemplateCompletionHookType;
   condition: string;
   contents: string[];
+  title: string;
+  visibility: 'public' | 'staff';
+  selectionFields: EditableTemplateField[];
+  actions: EditableTemplateHookAction[];
+  newSelectionFieldType: Exclude<TemplateField['type'], 'markdown'>;
+  newActionType: EditableTemplateHookAction['type'];
   advancedOpen: boolean;
 }
 

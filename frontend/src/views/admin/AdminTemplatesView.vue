@@ -18,8 +18,10 @@ import type {
   AdminTemplate,
   EditableTemplateCompletionHook,
   EditableTemplateField,
+  EditableTemplateHookAction,
   EditableTemplateOption,
   TemplateCompletionHook,
+  TemplateCompletionHookAction,
 } from '@/types/template';
 import type { TemplateField, TemplateHiddenMode } from '@/types/ticket';
 import { apiGetAdminTemplate } from '@/api/templates';
@@ -43,6 +45,7 @@ const initialSource = ref('');
 const guiSourceSyncEnabled = ref(false);
 let nextFieldKey = 0;
 let nextHookKey = 0;
+let nextHookActionKey = 0;
 const form = ref({
   name: '',
   nameI18n: '',
@@ -265,7 +268,25 @@ function emptyHook(
     type,
     condition: '',
     contents: [],
+    title: '',
+    visibility: 'staff',
+    selectionFields: [],
+    actions: [],
+    newSelectionFieldType: 'input',
+    newActionType: 'command',
     advancedOpen: false,
+  };
+}
+
+function deserializeHookAction(action: TemplateCompletionHookAction): EditableTemplateHookAction {
+  const rawContents =
+    action.type === 'command'
+      ? (action.commands ?? [])
+      : (action.messages ?? (action.message ? [action.message] : []));
+  return {
+    editorKey: nextHookActionKey++,
+    type: action.type,
+    contents: rawContents.flatMap((content) => content.split(/\r?\n/)),
   };
 }
 
@@ -282,6 +303,10 @@ function deserializeHook(hook: TemplateCompletionHook): EditableTemplateCompleti
     type,
     condition: hook.if ?? '',
     contents: [...contents],
+    title: hook.title ?? '',
+    visibility: hook.visibility === 'public' ? 'public' : 'staff',
+    selectionFields: (hook.fields ?? []).map(deserializeField),
+    actions: (hook.actions ?? []).map(deserializeHookAction),
   };
 }
 
@@ -321,6 +346,45 @@ function insertHookContentAfter(
 
 function removeHookContent(hook: EditableTemplateCompletionHook, index: number) {
   hook.contents.splice(index, 1);
+}
+
+function addSelectionField(hook: EditableTemplateCompletionHook) {
+  hook.selectionFields.push(emptyField(hook.newSelectionFieldType));
+}
+
+function removeSelectionField(hook: EditableTemplateCompletionHook, index: number) {
+  hook.selectionFields.splice(index, 1);
+}
+
+function addHookAction(hook: EditableTemplateCompletionHook) {
+  hook.actions.push({
+    editorKey: nextHookActionKey++,
+    type: hook.newActionType,
+    contents: [],
+  });
+}
+
+function removeHookAction(hook: EditableTemplateCompletionHook, index: number) {
+  hook.actions.splice(index, 1);
+}
+
+function addActionContent(action: EditableTemplateHookAction) {
+  action.contents.push('');
+}
+
+function removeActionContent(action: EditableTemplateHookAction, index: number) {
+  action.contents.splice(index, 1);
+}
+
+function serializeHookAction(action: EditableTemplateHookAction): TemplateCompletionHookAction {
+  const result: TemplateCompletionHookAction = { type: action.type };
+  const contents = action.contents
+    .flatMap((content) => content.split(/\r?\n/))
+    .filter((content) => content.trim());
+  if (action.type === 'command') result.commands = contents;
+  else if (contents.length === 1) result.message = contents[0];
+  else result.messages = contents;
+  return result;
 }
 
 function moveSortableItem(group: 'fields' | 'hooks', source: number, target: number) {
@@ -367,6 +431,13 @@ function onDragEnd() {
 function serializeHook(hook: EditableTemplateCompletionHook): TemplateCompletionHook {
   const result: TemplateCompletionHook = { event: hook.event, type: hook.type };
   if (hook.condition.trim()) result.if = hook.condition.trim();
+  if (hook.type === 'selection') {
+    result.title = hook.title.trim();
+    result.visibility = hook.visibility;
+    result.fields = hook.selectionFields.map(serializeField);
+    result.actions = hook.actions.map(serializeHookAction);
+    return result;
+  }
   const contents = hook.contents
     .flatMap((content) => content.split(/\r?\n/))
     .filter((content) => content.trim());
@@ -523,6 +594,26 @@ const hookEventOptions = [
 const hookTypeOptions = [
   { value: 'minimessage', label: 'MiniMessage', icon: 'lucide:message-square' },
   { value: 'command', label: t('admin.templates.hookType.command'), icon: 'lucide:terminal' },
+  {
+    value: 'selection',
+    label: t('admin.templates.hookType.selection'),
+    icon: 'lucide:list-checks',
+  },
+];
+
+const hookActionTypeOptions = hookTypeOptions.filter((option) => option.value !== 'selection');
+
+const selectionVisibilityOptions = [
+  {
+    value: 'staff',
+    label: t('admin.templates.selectionVisibility.staff'),
+    icon: 'lucide:lock',
+  },
+  {
+    value: 'public',
+    label: t('admin.templates.selectionVisibility.public'),
+    icon: 'lucide:globe-2',
+  },
 ];
 
 const fieldTypeOptions = [
@@ -540,6 +631,8 @@ const fieldTypeOptions = [
     icon: 'lucide:list-collapse',
   },
 ];
+
+const selectionFieldTypeOptions = fieldTypeOptions.filter((option) => option.value !== 'markdown');
 
 async function toggleEnabled(tmpl: AdminTemplate) {
   try {
@@ -1028,7 +1121,219 @@ onMounted(async () => {
                     />
                   </div>
 
-                  <div class="space-y-2">
+                  <template v-if="hook.type === 'selection'">
+                    <div class="grid gap-3 sm:grid-cols-2">
+                      <BaseInput
+                        v-model="hook.title"
+                        :label="t('admin.templates.selectionTitle')"
+                        :placeholder="t('admin.templates.selectionTitlePlaceholder')"
+                      />
+                      <BaseSelect
+                        v-model="hook.visibility"
+                        :label="t('admin.templates.selectionVisibility')"
+                        :options="selectionVisibilityOptions"
+                      />
+                    </div>
+
+                    <div class="space-y-3">
+                      <div>
+                        <h5 class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {{ t('admin.templates.selectionFields') }}
+                        </h5>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {{ t('admin.templates.selectionFieldsHelp') }}
+                        </p>
+                      </div>
+                      <article
+                        v-for="(field, fieldIndex) in hook.selectionFields"
+                        :key="field.editorKey"
+                        class="space-y-3 rounded-md border border-slate-200 p-3 dark:border-slate-800"
+                      >
+                        <header class="flex items-center justify-between gap-2">
+                          <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            {{ fieldTypeLabel(field.type) }} #{{ fieldIndex + 1 }}
+                          </span>
+                          <BaseButton
+                            :class="dangerIconButtonClass"
+                            type="button"
+                            :title="t('common.delete')"
+                            @click="removeSelectionField(hook, fieldIndex)"
+                          >
+                            <Icon icon="lucide:x" class="h-4 w-4" />
+                          </BaseButton>
+                        </header>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                          <BaseSelect
+                            v-model="field.type"
+                            :label="t('admin.templates.newFieldType')"
+                            :options="selectionFieldTypeOptions"
+                          />
+                          <BaseInput
+                            v-model="field.id"
+                            :label="t('admin.templates.fieldId')"
+                            placeholder="result"
+                          />
+                          <BaseInput
+                            v-model="field.label"
+                            :label="t('admin.templates.fieldLabel')"
+                          />
+                          <BaseInput
+                            v-model="field.description"
+                            :label="t('admin.templates.fieldDescriptionOptional')"
+                          />
+                          <BaseInput
+                            v-if="field.type === 'input' || field.type === 'textarea'"
+                            v-model="field.placeholder"
+                            :label="t('admin.templates.placeholderOptional')"
+                          />
+                          <label
+                            class="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-800 dark:text-slate-300"
+                          >
+                            {{ t('admin.templates.requiredField') }}
+                            <BaseToggle v-model="field.required" />
+                          </label>
+                        </div>
+                        <div
+                          v-if="field.type === 'checkboxes' || field.type === 'dropdown'"
+                          class="space-y-2"
+                        >
+                          <div class="flex items-center justify-between gap-2">
+                            <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{
+                              t('admin.templates.options')
+                            }}</span>
+                            <BaseButton
+                              size="sm"
+                              type="button"
+                              icon="lucide:plus"
+                              @click="addOption(field)"
+                            >
+                              {{ t('admin.templates.addOption') }}
+                            </BaseButton>
+                          </div>
+                          <div
+                            v-for="(option, optionIndex) in field.options"
+                            :key="optionIndex"
+                            class="flex items-center gap-2"
+                          >
+                            <BaseInput
+                              v-model="option.label"
+                              class="min-w-0 flex-1"
+                              :placeholder="t('admin.templates.optionPlaceholder')"
+                            />
+                            <label
+                              v-if="field.type === 'checkboxes'"
+                              class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+                            >
+                              <BaseToggle v-model="option.required" />
+                              {{ t('admin.templates.requiredOption') }}
+                            </label>
+                            <BaseButton
+                              :class="dangerIconButtonClass"
+                              type="button"
+                              :title="t('common.delete')"
+                              @click="removeOption(field, optionIndex)"
+                            >
+                              <Icon icon="lucide:x" class="h-4 w-4" />
+                            </BaseButton>
+                          </div>
+                        </div>
+                      </article>
+                      <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                        <BaseSelect
+                          v-model="hook.newSelectionFieldType"
+                          :label="t('admin.templates.newFieldType')"
+                          :options="selectionFieldTypeOptions"
+                        />
+                        <BaseButton
+                          type="button"
+                          icon="lucide:plus"
+                          @click="addSelectionField(hook)"
+                        >
+                          {{ t('admin.templates.addField') }}
+                        </BaseButton>
+                      </div>
+                    </div>
+
+                    <div class="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                      <div>
+                        <h5 class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                          {{ t('admin.templates.selectionActions') }}
+                        </h5>
+                        <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                          {{ t('admin.templates.selectionActionsHelp') }}
+                        </p>
+                      </div>
+                      <article
+                        v-for="(action, actionIndex) in hook.actions"
+                        :key="action.editorKey"
+                        class="space-y-3 rounded-md border border-slate-200 p-3 dark:border-slate-800"
+                      >
+                        <div class="flex items-end gap-2">
+                          <BaseSelect
+                            v-model="action.type"
+                            class="min-w-0 flex-1"
+                            :label="t('admin.templates.actionType')"
+                            :options="hookActionTypeOptions"
+                          />
+                          <BaseButton
+                            :class="dangerIconButtonClass"
+                            type="button"
+                            :title="t('common.delete')"
+                            @click="removeHookAction(hook, actionIndex)"
+                          >
+                            <Icon icon="lucide:trash-2" class="h-4 w-4" />
+                          </BaseButton>
+                        </div>
+                        <div
+                          v-for="(_, contentIndex) in action.contents"
+                          :key="contentIndex"
+                          class="flex items-start gap-2"
+                        >
+                          <BaseInput
+                            v-model="action.contents[contentIndex]"
+                            class="min-w-0 flex-1 [&_input]:font-mono"
+                            :placeholder="
+                              action.type === 'command'
+                                ? t('admin.templates.commandPlaceholder')
+                                : t('admin.templates.messagePlaceholder')
+                            "
+                          />
+                          <BaseButton
+                            :class="dangerIconButtonClass"
+                            type="button"
+                            :title="t('common.delete')"
+                            @click="removeActionContent(action, contentIndex)"
+                          >
+                            <Icon icon="lucide:x" class="h-4 w-4" />
+                          </BaseButton>
+                        </div>
+                        <BaseButton
+                          size="sm"
+                          type="button"
+                          icon="lucide:plus"
+                          @click="addActionContent(action)"
+                        >
+                          {{
+                            action.type === 'command'
+                              ? t('admin.templates.addCommand')
+                              : t('admin.templates.addMessage')
+                          }}
+                        </BaseButton>
+                      </article>
+                      <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                        <BaseSelect
+                          v-model="hook.newActionType"
+                          :label="t('admin.templates.actionType')"
+                          :options="hookActionTypeOptions"
+                        />
+                        <BaseButton type="button" icon="lucide:plus" @click="addHookAction(hook)">
+                          {{ t('admin.templates.addAction') }}
+                        </BaseButton>
+                      </div>
+                    </div>
+                  </template>
+
+                  <div v-else class="space-y-2">
                     <div class="flex items-center justify-between gap-3">
                       <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{
                         hook.type === 'command'

@@ -4,7 +4,10 @@ import yaml from 'js-yaml';
 import { describe, expect, it } from 'vitest';
 import {
   evaluateTemplateCondition,
+  createHookVariables,
+  resolveHookActions,
   resolveHooks,
+  resolveSelectionHooks,
   renderBody,
   type TemplateDefinition,
 } from '../src/services/template.service.js';
@@ -101,6 +104,50 @@ body:
         content:
           '<color:#ffffff>议题 <color:#96bfff>#{ticket_id}</color> 已关闭，标题：{ticket_title}</color>',
       },
+    ]);
+  });
+
+  it('resolves selection hooks and all configured actions with submitted placeholders', () => {
+    const def = yaml.load(`
+name: Selection Test
+description: Selection hook test
+labels: []
+body: []
+completion_hooks:
+  - event: closed
+    type: selection
+    title: Choose rewards
+    fields:
+      - type: checkboxes
+        id: rewards
+        attributes:
+          label: Rewards
+          options: [Coins, Items]
+    actions:
+      - type: command
+        commands:
+          - "say {selection.rewards}"
+          - "tell {player_name} done"
+      - type: minimessage
+        messages:
+          - "<green>#{ticket_id}</green>"
+`) as TemplateDefinition;
+    const variables = createHookVariables({
+      id: 42,
+      title: 'Reward ticket',
+      formData: JSON.stringify({ priority: 'high' }),
+      author: { minecraftName: 'Notch' },
+    });
+    variables['selection.rewards'] = 'Coins,Items';
+
+    const selections = resolveSelectionHooks(def, 'closed', variables);
+    expect(selections).toHaveLength(1);
+    expect(selections[0].visibility).toBe('staff');
+    expect(resolveHooks(def, 'closed', variables)).toEqual([]);
+    expect(resolveHookActions(selections[0].actions, variables)).toEqual([
+      { type: 'command', content: 'say Coins,Items' },
+      { type: 'command', content: 'tell Notch done' },
+      { type: 'minimessage', content: '<green>#42</green>' },
     ]);
   });
 });

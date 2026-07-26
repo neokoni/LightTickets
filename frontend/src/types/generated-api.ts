@@ -1588,6 +1588,122 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/tickets/{id}/completion-hooks/{hookId}/complete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 提交并执行议题完成选项 */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          hookId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: {
+        content: {
+          'application/json': {
+            values: {
+              [key: string]: string | string[];
+            };
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** Format: uuid */
+              id: string;
+              /** @enum {string} */
+              event: 'closed' | 'invalid';
+              title: string;
+              fields: {
+                [key: string]: unknown;
+              }[];
+              response: {
+                [key: string]: string | string[];
+              } | null;
+              /** @enum {string} */
+              status: 'pending' | 'completed' | 'cancelled';
+              /** @enum {string} */
+              visibility: 'public' | 'staff';
+              createdAt: string;
+              completedAt: string | null;
+              completedBy: {
+                id: number;
+                username: string;
+                minecraftName: string | null;
+              } | null;
+            };
+          };
+        };
+        /** @description Bad Request */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: false;
+              /** @enum {number} */
+              statusCode: 400;
+              message: string;
+            };
+          };
+        };
+        /** @description Unauthorized */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: false;
+              /** @enum {number} */
+              statusCode: 401;
+              message: string;
+            };
+          };
+        };
+        /** @description Internal Server Error */
+        500: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: false;
+              /** @enum {number} */
+              statusCode: 500;
+              message: string;
+              traceId: string;
+            };
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/tickets/{id}/attachments': {
     parameters: {
       query?: never;

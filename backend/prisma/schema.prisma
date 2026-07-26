@@ -20,6 +20,17 @@ enum CommentSource {
   minecraft
 }
 
+enum CompletionHookStatus {
+  pending
+  completed
+  cancelled
+}
+
+enum CompletionHookVisibility {
+  public
+  staff
+}
+
 enum FederatedAuthProtocol {
   oidc
   oauth
@@ -57,6 +68,7 @@ model User {
   passwordResetTokens PasswordResetToken[]
   federatedAuthIdentities FederatedAuthIdentity[]
   federatedAuthFlows FederatedAuthFlow[]
+  completedTicketHooks TicketCompletionHook[] @relation("CompletionHookCompleter")
 
   @@map("users")
 }
@@ -180,6 +192,7 @@ model Ticket {
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   closedAt    DateTime?        @map("closed_at")
+  completionHooksInitialized Boolean @default(false) @map("completion_hooks_initialized")
   author      User             @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   server      Server?          @relation(fields: [serverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   assignee    User?            @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
@@ -188,8 +201,29 @@ model Ticket {
   comments    Comment[]
   attachments Attachment[]
   auditLogs   AuditLog[]
+  completionHooks TicketCompletionHook[]
 
   @@map("tickets")
+}
+
+model TicketCompletionHook {
+  id            String               @id @default(uuid())
+  ticketId      Int                  @map("ticket_id")
+  event         String
+  title         String
+  fields        String
+  actions       String
+  response      String?
+  status        CompletionHookStatus @default(pending)
+  visibility    CompletionHookVisibility @default(staff)
+  completedById Int?                 @map("completed_by_id")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  completedAt   DateTime?            @map("completed_at")
+  ticket        Ticket               @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  completedBy   User?                @relation("CompletionHookCompleter", fields: [completedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([ticketId, status])
+  @@map("ticket_completion_hooks")
 }
 
 model Label {

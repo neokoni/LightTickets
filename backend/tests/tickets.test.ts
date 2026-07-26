@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterAll, beforeAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
@@ -6,6 +6,83 @@ import * as ticketService from '../src/services/ticket.service.js';
 import * as templateService from '../src/services/template.service.js';
 
 const app = createApp();
+const selectionTemplateName = 'selection_hook_test';
+
+beforeAll(async () => {
+  if (templateService.getDefinition(selectionTemplateName)) {
+    await templateService.adminDelete(selectionTemplateName);
+  }
+  await templateService.adminCreate({
+    name: selectionTemplateName,
+    nameI18n: 'Selection hook test',
+    description: 'Interactive completion hook test template',
+    body: JSON.stringify([
+      {
+        type: 'input',
+        id: 'description',
+        attributes: { label: 'Description' },
+      },
+    ]),
+    completionHooks: JSON.stringify([
+      {
+        event: 'closed',
+        type: 'selection',
+        title: 'Choose resolution',
+        visibility: 'public',
+        fields: [
+          {
+            type: 'checkboxes',
+            id: 'rewards',
+            validations: { required: true },
+            attributes: { label: 'Rewards', options: ['Coins', 'Items'] },
+          },
+          {
+            type: 'input',
+            id: 'note',
+            attributes: { label: 'Note', placeholder: 'Optional note' },
+          },
+        ],
+        actions: [
+          {
+            type: 'command',
+            commands: ['say {selection.rewards}', 'tell {player_name} {selection.note}'],
+          },
+          {
+            type: 'minimessage',
+            message: '<green>Resolved #{ticket_id}</green>',
+          },
+        ],
+      },
+      {
+        event: 'closed',
+        type: 'selection',
+        title: 'Hidden resolution',
+        visibility: 'staff',
+        fields: [
+          {
+            type: 'dropdown',
+            id: 'internal_result',
+            validations: { required: true },
+            attributes: { label: 'Internal result', options: ['Accepted', 'Rejected'] },
+          },
+        ],
+        actions: [
+          {
+            type: 'command',
+            commands: ['say {selection.internal_result}'],
+          },
+        ],
+      },
+    ]),
+    hidden: false,
+  });
+});
+
+afterAll(async () => {
+  if (templateService.getDefinition(selectionTemplateName)) {
+    await templateService.adminDelete(selectionTemplateName);
+  }
+});
 
 async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
@@ -463,6 +540,163 @@ describe('POST /api/tickets/:id/reopen', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.status).toBe('open');
+  });
+});
+
+describe('POST /api/tickets/:id/completion-hooks/:hookId/complete', () => {
+  it('publishes only completed public decisions and records validated completions', async () => {
+    const authorToken = await createUserAndGetToken('hook-author@test.com');
+    const staffToken = await createStaffAndGetToken('hook-staff@test.com');
+    const server = await prisma().server.create({
+      data: { name: 'Hook Test Server', apiKey: 'hook-test-api-key' },
+    });
+    const created = await createTicket(authorToken, {
+      template: selectionTemplateName,
+      formData: { description: 'Needs a resolution' },
+      serverId: server.id,
+    });
+    const ticketId = created.body.data.id as number;
+
+    await request(app)
+      .post(`/api/tickets/${ticketId}/close`)
+      .set('Authorization', `Bearer ${authorToken}`);
+
+    const authorView = await request(app)
+      .get(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${authorToken}`);
+    expect(authorView.body.data.completionHooks).toBeUndefined();
+
+    const staffView = await request(app)
+      .get(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${staffToken}`);
+    expect(staffView.body.data.completionHooks).toHaveLength(2);
+    const publicHook = staffView.body.data.completionHooks.find(
+      (hook: { title: string }) => hook.title === 'Choose resolution',
+    );
+    const hiddenHook = staffView.body.data.completionHooks.find(
+      (hook: { title: string }) => hook.title === 'Hidden resolution',
+    );
+    expect(publicHook).toMatchObject({
+      title: 'Choose resolution',
+      status: 'pending',
+      visibility: 'public',
+      response: null,
+    });
+    expect(hiddenHook).toMatchObject({ status: 'pending', visibility: 'staff' });
+    const hookId = publicHook.id as string;
+
+    const pendingAudit = await prisma().auditLog.findFirst({
+      where: { ticketId, action: 'completion_hook_pending' },
+    });
+    expect(pendingAudit?.newValue).toBe('2');
+
+    const playerSubmit = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hookId}/complete`)
+      .set('Authorization', `Bearer ${authorToken}`)
+      .send({ values: { rewards: ['Coins'], note: 'Done' } });
+    expect(playerSubmit.status).toBe(403);
+
+    const invalidSubmit = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hookId}/complete`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ values: { rewards: [], note: 'Done' } });
+    expect(invalidSubmit.status).toBe(400);
+
+    const completed = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hookId}/complete`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ values: { rewards: ['Coins', 'Items'], note: 'Granted' } });
+    expect(completed.status).toBe(200);
+    expect(completed.body.data).toMatchObject({
+      id: hookId,
+      status: 'completed',
+      response: { rewards: ['Coins', 'Items'], note: 'Granted' },
+    });
+    expect(completed.body.data.completedBy.username).toBe('hook-staff');
+    expect(completed.body.data.completedAt).toEqual(expect.any(String));
+
+    const publishedView = await request(app).get(`/api/tickets/${ticketId}`);
+    expect(publishedView.body.data.completionHooks).toHaveLength(1);
+    expect(publishedView.body.data.completionHooks[0]).toMatchObject({
+      id: hookId,
+      status: 'completed',
+      visibility: 'public',
+    });
+
+    const hiddenCompleted = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hiddenHook.id}/complete`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ values: { internal_result: 'Accepted' } });
+    expect(hiddenCompleted.status).toBe(200);
+
+    const publicAfterHiddenCompletion = await request(app).get(`/api/tickets/${ticketId}`);
+    expect(publicAfterHiddenCompletion.body.data.completionHooks).toHaveLength(1);
+
+    const duplicate = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hookId}/complete`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ values: { rewards: ['Coins'], note: 'Again' } });
+    expect(duplicate.status).toBe(409);
+
+    const audits = await prisma().auditLog.findMany({
+      where: { ticketId, action: 'completion_hook' },
+    });
+    expect(audits).toHaveLength(2);
+    expect(audits.map((audit) => audit.newValue)).toEqual(
+      expect.arrayContaining(['Choose resolution', 'Hidden resolution']),
+    );
+  });
+
+  it('keeps one decision set across reopen and close status cycles', async () => {
+    const authorToken = await createUserAndGetToken('hook-cancel-author@test.com');
+    const staffToken = await createStaffAndGetToken('hook-cancel-staff@test.com');
+    const created = await createTicket(authorToken, {
+      template: selectionTemplateName,
+      formData: { description: 'Cancel this hook' },
+    });
+    const ticketId = created.body.data.id as number;
+
+    await request(app)
+      .post(`/api/tickets/${ticketId}/close`)
+      .set('Authorization', `Bearer ${authorToken}`);
+
+    const initialView = await request(app)
+      .get(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${staffToken}`);
+    const initialIds = initialView.body.data.completionHooks.map((hook: { id: string }) => hook.id);
+    const publicHook = initialView.body.data.completionHooks.find(
+      (hook: { visibility: string }) => hook.visibility === 'public',
+    );
+
+    await request(app)
+      .post(`/api/tickets/${ticketId}/reopen`)
+      .set('Authorization', `Bearer ${authorToken}`);
+
+    const completedWhileOpen = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${publicHook.id}/complete`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ values: { rewards: ['Coins'], note: 'Completed while open' } });
+    expect(completedWhileOpen.status).toBe(200);
+
+    await request(app)
+      .post(`/api/tickets/${ticketId}/close`)
+      .set('Authorization', `Bearer ${authorToken}`);
+
+    const staffView = await request(app)
+      .get(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${staffToken}`);
+    expect(staffView.body.data.completionHooks).toHaveLength(2);
+    expect(staffView.body.data.completionHooks.map((hook: { id: string }) => hook.id)).toEqual(
+      initialIds,
+    );
+    expect(
+      staffView.body.data.completionHooks.map((hook: { status: string }) => hook.status),
+    ).toEqual(expect.arrayContaining(['completed', 'pending']));
+
+    const pendingAudits = await prisma().auditLog.count({
+      where: { ticketId, action: 'completion_hook_pending' },
+    });
+    expect(pendingAudits).toBe(1);
   });
 });
 

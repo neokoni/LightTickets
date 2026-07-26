@@ -310,6 +310,35 @@ const registerTicketRoutes = () => {
     tags: ['Tickets'],
   });
   registerRoute({
+    method: 'post',
+    path: '/api/tickets/{id}/completion-hooks/{hookId}/complete',
+    summary: '提交并执行议题完成选项',
+    auth: 'staff',
+    tags: ['Tickets'],
+    paramsSchema: z.object({ id: z.string(), hookId: z.uuid() }),
+    bodySchema: z.object({
+      values: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
+    }),
+    responseSchema: z.object({
+      id: z.uuid(),
+      event: z.enum(['closed', 'invalid']),
+      title: z.string(),
+      fields: z.array(z.record(z.string(), z.unknown())),
+      response: z.record(z.string(), z.union([z.string(), z.array(z.string())])).nullable(),
+      status: z.enum(['pending', 'completed', 'cancelled']),
+      visibility: z.enum(['public', 'staff']),
+      createdAt: z.string(),
+      completedAt: z.string().nullable(),
+      completedBy: z
+        .object({
+          id: z.number().int(),
+          username: z.string(),
+          minecraftName: z.string().nullable(),
+        })
+        .nullable(),
+    }),
+  });
+  registerRoute({
     method: 'get',
     path: '/api/tickets/{id}/attachments',
     summary: '获取议题附件列表',
@@ -1151,7 +1180,7 @@ const openapi = generator.generateDocument({
   openapi: '3.0.0',
   info: {
     title: 'LightTickets API',
-    version: '1.0.0',
+    version: '1.1.0',
     description: 'LightTickets API 文档',
   },
   servers: [{ url: 'http://localhost:23320', description: 'Development server' }],

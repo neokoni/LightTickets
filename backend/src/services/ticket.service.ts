@@ -8,6 +8,7 @@ import { isStaffRole } from '../constants/roles.js';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
 import { TEMPLATE_HIDDEN_MODE } from '../constants/ticket-visibility.js';
 import * as ticketNotificationService from './ticket-notification.service.js';
+import * as completionHookService from './completion-hook.service.js';
 import {
   emitTicketUpdate,
   emitToAllServers,
@@ -91,6 +92,30 @@ function createAudit(
   return tx.auditLog.create({
     data: { ticketId, actorId, action, oldValue, newValue },
   });
+}
+
+async function createPendingCompletionHooks(
+  tx: Prisma.TransactionClient,
+  ticket: {
+    id: number;
+    title: string;
+    template: string;
+    formData: string | null;
+    author?: { minecraftUuid?: string | null; minecraftName?: string | null } | null;
+  },
+  event: string,
+  actorId: number,
+): Promise<void> {
+  const pendingCount = await completionHookService.createPendingForEvent(tx, ticket, event);
+  if (pendingCount === 0) return;
+  await createAudit(
+    tx,
+    ticket.id,
+    actorId,
+    AUDIT_ACTION.COMPLETION_HOOK_PENDING,
+    undefined,
+    String(pendingCount),
+  );
 }
 
 interface CreateTicketInput {
@@ -270,6 +295,12 @@ export async function getById(id: number, viewer?: TicketViewer) {
     },
   });
   if (!ticket || !canViewTicket(ticket, viewer)) throw new NotFoundError('议题不存在');
+  if (viewer?.role !== undefined && isStaffRole(viewer.role)) {
+    return { ...ticket, completionHooks: await completionHookService.listForTicket(id, true) };
+  }
+  const publicCompletionHooks = await completionHookService.listForTicket(id, false);
+  if (publicCompletionHooks.length > 0)
+    return { ...ticket, completionHooks: publicCompletionHooks };
   return ticket;
 }
 
@@ -332,6 +363,9 @@ export async function update(
 
     if (statusChanged) {
       await createAudit(tx, id, userId, AUDIT_ACTION.STATUS_CHANGE, ticket.status, nextStatus);
+      if (nextStatus === TICKET_STATUS.CLOSED || nextStatus === TICKET_STATUS.INVALID) {
+        await createPendingCompletionHooks(tx, ticket, nextStatus, userId);
+      }
     }
     if (assigneeChanged) {
       await createAudit(
@@ -377,6 +411,7 @@ export async function update(
     }
   }
 
+  if (statusChanged) return getById(id, { userId, role: userRole });
   return updated;
 }
 
@@ -479,6 +514,7 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
       ticket.status,
       TICKET_STATUS.CLOSED,
     );
+    await createPendingCompletionHooks(tx, ticket, TICKET_STATUS.CLOSED, userId);
   });
 
   await emitStatusChanged(ticket, userId, ticket.status, TICKET_STATUS.CLOSED);
@@ -548,6 +584,15 @@ export async function reopenTicket(id: number, userId: number, userRole: string)
   });
 
   return getById(id, { userId, role: userRole });
+}
+
+export function completeCompletionHook(
+  ticketId: number,
+  hookId: string,
+  userId: number,
+  values: Record<string, string | string[]>,
+) {
+  return completionHookService.complete(ticketId, hookId, userId, values);
 }
 
 export async function setAssignees(id: number, userId: number, assigneeIds: number[]) {

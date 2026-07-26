@@ -21,6 +21,7 @@ import BaseToggle from '@/components/base/BaseToggle.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import TicketLabels from '@/components/tickets/TicketLabels.vue';
+import TicketCompletionHooks from '@/components/tickets/TicketCompletionHooks.vue';
 import type { TicketStatus, GameContext, Role } from '@/types/ticket';
 import { CommentSource, STATUS_META } from '@/types/ticket';
 import { ROLE_META } from '@/types/user';
@@ -228,6 +229,10 @@ async function reopenTicket() {
   }
 }
 
+async function refreshAfterCompletionHook() {
+  await Promise.all([store.fetchDetail(ticketId.value), fetchAuditLogs()]);
+}
+
 function scrollToRouteHash() {
   if (route.hash && route.hash.startsWith('#comment-')) {
     const commentId = route.hash.slice('#comment-'.length);
@@ -401,6 +406,13 @@ watch(
           </div>
         </div>
 
+        <TicketCompletionHooks
+          v-if="ticket.completionHooks?.length"
+          :ticket-id="ticket.id"
+          :hooks="ticket.completionHooks"
+          @completed="refreshAfterCompletionHook"
+        />
+
         <!-- Comments -->
         <div class="space-y-4">
           <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -491,9 +503,11 @@ watch(
                       : ''
                   "
                 />
-                <span class="font-medium text-slate-600 dark:text-slate-300">{{
-                  item.actor.username
-                }}</span>
+                <span
+                  v-if="item.action !== AUDIT_ACTION.COMPLETION_HOOK_PENDING"
+                  class="font-medium text-slate-600 dark:text-slate-300"
+                  >{{ item.actor.username }}</span
+                >
                 <span>{{ eventLabel(item) }}</span>
                 <span
                   v-if="
@@ -520,6 +534,11 @@ watch(
                     )!.name
                   }}
                 </span>
+                <span
+                  v-if="item.action === AUDIT_ACTION.COMPLETION_HOOK && item.newValue"
+                  class="text-slate-600 dark:text-slate-300"
+                  >{{ item.newValue }}</span
+                >
                 <span class="text-xs text-slate-400">{{ timeAgo(item.createdAt) }}</span>
               </div>
               <!-- Title change: inline strikethrough old → new -->
@@ -590,6 +609,8 @@ watch(
                   item.action !== AUDIT_ACTION.LABEL_REMOVE &&
                   item.action !== AUDIT_ACTION.ASSIGNEES_CHANGE &&
                   item.action !== AUDIT_ACTION.VISIBILITY_CHANGE &&
+                  item.action !== AUDIT_ACTION.COMPLETION_HOOK &&
+                  item.action !== AUDIT_ACTION.COMPLETION_HOOK_PENDING &&
                   (item.oldValue || item.newValue)
                 "
                 class="ml-5.5 mt-1 flex items-center gap-1"

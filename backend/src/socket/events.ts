@@ -1,5 +1,11 @@
 import { getIO } from './index.js';
-import { getDefinition, resolveHooks } from '../services/template.service.js';
+import {
+  createHookVariables,
+  getDefinition,
+  resolveHookPlaceholders,
+  resolveHooks,
+  type ResolvedHook,
+} from '../services/template.service.js';
 
 export function emitTicketUpdate(serverId: string, event: string, data: unknown) {
   const io = getIO();
@@ -34,33 +40,21 @@ export function toHookTicketPayload(ticket: HookTicketPayload): HookTicketPayloa
 export function emitHookExecute(serverId: string, ticket: HookTicketPayload, event: string) {
   const def = getDefinition(ticket.template);
   if (!def) return;
-  let formData: Record<string, string> = {};
-  if (ticket.formData) {
-    try {
-      formData = JSON.parse(ticket.formData);
-    } catch {
-      formData = {};
-    }
-  }
-
-  const variables: Record<string, string> = {
-    ticket_id: String(ticket.id),
-    ticket_title: ticket.title,
-    player_name: ticket.author?.minecraftName || 'unknown',
-    player_uuid: ticket.author?.minecraftUuid || 'unknown',
-  };
-  for (const [id, value] of Object.entries(formData)) {
-    variables[`field.${id}`] = value;
-  }
+  const variables = createHookVariables(ticket);
 
   const hooks = resolveHooks(def, event, variables);
   if (hooks.length === 0) return;
 
-  const resolvePlaceholders = (content: string) =>
-    content.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (placeholder, key: string) =>
-      Object.prototype.hasOwnProperty.call(variables, key) ? variables[key] : placeholder,
-    );
+  emitResolvedHookExecute(serverId, ticket, event, hooks, variables);
+}
 
+export function emitResolvedHookExecute(
+  serverId: string,
+  ticket: HookTicketPayload,
+  event: string,
+  hooks: ResolvedHook[],
+  variables: Record<string, string> = {},
+) {
   const resolvedHooks = hooks.map((hook) => ({
     hookId: ['hook', ticket.id, event, Date.now(), Math.random().toString(36).slice(2, 10)].join(
       ':',
@@ -68,7 +62,7 @@ export function emitHookExecute(serverId: string, ticket: HookTicketPayload, eve
     ticketId: ticket.id,
     event,
     type: hook.type,
-    content: resolvePlaceholders(hook.content),
+    content: resolveHookPlaceholders(hook.content, variables),
   }));
   const resolvedCommands = resolvedHooks
     .filter((hook) => hook.type === 'command')

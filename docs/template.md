@@ -150,6 +150,7 @@ completion_hooks:
 |------|------|---------|
 | `command` | 以服务器控制台权限执行 Minecraft 命令 | `commands` |
 | `minimessage` | 向议题作者发送 MiniMessage 格式消息 | `messages` 或 `message` |
+| `selection`（后台显示为“执行选项”） | 议题状态变化后等待 staff/admin 填写并确认 | `title`、`visibility`、`fields`、`actions` |
 
 `type` 可省略，省略时自动推断：有 `commands` 字段则为 `command`，否则为 `minimessage`。
 
@@ -170,6 +171,55 @@ commands:
   - tell {player_name} first
   - say second
 ```
+
+### 执行选项（selection）
+
+`selection` 不会在状态变化时立即执行。议题第一次进入能匹配决策配置的状态后，后端会保存
+一份字段和动作配置快照并标记为 `pending`。同一议题只生成这一组决策；后续重新打开、再次
+关闭或切换其他状态都不会取消或重新生成。只有 `staff` / `admin` 能提交；提交成功后状态变为
+`completed`，同时记录操作人、填写结果和完成时间，每项决策及其动作最多执行一次。
+
+`visibility` 控制决策结果卡片可见性：`staff`（默认）始终仅 staff/admin 可见；`public` 在
+决策完成前仍仅 staff/admin 可见，完成后会对所有能查看该议题的人公开。公开结果不会让无权
+查看隐藏议题的用户绕过议题可见性。
+
+字段支持 `input`、`textarea`、`dropdown` 和 `checkboxes`（多选），结构与 `body` 字段相同；
+其中每个字段都必须配置唯一 `id` 和非空 `attributes.label`。`actions` 支持配置多个
+`command` / `minimessage` 动作，每个动作又可包含多条命令或消息，并按配置顺序下发。
+
+```yaml
+completion_hooks:
+  - event: closed
+    type: selection
+    title: 选择处理结果
+    visibility: public
+    fields:
+      - type: checkboxes
+        id: rewards
+        validations:
+          required: true
+        attributes:
+          label: 发放内容
+          options:
+            - 金币
+            - 物品
+      - type: input
+        id: note
+        attributes:
+          label: 处理说明
+          placeholder: 可选备注
+    actions:
+      - type: command
+        commands:
+          - "reward {player_name} {selection.rewards}"
+          - "say 议题 #{ticket_id} 已处理"
+      - type: minimessage
+        messages:
+          - "<green>处理完成：{selection.note}</green>"
+```
+
+填写结果通过 `{selection.<字段ID>}` 引用。多选值在替换时以英文逗号连接；这些占位符仅用于
+当前 `selection` 的 `actions`，其余议题和表单占位符仍可同时使用。
 
 ### 可用占位符变量
 
@@ -260,4 +310,4 @@ completion_hooks:
 
 ## 管理后台编辑
 
-管理后台的「模板管理」编辑窗口分为「基础信息」「表单字段」「完成钩子」「编辑原文」四个分区，移动端可通过下拉框切换。`body` 和 `completion_hooks` 都会自动反序列化为结构化编辑器；保存时再自动序列化，由后端校验后同步写回 `data/templates/<name>.yml` 文件。表单字段和完成钩子均在列表底部选择类型后添加，并支持拖拽或箭头排序。表单字段支持 `input`、`textarea`、`markdown`、`checkboxes` 和 `dropdown`；完成钩子可配置事件、类型、条件以及命令或消息列表。空的可选配置不会写入模板。「编辑原文」会在 GUI 内容变化时实时生成完整 YAML，也可直接修改；保存前会由后端解析并校验，GUI 与原文均有修改时以最后发生的修改为准。
+管理后台的「模板管理」编辑窗口分为「基础信息」「表单字段」「完成钩子」「编辑原文」四个分区，移动端可通过下拉框切换。`body` 和 `completion_hooks` 都会自动反序列化为结构化编辑器；保存时再自动序列化，由后端校验后同步写回 `data/templates/<name>.yml` 文件。表单字段和完成钩子均在列表底部选择类型后添加，并支持拖拽或箭头排序。表单字段支持 `input`、`textarea`、`markdown`、`checkboxes` 和 `dropdown`；普通完成钩子可配置事件、类型、条件以及命令或消息列表，“执行选项”还可配置结果卡片可见性、决策字段和多个提交后动作。空的可选配置不会写入模板。「编辑原文」会在 GUI 内容变化时实时生成完整 YAML，也可直接修改；保存前会由后端解析并校验，GUI 与原文均有修改时以最后发生的修改为准。

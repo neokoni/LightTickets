@@ -86,6 +86,23 @@ export interface Ticket {
   labels: TicketLabel[];
   server?: { id: string; name: string };
   _count?: { comments: number };
+  completionHooks?: TicketCompletionHook[];
+}
+
+export type CompletionHookStatus = 'pending' | 'completed' | 'cancelled';
+export type CompletionHookValue = string | string[];
+
+export interface TicketCompletionHook {
+  id: string;
+  event: 'closed' | 'invalid';
+  title: string;
+  fields: TemplateField[];
+  response: Record<string, CompletionHookValue> | null;
+  status: CompletionHookStatus;
+  visibility: 'public' | 'staff';
+  createdAt: string;
+  completedAt: string | null;
+  completedBy: { id: number; username: string; minecraftName?: string | null } | null;
 }
 
 export interface TicketAssignee {

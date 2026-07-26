@@ -129,6 +129,14 @@ const updateTitleSchema = z.object({
   title: z.string().trim().min(1).max(200),
 });
 
+const completeHookSchema = z.object({
+  values: z.record(
+    z.string(),
+    z.union([z.string().max(2000), z.array(z.string().max(2000)).max(100)]),
+  ),
+});
+const completionHookIdSchema = z.uuid();
+
 router.patch('/:id/title', authMiddleware, async (req: Request, res: Response) => {
   const data = validate(updateTitleSchema, req.body);
 
@@ -158,6 +166,22 @@ router.post('/:id/reopen', authMiddleware, async (req: Request, res: Response) =
   );
   res.json(ticket);
 });
+
+router.post(
+  '/:id/completion-hooks/:hookId/complete',
+  authMiddleware,
+  requireRole(ROLE.STAFF),
+  async (req: Request, res: Response) => {
+    const data = validate(completeHookSchema, req.body);
+    const hook = await ticketService.completeCompletionHook(
+      parseId(String(req.params.id)),
+      validate(completionHookIdSchema, String(req.params.hookId)),
+      req.user!.userId,
+      data.values,
+    );
+    res.json(hook);
+  },
+);
 
 // Assignees
 const assigneesSchema = z.object({

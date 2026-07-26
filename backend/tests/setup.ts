@@ -45,6 +45,7 @@ beforeEach(async () => {
   await prisma().setupStatus.deleteMany();
   await prisma().appConfig.deleteMany();
   await prisma().auditLog.deleteMany();
+  await prisma().ticketCompletionHook.deleteMany();
   await prisma().ticketLabel.deleteMany();
   await prisma().attachment.deleteMany();
   await prisma().comment.deleteMany();

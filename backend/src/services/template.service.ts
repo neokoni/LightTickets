@@ -25,7 +25,30 @@ export interface TemplateField {
 export interface CompletionHook {
   event: 'closed' | 'invalid';
   if?: string;
-  type?: 'command' | 'minimessage';
+  type?: 'command' | 'minimessage' | 'selection';
+  commands?: string[];
+  messages?: string[];
+  message?: string;
+  title?: string;
+  visibility?: 'public' | 'staff';
+  fields?: SelectionHookField[];
+  actions?: CompletionHookAction[];
+}
+
+export interface SelectionHookField {
+  type: 'input' | 'textarea' | 'checkboxes' | 'dropdown';
+  id: string;
+  validations?: { required?: boolean };
+  attributes: {
+    label: string;
+    description?: string;
+    placeholder?: string;
+    options?: string[] | { label: string; required?: boolean }[];
+  };
+}
+
+export interface CompletionHookAction {
+  type: 'command' | 'minimessage';
   commands?: string[];
   messages?: string[];
   message?: string;
@@ -34,6 +57,13 @@ export interface CompletionHook {
 export interface ResolvedHook {
   type: 'command' | 'minimessage';
   content: string;
+}
+
+export interface ResolvedSelectionHook {
+  title: string;
+  visibility: 'public' | 'staff';
+  fields: SelectionHookField[];
+  actions: CompletionHookAction[];
 }
 
 export interface TemplateDefinition {
@@ -154,6 +184,94 @@ function shouldRunHook(hook: CompletionHook, variables: Record<string, string>):
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function assertValidHookAction(value: unknown): asserts value is CompletionHookAction {
+  if (!isRecord(value) || (value.type !== 'command' && value.type !== 'minimessage')) {
+    throw new Error('invalid completion hook action');
+  }
+  if (value.type === 'command') {
+    if (!isStringArray(value.commands) || value.commands.length === 0) {
+      throw new Error('command action requires commands');
+    }
+    return;
+  }
+  const hasMessage = typeof value.message === 'string' && value.message.length > 0;
+  const hasMessages = isStringArray(value.messages) && value.messages.length > 0;
+  if (!hasMessage && !hasMessages) throw new Error('minimessage action requires messages');
+}
+
+function assertValidSelectionField(value: unknown): asserts value is SelectionHookField {
+  if (
+    !isRecord(value) ||
+    !['input', 'textarea', 'checkboxes', 'dropdown'].includes(String(value.type)) ||
+    typeof value.id !== 'string' ||
+    !/^[a-zA-Z0-9_-]+$/.test(value.id) ||
+    !isRecord(value.attributes) ||
+    typeof value.attributes.label !== 'string' ||
+    !value.attributes.label.trim()
+  ) {
+    throw new Error('invalid selection hook field');
+  }
+  if (value.type === 'checkboxes' || value.type === 'dropdown') {
+    const options = value.attributes.options;
+    if (
+      !Array.isArray(options) ||
+      options.length === 0 ||
+      !options.every(
+        (option) =>
+          (typeof option === 'string' && option.length > 0) ||
+          (isRecord(option) && typeof option.label === 'string' && option.label.length > 0),
+      )
+    ) {
+      throw new Error('selection hook choice field requires options');
+    }
+  }
+}
+
+function assertValidCompletionHooks(value: CompletionHook[]): void {
+  for (const hook of value) {
+    // Existing command/minimessage hooks historically accepted loose YAML. Keep
+    // that compatibility and apply strict validation only to the new type.
+    if (!isRecord(hook) || hook.type !== 'selection') continue;
+    if (hook.event !== 'closed' && hook.event !== 'invalid') {
+      throw new Error('invalid selection hook event');
+    }
+    if (hook.if !== undefined && typeof hook.if !== 'string') {
+      throw new Error('invalid selection hook condition');
+    }
+    if (
+      hook.visibility !== undefined &&
+      hook.visibility !== 'public' &&
+      hook.visibility !== 'staff'
+    ) {
+      throw new Error('invalid selection hook visibility');
+    }
+    if (
+      typeof hook.title !== 'string' ||
+      !hook.title.trim() ||
+      hook.title.length > 191 ||
+      !Array.isArray(hook.fields) ||
+      hook.fields.length === 0 ||
+      !Array.isArray(hook.actions) ||
+      hook.actions.length === 0
+    ) {
+      throw new Error('selection hook requires title, fields, and actions');
+    }
+    hook.fields.forEach(assertValidSelectionField);
+    if (new Set(hook.fields.map((field) => field.id)).size !== hook.fields.length) {
+      throw new Error('selection hook field ids must be unique');
+    }
+    hook.actions.forEach(assertValidHookAction);
+  }
+}
+
 function parseTemplateSource(raw: string): TemplateDefinition {
   const def = yaml.load(raw) as Partial<TemplateDefinition> | null;
   if (
@@ -175,13 +293,16 @@ function parseTemplateSource(raw: string): TemplateDefinition {
     throw new Error('invalid optional template fields');
   }
 
+  const completionHooks = Array.isArray(def.completion_hooks) ? def.completion_hooks : [];
+  assertValidCompletionHooks(completionHooks);
+
   return {
     name: def.name,
     description: def.description,
     title_prefix: def.title_prefix,
     labels: Array.isArray(def.labels) ? def.labels : [],
     body: def.body,
-    completion_hooks: Array.isArray(def.completion_hooks) ? def.completion_hooks : [],
+    completion_hooks: completionHooks,
     enabled: def.enabled ?? true,
     hidden: normalizeTemplateHiddenMode(def.hidden),
   };
@@ -322,13 +443,80 @@ export function resolveHooks(
   variables: Record<string, string> = {},
 ): ResolvedHook[] {
   return def.completion_hooks
-    .filter((h) => h.event === event && shouldRunHook(h, variables))
+    .filter((h) => h.type !== 'selection' && h.event === event && shouldRunHook(h, variables))
     .flatMap((h) => {
-      const type = h.type ?? (h.commands ? 'command' : 'minimessage');
+      const type: ResolvedHook['type'] =
+        h.type === 'command' || (h.type === undefined && h.commands) ? 'command' : 'minimessage';
       const values =
         type === 'command' ? (h.commands ?? []) : (h.messages ?? (h.message ? [h.message] : []));
       return values.map((content) => ({ type, content }));
     });
+}
+
+export function resolveSelectionHooks(
+  def: TemplateDefinition,
+  event: string,
+  variables: Record<string, string> = {},
+): ResolvedSelectionHook[] {
+  return def.completion_hooks
+    .filter(
+      (hook) => hook.type === 'selection' && hook.event === event && shouldRunHook(hook, variables),
+    )
+    .map((hook) => ({
+      title: hook.title!,
+      visibility: hook.visibility ?? 'staff',
+      fields: hook.fields!,
+      actions: hook.actions!,
+    }));
+}
+
+export function resolveHookActions(
+  actions: CompletionHookAction[],
+  variables: Record<string, string>,
+): ResolvedHook[] {
+  return actions.flatMap((action) => {
+    const values =
+      action.type === 'command'
+        ? (action.commands ?? [])
+        : (action.messages ?? (action.message ? [action.message] : []));
+    return values.map((content) => ({
+      type: action.type,
+      content: resolveHookPlaceholders(content, variables),
+    }));
+  });
+}
+
+export function resolveHookPlaceholders(
+  content: string,
+  variables: Record<string, string>,
+): string {
+  return content.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (placeholder, key: string) =>
+    Object.prototype.hasOwnProperty.call(variables, key) ? variables[key] : placeholder,
+  );
+}
+
+export function createHookVariables(ticket: {
+  id: number;
+  title: string;
+  formData: string | null;
+  author?: { minecraftUuid?: string | null; minecraftName?: string | null } | null;
+}): Record<string, string> {
+  const variables: Record<string, string> = {
+    ticket_id: String(ticket.id),
+    ticket_title: ticket.title,
+    player_name: ticket.author?.minecraftName || 'unknown',
+    player_uuid: ticket.author?.minecraftUuid || 'unknown',
+  };
+  if (!ticket.formData) return variables;
+  try {
+    const formData = JSON.parse(ticket.formData) as Record<string, unknown>;
+    for (const [id, value] of Object.entries(formData)) {
+      variables[`field.${id}`] = Array.isArray(value) ? value.join(',') : String(value ?? '');
+    }
+  } catch {
+    // A malformed historical formData value should not prevent a status transition.
+  }
+  return variables;
 }
 
 function toAdminTemplate(entry: CachedTemplate): AdminTemplate {
@@ -403,6 +591,11 @@ function writeTemplateFile(
   const hooksParsed = parseYamlField(data.completionHooks || '[]', 'completionHooks');
   if (!Array.isArray(hooksParsed))
     throw new ValidationError('completionHooks 字段必须是 YAML 数组');
+  try {
+    assertValidCompletionHooks(hooksParsed as CompletionHook[]);
+  } catch {
+    throw new ValidationError('completionHooks 字段包含无效的钩子配置');
+  }
 
   const labelsArr = parseLabels(data.labels || '[]');
   const template: TemplateDefinition = {
