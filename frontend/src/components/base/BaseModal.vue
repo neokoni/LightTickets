@@ -12,15 +12,18 @@ const modelValue = defineModel<boolean>({ required: true });
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="modelValue" class="fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <div
+        v-if="modelValue"
+        class="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto p-4 sm:items-center"
+      >
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="modelValue = false" />
         <div
-          class="relative flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-xl border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/95"
+          class="relative flex max-h-[calc(100dvh-2rem)] w-full flex-col rounded-xl border border-slate-200/80 bg-white/95 shadow-sm backdrop-blur dark:border-slate-800/80 dark:bg-slate-900/95"
           :class="props.size === 'wide' ? 'max-w-6xl' : 'max-w-lg'"
         >
           <div
             v-if="title"
-            class="flex items-center justify-between px-6 py-5 border-b border-slate-200/80 dark:border-slate-800/80"
+            class="flex shrink-0 items-center justify-between px-6 py-5 border-b border-slate-200/80 dark:border-slate-800/80"
           >
             <h3 class="text-base font-semibold text-slate-900 dark:text-white">{{ title }}</h3>
             <button
@@ -30,12 +33,12 @@ const modelValue = defineModel<boolean>({ required: true });
               <Icon icon="lucide:x" class="w-5 h-5" />
             </button>
           </div>
-          <div class="min-h-0 flex-1 overflow-hidden p-6">
+          <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6">
             <slot />
           </div>
           <div
             v-if="$slots.footer"
-            class="px-6 py-5 border-t border-slate-200/80 dark:border-slate-800/80 flex justify-end gap-2"
+            class="flex shrink-0 justify-end gap-2 px-6 py-5 border-t border-slate-200/80 dark:border-slate-800/80"
           >
             <slot name="footer" />
           </div>

@@ -122,7 +122,7 @@ onMounted(async () => {
       v-model="showModal"
       :title="editingId ? t('admin.labels.editTitle') : t('admin.labels.create')"
     >
-      <form class="space-y-4" @submit.prevent="save">
+      <form id="label-editor-form" class="space-y-4" @submit.prevent="save">
         <BaseInput
           v-model="form.id"
           :label="t('admin.labels.identifier')"
@@ -150,16 +150,17 @@ onMounted(async () => {
           :label="t('common.descriptionOptional')"
           :placeholder="t('admin.labels.descriptionPlaceholder')"
         />
-        <div class="flex justify-end gap-2">
-          <BaseButton type="button" @click="showModal = false">{{ t('common.cancel') }}</BaseButton>
-          <BaseButton
-            filled
-            type="submit"
-            :disabled="!form.name.trim() || (!editingId && !form.id.trim())"
-            >{{ t('common.save') }}</BaseButton
-          >
-        </div>
       </form>
+      <template #footer>
+        <BaseButton type="button" @click="showModal = false">{{ t('common.cancel') }}</BaseButton>
+        <BaseButton
+          filled
+          type="submit"
+          form="label-editor-form"
+          :disabled="!form.name.trim() || (!editingId && !form.id.trim())"
+          >{{ t('common.save') }}</BaseButton
+        >
+      </template>
     </BaseModal>
   </div>
 </template>
