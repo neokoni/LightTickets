@@ -1,5 +1,55 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
+const POPUP_TRIGGER_SELECTOR =
+  'button, [role="button"], a[href], input[type="button"], input[type="submit"]';
+const POINTER_ORIGIN_MAX_AGE = 10_000;
+
+interface PopupOrigin {
+  x: number;
+  y: number;
+  capturedAt: number;
+}
+
+let originTrackerConsumers = 0;
+let lastPointerOrigin: PopupOrigin | null = null;
+
+function getTriggerElement(target: Node | null): HTMLElement | null {
+  const element = target as HTMLElement | null;
+  if (typeof element?.closest !== 'function') return null;
+  return element.closest<HTMLElement>(POPUP_TRIGGER_SELECTOR);
+}
+
+function getElementCenter(element: HTMLElement | null): PopupOrigin | null {
+  if (!element?.isConnected) return null;
+  const rect = element.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) return null;
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+    capturedAt: Date.now(),
+  };
+}
+
+function trackPointerOrigin(event: Event) {
+  if (event instanceof MouseEvent && event.button !== 0) return;
+  lastPointerOrigin = getElementCenter(getTriggerElement(event.target as Node | null));
+}
+
+function startOriginTracker() {
+  if (originTrackerConsumers === 0) {
+    document.addEventListener('pointerdown', trackPointerOrigin, true);
+  }
+  originTrackerConsumers += 1;
+}
+
+function stopOriginTracker() {
+  originTrackerConsumers -= 1;
+  if (originTrackerConsumers === 0) {
+    document.removeEventListener('pointerdown', trackPointerOrigin, true);
+  }
+}
 
 const props = defineProps<{
   title?: string;
@@ -7,6 +57,33 @@ const props = defineProps<{
 }>();
 
 const modelValue = defineModel<boolean>({ required: true });
+const modalOffsetX = ref('0px');
+const modalOffsetY = ref('0px');
+
+function captureModalOrigin() {
+  const focusedOrigin = getElementCenter(getTriggerElement(document.activeElement as Node | null));
+  const recentPointerOrigin =
+    lastPointerOrigin && Date.now() - lastPointerOrigin.capturedAt <= POINTER_ORIGIN_MAX_AGE
+      ? lastPointerOrigin
+      : null;
+  const origin = focusedOrigin ?? recentPointerOrigin;
+  const viewportWidth = document.documentElement.clientWidth;
+  const viewportHeight = document.documentElement.clientHeight;
+
+  modalOffsetX.value = origin ? `${origin.x - viewportWidth / 2}px` : '0px';
+  modalOffsetY.value = origin ? `${origin.y - viewportHeight / 2}px` : '0px';
+}
+
+watch(
+  modelValue,
+  (open, wasOpen) => {
+    if (open && !wasOpen) captureModalOrigin();
+  },
+  { flush: 'sync' },
+);
+
+onMounted(startOriginTracker);
+onBeforeUnmount(stopOriginTracker);
 </script>
 
 <template>
@@ -15,6 +92,10 @@ const modelValue = defineModel<boolean>({ required: true });
       <div
         v-if="modelValue"
         class="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm"
+        :style="{
+          '--modal-offset-x': modalOffsetX,
+          '--modal-offset-y': modalOffsetY,
+        }"
         @click.self="modelValue = false"
       >
         <div
@@ -51,12 +132,12 @@ const modelValue = defineModel<boolean>({ required: true });
 <style scoped>
 .modal-enter-active,
 .modal-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.24s ease;
 }
 
 .modal-enter-active .modal-panel,
 .modal-leave-active .modal-panel {
-  transition: transform 0.2s ease;
+  transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .modal-enter-from,
@@ -66,6 +147,6 @@ const modelValue = defineModel<boolean>({ required: true });
 
 .modal-enter-from .modal-panel,
 .modal-leave-to .modal-panel {
-  transform: scale(0.95);
+  transform: translate3d(var(--modal-offset-x), var(--modal-offset-y), 0) scale(0.08);
 }
 </style>
