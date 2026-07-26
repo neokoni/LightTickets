@@ -14,7 +14,7 @@ const modelValue = defineModel<boolean>({ required: true });
     <Transition name="modal">
       <div
         v-if="modelValue"
-        class="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto p-4 sm:items-center"
+        class="fixed inset-0 z-[90] flex items-center justify-center overflow-y-auto p-4"
       >
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="modelValue = false" />
         <div
