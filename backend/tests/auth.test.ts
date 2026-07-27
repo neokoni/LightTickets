@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
 import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
+import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
 
 const app = createApp();
 
@@ -420,6 +421,27 @@ describe('POST /api/auth/refresh', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('accessToken');
+
+    const authenticated = await request(app)
+      .patch('/api/users/me/notifications')
+      .set('Authorization', `Bearer ${res.body.data.accessToken}`)
+      .send({ receiveEmailNotifications: false });
+    expect(authenticated.status).toBe(200);
+  });
+
+  it('rejects access and unsubscribe tokens as refresh tokens', async () => {
+    const reg = await request(app).post('/api/auth/register').send({
+      email: 'refresh-boundary@example.com',
+      password: 'Password123!',
+      username: 'refreshboundary',
+    });
+    const unsubscribeToken = createUnsubscribeToken(reg.body.data.user.id);
+
+    for (const wrongToken of [reg.body.data.accessToken, unsubscribeToken]) {
+      const res = await request(app).post('/api/auth/refresh').send({ refreshToken: wrongToken });
+      expect(res.status).toBe(401);
+      expect(res.body).toMatchObject({ success: false, statusCode: 401 });
+    }
   });
 });
 

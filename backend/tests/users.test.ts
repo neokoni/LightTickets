@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
+import { getConfig } from '../src/config.js';
 import { prisma } from './setup.js';
 import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
 
@@ -22,7 +24,11 @@ async function createUserAndGetToken(email = 'user@test.com') {
   const res = await request(app)
     .post('/api/auth/register')
     .send({ email, password: 'Password123!', username });
-  return { token: res.body.data.accessToken, user: res.body.data.user };
+  return {
+    token: res.body.data.accessToken,
+    refreshToken: res.body.data.refreshToken,
+    user: res.body.data.user,
+  };
 }
 
 describe('GET /api/users', () => {
@@ -135,6 +141,80 @@ describe('email notification preferences', () => {
       .post('/api/users/email-notifications/unsubscribe')
       .send({ token: 'invalid' });
     expect(res.status).toBe(400);
+  });
+
+  it('rejects an unsubscribe token used as a Bearer token', async () => {
+    const { user } = await createUserAndGetToken('unsubscribe-bearer@test.com');
+    const unsubscribeToken = createUnsubscribeToken(user.id);
+
+    const res = await request(app)
+      .patch('/api/users/me/email')
+      .set('Authorization', `Bearer ${unsubscribeToken}`)
+      .send({ email: 'attacker-controlled@test.com' });
+
+    expect(res.status).toBe(401);
+    expect(res.body).toMatchObject({ success: false, statusCode: 401 });
+    const unchanged = await prisma().user.findUnique({ where: { id: user.id } });
+    expect(unchanged?.email).toBe('unsubscribe-bearer@test.com');
+  });
+
+  it('keeps a legacy unsubscribe token inside the unsubscribe boundary', async () => {
+    const { user } = await createUserAndGetToken('legacy-unsubscribe@test.com');
+    const config = getConfig();
+    const originalCutoff = config.security.legacyJwtCutoff;
+    const cutoff = Math.floor(Date.now() / 1000);
+    config.security.legacyJwtCutoff = cutoff;
+
+    try {
+      const legacyToken = jwt.sign(
+        { userId: user.id, purpose: 'ticket-email-unsubscribe', iat: cutoff },
+        config.security.jwtSecret,
+        { algorithm: 'HS256', expiresIn: '30d' },
+      );
+      const bearerRes = await request(app)
+        .patch('/api/users/me/email')
+        .set('Authorization', `Bearer ${legacyToken}`)
+        .send({ email: 'legacy-attacker@test.com' });
+      expect(bearerRes.status).toBe(401);
+
+      const unsubscribeRes = await request(app)
+        .post('/api/users/email-notifications/unsubscribe')
+        .send({ token: legacyToken });
+      expect(unsubscribeRes.status).toBe(200);
+
+      const unchanged = await prisma().user.findUnique({ where: { id: user.id } });
+      expect(unchanged?.email).toBe('legacy-unsubscribe@test.com');
+      expect(unchanged?.receiveEmailNotifications).toBe(false);
+    } finally {
+      config.security.legacyJwtCutoff = originalCutoff;
+    }
+  });
+
+  it('rejects access and refresh tokens at the unsubscribe endpoint', async () => {
+    const { token, refreshToken, user } = await createUserAndGetToken(
+      'unsubscribe-boundary@test.com',
+    );
+
+    for (const wrongToken of [token, refreshToken]) {
+      const res = await request(app)
+        .post('/api/users/email-notifications/unsubscribe')
+        .send({ token: wrongToken });
+      expect(res.status).toBe(400);
+    }
+
+    const unchanged = await prisma().user.findUnique({ where: { id: user.id } });
+    expect(unchanged?.receiveEmailNotifications).toBe(true);
+  });
+
+  it('rejects a refresh token used as a Bearer token', async () => {
+    const { refreshToken } = await createUserAndGetToken('refresh-bearer@test.com');
+
+    const res = await request(app)
+      .patch('/api/users/me/notifications')
+      .set('Authorization', `Bearer ${refreshToken}`)
+      .send({ receiveEmailNotifications: false });
+
+    expect(res.status).toBe(401);
   });
 });
 

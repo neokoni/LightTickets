@@ -17,6 +17,8 @@ database:
 security:
   jwtSecret: "test-jwt-secret"
   jwtRefreshSecret: "test-refresh-secret"
+  jwtUnsubscribeSecret: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  legacyJwtCutoff: 0
 `;
 
 // Wipe the entire test data dir so every run starts from a clean slate.

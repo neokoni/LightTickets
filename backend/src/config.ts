@@ -48,6 +48,8 @@ interface DatabaseConfig {
 interface SecurityConfig {
   jwtSecret: string;
   jwtRefreshSecret: string;
+  jwtUnsubscribeSecret: string;
+  legacyJwtCutoff: number;
   externalEncryptionKey: string;
 }
 
@@ -61,20 +63,70 @@ export interface AppConfig {
   linkCodeExpiry: number;
 }
 
-function ensureExternalEncryptionKey(raw: ConfigFile): string {
-  const existing = raw.security?.externalEncryptionKey?.trim();
-  if (existing) {
-    if (!/^[a-f\d]{64}$/i.test(existing)) {
-      throw new Error('config.yml security.externalEncryptionKey 必须是 32 字节十六进制密钥');
-    }
-    return existing;
+type GeneratedSecurityKey = 'jwtUnsubscribeSecret' | 'externalEncryptionKey';
+const LEGACY_JWT_CUTOFF_CLOCK_SKEW_SECONDS = 5 * 60;
+
+function resolveGeneratedSecurityKey(
+  raw: ConfigFile,
+  key: GeneratedSecurityKey,
+): { value: string; generated: boolean } {
+  const configured = raw.security?.[key];
+  if (configured !== undefined && typeof configured !== 'string') {
+    throw new Error(`config.yml security.${key} 必须是 32 字节十六进制密钥`);
   }
 
-  const generated = crypto.randomBytes(32).toString('hex');
-  raw.security = { ...raw.security, externalEncryptionKey: generated };
-  fs.writeFileSync(CONFIG_PATH, yaml.dump(raw, { lineWidth: -1 }), { mode: 0o600 });
+  const existing = configured?.trim();
+  if (existing) {
+    if (!/^[a-f\d]{64}$/i.test(existing)) {
+      throw new Error(`config.yml security.${key} 必须是 32 字节十六进制密钥`);
+    }
+    return { value: existing, generated: false };
+  }
+
+  const value = crypto.randomBytes(32).toString('hex');
+  raw.security = { ...raw.security, [key]: value };
+  return { value, generated: true };
+}
+
+function ensureGeneratedSecurityConfig(
+  raw: ConfigFile,
+): Pick<SecurityConfig, 'jwtUnsubscribeSecret' | 'legacyJwtCutoff' | 'externalEncryptionKey'> {
+  const configuredUnsubscribeSecret = raw.security?.jwtUnsubscribeSecret;
+  const hadUnsubscribeSecret =
+    typeof configuredUnsubscribeSecret === 'string' && configuredUnsubscribeSecret.trim() !== '';
+  const unsubscribe = resolveGeneratedSecurityKey(raw, 'jwtUnsubscribeSecret');
+  const externalEncryption = resolveGeneratedSecurityKey(raw, 'externalEncryptionKey');
+  const configuredCutoff = raw.security?.legacyJwtCutoff;
+  const maxLegacyJwtCutoff = Math.floor(Date.now() / 1000) + LEGACY_JWT_CUTOFF_CLOCK_SKEW_SECONDS;
+  if (
+    configuredCutoff !== undefined &&
+    (!Number.isSafeInteger(configuredCutoff) ||
+      configuredCutoff < 0 ||
+      configuredCutoff > maxLegacyJwtCutoff)
+  ) {
+    throw new Error(
+      'config.yml security.legacyJwtCutoff 必须是非负 Unix 秒级时间戳，且不得超过允许的当前时钟偏差',
+    );
+  }
+
+  // Existing installations get a bounded compatibility window for tokens issued
+  // before this upgrade. Fresh installations never enable the legacy verifier.
+  const legacyJwtCutoff =
+    configuredCutoff ?? (hadUnsubscribeSecret ? 0 : Math.floor(Date.now() / 1000));
+  const cutoffGenerated = configuredCutoff === undefined;
+  if (cutoffGenerated) {
+    raw.security = { ...raw.security, legacyJwtCutoff };
+  }
+
+  if (unsubscribe.generated || externalEncryption.generated || cutoffGenerated) {
+    fs.writeFileSync(CONFIG_PATH, yaml.dump(raw, { lineWidth: -1 }), { mode: 0o600 });
+  }
   fs.chmodSync(CONFIG_PATH, 0o600);
-  return generated;
+  return {
+    jwtUnsubscribeSecret: unsubscribe.value,
+    legacyJwtCutoff,
+    externalEncryptionKey: externalEncryption.value,
+  };
 }
 
 const S3_REQUIRED_FIELDS = ['endpoint', 'bucket', 'accessKeyId', 'secretAccessKey'] as const;
@@ -139,7 +191,13 @@ export function loadConfig(): AppConfig {
   if (!jwtSecret || !jwtRefreshSecret) {
     throw new Error('config.yml 缺少 security.jwtSecret 或 security.jwtRefreshSecret');
   }
-  const externalEncryptionKey = ensureExternalEncryptionKey(raw);
+  const generatedSecurity = ensureGeneratedSecurityConfig(raw);
+  const jwtSecrets = [jwtSecret, jwtRefreshSecret, generatedSecurity.jwtUnsubscribeSecret];
+  if (new Set(jwtSecrets).size !== jwtSecrets.length) {
+    throw new Error(
+      'config.yml security.jwtSecret、jwtRefreshSecret 与 jwtUnsubscribeSecret 必须各不相同',
+    );
+  }
 
   return {
     port: resolveServerPort(server.port),
@@ -153,7 +211,7 @@ export function loadConfig(): AppConfig {
       database: database.database,
       args: database.args,
     },
-    security: { jwtSecret, jwtRefreshSecret, externalEncryptionKey },
+    security: { jwtSecret, jwtRefreshSecret, ...generatedSecurity },
     accessTokenExpiry: '2h',
     refreshTokenExpiry: '7d',
     linkCodeExpiry: 5 * 60 * 1000,

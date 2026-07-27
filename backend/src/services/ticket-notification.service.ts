@@ -1,15 +1,12 @@
-import jwt, { type JwtPayload, type SignOptions } from 'jsonwebtoken';
 import { prisma } from '../db.js';
-import { getConfig } from '../config.js';
 import { ValidationError } from '../utils/errors.js';
 import type { TicketStatus } from '@prisma/client';
+import { generateEmailUnsubscribeToken, verifyEmailUnsubscribeToken } from '../utils/token.js';
 import * as i18nService from './i18n.service.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as mailService from './mail.service.js';
 import { resolveSiteTitle } from './site.js';
 
-const UNSUBSCRIBE_PURPOSE = 'ticket-email-unsubscribe';
-const UNSUBSCRIBE_TOKEN_EXPIRY = '30d';
 const FALLBACK_SITE_ORIGIN = 'http://localhost:23310';
 
 type NotificationEvent =
@@ -59,22 +56,12 @@ function statusKey(status: TicketStatus): string {
 }
 
 export function createUnsubscribeToken(userId: number): string {
-  return jwt.sign({ userId, purpose: UNSUBSCRIBE_PURPOSE }, getConfig().security.jwtSecret, {
-    expiresIn: UNSUBSCRIBE_TOKEN_EXPIRY,
-  } as SignOptions);
+  return generateEmailUnsubscribeToken(userId);
 }
 
 function readUnsubscribeUserId(token: string): number {
   try {
-    const payload = jwt.verify(token, getConfig().security.jwtSecret) as JwtPayload;
-    if (
-      payload.purpose !== UNSUBSCRIBE_PURPOSE ||
-      typeof payload.userId !== 'number' ||
-      !Number.isInteger(payload.userId)
-    ) {
-      throw new Error('invalid payload');
-    }
-    return payload.userId;
+    return verifyEmailUnsubscribeToken(token).userId;
   } catch {
     throw new ValidationError('退订链接无效或已过期');
   }

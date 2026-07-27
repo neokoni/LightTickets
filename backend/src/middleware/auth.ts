@@ -1,8 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
-import { getConfig } from '../config.js';
 import { UnauthorizedError } from '../utils/errors.js';
 import { getSiteConfig } from '../services/setup.service.js';
+import { verifyAccessToken } from '../utils/token.js';
 
 export interface AuthPayload {
   userId: number;
@@ -20,7 +19,7 @@ declare global {
 export function verifyBearer(header: string | undefined): AuthPayload | null {
   if (!header?.startsWith('Bearer ')) return null;
   try {
-    return jwt.verify(header.slice(7), getConfig().security.jwtSecret) as AuthPayload;
+    return verifyAccessToken(header.slice(7));
   } catch {
     return null;
   }

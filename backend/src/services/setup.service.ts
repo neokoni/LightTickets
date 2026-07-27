@@ -33,6 +33,8 @@ type SetupConfigFile = {
   security?: {
     jwtSecret?: string;
     jwtRefreshSecret?: string;
+    jwtUnsubscribeSecret?: string;
+    legacyJwtCutoff?: number;
     externalEncryptionKey?: string;
   };
 };
@@ -420,6 +422,8 @@ export async function completeSetup(input: SetupInput) {
     security: {
       jwtSecret: crypto.randomBytes(32).toString('hex'),
       jwtRefreshSecret: crypto.randomBytes(32).toString('hex'),
+      jwtUnsubscribeSecret: crypto.randomBytes(32).toString('hex'),
+      legacyJwtCutoff: 0,
       externalEncryptionKey: crypto.randomBytes(32).toString('hex'),
     },
   };
@@ -442,6 +446,10 @@ export async function completeSetup(input: SetupInput) {
     if (existing.security?.jwtSecret) configData.security.jwtSecret = existing.security.jwtSecret;
     if (existing.security?.jwtRefreshSecret)
       configData.security.jwtRefreshSecret = existing.security.jwtRefreshSecret;
+    if (existing.security?.jwtUnsubscribeSecret)
+      configData.security.jwtUnsubscribeSecret = existing.security.jwtUnsubscribeSecret;
+    if (existing.security?.legacyJwtCutoff !== undefined)
+      configData.security.legacyJwtCutoff = existing.security.legacyJwtCutoff;
     if (existing.security?.externalEncryptionKey)
       configData.security.externalEncryptionKey = existing.security.externalEncryptionKey;
   }

@@ -1,10 +1,8 @@
 import { prisma } from '../db.js';
 import bcrypt from 'bcrypt';
-import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { User } from '@prisma/client';
-import { getConfig } from '../config.js';
 import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../utils/errors.js';
-import { generateTokens } from '../utils/token.js';
+import { generateAccessToken, generateTokens, verifyRefreshToken } from '../utils/token.js';
 import { USER_PUBLIC_SELECT } from './constants.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as registrationEmailVerificationService from './registration-email-verification.service.js';
@@ -106,17 +104,11 @@ export async function login(emailOrUsername: string, password: string) {
 
 export async function refresh(refreshToken: string) {
   try {
-    const config = getConfig();
-    const payload = jwt.verify(refreshToken, config.security.jwtRefreshSecret) as {
-      userId: number;
-      role: string;
-    };
+    const payload = verifyRefreshToken(refreshToken);
     const user = await prisma().user.findUnique({ where: { id: payload.userId } });
     if (!user) throw new UnauthorizedError();
 
-    const accessToken = jwt.sign({ userId: user.id, role: user.role }, config.security.jwtSecret, {
-      expiresIn: config.accessTokenExpiry as SignOptions['expiresIn'],
-    });
+    const accessToken = generateAccessToken(user.id, user.role);
     return { accessToken, user: sanitizeUser(user) };
   } catch {
     throw new UnauthorizedError('刷新令牌无效或已过期');

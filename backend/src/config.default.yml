@@ -19,5 +19,9 @@ security:
   # 空值仅用于 setup 模式；setup 完成后自动生成并回写。
   jwtSecret: ""
   jwtRefreshSecret: ""
+  # 邮件退订 JWT 使用的独立密钥；旧版升级时会自动生成。
+  jwtUnsubscribeSecret: ""
+  # 旧 JWT 格式的升级截止 Unix 时间戳；setup 新安装固定为 0。
+  legacyJwtCutoff: 0
   # 外部登录 Provider 密钥的主加密密钥；setup 或首次升级启动时自动生成。
   externalEncryptionKey: ""

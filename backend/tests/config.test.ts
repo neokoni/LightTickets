@@ -3,6 +3,7 @@ import fs from 'fs';
 import { dataPath } from '../src/paths.js';
 
 const configPath = dataPath('config.yml');
+const unsubscribeSecret = 'a'.repeat(64);
 
 const minimalConfig = `server:
   port: 3000
@@ -35,6 +36,17 @@ describe('config', () => {
     expect(config.port).toBe(3000);
     expect(config.security.jwtSecret).toBe('test-jwt-secret');
     expect(config.database.provider).toBe('sqlite');
+    expect(config.security.jwtUnsubscribeSecret).toMatch(/^[a-f\d]{64}$/);
+    expect(config.security.jwtUnsubscribeSecret).not.toBe(config.security.jwtSecret);
+    expect(
+      new Set([
+        config.security.jwtSecret,
+        config.security.jwtRefreshSecret,
+        config.security.jwtUnsubscribeSecret,
+      ]).size,
+    ).toBe(3);
+    expect(config.security.legacyJwtCutoff).toBeGreaterThan(0);
+    expect(config.security.legacyJwtCutoff).toBeLessThanOrEqual(Math.floor(Date.now() / 1000));
     expect(config.security.externalEncryptionKey).toMatch(/^[a-f\d]{64}$/);
   });
 
@@ -46,6 +58,19 @@ describe('config', () => {
     expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
   });
 
+  it('persists a stable unsubscribe key and legacy migration cutoff', async () => {
+    const { loadConfig } = await import('../src/config.js');
+    const first = loadConfig();
+    const persisted = fs.readFileSync(configPath, 'utf-8');
+    const second = loadConfig();
+
+    expect(persisted).toContain(first.security.jwtUnsubscribeSecret);
+    expect(persisted).toContain(`legacyJwtCutoff: ${first.security.legacyJwtCutoff}`);
+    expect(second.security.jwtUnsubscribeSecret).toBe(first.security.jwtUnsubscribeSecret);
+    expect(second.security.legacyJwtCutoff).toBe(first.security.legacyJwtCutoff);
+    expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+  });
+
   it('loadConfig rejects an invalid FederatedAuth encryption key', async () => {
     fs.writeFileSync(
       configPath,
@@ -54,6 +79,16 @@ describe('config', () => {
     );
     const { loadConfig } = await import('../src/config.js');
     expect(() => loadConfig()).toThrow(/externalEncryptionKey/);
+  });
+
+  it('loadConfig rejects an invalid unsubscribe signing key', async () => {
+    fs.writeFileSync(
+      configPath,
+      `${minimalConfig.trim()}\n  jwtUnsubscribeSecret: "invalid"\n`,
+      'utf-8',
+    );
+    const { loadConfig } = await import('../src/config.js');
+    expect(() => loadConfig()).toThrow(/jwtUnsubscribeSecret/);
   });
 
   it('loadConfig sets process.env.DATABASE_URL', async () => {
@@ -90,6 +125,8 @@ database:
 security:
   jwtSecret: "existing-secret-value-1234567890"
   jwtRefreshSecret: "existing-refresh-value-1234567890"
+  jwtUnsubscribeSecret: "${unsubscribeSecret}"
+  legacyJwtCutoff: 0
 `;
     fs.writeFileSync(configPath, testConfig, 'utf-8');
 
@@ -97,6 +134,36 @@ security:
     const config = loadConfig();
     expect(config.security.jwtSecret).toBe('existing-secret-value-1234567890');
     expect(config.security.jwtRefreshSecret).toBe('existing-refresh-value-1234567890');
+    expect(config.security.jwtUnsubscribeSecret).toBe(unsubscribeSecret);
+    expect(config.security.legacyJwtCutoff).toBe(0);
+  });
+
+  it('loadConfig rejects reused JWT signing keys', async () => {
+    fs.writeFileSync(
+      configPath,
+      minimalConfig.replace('test-refresh-secret', 'test-jwt-secret'),
+      'utf-8',
+    );
+    const { loadConfig } = await import('../src/config.js');
+    expect(() => loadConfig()).toThrow(/必须各不相同/);
+  });
+
+  it('loadConfig rejects an invalid legacy JWT cutoff', async () => {
+    fs.writeFileSync(configPath, `${minimalConfig.trim()}\n  legacyJwtCutoff: -1\n`, 'utf-8');
+    const { loadConfig } = await import('../src/config.js');
+    expect(() => loadConfig()).toThrow(/legacyJwtCutoff/);
+  });
+
+  it('loadConfig rejects millisecond and far-future legacy JWT cutoffs', async () => {
+    const { loadConfig } = await import('../src/config.js');
+    for (const cutoff of [Date.now(), Math.floor(Date.now() / 1000) + 3600]) {
+      fs.writeFileSync(
+        configPath,
+        `${minimalConfig.trim()}\n  legacyJwtCutoff: ${cutoff}\n`,
+        'utf-8',
+      );
+      expect(() => loadConfig()).toThrow(/legacyJwtCutoff/);
+    }
   });
 
   it('loadConfig resolves mysql database URL from fields', async () => {
@@ -111,7 +178,7 @@ database:
   database: lighttickets
 security:
   jwtSecret: "test"
-  jwtRefreshSecret: "test"
+  jwtRefreshSecret: "refresh-test"
 `;
     fs.writeFileSync(configPath, testConfig, 'utf-8');
 
@@ -133,7 +200,7 @@ database:
   args: sslaccept=strict&connect_timeout=10
 security:
   jwtSecret: "test"
-  jwtRefreshSecret: "test"
+  jwtRefreshSecret: "refresh-test"
 `;
     fs.writeFileSync(configPath, testConfig, 'utf-8');
 
@@ -152,7 +219,7 @@ database:
   username: root
 security:
   jwtSecret: "test"
-  jwtRefreshSecret: "test"
+  jwtRefreshSecret: "refresh-test"
 `;
     fs.writeFileSync(configPath, testConfig, 'utf-8');
 
@@ -172,7 +239,7 @@ database:
   database: lighttickets
 security:
   jwtSecret: "test"
-  jwtRefreshSecret: "test"
+  jwtRefreshSecret: "refresh-test"
 `;
     fs.writeFileSync(configPath, testConfig, 'utf-8');
 

@@ -24,7 +24,13 @@ vi.mock('../src/config.js', () => ({
     }
   }),
   reloadConfig: vi.fn(() => ({
-    security: { jwtSecret: 'jwt', jwtRefreshSecret: 'refresh' },
+    security: {
+      jwtSecret: 'jwt',
+      jwtRefreshSecret: 'refresh',
+      jwtUnsubscribeSecret: 'unsubscribe',
+      legacyJwtCutoff: 0,
+      externalEncryptionKey: 'encryption',
+    },
     accessTokenExpiry: '2h',
     refreshTokenExpiry: '7d',
   })),
@@ -167,6 +173,8 @@ describe('setup.service', () => {
     expect(result.accessToken).toBe('access');
     expect(fs.existsSync(configPath)).toBe(true);
     expect(fs.readFileSync(configPath, 'utf-8')).toContain('provider: sqlite');
+    expect(fs.readFileSync(configPath, 'utf-8')).toContain('jwtUnsubscribeSecret');
+    expect(fs.readFileSync(configPath, 'utf-8')).toContain('legacyJwtCutoff: 0');
     expect(fs.readFileSync(configPath, 'utf-8')).toContain('externalEncryptionKey');
   });
 
