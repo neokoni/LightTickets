@@ -65,6 +65,25 @@ describe('POST /api/setup', () => {
     expect(status.body.data.isSetup).toBe(true);
   });
 
+  it('rejects an unsafe site URL before setup side effects', async () => {
+    const res = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'unsafe-site-url@test.com',
+          password: 'admin123',
+          username: 'unsafesiteurl',
+        },
+        site: { siteUrl: 'https://tickets.example.com/reset-path' },
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ success: false, statusCode: 400 });
+    await expect(prisma().user.count()).resolves.toBe(0);
+    await expect(prisma().setupStatus.count()).resolves.toBe(0);
+  });
+
   it('records the request Origin as corsOrigins in config.yml', async () => {
     fs.rmSync(dataPath('config.yml'), { force: true });
 
@@ -514,6 +533,40 @@ describe('PATCH /api/setup/settings', () => {
     );
   });
 
+  it('rejects non-origin site URLs without changing the stored value', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-site-url@test.com',
+          password: 'admin123',
+          username: 'settingssiteurl',
+        },
+        site: { siteUrl: 'https://tickets.example.com/' },
+      });
+    expect(setupRes.status).toBe(201);
+    expect(setupRes.body.data.setup.siteUrl).toBe('https://tickets.example.com');
+
+    for (const siteUrl of [
+      'ftp://tickets.example.com',
+      'https://user:password@tickets.example.com',
+      'https://tickets.example.com/path',
+      'https://tickets.example.com/?query=value',
+      'https://tickets.example.com/#fragment',
+    ]) {
+      const res = await request(app)
+        .patch('/api/setup/settings')
+        .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+        .send({ siteUrl });
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, statusCode: 400 });
+    }
+
+    const status = await prisma().setupStatus.findFirst();
+    expect(status?.siteUrl).toBe('https://tickets.example.com');
+  });
+
   it('allows admin to update default language', async () => {
     const setupRes = await request(app)
       .post('/api/setup')
@@ -580,8 +633,27 @@ describe('PATCH /api/setup/settings', () => {
     const mailConfig = JSON.parse(config!.mailConfig!);
     expect(mailConfig.password).toBe('secret');
 
+    expect(res.body.data.passwordResetEnabled).toBe(false);
+    expect(res.body.data.registrationEmailVerificationEnabled).toBe(true);
+
+    const enabled = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({ siteUrl: 'https://tickets.example.com/' });
+    expect(enabled.status).toBe(200);
+    expect(enabled.body.data.siteUrl).toBe('https://tickets.example.com');
+    expect(enabled.body.data.passwordResetEnabled).toBe(true);
+    expect(enabled.body.data.registrationEmailVerificationEnabled).toBe(true);
+
+    const cleared = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({ siteUrl: null });
+    expect(cleared.body.data.passwordResetEnabled).toBe(false);
+    expect(cleared.body.data.registrationEmailVerificationEnabled).toBe(true);
+
     const siteConfig = await request(app).get('/api/setup/site-config');
-    expect(siteConfig.body.data.passwordResetEnabled).toBe(true);
+    expect(siteConfig.body.data.passwordResetEnabled).toBe(false);
     expect(siteConfig.body.data.registrationEmailVerificationEnabled).toBe(true);
     expect(siteConfig.body.data).not.toHaveProperty('mail');
   });

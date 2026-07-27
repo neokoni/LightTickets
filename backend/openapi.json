@@ -10024,17 +10024,21 @@
                       "type": "boolean"
                     },
                     "passwordResetEnabled": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "description": "True only when SMTP is usable and siteUrl is a canonical HTTPS origin"
                     },
                     "registrationEmailVerificationEnabled": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "description": "True when SMTP is usable"
                     },
                     "siteName": {
                       "type": "string"
                     },
                     "siteUrl": {
                       "type": "string",
-                      "nullable": true
+                      "nullable": true,
+                      "format": "uri",
+                      "description": "Canonical public HTTP(S) origin without credentials, path, query, or fragment"
                     },
                     "footerContent": {
                       "type": "string",
@@ -10286,7 +10290,8 @@
                         "type": "string"
                       },
                       "siteUrl": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Canonical public HTTP(S) origin; an empty string clears the optional setting"
                       },
                       "defaultLanguage": {
                         "type": "string"
@@ -10491,7 +10496,7 @@
                   "siteUrl": {
                     "type": "string",
                     "nullable": true,
-                    "format": "uri"
+                    "description": "Canonical public HTTP(S) origin; an empty string clears the optional setting"
                   },
                   "footerContent": {
                     "type": "string",
@@ -10626,6 +10631,14 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "passwordResetEnabled": {
+                      "type": "boolean",
+                      "description": "True only when SMTP is usable and siteUrl is a canonical HTTPS origin"
+                    },
+                    "registrationEmailVerificationEnabled": {
+                      "type": "boolean",
+                      "description": "True when SMTP is usable"
+                    },
                     "rateLimit": {
                       "type": "object",
                       "properties": {
@@ -10758,6 +10771,8 @@
                     }
                   },
                   "required": [
+                    "passwordResetEnabled",
+                    "registrationEmailVerificationEnabled",
                     "rateLimit",
                     "rateLimitDefaults"
                   ],
@@ -10945,6 +10960,14 @@
                 "schema": {
                   "type": "object",
                   "properties": {
+                    "passwordResetEnabled": {
+                      "type": "boolean",
+                      "description": "True only when SMTP is usable and siteUrl is a canonical HTTPS origin"
+                    },
+                    "registrationEmailVerificationEnabled": {
+                      "type": "boolean",
+                      "description": "True when SMTP is usable"
+                    },
                     "rateLimit": {
                       "type": "object",
                       "properties": {
@@ -11077,6 +11100,8 @@
                     }
                   },
                   "required": [
+                    "passwordResetEnabled",
+                    "registrationEmailVerificationEnabled",
                     "rateLimit",
                     "rateLimitDefaults"
                   ],

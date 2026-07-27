@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getSettings, updateSettings } from '@/api/setup';
-import { setRequireLoginCache, siteConfig, siteTitle } from '@/stores/site';
+import {
+  setMailFeatureAvailabilityCache,
+  setRequireLoginCache,
+  siteConfig,
+  siteTitle,
+} from '@/stores/site';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { availableLanguages, t } from '@/i18n';
@@ -61,6 +66,7 @@ async function save() {
     siteConfig.allowWebRegister = result.allowWebRegister;
     siteConfig.allowMcRegister = result.allowMcRegister;
     siteConfig.defaultLanguage = result.defaultLanguage;
+    setMailFeatureAvailabilityCache(result);
     ui.toast(t('admin.settings.saved'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.saveFailed'));

@@ -18,25 +18,6 @@ import {
 
 const router = Router();
 
-function resolveAccessOrigin(req: Request): string | undefined {
-  const origin = req.get('origin');
-  if (origin) return origin;
-
-  const referer = req.get('referer');
-  if (referer) {
-    try {
-      return new URL(referer).origin;
-    } catch {
-      // ignore malformed referer
-    }
-  }
-
-  const host = req.get('x-forwarded-host') ?? req.get('host');
-  if (!host) return undefined;
-  const proto = req.get('x-forwarded-proto')?.split(',')[0]?.trim() || req.protocol || 'http';
-  return `${proto}://${host}`;
-}
-
 const registerSchema = z.object({
   email: z.string().trim().email(),
   password: z.string().min(8),
@@ -122,10 +103,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
 router.post('/password-reset/request', authLimiter, async (req: Request, res: Response) => {
   const data = validate(passwordResetRequestSchema, req.body);
   await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
-  await passwordResetService.requestPasswordReset(
-    data.emailOrUsername ?? data.email!,
-    resolveAccessOrigin(req),
-  );
+  await passwordResetService.requestPasswordReset(data.emailOrUsername ?? data.email!);
   res.json({ accepted: true });
 });
 

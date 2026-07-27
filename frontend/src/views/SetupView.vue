@@ -133,7 +133,10 @@ async function submit() {
     const res = await completeSetup({
       db: buildDbPayload(),
       admin: payload.admin,
-      site: payload.site,
+      site: {
+        ...payload.site,
+        siteUrl: payload.site?.siteUrl?.trim() || undefined,
+      },
       mc: payload.mc?.defaultServerName
         ? { defaultServerName: payload.mc.defaultServerName }
         : undefined,

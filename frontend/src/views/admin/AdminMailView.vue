@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { getSettings, testMailSettings, updateSettings } from '@/api/setup';
-import { canSendPasswordResetMail, setPasswordResetEnabledCache, siteTitle } from '@/stores/site';
+import { setMailFeatureAvailabilityCache, siteTitle } from '@/stores/site';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { t } from '@/i18n';
@@ -60,7 +60,7 @@ async function save() {
     });
     mailPassword.value = '';
     mailPasswordSet.value = result.mail.passwordSet;
-    setPasswordResetEnabledCache(canSendPasswordResetMail(result.mail));
+    setMailFeatureAvailabilityCache(result);
     ui.toast(t('admin.mail.saved'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e, t('common.saveFailed'));

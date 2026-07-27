@@ -23,18 +23,20 @@ const turnstileConfig = {
   siteKey: 'site-key',
   secretKey: 'secret-key',
 };
+const PASSWORD_RESET_SITE_ORIGIN = 'https://tickets.example.com';
 
 async function configureApp(
   data: Parameters<ReturnType<typeof prisma>['appConfig']['create']>[0]['data'],
+  siteUrl?: string | null,
 ) {
   const status = await prisma().setupStatus.findFirst();
   if (status) {
     await prisma().setupStatus.update({
       where: { id: status.id },
-      data: { isSetup: true },
+      data: { isSetup: true, ...(siteUrl !== undefined && { siteUrl }) },
     });
   } else {
-    await prisma().setupStatus.create({ data: { isSetup: true } });
+    await prisma().setupStatus.create({ data: { isSetup: true, siteUrl: siteUrl ?? null } });
   }
 
   const appConfig = await prisma().appConfig.findFirst();
@@ -451,11 +453,16 @@ describe('POST /api/auth/password-reset', () => {
     await request(app)
       .post('/api/auth/register')
       .send({ email: 'reset@example.com', password: 'Password123!', username: 'resetuser' });
-    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) }, PASSWORD_RESET_SITE_ORIGIN);
 
     const requestRes = await request(app)
       .post('/api/auth/password-reset/request')
       .set('Origin', 'http://localhost:5173')
+      .set('Referer', 'https://referer-attacker.example/reset')
+      .set('Host', 'host-attacker.example')
+      .set('Forwarded', 'host=forwarded-attacker.example;proto=https')
+      .set('X-Forwarded-Host', 'reset-capture.example.invalid')
+      .set('X-Forwarded-Proto', 'https')
       .send({ emailOrUsername: 'resetuser' });
 
     expect(requestRes.status).toBe(200);
@@ -467,9 +474,18 @@ describe('POST /api/auth/password-reset', () => {
     expect(getTestOutbox()[0].text).not.toContain('mail.passwordReset.');
     expect(getTestOutbox()[0].html).toContain('border-radius:12px');
 
-    const tokenMatch = getTestOutbox()[0].text.match(/reset-password\?token=([^\s]+)/);
-    expect(tokenMatch?.[1]).toBeTruthy();
-    const token = decodeURIComponent(tokenMatch![1]);
+    const resetUrlValue = getTestOutbox()[0]
+      .text.split('\n')
+      .find((line) => line.includes('/reset-password?token='));
+    expect(resetUrlValue).toBeTruthy();
+    const resetUrl = new URL(resetUrlValue!);
+    expect(resetUrl.origin).toBe(PASSWORD_RESET_SITE_ORIGIN);
+    expect(resetUrl.pathname).toBe('/reset-password');
+    expect([...resetUrl.searchParams.keys()]).toEqual(['token']);
+    expect(resetUrl.searchParams.get('token')).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(getTestOutbox()[0].text).not.toContain('attacker');
+    expect(getTestOutbox()[0].text).not.toContain('reset-capture.example.invalid');
+    const token = resetUrl.searchParams.get('token')!;
 
     const resetRes = await request(app)
       .post('/api/auth/password-reset/confirm')
@@ -494,9 +510,57 @@ describe('POST /api/auth/password-reset', () => {
     expect(reuse.status).toBe(400);
   });
 
+  it('fails closed without a configured HTTPS site URL', async () => {
+    clearTestOutbox();
+    await request(app).post('/api/auth/register').send({
+      email: 'unsafe-origin-reset@example.com',
+      password: 'Password123!',
+      username: 'unsafeoriginreset',
+    });
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) }, null);
+
+    const res = await request(app)
+      .post('/api/auth/password-reset/request')
+      .set('X-Forwarded-Host', 'reset-capture.example.invalid')
+      .set('X-Forwarded-Proto', 'https')
+      .send({ emailOrUsername: 'unsafeoriginreset' });
+    const missing = await request(app)
+      .post('/api/auth/password-reset/request')
+      .set('X-Forwarded-Host', 'reset-capture.example.invalid')
+      .set('X-Forwarded-Proto', 'https')
+      .send({ emailOrUsername: 'missing-unsafe-origin-user' });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ success: false, statusCode: 400 });
+    expect(res.body.message).toContain('HTTPS origin');
+    expect(missing.status).toBe(res.status);
+    expect(missing.body.message).toBe(res.body.message);
+    expect(getTestOutbox()).toHaveLength(0);
+    await expect(prisma().passwordResetToken.count()).resolves.toBe(0);
+  });
+
+  it('fails closed for an unsafe legacy site URL stored in the database', async () => {
+    clearTestOutbox();
+    await request(app).post('/api/auth/register').send({
+      email: 'legacy-http-reset@example.com',
+      password: 'Password123!',
+      username: 'legacyhttpreset',
+    });
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) }, 'http://tickets.example.com');
+
+    const res = await request(app)
+      .post('/api/auth/password-reset/request')
+      .set('Host', 'host-attacker.example')
+      .send({ emailOrUsername: 'legacyhttpreset' });
+
+    expect(res.status).toBe(400);
+    expect(getTestOutbox()).toHaveLength(0);
+    await expect(prisma().passwordResetToken.count()).resolves.toBe(0);
+  });
+
   it('does not send email for unknown accounts', async () => {
     clearTestOutbox();
-    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) }, PASSWORD_RESET_SITE_ORIGIN);
 
     const res = await request(app)
       .post('/api/auth/password-reset/request')
@@ -505,6 +569,7 @@ describe('POST /api/auth/password-reset', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.accepted).toBe(true);
     expect(getTestOutbox()).toHaveLength(0);
+    await expect(prisma().passwordResetToken.count()).resolves.toBe(0);
   });
 
   it('requires turnstile token before sending reset email when turnstile is enabled', async () => {
@@ -514,10 +579,13 @@ describe('POST /api/auth/password-reset', () => {
       password: 'Password123!',
       username: 'turnstilereset',
     });
-    await configureApp({
-      mailConfig: JSON.stringify(mailConfig),
-      turnstileConfig: JSON.stringify(turnstileConfig),
-    });
+    await configureApp(
+      {
+        mailConfig: JSON.stringify(mailConfig),
+        turnstileConfig: JSON.stringify(turnstileConfig),
+      },
+      PASSWORD_RESET_SITE_ORIGIN,
+    );
 
     const missing = await request(app)
       .post('/api/auth/password-reset/request')
@@ -549,7 +617,7 @@ describe('POST /api/auth/password-reset', () => {
       password: 'Password123!',
       username: 'limitedreset',
     });
-    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) }, PASSWORD_RESET_SITE_ORIGIN);
 
     const first = await request(app)
       .post('/api/auth/password-reset/request')
@@ -571,12 +639,15 @@ describe('POST /api/auth/password-reset', () => {
       password: 'Password123!',
       username: 'configuredresetlimit',
     });
-    await configureApp({
-      mailConfig: JSON.stringify(mailConfig),
-      rateLimitConfig: JSON.stringify({
-        email: { cooldownSeconds: 120 },
-      }),
-    });
+    await configureApp(
+      {
+        mailConfig: JSON.stringify(mailConfig),
+        rateLimitConfig: JSON.stringify({
+          email: { cooldownSeconds: 120 },
+        }),
+      },
+      PASSWORD_RESET_SITE_ORIGIN,
+    );
 
     const first = await request(app)
       .post('/api/auth/password-reset/request')

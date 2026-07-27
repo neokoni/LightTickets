@@ -18,6 +18,7 @@ import * as rateLimitConfigService from './rate-limit-config.service.js';
 import * as federatedAuthProviderService from './federatedauth-provider.service.js';
 import type { RateLimitConfigInput } from '../schemas/rate-limit.js';
 import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
+import { normalizeSiteUrl, resolvePasswordResetOrigin } from '../utils/site-url.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[] };
@@ -60,6 +61,16 @@ function requiredTrim(value: string | undefined, field: string): string {
   const trimmed = value?.trim();
   if (!trimmed) throw new ValidationError(`MySQL 配置缺少必填字段: ${field}`);
   return trimmed;
+}
+
+function normalizeConfiguredSiteUrl(value: string | null | undefined): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value.trim() === '') return null;
+  const normalized = normalizeSiteUrl(value);
+  if (!normalized) {
+    throw new ValidationError('站点地址必须是仅包含 origin 的 HTTP(S) URL');
+  }
+  return normalized;
 }
 
 export interface SiteConfig {
@@ -141,12 +152,24 @@ function toSiteConfig(status: {
     passwordResetEnabled: false,
     registrationEmailVerificationEnabled: false,
     siteName: resolveSiteTitle(status.siteName),
-    siteUrl: status.siteUrl ?? null,
+    siteUrl: normalizeSiteUrl(status.siteUrl),
     footerContent: status.footerContent ?? null,
     defaultLanguage,
     turnstile: { enabled: false, siteKey: '' },
     federatedAuthProviders: [],
   };
+}
+
+function getMailFeatureAvailability(siteUrl: string | null, mail: PublicMailConfig) {
+  const mailEnabled = mailConfigService.canSendPasswordResetMail(mail);
+  return {
+    passwordResetEnabled: mailEnabled && resolvePasswordResetOrigin(siteUrl) !== null,
+    registrationEmailVerificationEnabled: mailEnabled,
+  };
+}
+
+function applyMailFeatureAvailability(siteConfig: SiteConfig, mail: PublicMailConfig): void {
+  Object.assign(siteConfig, getMailFeatureAvailability(siteConfig.siteUrl, mail));
 }
 
 function buildStorageConfig(input: SetupInput['storage']) {
@@ -211,8 +234,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
         federatedAuthProviderService.listPublicProviders(),
       ]);
       siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(turnstile);
-      siteConfig.passwordResetEnabled = mailConfigService.canSendPasswordResetMail(mail);
-      siteConfig.registrationEmailVerificationEnabled = siteConfig.passwordResetEnabled;
+      applyMailFeatureAvailability(siteConfig, mail);
       siteConfig.federatedAuthProviders = providers;
       return siteConfig;
     }
@@ -241,8 +263,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
         federatedAuthProviderService.listPublicProviders(),
       ]);
       siteConfig.turnstile = turnstileConfigService.toTurnstilePublicConfig(turnstile);
-      siteConfig.passwordResetEnabled = mailConfigService.canSendPasswordResetMail(mail);
-      siteConfig.registrationEmailVerificationEnabled = siteConfig.passwordResetEnabled;
+      applyMailFeatureAvailability(siteConfig, mail);
       siteConfig.federatedAuthProviders = providers;
       return siteConfig;
     }
@@ -284,6 +305,7 @@ export async function updateSettings(data: {
 }) {
   const { getPrisma } = await import('../db.js');
   const prisma = getPrisma();
+  const siteUrl = normalizeConfiguredSiteUrl(data.siteUrl);
 
   const status = await prisma.setupStatus.findFirst();
   if (!status) throw new AppError(404, '站点尚未初始化');
@@ -295,7 +317,7 @@ export async function updateSettings(data: {
       ...(data.allowWebRegister !== undefined && { allowWebRegister: data.allowWebRegister }),
       ...(data.allowMcRegister !== undefined && { allowMcRegister: data.allowMcRegister }),
       ...(data.siteName !== undefined && { siteName: data.siteName }),
-      ...(data.siteUrl !== undefined && { siteUrl: data.siteUrl }),
+      ...(siteUrl !== undefined && { siteUrl }),
       ...(data.footerContent !== undefined && { footerContent: data.footerContent }),
       ...(data.defaultLanguage !== undefined && {
         defaultLanguage: i18nService.resolveLanguageId(data.defaultLanguage),
@@ -314,6 +336,7 @@ export async function updateSettings(data: {
   const rateLimit = data.rateLimit
     ? await rateLimitConfigService.updateRateLimitConfig(data.rateLimit)
     : await rateLimitConfigService.getRateLimitConfig();
+  const mailFeatureAvailability = getMailFeatureAvailability(updated.siteUrl, mail);
 
   return {
     requireLogin: updated.requireLogin,
@@ -324,6 +347,7 @@ export async function updateSettings(data: {
     footerContent: updated.footerContent,
     defaultLanguage: i18nService.resolveLanguageId(updated.defaultLanguage),
     sendEmailNotifications: updated.sendEmailNotifications,
+    ...mailFeatureAvailability,
     mail,
     turnstile,
     rateLimit,
@@ -343,7 +367,7 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     passwordResetEnabled: siteConfig.passwordResetEnabled,
     registrationEmailVerificationEnabled: siteConfig.registrationEmailVerificationEnabled,
     siteName: status?.siteName ?? siteConfig.siteName,
-    siteUrl: siteConfig.siteUrl,
+    siteUrl: status?.siteUrl ?? siteConfig.siteUrl,
     footerContent: siteConfig.footerContent,
     defaultLanguage: siteConfig.defaultLanguage,
     sendEmailNotifications: status?.sendEmailNotifications ?? false,
@@ -408,6 +432,7 @@ export async function completeSetup(input: SetupInput) {
   }
 
   const storageConfig = buildStorageConfig(input.storage);
+  const siteUrl = normalizeConfiguredSiteUrl(input.site?.siteUrl) ?? null;
 
   const accessOrigin = normalizeAccessOrigin(input.accessOrigin);
 
@@ -494,7 +519,7 @@ export async function completeSetup(input: SetupInput) {
     data: {
       isSetup: true,
       siteName: resolveSiteTitle(siteConfig.siteName),
-      siteUrl: siteConfig.siteUrl || null,
+      siteUrl,
       defaultLanguage: i18nService.resolveLanguageId(siteConfig.defaultLanguage),
     },
   });

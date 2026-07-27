@@ -8,6 +8,7 @@
     "build": "vue-tsc -b && vite build",
     "start": "node server.mjs",
     "preview": "vite preview",
+    "test": "node --test server.test.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,vue}\" \"*.mjs\"",

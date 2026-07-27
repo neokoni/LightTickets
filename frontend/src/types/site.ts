@@ -91,6 +91,8 @@ export interface SettingsResult {
   requireLogin: boolean;
   allowWebRegister: boolean;
   allowMcRegister: boolean;
+  passwordResetEnabled: boolean;
+  registrationEmailVerificationEnabled: boolean;
   siteName: string;
   siteUrl: string | null;
   footerContent: string | null;

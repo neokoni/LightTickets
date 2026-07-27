@@ -22,12 +22,13 @@ export default [
     },
   },
   {
-    files: ['server.mjs'],
+    files: ['server.mjs', 'server.test.mjs'],
     languageOptions: {
       globals: {
         Buffer: 'readonly',
         URL: 'readonly',
         console: 'readonly',
+        fetch: 'readonly',
         process: 'readonly',
       },
     },

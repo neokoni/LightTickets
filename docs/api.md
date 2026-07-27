@@ -140,6 +140,9 @@ PKCE；OIDC 额外校验 nonce 和 ID Token。
 }
 ```
 
+`site.siteUrl` 必须是仅包含 origin 的 HTTP(S) URL，不得包含用户名、密码、路径、查询参数或
+fragment；保存时会规范化为 origin。密码重置只在该地址使用 HTTPS 时启用。
+
 MySQL 可使用字段模式：
 
 ```json
@@ -244,7 +247,10 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 
 `POST /api/auth/password-reset/request`
 
-公开接口，挂认证限流。SMTP 需先在管理后台邮件配置中手动启用；初始化流程不包含邮件配置。同一账号默认每 60 秒最多发送一封密码重置邮件，管理员可在限流策略中调整。
+公开接口，挂认证限流。SMTP 需先在管理后台邮件配置中手动启用，且管理员必须配置规范化的
+HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`Host` 或
+`Forwarded`/`X-Forwarded-*` 头推导。配置缺失或不安全时返回 400，且不创建 token、不发送邮件。
+同一账号默认每 60 秒最多发送一封密码重置邮件，管理员可在限流策略中调整。
 
 请求体：
 
@@ -549,6 +555,8 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 
 需要 `admin`。返回站点设置、邮件设置、Turnstile 设置和限流策略；邮件密码和 Turnstile Secret Key 只返回是否已设置，不返回明文。
 `sendEmailNotifications` 表示是否发送议题回复和状态变更邮件，默认 `false`。
+`passwordResetEnabled` 仅在 SMTP 可用且 `siteUrl` 为 HTTPS origin 时为 `true`；
+`registrationEmailVerificationEnabled` 只取决于 SMTP 是否可用。
 `rateLimit` 是当前生效值，`rateLimitDefaults` 是内置默认值，管理页输入框的 placeholder 直接使用后者。
 
 `PATCH /api/setup/settings`
@@ -598,6 +606,8 @@ SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流
 ```
 
 `mail.password` 不传或传空时保留原密码；关闭邮件只需设置 `mail.enabled=false`。SMTP 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
+`siteUrl` 接受 HTTP(S) origin 并规范化存储，但 HTTP 地址不会启用密码重置；设置为 `null`
+或空字符串会立即关闭密码重置，不影响注册邮箱验证码。
 议题邮件通知仅在 SMTP 配置可用、平台 `sendEmailNotifications=true`、议题创建者个人
 `receiveEmailNotifications=true` 且操作者不是创建者本人时发送。发送失败不会影响回复或状态变更操作。
 `turnstile.secretKey` 不传或传空时保留原 Secret Key；关闭 Turnstile 只需设置 `turnstile.enabled=false`。Turnstile 配置为可选配置，只通过管理后台维护，不属于初始化步骤。

@@ -15,6 +15,7 @@ import {
 import { rateLimitConfigInputSchema, rateLimitConfigSchema } from './schemas/rate-limit.js';
 import { labelCreateSchema, labelIdentifierSchema, labelUpdateSchema } from './schemas/label.js';
 import { mailConfigInputSchema, mailTestSchema } from './schemas/mail.js';
+import { siteUrlInputSchema, siteUrlSchema } from './schemas/site.js';
 
 const registry = new OpenAPIRegistry();
 
@@ -870,6 +871,10 @@ const registerUserRoutes = () => {
 const registerSetupRoutes = () => {
   const rateLimitSettingsResponseSchema = z
     .object({
+      passwordResetEnabled: z
+        .boolean()
+        .describe('True only when SMTP is usable and siteUrl is a canonical HTTPS origin'),
+      registrationEmailVerificationEnabled: z.boolean().describe('True when SMTP is usable'),
       rateLimit: rateLimitConfigSchema,
       rateLimitDefaults: rateLimitConfigSchema,
     })
@@ -886,10 +891,12 @@ const registerSetupRoutes = () => {
       requireLogin: z.boolean(),
       allowWebRegister: z.boolean(),
       allowMcRegister: z.boolean(),
-      passwordResetEnabled: z.boolean(),
-      registrationEmailVerificationEnabled: z.boolean(),
+      passwordResetEnabled: z
+        .boolean()
+        .describe('True only when SMTP is usable and siteUrl is a canonical HTTPS origin'),
+      registrationEmailVerificationEnabled: z.boolean().describe('True when SMTP is usable'),
       siteName: z.string(),
-      siteUrl: z.string().nullable(),
+      siteUrl: siteUrlSchema.nullable(),
       footerContent: z.string().nullable(),
       defaultLanguage: z.string(),
       turnstile: z.object({
@@ -945,7 +952,7 @@ const registerSetupRoutes = () => {
         site: z
           .object({
             siteName: z.string().optional(),
-            siteUrl: z.string().optional(),
+            siteUrl: siteUrlInputSchema.optional(),
             defaultLanguage: z.string().optional(),
           })
           .optional(),
@@ -979,7 +986,7 @@ const registerSetupRoutes = () => {
       allowWebRegister: z.boolean().optional(),
       allowMcRegister: z.boolean().optional(),
       siteName: z.string().max(100).optional(),
-      siteUrl: z.string().url().nullable().optional(),
+      siteUrl: siteUrlInputSchema.nullable().optional(),
       footerContent: z.string().max(2000).nullable().optional(),
       defaultLanguage: z.string().optional(),
       sendEmailNotifications: z.boolean().optional(),

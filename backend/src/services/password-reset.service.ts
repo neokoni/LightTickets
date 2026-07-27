@@ -2,12 +2,12 @@ import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { prisma } from '../db.js';
 import { AppError, ValidationError } from '../utils/errors.js';
-import * as setupService from './setup.service.js';
 import * as i18nService from './i18n.service.js';
 import * as mailService from './mail.service.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as rateLimitConfigService from './rate-limit-config.service.js';
 import { resolveSiteTitle } from './site.js';
+import { resolvePasswordResetOrigin } from '../utils/site-url.js';
 
 const RESET_TOKEN_BYTES = 32;
 const RESET_TOKEN_EXPIRY_MS = 30 * 60 * 1000;
@@ -24,20 +24,10 @@ function t(messages: Record<string, string>, key: string, params: Record<string,
   return value;
 }
 
-function resolveResetOrigin(requestOrigin?: string): string {
-  const trimmed = requestOrigin?.trim();
-  if (!trimmed) return 'http://localhost:23310';
-  try {
-    const url = new URL(trimmed);
-    return url.origin;
-  } catch {
-    return 'http://localhost:23310';
-  }
-}
-
-function buildResetUrl(token: string, siteUrl: string | null, requestOrigin?: string): string {
-  const origin = siteUrl ? resolveResetOrigin(siteUrl) : resolveResetOrigin(requestOrigin);
-  return `${origin}/reset-password?token=${encodeURIComponent(token)}`;
+function buildResetUrl(token: string, origin: string): string {
+  const url = new URL('/reset-password', origin);
+  url.searchParams.set('token', token);
+  return url.toString();
 }
 
 function escapeHtml(value: string): string {
@@ -116,13 +106,19 @@ function buildResetEmail(input: {
   return { subject, html, text };
 }
 
-export async function requestPasswordReset(
-  emailOrUsername: string,
-  requestOrigin?: string,
-): Promise<void> {
-  const mailConfig = await mailConfigService.getFullMailConfig();
+export async function requestPasswordReset(emailOrUsername: string): Promise<void> {
+  const [mailConfig, siteSettings] = await Promise.all([
+    mailConfigService.getFullMailConfig(),
+    prisma().setupStatus.findFirst({
+      select: { siteName: true, siteUrl: true, defaultLanguage: true },
+    }),
+  ]);
   if (!mailConfigService.canSendPasswordResetMail(mailConfig)) {
     throw new ValidationError('邮件服务尚未启用');
+  }
+  const resetOrigin = resolvePasswordResetOrigin(siteSettings?.siteUrl);
+  if (!resetOrigin) {
+    throw new ValidationError('站点地址未配置为安全的 HTTPS origin，密码重置不可用');
   }
 
   const identifier = emailOrUsername.trim();
@@ -137,13 +133,12 @@ export async function requestPasswordReset(
   const rawToken = crypto.randomBytes(RESET_TOKEN_BYTES).toString('base64url');
   const hash = tokenHash(rawToken);
   const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
-  const siteConfig = await setupService.getSiteConfig();
-  const resetUrl = buildResetUrl(rawToken, siteConfig.siteUrl, requestOrigin);
+  const resetUrl = buildResetUrl(rawToken, resetOrigin);
   const mail = buildResetEmail({
-    siteName: siteConfig.siteName,
+    siteName: resolveSiteTitle(siteSettings?.siteName),
     username: user.username,
     resetUrl,
-    languageId: siteConfig.defaultLanguage,
+    languageId: i18nService.resolveLanguageId(siteSettings?.defaultLanguage),
   });
 
   const created = await prisma().$transaction(async (tx) => {

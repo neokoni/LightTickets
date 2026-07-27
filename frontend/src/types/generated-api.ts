@@ -6090,9 +6090,15 @@ export interface paths {
               requireLogin: boolean;
               allowWebRegister: boolean;
               allowMcRegister: boolean;
+              /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
               passwordResetEnabled: boolean;
+              /** @description True when SMTP is usable */
               registrationEmailVerificationEnabled: boolean;
               siteName: string;
+              /**
+               * Format: uri
+               * @description Canonical public HTTP(S) origin without credentials, path, query, or fragment
+               */
               siteUrl: string | null;
               footerContent: string | null;
               defaultLanguage: string;
@@ -6203,6 +6209,7 @@ export interface paths {
             };
             site?: {
               siteName?: string;
+              /** @description Canonical public HTTP(S) origin; an empty string clears the optional setting */
               siteUrl?: string;
               defaultLanguage?: string;
             };
@@ -6325,6 +6332,10 @@ export interface paths {
           };
           content: {
             'application/json': {
+              /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
+              passwordResetEnabled: boolean;
+              /** @description True when SMTP is usable */
+              registrationEmailVerificationEnabled: boolean;
               rateLimit: {
                 global: {
                   windowSeconds: number;
@@ -6424,7 +6435,7 @@ export interface paths {
             allowWebRegister?: boolean;
             allowMcRegister?: boolean;
             siteName?: string;
-            /** Format: uri */
+            /** @description Canonical public HTTP(S) origin; an empty string clears the optional setting */
             siteUrl?: string | null;
             footerContent?: string | null;
             defaultLanguage?: string;
@@ -6468,6 +6479,10 @@ export interface paths {
           };
           content: {
             'application/json': {
+              /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
+              passwordResetEnabled: boolean;
+              /** @description True when SMTP is usable */
+              registrationEmailVerificationEnabled: boolean;
               rateLimit: {
                 global: {
                   windowSeconds: number;

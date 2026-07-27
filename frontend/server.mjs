@@ -70,6 +70,17 @@ function copyHeaders(headers) {
   return copied;
 }
 
+function copyProxyRequestHeaders(headers) {
+  const copied = copyHeaders(headers);
+  for (const name of Object.keys(copied)) {
+    const normalized = name.toLowerCase();
+    if (normalized === 'forwarded' || normalized.startsWith('x-forwarded-')) {
+      delete copied[name];
+    }
+  }
+  return copied;
+}
+
 function writeSecurityHeaders(response) {
   response.setHeader('Referrer-Policy', 'same-origin');
   response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -108,7 +119,7 @@ function sendProxyError(response) {
 function proxyApiRequest(request, response, serverUrl, timeoutMs) {
   const target = new URL(request.url || '/api', serverUrl);
   const transport = target.protocol === 'https:' ? https : http;
-  const headers = copyHeaders(request.headers);
+  const headers = copyProxyRequestHeaders(request.headers);
   headers.host = target.host;
 
   const proxyRequest = transport.request(

@@ -11,6 +11,7 @@ import { DatabaseProvider } from '../constants/database-provider.js';
 import { StorageDriver } from '../constants/storage-driver.js';
 import { rateLimitConfigInputSchema } from '../schemas/rate-limit.js';
 import { mailConfigInputSchema, mailTestSchema } from '../schemas/mail.js';
+import { siteUrlInputSchema } from '../schemas/site.js';
 
 interface SetupRouteOptions {
   onSetupComplete?: () => void | Promise<void>;
@@ -72,7 +73,7 @@ const setupSchema = z
     site: z
       .object({
         siteName: z.string().optional(),
-        siteUrl: z.string().optional(),
+        siteUrl: siteUrlInputSchema.optional(),
         defaultLanguage: z.string().optional(),
       })
       .optional(),
@@ -150,7 +151,7 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
         allowWebRegister: z.boolean().optional(),
         allowMcRegister: z.boolean().optional(),
         siteName: z.string().max(100).optional(),
-        siteUrl: z.string().url().nullable().optional(),
+        siteUrl: siteUrlInputSchema.nullable().optional(),
         footerContent: z.string().max(2000).nullable().optional(),
         defaultLanguage: z.string().optional(),
         sendEmailNotifications: z.boolean().optional(),
