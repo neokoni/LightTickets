@@ -3,7 +3,7 @@ import { prisma } from '../db.js';
 import { createS3Client } from './storage/s3-client.js';
 import { validateS3Config, type S3Config, type StorageConfig } from '../config.js';
 import { reinitStorageAdapter } from './storage/index.js';
-import { ValidationError } from '../utils/errors.js';
+import { AppError, ValidationError } from '../utils/errors.js';
 import { StorageDriver } from '../constants/storage-driver.js';
 
 export type { StorageConfig };
@@ -83,10 +83,10 @@ export async function updateStorageConfig(input: {
   return getStorageConfig();
 }
 
-export async function testS3Connection(): Promise<{ success: boolean; message: string }> {
+export async function testS3Connection(): Promise<{ success: true; message: string }> {
   const config = await getStorageConfig();
   if (!config.s3) {
-    return { success: false, message: '尚未配置 S3 存储后端' };
+    throw new ValidationError('尚未配置 S3 存储后端');
   }
 
   const s3 = config.s3 as S3Config;
@@ -102,7 +102,7 @@ export async function testS3Connection(): Promise<{ success: boolean; message: s
   try {
     await client.send(new HeadBucketCommand({ Bucket: s3.bucket }));
     return { success: true, message: '连接成功' };
-  } catch (err: unknown) {
-    return { success: false, message: err instanceof Error ? err.message : '连接失败' };
+  } catch {
+    throw new AppError(502, 'S3 连接失败');
   }
 }

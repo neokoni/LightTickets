@@ -1,6 +1,5 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
-import { z } from 'zod';
 import * as authService from '../services/auth.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rate-limit.js';
@@ -15,45 +14,17 @@ import {
   parseCookies,
   setRefreshCookie,
 } from '../utils/auth-cookies.js';
+import {
+  linkMinecraftSchema,
+  loginSchema,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+  refreshRequestSchema,
+  registerSchema,
+  registrationVerificationRequestSchema,
+} from '../schemas/auth.js';
 
 const router = Router();
-
-const registerSchema = z.object({
-  email: z.string().trim().email(),
-  password: z.string().min(8),
-  username: z.string().min(2).max(32),
-  emailVerificationCode: z
-    .string()
-    .regex(/^\d{6}$/)
-    .optional(),
-  turnstileToken: z.string().optional(),
-});
-
-const registrationVerificationRequestSchema = z.object({
-  email: z.string().trim().email(),
-  turnstileToken: z.string().optional(),
-});
-
-const loginSchema = z.object({
-  emailOrUsername: z.string().min(1),
-  password: z.string(),
-  turnstileToken: z.string().optional(),
-});
-
-const passwordResetRequestSchema = z
-  .object({
-    emailOrUsername: z.string().min(1).optional(),
-    email: z.string().min(1).optional(),
-    turnstileToken: z.string().optional(),
-  })
-  .refine((data) => data.emailOrUsername || data.email, {
-    message: '邮箱/用户名不能为空',
-  });
-
-const passwordResetConfirmSchema = z.object({
-  token: z.string().min(1),
-  password: z.string().min(8),
-});
 
 router.post('/register', authLimiter, async (req: Request, res: Response) => {
   const data = validate(registerSchema, req.body);
@@ -115,7 +86,8 @@ router.post('/password-reset/confirm', authLimiter, async (req: Request, res: Re
 
 router.post('/refresh', authLimiter, async (req: Request, res: Response) => {
   const cookies = parseCookies(req.headers.cookie);
-  const refreshToken = cookies[REFRESH_COOKIE_NAME] || req.body?.refreshToken;
+  const data = validate(refreshRequestSchema, req.body ?? {});
+  const refreshToken = cookies[REFRESH_COOKIE_NAME] || data.refreshToken;
   if (!refreshToken) throw new ValidationError('refreshToken required');
 
   const result = await authService.refresh(refreshToken);
@@ -128,8 +100,7 @@ router.post('/logout', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 router.post('/link-minecraft', authMiddleware, async (req: Request, res: Response) => {
-  const { code } = req.body;
-  if (!code) throw new ValidationError('code required');
+  const { code } = validate(linkMinecraftSchema, req.body);
 
   const result = await authService.linkMinecraft(req.user!.userId, code);
   res.json(result);

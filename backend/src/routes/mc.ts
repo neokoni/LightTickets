@@ -1,47 +1,24 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
-import { z } from 'zod';
 import { serverAuthMiddleware } from '../middleware/server-auth.js';
-import { ForbiddenError, ValidationError } from '../utils/errors.js';
+import { ForbiddenError } from '../utils/errors.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
 import * as authService from '../services/auth.service.js';
 import * as mcService from '../services/mc.service.js';
-import { TICKET_STATUS } from '../constants/ticket-status.js';
+import {
+  mcCommentSchema,
+  mcLinkCodeSchema,
+  mcRegisterSchema,
+  mcStatusSchema,
+  mcTicketActionSchema,
+  mcTicketSchema,
+  mcUnlinkSchema,
+  mcViewerSchema,
+} from '../schemas/mc.js';
 
 const router = Router();
 
 router.use(serverAuthMiddleware);
-
-const linkCodeSchema = z.object({
-  minecraftUuid: z.string(),
-  minecraftName: z.string(),
-});
-
-const mcRegisterSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  username: z.string().min(2).max(32),
-  minecraftUuid: z.string(),
-  minecraftName: z.string(),
-});
-
-const mcTicketSchema = z.object({
-  minecraftUuid: z.string(),
-  title: z.string().min(1).max(200),
-  body: z.string().min(1),
-  template: z.string().min(1),
-  formData: z.record(z.string(), z.string()).optional(),
-  hidden: z.boolean().optional(),
-  context: z
-    .object({
-      world: z.string().optional(),
-      x: z.number().optional(),
-      y: z.number().optional(),
-      z: z.number().optional(),
-      gameMode: z.string().optional(),
-    })
-    .optional(),
-});
 
 router.post('/register', async (req: Request, res: Response) => {
   const data = validate(mcRegisterSchema, req.body);
@@ -63,7 +40,7 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 router.post('/link-code', async (req: Request, res: Response) => {
-  const data = validate(linkCodeSchema, req.body);
+  const data = validate(mcLinkCodeSchema, req.body);
 
   const linkCode = await mcService.createLinkCode({
     minecraftUuid: data.minecraftUuid,
@@ -89,10 +66,6 @@ router.post('/tickets', async (req: Request, res: Response) => {
   });
 
   res.status(201).json(ticket);
-});
-
-const mcViewerSchema = z.object({
-  minecraftUuid: z.string().min(1).optional(),
 });
 
 async function listMinecraftTickets(req: Request, res: Response, minecraftUuid?: string) {
@@ -139,21 +112,18 @@ router.get('/user/:uuid', async (req: Request, res: Response) => {
 });
 
 router.post('/comments', async (req: Request, res: Response) => {
-  const { minecraftUuid, ticketId, body } = req.body;
-  if (!minecraftUuid || !ticketId || !body)
-    throw new ValidationError('minecraftUuid, ticketId, and body required');
+  const { minecraftUuid, ticketId, body } = validate(mcCommentSchema, req.body);
 
   const comment = await mcService.createCommentFromMinecraft({
     minecraftUuid,
-    ticketId: parseId(String(ticketId)),
+    ticketId,
     body,
   });
   res.status(201).json(comment);
 });
 
 router.post('/tickets/:id/close', async (req: Request, res: Response) => {
-  const { minecraftUuid } = req.body;
-  if (!minecraftUuid) throw new ValidationError('minecraftUuid required');
+  const { minecraftUuid } = validate(mcTicketActionSchema, req.body);
 
   const ticket = await mcService.closeTicketFromMinecraft(
     parseId(String(req.params.id)),
@@ -163,8 +133,7 @@ router.post('/tickets/:id/close', async (req: Request, res: Response) => {
 });
 
 router.post('/tickets/:id/reopen', async (req: Request, res: Response) => {
-  const { minecraftUuid } = req.body;
-  if (!minecraftUuid) throw new ValidationError('minecraftUuid required');
+  const { minecraftUuid } = validate(mcTicketActionSchema, req.body);
 
   const ticket = await mcService.reopenTicketFromMinecraft(
     parseId(String(req.params.id)),
@@ -173,18 +142,8 @@ router.post('/tickets/:id/reopen', async (req: Request, res: Response) => {
   res.json(ticket);
 });
 
-const statusSchema = z.object({
-  minecraftUuid: z.string(),
-  status: z.enum([
-    TICKET_STATUS.OPEN,
-    TICKET_STATUS.IN_PROGRESS,
-    TICKET_STATUS.CLOSED,
-    TICKET_STATUS.INVALID,
-  ]),
-});
-
 router.post('/tickets/:id/status', async (req: Request, res: Response) => {
-  const data = validate(statusSchema, req.body);
+  const data = validate(mcStatusSchema, req.body);
 
   const ticket = await mcService.updateTicketStatusFromMinecraft(
     parseId(String(req.params.id)),
@@ -194,8 +153,7 @@ router.post('/tickets/:id/status', async (req: Request, res: Response) => {
 });
 
 router.post('/unlink', async (req: Request, res: Response) => {
-  const { minecraftUuid } = req.body;
-  if (!minecraftUuid) throw new ValidationError('minecraftUuid required');
+  const { minecraftUuid } = validate(mcUnlinkSchema, req.body);
 
   const user = await mcService.unlinkMinecraftByUuid(minecraftUuid);
   res.json(user);

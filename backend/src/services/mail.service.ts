@@ -4,7 +4,7 @@ import type Mail from 'nodemailer/lib/mailer/index.js';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 import type { MailConfig } from './mail-config.service.js';
 import * as mailConfigService from './mail-config.service.js';
-import { ValidationError } from '../utils/errors.js';
+import { AppError, ValidationError } from '../utils/errors.js';
 
 export interface SentMail {
   to: string;
@@ -95,13 +95,13 @@ export async function verifyMailConfig(
 
 export async function testMailConfig(
   input?: mailConfigService.MailConfigInput,
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: true; message: string }> {
   try {
     await verifyMailConfig(input);
     return { success: true, message: 'SMTP 连接成功' };
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'SMTP 连接失败';
-    return { success: false, message };
+    if (err instanceof AppError) throw err;
+    throw new AppError(502, 'SMTP 连接失败');
   }
 }
 

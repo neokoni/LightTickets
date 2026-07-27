@@ -11,13 +11,13 @@ const router = Router();
 
 router.use(authMiddleware, requireRole(ROLE.ADMIN));
 
-const createSchema = z.object({
+export const serverCreateSchema = z.object({
   name: z.string().min(1).max(50),
   address: z.string().optional(),
   description: z.string().optional(),
 });
 
-const updateSchema = z
+export const serverUpdateSchema = z
   .object({
     name: z.string().min(1).max(50).optional(),
     address: z.string().nullable().optional(),
@@ -35,7 +35,7 @@ router.get('/', async (_req: Request, res: Response) => {
 });
 
 router.post('/', async (req: Request, res: Response) => {
-  const data = validate(createSchema, req.body);
+  const data = validate(serverCreateSchema, req.body);
 
   const server = await serverService.create(data.name, data.address, data.description);
   res.status(201).json(server);
@@ -47,7 +47,7 @@ router.post('/:id/regenerate-key', async (req: Request, res: Response) => {
 });
 
 router.patch('/:id', async (req: Request, res: Response) => {
-  const data = validate(updateSchema, req.body);
+  const data = validate(serverUpdateSchema, req.body);
 
   const server = await serverService.update(String(req.params.id), data);
   res.json(server);

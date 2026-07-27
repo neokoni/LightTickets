@@ -7,7 +7,7 @@ import { validate, parseId } from '../utils/validate.js';
 
 const router = Router({ mergeParams: true });
 
-const createSchema = z.object({
+export const commentCreateSchema = z.object({
   body: z.string().min(1),
 });
 
@@ -20,7 +20,7 @@ router.get('/', conditionalAuthMiddleware, async (req: Request, res: Response) =
 });
 
 router.post('/', authMiddleware, async (req: Request, res: Response) => {
-  const data = validate(createSchema, req.body);
+  const data = validate(commentCreateSchema, req.body);
 
   const comment = await commentService.create(
     parseId(String(req.params.id)),
@@ -32,12 +32,12 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
   res.status(201).json(comment);
 });
 
-const updateBodySchema = z.object({
+export const commentBodyUpdateSchema = z.object({
   body: z.string().min(1),
 });
 
 router.patch('/:commentId/body', authMiddleware, async (req: Request, res: Response) => {
-  const data = validate(updateBodySchema, req.body);
+  const data = validate(commentBodyUpdateSchema, req.body);
 
   const comment = await commentService.updateBody(
     String(req.params.commentId),

@@ -26,52 +26,73 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {string} */
+              status: 'ok';
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
-        /** @description Unauthorized */
-        401: {
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/docs/openapi.json': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 获取 OpenAPI 规范 */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
+            'application/json':
+              | {
+                  [key: string]: unknown;
+                }
+              | unknown[]
+              | string
+              | number
+              | boolean
+              | unknown;
           };
         };
-        /** @description Internal Server Error */
-        500: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -101,7 +122,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** Format: email */
@@ -115,56 +136,33 @@ export interface paths {
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -192,7 +190,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** Format: email */
@@ -210,55 +208,22 @@ export interface paths {
           content: {
             'application/json': {
               /** @enum {boolean} */
-              accepted: true;
-              retryAfterSeconds: number;
+              success: true;
+              data: {
+                /** @enum {boolean} */
+                accepted: true;
+                retryAfterSeconds: number;
+              };
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -286,7 +251,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             emailOrUsername: string;
@@ -301,52 +266,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -374,10 +316,11 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
-            emailOrUsername: string;
+            emailOrUsername?: string;
+            email?: string;
             turnstileToken?: string;
           };
         };
@@ -390,54 +333,21 @@ export interface paths {
           };
           content: {
             'application/json': {
-              accepted: boolean;
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                accepted: boolean;
+              };
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -465,7 +375,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             token: string;
@@ -481,54 +391,21 @@ export interface paths {
           };
           content: {
             'application/json': {
-              reset: boolean;
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                reset: boolean;
+              };
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -559,7 +436,7 @@ export interface paths {
       requestBody?: {
         content: {
           'application/json': {
-            refreshToken: string;
+            refreshToken?: string;
           };
         };
       };
@@ -569,52 +446,72 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 退出登录并清除刷新令牌 Cookie */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Logged out */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -642,7 +539,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             code: string;
@@ -655,52 +552,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -720,52 +594,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -797,52 +648,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -867,7 +695,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -877,52 +707,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -948,7 +755,7 @@ export interface paths {
         query?: {
           page?: number;
           pageSize?: number;
-          statuses?: string;
+          statuses?: string | string[];
           type?: string;
           authorId?: number;
           authorName?: string;
@@ -969,52 +776,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1028,13 +812,13 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             title: string;
             template: string;
             formData: {
-              [key: string]: unknown;
+              [key: string]: string;
             };
             serverId?: string;
             attachmentIds?: string[];
@@ -1044,56 +828,33 @@ export interface paths {
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1116,7 +877,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -1126,52 +889,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1186,13 +926,16 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
-            status?: string;
+            /** @enum {string} */
+            status?: 'open' | 'in_progress' | 'closed' | 'invalid';
             assigneeId?: number;
             hidden?: boolean;
           };
@@ -1204,52 +947,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1274,10 +994,12 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             body: string;
@@ -1290,52 +1012,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1360,10 +1059,12 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             title: string;
@@ -1376,52 +1077,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1442,7 +1120,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -1452,52 +1132,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1522,7 +1179,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -1532,52 +1191,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1608,7 +1244,7 @@ export interface paths {
         };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             values: {
@@ -1625,75 +1261,42 @@ export interface paths {
           };
           content: {
             'application/json': {
-              /** Format: uuid */
-              id: string;
-              /** @enum {string} */
-              event: 'closed' | 'invalid';
-              title: string;
-              fields: {
-                [key: string]: unknown;
-              }[];
-              response: {
-                [key: string]: string | string[];
-              } | null;
-              /** @enum {string} */
-              status: 'pending' | 'completed' | 'cancelled';
-              /** @enum {string} */
-              visibility: 'public' | 'staff';
-              createdAt: string;
-              completedAt: string | null;
-              completedBy: {
-                id: number;
-                username: string;
-                minecraftName: string | null;
-              } | null;
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                event: 'closed' | 'invalid';
+                title: string;
+                fields: {
+                  [key: string]: unknown;
+                }[];
+                response: {
+                  [key: string]: string | string[];
+                } | null;
+                /** @enum {string} */
+                status: 'pending' | 'completed' | 'cancelled';
+                /** @enum {string} */
+                visibility: 'public' | 'staff';
+                createdAt: string;
+                completedAt: string | null;
+                completedBy: {
+                  id: number;
+                  username: string;
+                  minecraftName: string | null;
+                } | null;
+              };
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1716,7 +1319,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -1726,52 +1331,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1797,10 +1379,12 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             assigneeIds: number[];
@@ -1813,52 +1397,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1870,7 +1431,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/tickets/{id}/audit': {
+  '/api/tickets/{ticketId}/audit': {
     parameters: {
       query?: never;
       header?: never;
@@ -1882,7 +1443,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          ticketId: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -1892,52 +1455,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -1962,7 +1502,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -1972,52 +1514,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2028,10 +1547,12 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             body: string;
@@ -2040,56 +1561,33 @@ export interface paths {
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2118,10 +1616,13 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+          commentId: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             body: string;
@@ -2134,52 +1635,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2201,62 +1679,28 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+          commentId: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
       responses: {
         /** @description Success */
-        200: {
+        204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2288,52 +1732,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2347,7 +1768,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             id: string;
@@ -2359,56 +1780,33 @@ export interface paths {
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2442,56 +1840,19 @@ export interface paths {
       requestBody?: never;
       responses: {
         /** @description Success */
-        200: {
+        204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2508,7 +1869,7 @@ export interface paths {
         };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             name?: string;
@@ -2523,52 +1884,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2589,10 +1927,12 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             labelId: string;
@@ -2601,56 +1941,19 @@ export interface paths {
       };
       responses: {
         /** @description Success */
-        200: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2685,56 +1988,19 @@ export interface paths {
       requestBody?: never;
       responses: {
         /** @description Success */
-        200: {
+        204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2764,56 +2030,33 @@ export interface paths {
       requestBody?: never;
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2836,7 +2079,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -2846,52 +2091,17 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/octet-stream': string;
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2903,62 +2113,27 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
       responses: {
         /** @description Success */
-        200: {
+        204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -2990,52 +2165,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3049,7 +2201,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             name: string;
@@ -3060,56 +2212,33 @@ export interface paths {
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3134,7 +2263,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -3144,52 +2275,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3215,62 +2323,27 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
       responses: {
         /** @description Success */
-        200: {
+        204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3282,10 +2355,12 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             name?: string;
@@ -3300,52 +2375,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3369,7 +2421,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** Format: email */
@@ -3383,56 +2435,33 @@ export interface paths {
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3460,67 +2489,43 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             minecraftUuid: string;
             minecraftName: string;
-            serverId: string;
           };
         };
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3557,52 +2562,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3616,72 +2598,56 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             minecraftUuid: string;
             title: string;
+            body: string;
             template: string;
-            formData: {
-              [key: string]: unknown;
+            formData?: {
+              [key: string]: string;
             };
             hidden?: boolean;
-            gameContext?: string;
+            context?: {
+              world?: string;
+              x?: number;
+              y?: number;
+              z?: number;
+              gameMode?: string;
+            };
           };
         };
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3704,7 +2670,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          uuid: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -3714,52 +2682,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3786,7 +2731,9 @@ export interface paths {
           minecraftUuid?: string;
         };
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -3796,52 +2743,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3868,7 +2792,9 @@ export interface paths {
           minecraftUuid?: string;
         };
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -3878,52 +2804,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -3948,7 +2851,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          uuid: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -3958,52 +2863,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4033,59 +2915,44 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody: {
+        content: {
+          'application/json': {
+            minecraftUuid: string;
+            ticketId: number;
+            body: string;
+          };
+        };
+      };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4110,62 +2977,47 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody: {
+        content: {
+          'application/json': {
+            minecraftUuid: string;
+          };
+        };
+      };
       responses: {
         /** @description Success */
         200: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4190,62 +3042,47 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody: {
+        content: {
+          'application/json': {
+            minecraftUuid: string;
+          };
+        };
+      };
       responses: {
         /** @description Success */
         200: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4270,13 +3107,17 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
-            status: string;
+            minecraftUuid: string;
+            /** @enum {string} */
+            status: 'open' | 'in_progress' | 'closed' | 'invalid';
           };
         };
       };
@@ -4286,52 +3127,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4359,59 +3177,42 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody: {
+        content: {
+          'application/json': {
+            minecraftUuid: string;
+          };
+        };
+      };
       responses: {
         /** @description Success */
         200: {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4446,58 +3247,25 @@ export interface paths {
           };
           content: {
             'application/json': {
-              name: string;
-              name_i18n: string;
-              description: string;
-              labels: string[];
-              hidden: boolean | 'optional';
-            }[];
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                name: string;
+                name_i18n: string;
+                description: string;
+                labels: string[];
+                hidden: boolean | 'optional';
+              }[];
+            };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4522,7 +3290,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          name: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -4532,52 +3302,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4612,52 +3359,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4671,7 +3395,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             name: string;
@@ -4683,62 +3407,39 @@ export interface paths {
             completionHooks?: string;
             source?: string;
             enabled?: boolean;
-            hidden?: boolean | 'optional';
+            hidden?: boolean | 'optional' | 'optinal';
           };
         };
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4761,7 +3462,9 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          name: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
@@ -4771,52 +3474,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4828,62 +3508,27 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          name: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
       responses: {
         /** @description Success */
-        200: {
+        204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4895,10 +3540,12 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          name: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             nameI18n?: string;
@@ -4909,7 +3556,7 @@ export interface paths {
             completionHooks?: string;
             source?: string;
             enabled?: boolean;
-            hidden?: boolean | 'optional';
+            hidden?: boolean | 'optional' | 'optinal';
           };
         };
       };
@@ -4919,52 +3566,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -4993,52 +3617,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5051,7 +3652,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** @enum {string} */
@@ -5075,52 +3676,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5156,52 +3734,25 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** @enum {boolean} */
+                success: true;
+                message: string;
+              };
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5234,52 +3785,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5314,52 +3842,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5393,10 +3898,10 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
-            avatarUrl: string | null;
+            avatarUrl: string | '' | unknown;
           };
         };
       };
@@ -5406,52 +3911,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5479,7 +3961,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             username: string;
@@ -5492,52 +3974,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5565,7 +4024,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             currentPassword: string;
@@ -5579,52 +4038,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5652,7 +4088,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** Format: email */
@@ -5666,52 +4102,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5739,7 +4152,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             receiveEmailNotifications: boolean;
@@ -5752,52 +4165,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5821,7 +4211,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             token: string;
@@ -5837,54 +4227,21 @@ export interface paths {
           content: {
             'application/json': {
               /** @enum {boolean} */
-              unsubscribed: true;
+              success: true;
+              data: {
+                /** @enum {boolean} */
+                unsubscribed: true;
+              };
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -5895,7 +4252,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/users/{userId}/role': {
+  '/api/users/{id}/role': {
     parameters: {
       query?: never;
       header?: never;
@@ -5913,10 +4270,12 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** @enum {string} */
@@ -5930,59 +4289,36 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
     };
     trace?: never;
   };
-  '/api/users/{userId}': {
+  '/api/users/{id}': {
     parameters: {
       query?: never;
       header?: never;
@@ -5997,62 +4333,27 @@ export interface paths {
       parameters: {
         query?: never;
         header?: never;
-        path?: never;
+        path: {
+          id: string;
+        };
         cookie?: never;
       };
       requestBody?: never;
       responses: {
         /** @description Success */
-        200: {
+        204: {
           headers: {
             [name: string]: unknown;
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6086,79 +4387,46 @@ export interface paths {
           };
           content: {
             'application/json': {
-              isSetup: boolean;
-              requireLogin: boolean;
-              allowWebRegister: boolean;
-              allowMcRegister: boolean;
-              /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
-              passwordResetEnabled: boolean;
-              /** @description True when SMTP is usable */
-              registrationEmailVerificationEnabled: boolean;
-              siteName: string;
-              /**
-               * Format: uri
-               * @description Canonical public HTTP(S) origin without credentials, path, query, or fragment
-               */
-              siteUrl: string | null;
-              footerContent: string | null;
-              defaultLanguage: string;
-              turnstile: {
-                enabled: boolean;
-                siteKey: string;
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                isSetup: boolean;
+                requireLogin: boolean;
+                allowWebRegister: boolean;
+                allowMcRegister: boolean;
+                /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
+                passwordResetEnabled: boolean;
+                /** @description True when SMTP is usable */
+                registrationEmailVerificationEnabled: boolean;
+                siteName: string;
+                /**
+                 * Format: uri
+                 * @description Canonical public HTTP(S) origin without credentials, path, query, or fragment
+                 */
+                siteUrl: string | null;
+                footerContent: string | null;
+                defaultLanguage: string;
+                turnstile: {
+                  enabled: boolean;
+                  siteKey: string;
+                };
+                federatedAuthProviders: {
+                  slug: string;
+                  name: string;
+                  iconUrl: string | null;
+                  allowRegistration: boolean;
+                }[];
               };
-              federatedAuthProviders: {
-                slug: string;
-                name: string;
-                iconUrl: string | null;
-                allowRegistration: boolean;
-              }[];
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6188,7 +4456,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             db: {
@@ -6221,6 +4489,7 @@ export interface paths {
               driver: 'local' | 's3';
               s3?: {
                 endpoint?: string;
+                region?: string;
                 bucket?: string;
                 accessKeyId?: string;
                 secretAccessKey?: string;
@@ -6233,56 +4502,33 @@ export interface paths {
       };
       responses: {
         /** @description Success */
-        200: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content?: never;
-        };
-        /** @description Bad Request */
-        400: {
+        201: {
           headers: {
             [name: string]: unknown;
           };
           content: {
             'application/json': {
               /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
             };
           };
         };
-        /** @description Unauthorized */
-        401: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6308,22 +4554,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
-        content: {
-          'application/json': {
-            mail?: {
-              enabled?: boolean;
-              host?: string;
-              port?: number;
-              secure?: boolean;
-              username?: string | null;
-              password?: string | null;
-              fromName?: string;
-              fromAddress?: string | '';
-            };
-          };
-        };
-      };
+      requestBody?: never;
       responses: {
         /** @description Success */
         200: {
@@ -6332,85 +4563,52 @@ export interface paths {
           };
           content: {
             'application/json': {
-              /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
-              passwordResetEnabled: boolean;
-              /** @description True when SMTP is usable */
-              registrationEmailVerificationEnabled: boolean;
-              rateLimit: {
-                global: {
-                  windowSeconds: number;
-                  maxRequests: number;
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
+                passwordResetEnabled: boolean;
+                /** @description True when SMTP is usable */
+                registrationEmailVerificationEnabled: boolean;
+                rateLimit: {
+                  global: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                  };
+                  auth: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                  };
+                  email: {
+                    cooldownSeconds: number;
+                  };
                 };
-                auth: {
-                  windowSeconds: number;
-                  maxRequests: number;
+                rateLimitDefaults: {
+                  global: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                  };
+                  auth: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                  };
+                  email: {
+                    cooldownSeconds: number;
+                  };
                 };
-                email: {
-                  cooldownSeconds: number;
-                };
+              } & {
+                [key: string]: unknown;
               };
-              rateLimitDefaults: {
-                global: {
-                  windowSeconds: number;
-                  maxRequests: number;
-                };
-                auth: {
-                  windowSeconds: number;
-                  maxRequests: number;
-                };
-                email: {
-                  cooldownSeconds: number;
-                };
-              };
-            } & {
-              [key: string]: unknown;
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6428,7 +4626,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             requireLogin?: boolean;
@@ -6479,85 +4677,52 @@ export interface paths {
           };
           content: {
             'application/json': {
-              /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
-              passwordResetEnabled: boolean;
-              /** @description True when SMTP is usable */
-              registrationEmailVerificationEnabled: boolean;
-              rateLimit: {
-                global: {
-                  windowSeconds: number;
-                  maxRequests: number;
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** @description True only when SMTP is usable and siteUrl is a canonical HTTPS origin */
+                passwordResetEnabled: boolean;
+                /** @description True when SMTP is usable */
+                registrationEmailVerificationEnabled: boolean;
+                rateLimit: {
+                  global: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                  };
+                  auth: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                  };
+                  email: {
+                    cooldownSeconds: number;
+                  };
                 };
-                auth: {
-                  windowSeconds: number;
-                  maxRequests: number;
+                rateLimitDefaults: {
+                  global: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                  };
+                  auth: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                  };
+                  email: {
+                    cooldownSeconds: number;
+                  };
                 };
-                email: {
-                  cooldownSeconds: number;
-                };
+              } & {
+                [key: string]: unknown;
               };
-              rateLimitDefaults: {
-                global: {
-                  windowSeconds: number;
-                  maxRequests: number;
-                };
-                auth: {
-                  windowSeconds: number;
-                  maxRequests: number;
-                };
-                email: {
-                  cooldownSeconds: number;
-                };
-              };
-            } & {
-              [key: string]: unknown;
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6581,7 +4746,22 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody: {
+        content: {
+          'application/json': {
+            mail?: {
+              enabled?: boolean;
+              host?: string;
+              port?: number;
+              secure?: boolean;
+              username?: string | null;
+              password?: string | null;
+              fromName?: string;
+              fromAddress?: string | '';
+            };
+          };
+        };
+      };
       responses: {
         /** @description Success */
         200: {
@@ -6590,55 +4770,23 @@ export interface paths {
           };
           content: {
             'application/json': {
-              success: boolean;
-              message: string;
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** @enum {boolean} */
+                success: true;
+                message: string;
+              };
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6668,7 +4816,7 @@ export interface paths {
         };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** @default / */
@@ -6682,52 +4830,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6769,50 +4894,13 @@ export interface paths {
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6847,52 +4935,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -6922,7 +4987,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** Format: email */
@@ -6937,52 +5002,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7010,7 +5052,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** Format: email */
@@ -7028,52 +5070,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7106,52 +5125,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7164,7 +5160,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/users/me/federatedauth/{slug}/start': {
+  '/api/users/me/federatedauth/{value}/start': {
     parameters: {
       query?: never;
       header?: never;
@@ -7179,11 +5175,11 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          slug: string;
+          value: string;
         };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             /** @default / */
@@ -7197,52 +5193,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7253,7 +5226,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/users/me/federatedauth/{identityId}': {
+  '/api/users/me/federatedauth/{value}': {
     parameters: {
       query?: never;
       header?: never;
@@ -7269,11 +5242,11 @@ export interface paths {
         query?: never;
         header?: never;
         path: {
-          identityId: string;
+          value: string;
         };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             currentPassword: string;
@@ -7288,50 +5261,13 @@ export interface paths {
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7363,52 +5299,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7422,7 +5335,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             slug: string;
@@ -7466,52 +5379,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7551,50 +5441,13 @@ export interface paths {
           };
           content?: never;
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7611,7 +5464,7 @@ export interface paths {
         };
         cookie?: never;
       };
-      requestBody?: {
+      requestBody: {
         content: {
           'application/json': {
             slug?: string;
@@ -7655,52 +5508,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7736,54 +5566,21 @@ export interface paths {
           };
           content: {
             'application/json': {
-              unlinked: number;
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                unlinked: number;
+              };
             };
           };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7819,52 +5616,29 @@ export interface paths {
           headers: {
             [name: string]: unknown;
           };
-          content?: never;
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
         };
-        /** @description Bad Request */
-        400: {
+        /** @description Error */
+        default: {
           headers: {
             [name: string]: unknown;
           };
           content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 400;
-              message: string;
-            };
-          };
-        };
-        /** @description Unauthorized */
-        401: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 401;
-              message: string;
-            };
-          };
-        };
-        /** @description Internal Server Error */
-        500: {
-          headers: {
-            [name: string]: unknown;
-          };
-          content: {
-            'application/json': {
-              /** @enum {boolean} */
-              success: false;
-              /** @enum {number} */
-              statusCode: 500;
-              message: string;
-              traceId: string;
-            };
+            'application/json': components['schemas']['ErrorEnvelope'];
           };
         };
       };
@@ -7878,7 +5652,15 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: never;
+  schemas: {
+    ErrorEnvelope: {
+      /** @enum {boolean} */
+      success: false;
+      statusCode: number;
+      message: string;
+      traceId?: string;
+    };
+  };
   responses: never;
   parameters: never;
   requestBodies: never;

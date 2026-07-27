@@ -15,7 +15,7 @@ import { authLimiter } from '../middleware/rate-limit.js';
 
 const router = Router();
 
-const unsubscribeSchema = z.object({ token: z.string().min(1) });
+export const unsubscribeSchema = z.object({ token: z.string().min(1) });
 
 router.post('/email-notifications/unsubscribe', async (req: Request, res: Response) => {
   const data = validate(unsubscribeSchema, req.body);
@@ -39,19 +39,19 @@ router.get(
   },
 );
 
-const avatarSchema = z.object({
+export const userAvatarSchema = z.object({
   avatarUrl: z.string().url().nullable().or(z.literal('')),
 });
 
 router.patch('/me/avatar', authMiddleware, async (req: Request, res: Response) => {
-  const data = validate(avatarSchema, req.body);
+  const data = validate(userAvatarSchema, req.body);
 
   const url = data.avatarUrl || null;
   const user = await userService.updateAvatar(req.user!.userId, url);
   res.json(user);
 });
 
-const usernameSchema = z.object({
+export const usernameSchema = z.object({
   username: z.string().min(2).max(32),
 });
 
@@ -62,35 +62,35 @@ router.patch('/me/username', authMiddleware, async (req: Request, res: Response)
   res.json(user);
 });
 
-const passwordSchema = z.object({
+export const userPasswordSchema = z.object({
   currentPassword: z.string().min(1, '请输入当前密码'),
   newPassword: z.string().min(8, '新密码至少 8 个字符').max(128),
 });
 
 router.patch('/me/password', authMiddleware, async (req: Request, res: Response) => {
-  const data = validate(passwordSchema, req.body);
+  const data = validate(userPasswordSchema, req.body);
 
   await userService.changePassword(req.user!.userId, data.currentPassword, data.newPassword);
   res.json({ message: '密码已更新' });
 });
 
-const emailSchema = z.object({
+export const userEmailSchema = z.object({
   email: z.string().email(),
 });
 
 router.patch('/me/email', authMiddleware, async (req: Request, res: Response) => {
-  const data = validate(emailSchema, req.body);
+  const data = validate(userEmailSchema, req.body);
 
   const user = await userService.updateEmail(req.user!.userId, data.email);
   res.json(user);
 });
 
-const notificationSettingsSchema = z.object({
+export const userNotificationSettingsSchema = z.object({
   receiveEmailNotifications: z.boolean(),
 });
 
 router.patch('/me/notifications', authMiddleware, async (req: Request, res: Response) => {
-  const data = validate(notificationSettingsSchema, req.body);
+  const data = validate(userNotificationSettingsSchema, req.body);
   const user = await userService.updateEmailNotifications(
     req.user!.userId,
     data.receiveEmailNotifications,
@@ -138,7 +138,7 @@ router.delete(
   },
 );
 
-const roleSchema = z.object({
+export const userRoleSchema = z.object({
   role: z.enum([ROLE.PLAYER, ROLE.STAFF, ROLE.ADMIN]),
 });
 
@@ -147,7 +147,7 @@ router.patch(
   authMiddleware,
   requireRole(ROLE.ADMIN),
   async (req: Request, res: Response) => {
-    const data = validate(roleSchema, req.body);
+    const data = validate(userRoleSchema, req.body);
 
     const userId = parseId(String(req.params.id));
     const user = await userService.changeRole(userId, data.role);

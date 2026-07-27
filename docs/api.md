@@ -17,16 +17,6 @@
 }
 ```
 
-灰度兼容期内，对象响应会同时保留顶层字段，例如：
-
-```json
-{
-  "success": true,
-  "data": { "accessToken": "..." },
-  "accessToken": "..."
-}
-```
-
 错误响应统一为：
 
 ```json
@@ -620,14 +610,20 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
 
 需要 `admin`。请求体可通过 `mail` 传入当前页面的 SMTP 配置；传入字段优先，未传字段从数据库
 中的已保存配置补齐（空密码会保留已保存密码）。测试不要求邮件服务已经启用，也不会保存传入
-配置。随后执行 Nodemailer 连接验证并返回：
+配置。随后执行 Nodemailer 连接验证并返回标准成功 envelope：
 
 ```json
 {
   "success": true,
-  "message": "SMTP 连接成功"
+  "data": {
+    "success": true,
+    "message": "SMTP 连接成功"
+  }
 }
 ```
+
+配置不完整时返回 `400`，连接验证失败时返回 `502`；两者都使用标准错误 envelope，不会以
+HTTP 200 返回业务级 `success: false`。
 
 ### 模板管理
 
@@ -677,6 +673,9 @@ S3 配置：
 ```
 
 `secretAccessKey` 查询时会被掩码；更新时不传则保留原值。
+`POST /test` 成功时在标准成功 envelope 的 `data` 中返回
+`{ "success": true, "message": "连接成功" }`。尚未配置 S3 时返回 `400`，连接失败时返回
+`502`，并统一使用标准错误 envelope。
 
 ## 审计日志
 
@@ -756,3 +755,5 @@ MC 读取接口始终需要服务器 API Key，但玩家身份上下文 `minecra
 - `GET /api/docs/openapi.json`
 
 返回构建生成的 OpenAPI JSON；如果尚未生成，返回 `404` 标准错误响应。
+规范方言固定为 OpenAPI `3.0.3`；项目仍处于 WIP，`info.version` 保持初始版本 `1.0.0`。
+生成过程会校验成功/错误 envelope，并对比 Express 实际路由与文档路由，存在遗漏或陈旧路由时失败。

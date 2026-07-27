@@ -805,6 +805,31 @@ describe('PATCH /api/setup/settings', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data).toEqual({ success: true, message: 'SMTP 连接成功' });
+  });
+
+  it('returns a standard error envelope when SMTP settings are incomplete', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-mail-test-invalid@test.com',
+          password: 'admin123',
+          username: 'settingsmailtestinvalid',
+        },
+      });
+
+    const res = await request(app)
+      .post('/api/setup/settings/mail/test')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      success: false,
+      statusCode: 400,
+      message: 'SMTP 主机不能为空',
+    });
   });
 
   it('tests unsaved mail settings without enabling or persisting them', async () => {

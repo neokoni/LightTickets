@@ -10,11 +10,11 @@ import { ROLE } from '../constants/roles.js';
 const router = Router();
 router.use(authMiddleware, requireRole(ROLE.ADMIN));
 
-const hiddenModeSchema = z
+export const templateHiddenModeSchema = z
   .union([z.boolean(), z.literal('optional'), z.literal('optinal')])
   .transform((value) => templateService.normalizeTemplateHiddenMode(value));
 
-const createSchema = z.object({
+export const adminTemplateCreateSchema = z.object({
   name: z.string().min(1).max(50),
   nameI18n: z.string().min(1).max(100),
   description: z.string().min(1).max(500),
@@ -24,10 +24,10 @@ const createSchema = z.object({
   completionHooks: z.string().optional(),
   source: z.string().min(1).optional(),
   enabled: z.boolean().optional(),
-  hidden: hiddenModeSchema.optional(),
+  hidden: templateHiddenModeSchema.optional(),
 });
 
-const updateSchema = createSchema
+export const adminTemplateUpdateSchema = adminTemplateCreateSchema
   .omit({ name: true })
   .partial()
   .extend({ source: z.string().min(1).optional() });
@@ -46,14 +46,14 @@ router.get('/:name', async (req: Request, res: Response) => {
 
 // POST /api/admin/templates
 router.post('/', async (req: Request, res: Response) => {
-  const data = validate(createSchema, req.body);
+  const data = validate(adminTemplateCreateSchema, req.body);
   const tmpl = await templateService.adminCreate(data);
   res.status(201).json(tmpl);
 });
 
 // PATCH /api/admin/templates/:name
 router.patch('/:name', async (req: Request, res: Response) => {
-  const data = validate(updateSchema, req.body);
+  const data = validate(adminTemplateUpdateSchema, req.body);
   const tmpl = await templateService.adminUpdate(String(req.params.name), data);
   res.json(tmpl);
 });

@@ -169,3 +169,21 @@ describe('PUT /api/admin/storage', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('POST /api/admin/storage/test', () => {
+  beforeEach(resetAppConfig);
+
+  it('returns a standard error envelope when S3 is not configured', async () => {
+    const token = await getAdminToken('storage-test-unconfigured@test.com');
+    const res = await request(app)
+      .post('/api/admin/storage/test')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      success: false,
+      statusCode: 400,
+      message: '尚未配置 S3 存储后端',
+    });
+  });
+});

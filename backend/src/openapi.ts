@@ -1,10 +1,14 @@
-import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-openapi';
+import {
+  extendZodWithOpenApi,
+  OpenAPIRegistry,
+  OpenApiGeneratorV3,
+} from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 import path from 'path';
 import fs from 'fs';
-import { DatabaseProvider } from './constants/database-provider.js';
-import { StorageDriver } from './constants/storage-driver.js';
+import { createApp } from './app.js';
 import {
+  federatedAuthCallbackSchema,
   federatedAuthProviderCreateSchema,
   federatedAuthProviderUpdateSchema,
   federatedAuthRegistrationSchema,
@@ -12,10 +16,57 @@ import {
   federatedAuthUnlinkSchema,
   federatedAuthVerificationSchema,
 } from './schemas/federatedauth.js';
-import { rateLimitConfigInputSchema, rateLimitConfigSchema } from './schemas/rate-limit.js';
+import { rateLimitConfigSchema } from './schemas/rate-limit.js';
 import { labelCreateSchema, labelIdentifierSchema, labelUpdateSchema } from './schemas/label.js';
-import { mailConfigInputSchema, mailTestSchema } from './schemas/mail.js';
-import { siteUrlInputSchema, siteUrlSchema } from './schemas/site.js';
+import { mailTestSchema } from './schemas/mail.js';
+import { siteUrlSchema } from './schemas/site.js';
+import {
+  linkMinecraftSchema,
+  loginSchema,
+  passwordResetConfirmSchema,
+  passwordResetRequestSchema,
+  refreshRequestSchema,
+  registerSchema,
+  registrationVerificationRequestSchema,
+} from './schemas/auth.js';
+import {
+  mcCommentSchema,
+  mcLinkCodeSchema,
+  mcRegisterSchema,
+  mcStatusSchema,
+  mcTicketActionSchema,
+  mcTicketSchema,
+  mcUnlinkSchema,
+  mcViewerSchema,
+} from './schemas/mc.js';
+import { storageUpdateSchema } from './schemas/storage.js';
+import { settingsUpdateSchema, setupSchema } from './schemas/setup.js';
+import { REFRESH_COOKIE_NAME } from './utils/auth-cookies.js';
+import {
+  completionHookIdSchema,
+  ticketAssigneesSchema,
+  ticketBodyUpdateSchema,
+  ticketCompleteHookSchema,
+  ticketCreateSchema,
+  ticketLabelSchema,
+  ticketListQuerySchema,
+  ticketTitleUpdateSchema,
+  ticketUpdateSchema,
+} from './routes/tickets.js';
+import { commentBodyUpdateSchema, commentCreateSchema } from './routes/comments.js';
+import { serverCreateSchema, serverUpdateSchema } from './routes/servers.js';
+import {
+  unsubscribeSchema,
+  userAvatarSchema,
+  userEmailSchema,
+  userNotificationSettingsSchema,
+  userPasswordSchema,
+  userRoleSchema,
+  usernameSchema,
+} from './routes/users.js';
+import { adminTemplateCreateSchema, adminTemplateUpdateSchema } from './routes/admin-templates.js';
+
+extendZodWithOpenApi(z);
 
 const registry = new OpenAPIRegistry();
 
@@ -31,7 +82,32 @@ const apiKeySecurityScheme = registry.registerComponent('securitySchemes', 'apiK
   name: 'X-Server-Key',
 });
 
-type AuthType = 'none' | 'jwt' | 'conditional' | 'admin' | 'staff' | 'apiKey';
+const refreshCookieSecurityScheme = registry.registerComponent('securitySchemes', 'refreshCookie', {
+  type: 'apiKey',
+  in: 'cookie',
+  name: REFRESH_COOKIE_NAME,
+});
+
+const errorEnvelopeSchema = registry.register(
+  'ErrorEnvelope',
+  z.object({
+    success: z.literal(false),
+    statusCode: z.number().int(),
+    message: z.string(),
+    traceId: z.string().optional(),
+  }),
+);
+
+const genericResponseDataSchema = z.union([
+  z.object({}).passthrough(),
+  z.array(z.unknown()),
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+
+type AuthType = 'none' | 'jwt' | 'refresh' | 'conditional' | 'admin' | 'staff' | 'apiKey';
 
 interface RouteDef {
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -45,9 +121,43 @@ interface RouteDef {
   paramsSchema?: z.ZodObject;
   successStatus?: '200' | '201' | '204' | '303';
   successDescription?: string;
+  bodyRequired?: boolean;
+  responseKind?: 'envelope' | 'raw' | 'none';
+  responseMediaType?: string;
+}
+
+function inferParamsSchema(routePath: string): z.ZodObject | undefined {
+  const names = Array.from(routePath.matchAll(/\{([^}]+)\}/g), (match) => match[1]);
+  if (names.length === 0) return undefined;
+
+  const shape: Record<string, z.ZodString> = {};
+  for (const name of names) shape[name] = z.string();
+  return z.object(shape);
 }
 
 function registerRoute(def: RouteDef) {
+  const successStatus = def.successStatus ?? '200';
+  const paramsSchema = def.paramsSchema ?? inferParamsSchema(def.path);
+  const responseMediaType = def.responseMediaType ?? 'application/json';
+  const responseKind =
+    def.responseKind ?? (successStatus === '204' || successStatus === '303' ? 'none' : 'envelope');
+  const successResponse = {
+    description: def.successDescription ?? 'Success',
+    ...(responseKind !== 'none' && {
+      content: {
+        [responseMediaType]: {
+          schema:
+            responseKind === 'raw'
+              ? (def.responseSchema ?? genericResponseDataSchema)
+              : z.object({
+                  success: z.literal(true),
+                  data: def.responseSchema ?? genericResponseDataSchema,
+                }),
+        },
+      },
+    }),
+  };
+
   const pathItem = registry.registerPath({
     method: def.method,
     path: def.path,
@@ -58,63 +168,28 @@ function registerRoute(def: RouteDef) {
         ? []
         : def.auth === 'apiKey'
           ? [{ [apiKeySecurityScheme.name]: [] }]
-          : [{ [jwtSecurityScheme.name]: [] }],
+          : def.auth === 'conditional'
+            ? [{ [jwtSecurityScheme.name]: [] }, {}]
+            : def.auth === 'refresh'
+              ? [{ [refreshCookieSecurityScheme.name]: [] }, {}]
+              : [{ [jwtSecurityScheme.name]: [] }],
     request: {
-      ...(def.paramsSchema && { params: def.paramsSchema }),
+      ...(paramsSchema && { params: paramsSchema }),
       ...(def.querySchema && { query: def.querySchema }),
       ...(def.bodySchema && {
         body: {
+          required: def.bodyRequired ?? true,
           content: { 'application/json': { schema: def.bodySchema } },
         },
       }),
     },
     responses: {
-      ...(def.responseSchema
-        ? {
-            [def.successStatus ?? '200']: {
-              description: def.successDescription ?? 'Success',
-              content: { 'application/json': { schema: def.responseSchema } },
-            },
-          }
-        : {
-            [def.successStatus ?? '200']: {
-              description: def.successDescription ?? 'Success',
-            },
-          }),
-      '400': {
-        description: 'Bad Request',
+      [successStatus]: successResponse,
+      default: {
+        description: 'Error',
         content: {
           'application/json': {
-            schema: z.object({
-              success: z.literal(false),
-              statusCode: z.literal(400),
-              message: z.string(),
-            }),
-          },
-        },
-      },
-      '401': {
-        description: 'Unauthorized',
-        content: {
-          'application/json': {
-            schema: z.object({
-              success: z.literal(false),
-              statusCode: z.literal(401),
-              message: z.string(),
-            }),
-          },
-        },
-      },
-      '500': {
-        description: 'Internal Server Error',
-        content: {
-          'application/json': {
-            schema: z.object({
-              success: z.literal(false),
-              statusCode: z.literal(500),
-              message: z.string(),
-              traceId: z.string(),
-            }),
+            schema: errorEnvelopeSchema,
           },
         },
       },
@@ -130,16 +205,8 @@ const registerAuthRoutes = () => {
     summary: '注册新用户',
     auth: 'none',
     tags: ['Auth'],
-    bodySchema: z.object({
-      email: z.string().email(),
-      password: z.string().min(8),
-      username: z.string().min(2).max(32),
-      emailVerificationCode: z
-        .string()
-        .regex(/^\d{6}$/)
-        .optional(),
-      turnstileToken: z.string().optional(),
-    }),
+    bodySchema: registerSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'post',
@@ -147,10 +214,7 @@ const registerAuthRoutes = () => {
     summary: '发送注册邮箱验证码',
     auth: 'none',
     tags: ['Auth'],
-    bodySchema: z.object({
-      email: z.string().email(),
-      turnstileToken: z.string().optional(),
-    }),
+    bodySchema: registrationVerificationRequestSchema,
     responseSchema: z.object({
       accepted: z.literal(true),
       retryAfterSeconds: z.number().int().positive(),
@@ -162,11 +226,7 @@ const registerAuthRoutes = () => {
     summary: '用户登录',
     auth: 'none',
     tags: ['Auth'],
-    bodySchema: z.object({
-      emailOrUsername: z.string().min(1),
-      password: z.string(),
-      turnstileToken: z.string().optional(),
-    }),
+    bodySchema: loginSchema,
   });
   registerRoute({
     method: 'post',
@@ -174,10 +234,7 @@ const registerAuthRoutes = () => {
     summary: '请求密码重置邮件',
     auth: 'none',
     tags: ['Auth'],
-    bodySchema: z.object({
-      emailOrUsername: z.string().min(1),
-      turnstileToken: z.string().optional(),
-    }),
+    bodySchema: passwordResetRequestSchema,
     responseSchema: z.object({
       accepted: z.boolean(),
     }),
@@ -188,10 +245,7 @@ const registerAuthRoutes = () => {
     summary: '确认密码重置',
     auth: 'none',
     tags: ['Auth'],
-    bodySchema: z.object({
-      token: z.string().min(1),
-      password: z.string().min(8),
-    }),
+    bodySchema: passwordResetConfirmSchema,
     responseSchema: z.object({
       reset: z.boolean(),
     }),
@@ -200,11 +254,19 @@ const registerAuthRoutes = () => {
     method: 'post',
     path: '/api/auth/refresh',
     summary: '刷新访问令牌',
-    auth: 'none',
+    auth: 'refresh',
     tags: ['Auth'],
-    bodySchema: z.object({
-      refreshToken: z.string(),
-    }),
+    bodySchema: refreshRequestSchema,
+    bodyRequired: false,
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/auth/logout',
+    summary: '退出登录并清除刷新令牌 Cookie',
+    auth: 'jwt',
+    tags: ['Auth'],
+    successStatus: '204',
+    successDescription: 'Logged out',
   });
   registerRoute({
     method: 'post',
@@ -212,9 +274,7 @@ const registerAuthRoutes = () => {
     summary: '绑定 Minecraft 账号',
     auth: 'jwt',
     tags: ['Auth'],
-    bodySchema: z.object({
-      code: z.string(),
-    }),
+    bodySchema: linkMinecraftSchema,
   });
   registerRoute({
     method: 'delete',
@@ -232,14 +292,8 @@ const registerTicketRoutes = () => {
     summary: '创建议题',
     auth: 'jwt',
     tags: ['Tickets'],
-    bodySchema: z.object({
-      title: z.string().min(1).max(200),
-      template: z.string(),
-      formData: z.record(z.string(), z.unknown()),
-      serverId: z.string().optional(),
-      attachmentIds: z.array(z.string()).optional(),
-      hidden: z.boolean().optional(),
-    }),
+    bodySchema: ticketCreateSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'get',
@@ -247,19 +301,7 @@ const registerTicketRoutes = () => {
     summary: '获取议题列表',
     auth: 'conditional',
     tags: ['Tickets'],
-    querySchema: z.object({
-      page: z.coerce.number().int().positive().optional(),
-      pageSize: z.coerce.number().int().min(1).max(100).optional(),
-      statuses: z.string().optional(),
-      type: z.string().optional(),
-      authorId: z.coerce.number().int().positive().optional(),
-      authorName: z.string().optional(),
-      serverId: z.string().optional(),
-      serverName: z.string().optional(),
-      hasServer: z.enum(['true', 'false']).optional(),
-      labelId: z.string().optional(),
-      search: z.string().optional(),
-    }),
+    querySchema: ticketListQuerySchema,
   });
   registerRoute({
     method: 'get',
@@ -274,11 +316,7 @@ const registerTicketRoutes = () => {
     summary: '更新议题状态',
     auth: 'jwt',
     tags: ['Tickets'],
-    bodySchema: z.object({
-      status: z.string().optional(),
-      assigneeId: z.number().optional(),
-      hidden: z.boolean().optional(),
-    }),
+    bodySchema: ticketUpdateSchema,
   });
   registerRoute({
     method: 'patch',
@@ -286,7 +324,7 @@ const registerTicketRoutes = () => {
     summary: '更新议题正文',
     auth: 'jwt',
     tags: ['Tickets'],
-    bodySchema: z.object({ body: z.string().min(1) }),
+    bodySchema: ticketBodyUpdateSchema,
   });
   registerRoute({
     method: 'patch',
@@ -294,7 +332,7 @@ const registerTicketRoutes = () => {
     summary: '更新议题标题',
     auth: 'jwt',
     tags: ['Tickets'],
-    bodySchema: z.object({ title: z.string().min(1).max(200) }),
+    bodySchema: ticketTitleUpdateSchema,
   });
   registerRoute({
     method: 'post',
@@ -316,10 +354,8 @@ const registerTicketRoutes = () => {
     summary: '提交并执行议题完成选项',
     auth: 'staff',
     tags: ['Tickets'],
-    paramsSchema: z.object({ id: z.string(), hookId: z.uuid() }),
-    bodySchema: z.object({
-      values: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
-    }),
+    paramsSchema: z.object({ id: z.string(), hookId: completionHookIdSchema }),
+    bodySchema: ticketCompleteHookSchema,
     responseSchema: z.object({
       id: z.uuid(),
       event: z.enum(['closed', 'invalid']),
@@ -352,11 +388,11 @@ const registerTicketRoutes = () => {
     summary: '设置受理人',
     auth: 'jwt',
     tags: ['Tickets'],
-    bodySchema: z.object({ assigneeIds: z.array(z.number().int()) }),
+    bodySchema: ticketAssigneesSchema,
   });
   registerRoute({
     method: 'get',
-    path: '/api/tickets/{id}/audit',
+    path: '/api/tickets/{ticketId}/audit',
     summary: '获取议题审计日志',
     auth: 'conditional',
     tags: ['Tickets'],
@@ -394,7 +430,8 @@ const registerCommentRoutes = () => {
     summary: '创建评论',
     auth: 'jwt',
     tags: ['Comments'],
-    bodySchema: z.object({ body: z.string().min(1) }),
+    bodySchema: commentCreateSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'patch',
@@ -402,7 +439,7 @@ const registerCommentRoutes = () => {
     summary: '更新评论内容',
     auth: 'jwt',
     tags: ['Comments'],
-    bodySchema: z.object({ body: z.string().min(1) }),
+    bodySchema: commentBodyUpdateSchema,
   });
   registerRoute({
     method: 'delete',
@@ -410,6 +447,7 @@ const registerCommentRoutes = () => {
     summary: '删除评论',
     auth: 'jwt',
     tags: ['Comments'],
+    successStatus: '204',
   });
 };
 
@@ -431,6 +469,7 @@ const registerLabelRoutes = () => {
     auth: 'admin',
     tags: ['Labels'],
     bodySchema: labelCreateSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'patch',
@@ -448,6 +487,7 @@ const registerLabelRoutes = () => {
     auth: 'admin',
     tags: ['Labels'],
     paramsSchema: labelParamsSchema,
+    successStatus: '204',
   });
   registerRoute({
     method: 'post',
@@ -455,7 +495,9 @@ const registerLabelRoutes = () => {
     summary: '为议题添加标签',
     auth: 'staff',
     tags: ['Labels'],
-    bodySchema: z.object({ labelId: labelIdentifierSchema }),
+    bodySchema: ticketLabelSchema,
+    successStatus: '201',
+    responseKind: 'none',
   });
   registerRoute({
     method: 'delete',
@@ -464,6 +506,7 @@ const registerLabelRoutes = () => {
     auth: 'staff',
     tags: ['Labels'],
     paramsSchema: ticketParamsSchema,
+    successStatus: '204',
   });
 };
 
@@ -474,6 +517,7 @@ const registerAttachmentRoutes = () => {
     summary: '上传附件',
     auth: 'jwt',
     tags: ['Attachments'],
+    successStatus: '201',
   });
   registerRoute({
     method: 'get',
@@ -481,6 +525,9 @@ const registerAttachmentRoutes = () => {
     summary: '获取/下载附件',
     auth: 'conditional',
     tags: ['Attachments'],
+    responseKind: 'raw',
+    responseMediaType: 'application/octet-stream',
+    responseSchema: z.string().openapi({ format: 'binary' }),
   });
   registerRoute({
     method: 'delete',
@@ -488,6 +535,7 @@ const registerAttachmentRoutes = () => {
     summary: '删除附件',
     auth: 'jwt',
     tags: ['Attachments'],
+    successStatus: '204',
   });
 };
 
@@ -505,11 +553,8 @@ const registerServerRoutes = () => {
     summary: '创建服务器',
     auth: 'admin',
     tags: ['Servers'],
-    bodySchema: z.object({
-      name: z.string().min(1),
-      address: z.string().optional(),
-      description: z.string().optional(),
-    }),
+    bodySchema: serverCreateSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'post',
@@ -524,11 +569,7 @@ const registerServerRoutes = () => {
     summary: '更新服务器',
     auth: 'admin',
     tags: ['Servers'],
-    bodySchema: z.object({
-      name: z.string().optional(),
-      address: z.string().nullable().optional(),
-      description: z.string().nullable().optional(),
-    }),
+    bodySchema: serverUpdateSchema,
   });
   registerRoute({
     method: 'delete',
@@ -536,6 +577,7 @@ const registerServerRoutes = () => {
     summary: '删除服务器',
     auth: 'admin',
     tags: ['Servers'],
+    successStatus: '204',
   });
 };
 
@@ -546,13 +588,8 @@ const registerMcRoutes = () => {
     summary: 'MC 插件注册用户',
     auth: 'apiKey',
     tags: ['MC'],
-    bodySchema: z.object({
-      email: z.string().email(),
-      password: z.string().min(8),
-      username: z.string().min(2).max(32),
-      minecraftUuid: z.string(),
-      minecraftName: z.string(),
-    }),
+    bodySchema: mcRegisterSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'post',
@@ -560,11 +597,8 @@ const registerMcRoutes = () => {
     summary: '生成 MC 绑定码',
     auth: 'apiKey',
     tags: ['MC'],
-    bodySchema: z.object({
-      minecraftUuid: z.string(),
-      minecraftName: z.string(),
-      serverId: z.string(),
-    }),
+    bodySchema: mcLinkCodeSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'post',
@@ -572,14 +606,8 @@ const registerMcRoutes = () => {
     summary: 'MC 创建议题',
     auth: 'apiKey',
     tags: ['MC'],
-    bodySchema: z.object({
-      minecraftUuid: z.string(),
-      title: z.string(),
-      template: z.string(),
-      formData: z.record(z.string(), z.unknown()),
-      hidden: z.boolean().optional(),
-      gameContext: z.string().optional(),
-    }),
+    bodySchema: mcTicketSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'get',
@@ -587,8 +615,7 @@ const registerMcRoutes = () => {
     summary: 'MC 获取可见议题',
     auth: 'apiKey',
     tags: ['MC'],
-    querySchema: z.object({
-      minecraftUuid: z.string().optional(),
+    querySchema: mcViewerSchema.extend({
       page: z.coerce.number().int().positive().optional(),
       pageSize: z.coerce.number().int().positive().optional(),
     }),
@@ -606,7 +633,7 @@ const registerMcRoutes = () => {
     summary: 'MC 获取议题详情',
     auth: 'apiKey',
     tags: ['MC'],
-    querySchema: z.object({ minecraftUuid: z.string().optional() }),
+    querySchema: mcViewerSchema,
   });
   registerRoute({
     method: 'get',
@@ -614,7 +641,7 @@ const registerMcRoutes = () => {
     summary: 'MC 获取议题评论',
     auth: 'apiKey',
     tags: ['MC'],
-    querySchema: z.object({ minecraftUuid: z.string().optional() }),
+    querySchema: mcViewerSchema,
   });
   registerRoute({
     method: 'get',
@@ -629,6 +656,8 @@ const registerMcRoutes = () => {
     summary: 'MC 创建评论',
     auth: 'apiKey',
     tags: ['MC'],
+    bodySchema: mcCommentSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'post',
@@ -636,6 +665,7 @@ const registerMcRoutes = () => {
     summary: 'MC 关闭议题',
     auth: 'apiKey',
     tags: ['MC'],
+    bodySchema: mcTicketActionSchema,
   });
   registerRoute({
     method: 'post',
@@ -643,6 +673,7 @@ const registerMcRoutes = () => {
     summary: 'MC 重开议题',
     auth: 'apiKey',
     tags: ['MC'],
+    bodySchema: mcTicketActionSchema,
   });
   registerRoute({
     method: 'post',
@@ -650,7 +681,7 @@ const registerMcRoutes = () => {
     summary: 'MC 更新议题状态',
     auth: 'apiKey',
     tags: ['MC'],
-    bodySchema: z.object({ status: z.string() }),
+    bodySchema: mcStatusSchema,
   });
   registerRoute({
     method: 'post',
@@ -658,6 +689,7 @@ const registerMcRoutes = () => {
     summary: 'MC 解绑用户',
     auth: 'apiKey',
     tags: ['MC'],
+    bodySchema: mcUnlinkSchema,
   });
 };
 
@@ -705,18 +737,8 @@ const registerTemplateRoutes = () => {
     summary: '创建模板',
     auth: 'admin',
     tags: ['Admin Templates'],
-    bodySchema: z.object({
-      name: z.string().min(1),
-      nameI18n: z.string(),
-      description: z.string(),
-      titlePrefix: z.string().optional(),
-      labels: z.string().optional(),
-      body: z.string(),
-      completionHooks: z.string().optional(),
-      source: z.string().optional(),
-      enabled: z.boolean().optional(),
-      hidden: z.union([z.boolean(), z.literal('optional')]).optional(),
-    }),
+    bodySchema: adminTemplateCreateSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'patch',
@@ -724,17 +746,7 @@ const registerTemplateRoutes = () => {
     summary: '更新模板',
     auth: 'admin',
     tags: ['Admin Templates'],
-    bodySchema: z.object({
-      nameI18n: z.string().optional(),
-      description: z.string().optional(),
-      titlePrefix: z.string().optional(),
-      labels: z.string().optional(),
-      body: z.string().optional(),
-      completionHooks: z.string().optional(),
-      source: z.string().optional(),
-      enabled: z.boolean().optional(),
-      hidden: z.union([z.boolean(), z.literal('optional')]).optional(),
-    }),
+    bodySchema: adminTemplateUpdateSchema,
   });
   registerRoute({
     method: 'delete',
@@ -742,6 +754,7 @@ const registerTemplateRoutes = () => {
     summary: '删除模板',
     auth: 'admin',
     tags: ['Admin Templates'],
+    successStatus: '204',
   });
 };
 
@@ -759,21 +772,7 @@ const registerStorageRoutes = () => {
     summary: '更新存储配置',
     auth: 'admin',
     tags: ['Admin Storage'],
-    bodySchema: z.object({
-      driver: z.enum([StorageDriver.LOCAL, StorageDriver.S3]),
-      uploadDir: z.string().optional(),
-      s3: z
-        .object({
-          endpoint: z.string().optional(),
-          region: z.string().optional(),
-          bucket: z.string().optional(),
-          accessKeyId: z.string().optional(),
-          secretAccessKey: z.string().optional(),
-          forcePathStyle: z.boolean().optional(),
-          presignExpiry: z.number().int().positive().optional(),
-        })
-        .optional(),
-    }),
+    bodySchema: storageUpdateSchema,
   });
   registerRoute({
     method: 'post',
@@ -781,6 +780,10 @@ const registerStorageRoutes = () => {
     summary: '测试 S3 连接',
     auth: 'admin',
     tags: ['Admin Storage'],
+    responseSchema: z.object({
+      success: z.literal(true),
+      message: z.string(),
+    }),
   });
 };
 
@@ -805,7 +808,7 @@ const registerUserRoutes = () => {
     summary: '更新头像',
     auth: 'jwt',
     tags: ['Users'],
-    bodySchema: z.object({ avatarUrl: z.string().nullable() }),
+    bodySchema: userAvatarSchema,
   });
   registerRoute({
     method: 'patch',
@@ -813,7 +816,7 @@ const registerUserRoutes = () => {
     summary: '更新用户名',
     auth: 'jwt',
     tags: ['Users'],
-    bodySchema: z.object({ username: z.string().min(2).max(32) }),
+    bodySchema: usernameSchema,
   });
   registerRoute({
     method: 'patch',
@@ -821,10 +824,7 @@ const registerUserRoutes = () => {
     summary: '修改密码',
     auth: 'jwt',
     tags: ['Users'],
-    bodySchema: z.object({
-      currentPassword: z.string(),
-      newPassword: z.string().min(8),
-    }),
+    bodySchema: userPasswordSchema,
   });
   registerRoute({
     method: 'patch',
@@ -832,7 +832,7 @@ const registerUserRoutes = () => {
     summary: '更新邮箱',
     auth: 'jwt',
     tags: ['Users'],
-    bodySchema: z.object({ email: z.string().email() }),
+    bodySchema: userEmailSchema,
   });
   registerRoute({
     method: 'patch',
@@ -840,7 +840,7 @@ const registerUserRoutes = () => {
     summary: '更新个人邮件通知设置',
     auth: 'jwt',
     tags: ['Users'],
-    bodySchema: z.object({ receiveEmailNotifications: z.boolean() }),
+    bodySchema: userNotificationSettingsSchema,
   });
   registerRoute({
     method: 'post',
@@ -848,23 +848,24 @@ const registerUserRoutes = () => {
     summary: '通过邮件链接关闭个人邮件通知',
     auth: 'none',
     tags: ['Users'],
-    bodySchema: z.object({ token: z.string().min(1) }),
+    bodySchema: unsubscribeSchema,
     responseSchema: z.object({ unsubscribed: z.literal(true) }),
   });
   registerRoute({
     method: 'patch',
-    path: '/api/users/{userId}/role',
+    path: '/api/users/{id}/role',
     summary: '更改用户角色',
     auth: 'admin',
     tags: ['Users'],
-    bodySchema: z.object({ role: z.enum(['player', 'staff', 'admin']) }),
+    bodySchema: userRoleSchema,
   });
   registerRoute({
     method: 'delete',
-    path: '/api/users/{userId}',
+    path: '/api/users/{id}',
     summary: '删除用户',
     auth: 'admin',
     tags: ['Users'],
+    successStatus: '204',
   });
 };
 
@@ -919,61 +920,8 @@ const registerSetupRoutes = () => {
     summary: '执行初始化设置',
     auth: 'none',
     tags: ['Setup'],
-    bodySchema: z
-      .object({
-        db: z
-          .object({
-            provider: z.enum([DatabaseProvider.SQLITE, DatabaseProvider.MYSQL]),
-            host: z.string().optional(),
-            port: z.number().int().positive().optional(),
-            username: z.string().optional(),
-            password: z.string().optional(),
-            database: z.string().optional(),
-            args: z.string().optional(),
-          })
-          .strict()
-          .superRefine((db, ctx) => {
-            if (db.provider !== DatabaseProvider.MYSQL) return;
-            for (const field of ['host', 'username', 'database'] as const) {
-              if (!db[field]?.trim()) {
-                ctx.addIssue({
-                  code: z.ZodIssueCode.custom,
-                  message: 'MySQL 配置必填',
-                  path: [field],
-                });
-              }
-            }
-          }),
-        admin: z.object({
-          email: z.string().email(),
-          password: z.string().min(6),
-          username: z.string().min(2).max(30),
-        }),
-        site: z
-          .object({
-            siteName: z.string().optional(),
-            siteUrl: siteUrlInputSchema.optional(),
-            defaultLanguage: z.string().optional(),
-          })
-          .optional(),
-        mc: z.object({ defaultServerName: z.string().optional() }).optional(),
-        storage: z
-          .object({
-            driver: z.enum([StorageDriver.LOCAL, StorageDriver.S3]),
-            s3: z
-              .object({
-                endpoint: z.string().optional(),
-                bucket: z.string().optional(),
-                accessKeyId: z.string().optional(),
-                secretAccessKey: z.string().optional(),
-                forcePathStyle: z.boolean().optional(),
-                presignExpiry: z.number().int().positive().optional(),
-              })
-              .optional(),
-          })
-          .optional(),
-      })
-      .strict(),
+    bodySchema: setupSchema,
+    successStatus: '201',
   });
   registerRoute({
     method: 'patch',
@@ -981,25 +929,7 @@ const registerSetupRoutes = () => {
     summary: '更新站点设置',
     auth: 'admin',
     tags: ['Setup'],
-    bodySchema: z.object({
-      requireLogin: z.boolean().optional(),
-      allowWebRegister: z.boolean().optional(),
-      allowMcRegister: z.boolean().optional(),
-      siteName: z.string().max(100).optional(),
-      siteUrl: siteUrlInputSchema.nullable().optional(),
-      footerContent: z.string().max(2000).nullable().optional(),
-      defaultLanguage: z.string().optional(),
-      sendEmailNotifications: z.boolean().optional(),
-      mail: mailConfigInputSchema.optional(),
-      turnstile: z
-        .object({
-          enabled: z.boolean().optional(),
-          siteKey: z.string().optional(),
-          secretKey: z.string().nullable().optional(),
-        })
-        .optional(),
-      rateLimit: rateLimitConfigInputSchema.optional(),
-    }),
+    bodySchema: settingsUpdateSchema,
     responseSchema: rateLimitSettingsResponseSchema,
   });
   registerRoute({
@@ -1008,7 +938,6 @@ const registerSetupRoutes = () => {
     summary: '获取管理端站点设置',
     auth: 'admin',
     tags: ['Setup'],
-    bodySchema: mailTestSchema,
     responseSchema: rateLimitSettingsResponseSchema,
   });
   registerRoute({
@@ -1017,8 +946,9 @@ const registerSetupRoutes = () => {
     summary: '测试 SMTP 连接',
     auth: 'admin',
     tags: ['Setup'],
+    bodySchema: mailTestSchema,
     responseSchema: z.object({
-      success: z.boolean(),
+      success: z.literal(true),
       message: z.string(),
     }),
   });
@@ -1031,13 +961,23 @@ const registerHealthRoute = () => {
     summary: '健康检查',
     auth: 'none',
     tags: ['System'],
+    responseKind: 'raw',
+    responseSchema: z.object({ status: z.literal('ok') }),
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/docs/openapi.json',
+    summary: '获取 OpenAPI 规范',
+    auth: 'none',
+    tags: ['System'],
+    responseKind: 'raw',
   });
 };
 
 const registerFederatedAuthRoutes = () => {
   const slugParams = z.object({ slug: z.string().min(1) });
   const idParams = z.object({ id: z.string().uuid() });
-  const identityParams = z.object({ identityId: z.string().uuid() });
+  const valueParams = z.object({ value: z.string().min(1) });
   registerRoute({
     method: 'post',
     path: '/api/auth/federatedauth/{slug}/start',
@@ -1054,12 +994,7 @@ const registerFederatedAuthRoutes = () => {
     auth: 'none',
     tags: ['外部登录'],
     paramsSchema: slugParams,
-    querySchema: z.object({
-      code: z.string().optional(),
-      state: z.string().optional(),
-      error: z.string().optional(),
-      error_description: z.string().optional(),
-    }),
+    querySchema: federatedAuthCallbackSchema,
     successStatus: '303',
     successDescription: 'Redirect to the frontend completion or registration page',
   });
@@ -1096,21 +1031,21 @@ const registerFederatedAuthRoutes = () => {
   });
   registerRoute({
     method: 'post',
-    path: '/api/users/me/federatedauth/{slug}/start',
+    path: '/api/users/me/federatedauth/{value}/start',
     summary: '开始绑定外部登录身份',
     auth: 'jwt',
     tags: ['外部登录'],
     bodySchema: federatedAuthStartSchema,
-    paramsSchema: slugParams,
+    paramsSchema: valueParams,
   });
   registerRoute({
     method: 'delete',
-    path: '/api/users/me/federatedauth/{identityId}',
+    path: '/api/users/me/federatedauth/{value}',
     summary: '解绑外部登录身份',
     auth: 'jwt',
     tags: ['外部登录'],
     bodySchema: federatedAuthUnlinkSchema,
-    paramsSchema: identityParams,
+    paramsSchema: valueParams,
     successStatus: '204',
   });
   registerRoute({
@@ -1184,7 +1119,7 @@ registerFederatedAuthRoutes();
 const generator = new OpenApiGeneratorV3(registry.definitions);
 
 const openapi = generator.generateDocument({
-  openapi: '1.0.0',
+  openapi: '3.0.3',
   info: {
     title: 'LightTickets API',
     version: '1.0.0',
@@ -1192,6 +1127,141 @@ const openapi = generator.generateDocument({
   },
   servers: [{ url: 'http://localhost:23320', description: 'Development server' }],
 });
+
+const HTTP_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete']);
+
+interface RuntimeLayer {
+  route?: {
+    path: string;
+    methods: Record<string, boolean>;
+  };
+  regexp?: RegExp;
+  keys?: Array<{ name: string }>;
+  handle?: { stack?: RuntimeLayer[] };
+}
+
+function joinRoutePaths(prefix: string, routePath: string): string {
+  const joined = `${prefix}/${routePath}`.replace(/\/{2,}/g, '/');
+  return joined.length > 1 ? joined.replace(/\/$/, '') : joined;
+}
+
+function mountPath(layer: RuntimeLayer): string {
+  let source = layer.regexp?.source;
+  if (!source || source === '^\\/?(?=\\/|$)') return '';
+
+  source = source.replace(/^\^/, '').replace(/\\\/\?\(\?=\\\/\|\$\)$/, '');
+  for (const key of layer.keys ?? []) {
+    source = source.replace('(?:\\/([^/]+?))', `/:${key.name}`);
+  }
+  return source.replaceAll('\\/', '/');
+}
+
+function collectRuntimeRoutes(stack: RuntimeLayer[], prefix = ''): Set<string> {
+  const routes = new Set<string>();
+  for (const layer of stack) {
+    if (layer.route) {
+      const routePath = joinRoutePaths(prefix, layer.route.path).replace(
+        /:([A-Za-z0-9_]+)/g,
+        '{$1}',
+      );
+      for (const [method, enabled] of Object.entries(layer.route.methods)) {
+        if (enabled && HTTP_METHODS.has(method)) routes.add(`${method.toUpperCase()} ${routePath}`);
+      }
+      continue;
+    }
+
+    if (layer.handle?.stack) {
+      const nestedPrefix = joinRoutePaths(prefix, mountPath(layer));
+      for (const route of collectRuntimeRoutes(layer.handle.stack, nestedPrefix)) routes.add(route);
+    }
+  }
+  return routes;
+}
+
+function getRuntimeRoutes(): Set<string> {
+  const app = createApp();
+  const router = Reflect.get(app, '_router') as { stack?: RuntimeLayer[] } | undefined;
+  if (!router?.stack) throw new Error('Unable to inspect Express routes');
+  return collectRuntimeRoutes(router.stack);
+}
+
+function getDocumentedRoutes(): Set<string> {
+  const routes = new Set<string>();
+  for (const [routePath, pathItem] of Object.entries(openapi.paths ?? {})) {
+    if (!pathItem || typeof pathItem !== 'object') continue;
+    for (const method of Object.keys(pathItem)) {
+      if (HTTP_METHODS.has(method)) routes.add(`${method.toUpperCase()} ${routePath}`);
+    }
+  }
+  return routes;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateResponseContracts(): void {
+  const nonEnvelopedRoutes = new Set([
+    'GET /api/health',
+    'GET /api/docs/openapi.json',
+    'GET /api/attachments/{id}',
+  ]);
+
+  for (const [routePath, pathItem] of Object.entries(openapi.paths ?? {})) {
+    if (!isRecord(pathItem)) continue;
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!HTTP_METHODS.has(method) || !isRecord(operation)) continue;
+      const route = `${method.toUpperCase()} ${routePath}`;
+      const responses = operation.responses;
+      if (!isRecord(responses) || !isRecord(responses.default)) {
+        throw new Error(`${route} must document the standard error envelope`);
+      }
+
+      if (nonEnvelopedRoutes.has(route)) continue;
+      for (const [status, response] of Object.entries(responses)) {
+        if (!/^2\d\d$/.test(status) || !isRecord(response) || !isRecord(response.content)) continue;
+        const jsonContent = response.content['application/json'];
+        if (!isRecord(jsonContent) || !isRecord(jsonContent.schema)) continue;
+
+        const properties = jsonContent.schema.properties;
+        const required = jsonContent.schema.required;
+        if (
+          !isRecord(properties) ||
+          !('success' in properties) ||
+          !('data' in properties) ||
+          !Array.isArray(required) ||
+          !required.includes('success') ||
+          !required.includes('data')
+        ) {
+          throw new Error(`${route} ${status} must use the success/data response envelope`);
+        }
+      }
+    }
+  }
+}
+
+function validateOpenApiDocument(): void {
+  if (openapi.openapi !== '3.0.3') {
+    throw new Error(`OpenAPI dialect must be 3.0.3, received ${openapi.openapi}`);
+  }
+  if (openapi.info.version !== '1.0.0') {
+    throw new Error(`WIP API version must remain 1.0.0, received ${openapi.info.version}`);
+  }
+
+  const runtimeRoutes = getRuntimeRoutes();
+  const documentedRoutes = getDocumentedRoutes();
+  const missing = [...runtimeRoutes].filter((route) => !documentedRoutes.has(route)).sort();
+  const stale = [...documentedRoutes].filter((route) => !runtimeRoutes.has(route)).sort();
+  if (missing.length > 0 || stale.length > 0) {
+    throw new Error(
+      `OpenAPI route diff failed\nMissing: ${missing.join(', ') || '(none)'}\nStale: ${stale.join(', ') || '(none)'}`,
+    );
+  }
+
+  validateResponseContracts();
+}
+
+validateOpenApiDocument();
 
 const outputPath = path.resolve('openapi.json');
 fs.writeFileSync(outputPath, JSON.stringify(openapi, null, 2), 'utf-8');
