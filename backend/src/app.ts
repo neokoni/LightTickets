@@ -4,7 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import fs from 'fs';
 import path from 'path';
-import { getConfig } from './config.js';
+import { getConfig, persistDiscoveredTrustedProxyIp } from './config.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { globalLimiter } from './middleware/rate-limit.js';
 import { responseEnvelope } from './middleware/response-envelope.js';
@@ -25,6 +25,7 @@ import userRoutes from './routes/users.js';
 import federatedAuthRoutes from './routes/federatedauth.js';
 import adminFederatedAuthRoutes from './routes/admin-federatedauth.js';
 import { initTemplates } from './services/template.service.js';
+import { trustFrontendProxy } from './trusted-proxy.js';
 
 interface AppOptions {
   enableInitialSetup?: boolean;
@@ -32,10 +33,11 @@ interface AppOptions {
 
 export function createApp(options: AppOptions = {}) {
   const app = express();
+  const config = getConfig();
 
+  app.use(trustFrontendProxy(app, config.trustedProxyIps, persistDiscoveredTrustedProxyIp));
   initTemplates();
 
-  const config = getConfig();
   app.use(globalLimiter);
   app.use(helmet());
   app.use(

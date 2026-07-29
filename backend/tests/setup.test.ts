@@ -107,6 +107,7 @@ describe('POST /api/setup', () => {
     const res = await request(originApp)
       .post('/api/setup')
       .set('Origin', 'https://tickets.example.com')
+      .set('X-Forwarded-For', '198.51.100.10')
       .send({
         db: { provider: 'sqlite' },
         admin: { email: 'origin-test@example.com', password: 'admin123', username: 'origintest' },
@@ -116,6 +117,9 @@ describe('POST /api/setup', () => {
     const config = fs.readFileSync(dataPath('config.yml'), 'utf-8');
     expect(config).toContain('https://tickets.example.com');
     expect(config).not.toContain('http://localhost:23310');
+    expect(config).toContain('trustedProxyIps:');
+    expect(config).toContain('127.0.0.1');
+    expect(config).not.toContain('198.51.100.10');
   });
 
   it('falls back to the Host header when Origin is absent', async () => {

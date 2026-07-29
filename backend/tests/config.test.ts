@@ -48,6 +48,30 @@ describe('config', () => {
     expect(config.security.legacyJwtCutoff).toBeGreaterThan(0);
     expect(config.security.legacyJwtCutoff).toBeLessThanOrEqual(Math.floor(Date.now() / 1000));
     expect(config.security.externalEncryptionKey).toMatch(/^[a-f\d]{64}$/);
+    expect(config.trustedProxyIps).toBeNull();
+  });
+
+  it('persists the live proxy IP when upgrading a config without trustedProxyIps', async () => {
+    const { getConfig, persistDiscoveredTrustedProxyIp } = await import('../src/config.js');
+
+    expect(getConfig().trustedProxyIps).toBeNull();
+    expect(persistDiscoveredTrustedProxyIp('::ffff:172.18.0.4')).toEqual(['172.18.0.4']);
+    expect(getConfig().trustedProxyIps).toEqual(['172.18.0.4']);
+
+    const persisted = fs.readFileSync(configPath, 'utf-8');
+    expect(persisted).toContain('trustedProxyIps:');
+    expect(persisted).toContain('172.18.0.4');
+    expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+  });
+
+  it('rejects invalid trusted proxy IPs from config.yml', async () => {
+    fs.writeFileSync(
+      configPath,
+      minimalConfig.replace('database:', '  trustedProxyIps:\n    - proxy.internal\ndatabase:'),
+      'utf-8',
+    );
+    const { loadConfig } = await import('../src/config.js');
+    expect(() => loadConfig()).toThrow(/trustedProxyIps/);
   });
 
   it('loadConfig persists a missing FederatedAuth encryption key with restricted permissions', async () => {

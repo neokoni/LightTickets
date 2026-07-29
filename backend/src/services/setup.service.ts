@@ -19,9 +19,10 @@ import * as federatedAuthProviderService from './federatedauth-provider.service.
 import type { RateLimitConfigInput } from '../schemas/rate-limit.js';
 import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 import { normalizeSiteUrl, resolvePasswordResetOrigin } from '../utils/site-url.js';
+import { normalizeIpAddress } from '../trusted-proxy.js';
 
 type SetupConfigFile = {
-  server?: { port?: number; corsOrigins?: string[] };
+  server?: { port?: number; corsOrigins?: string[]; trustedProxyIps?: string[] };
   database?: {
     provider?: DatabaseProvider;
     host?: string;
@@ -131,6 +132,7 @@ export interface SetupInput {
     s3?: Omit<Partial<S3Config>, 'region'>;
   };
   accessOrigin?: string;
+  trustedProxyIp?: string;
 }
 
 function toSiteConfig(status: {
@@ -436,11 +438,18 @@ export async function completeSetup(input: SetupInput) {
   const siteUrl = normalizeConfiguredSiteUrl(input.site?.siteUrl) ?? null;
 
   const accessOrigin = normalizeAccessOrigin(input.accessOrigin);
+  const trustedProxyIp = input.trustedProxyIp
+    ? normalizeIpAddress(input.trustedProxyIp.trim())
+    : null;
+  if (input.trustedProxyIp && !trustedProxyIp) {
+    throw new ValidationError('无法识别可信代理 IP 地址');
+  }
 
   const configData: Required<SetupConfigFile> = {
     server: {
       port: DEFAULT_SERVER_PORT,
       corsOrigins: accessOrigin ? [accessOrigin] : ['http://localhost:23310'],
+      trustedProxyIps: trustedProxyIp ? [trustedProxyIp] : [],
     },
     database: {
       provider: input.db.provider,
@@ -469,6 +478,8 @@ export async function completeSetup(input: SetupInput) {
     const existing = readYaml(CONFIG_PATH);
     if (existing.server?.port) configData.server.port = existing.server.port;
     if (existing.server?.corsOrigins) configData.server.corsOrigins = existing.server.corsOrigins;
+    if (existing.server?.trustedProxyIps !== undefined)
+      configData.server.trustedProxyIps = existing.server.trustedProxyIps;
     if (existing.security?.jwtSecret) configData.security.jwtSecret = existing.security.jwtSecret;
     if (existing.security?.jwtRefreshSecret)
       configData.security.jwtRefreshSecret = existing.security.jwtRefreshSecret;

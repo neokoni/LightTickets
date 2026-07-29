@@ -36,6 +36,11 @@ function resolveAccessOrigin(req: Request): string | undefined {
   return undefined;
 }
 
+function resolveTrustedProxyIp(req: Request): string | undefined {
+  if (req.headers['x-forwarded-for'] === undefined) return undefined;
+  return req.socket.remoteAddress;
+}
+
 export default function createSetupRoutes(options: SetupRouteOptions = {}) {
   const router = Router();
 
@@ -53,6 +58,7 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
       const result = await setupService.completeSetup({
         ...data,
         accessOrigin: resolveAccessOrigin(req),
+        trustedProxyIp: resolveTrustedProxyIp(req),
       });
       res.status(201).json(result);
       await options.onSetupComplete?.();

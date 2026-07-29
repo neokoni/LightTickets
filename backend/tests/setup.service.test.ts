@@ -168,6 +168,7 @@ describe('setup.service', () => {
     const result = await completeSetup({
       db: { provider: 'sqlite' },
       admin: { email: 'admin@example.com', password: 'admin123', username: 'admin' },
+      trustedProxyIp: '::ffff:172.18.0.5',
     });
 
     expect(result.accessToken).toBe('access');
@@ -176,6 +177,8 @@ describe('setup.service', () => {
     expect(fs.readFileSync(configPath, 'utf-8')).toContain('jwtUnsubscribeSecret');
     expect(fs.readFileSync(configPath, 'utf-8')).toContain('legacyJwtCutoff: 0');
     expect(fs.readFileSync(configPath, 'utf-8')).toContain('externalEncryptionKey');
+    expect(fs.readFileSync(configPath, 'utf-8')).toContain('trustedProxyIps:');
+    expect(fs.readFileSync(configPath, 'utf-8')).toContain('172.18.0.5');
   });
 
   it('uses the real access origin for corsOrigins when provided', async () => {

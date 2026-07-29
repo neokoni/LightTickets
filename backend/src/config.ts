@@ -5,6 +5,7 @@ import { dataPath } from './paths.js';
 import { DatabaseProvider } from './constants/database-provider.js';
 import type { StorageDriver } from './constants/storage-driver.js';
 import { resolveServerPort } from './server-port.js';
+import { normalizeIpAddress } from './trusted-proxy.js';
 
 export const CONFIG_PATH = dataPath('config.yml');
 
@@ -33,6 +34,7 @@ interface ConfigFile {
 interface ServerConfig {
   port: number;
   corsOrigins: string[];
+  trustedProxyIps: string[];
 }
 
 interface DatabaseConfig {
@@ -56,6 +58,7 @@ interface SecurityConfig {
 export interface AppConfig {
   port: number;
   corsOrigins: string[];
+  trustedProxyIps: string[] | null;
   database: DatabaseConfig;
   security: SecurityConfig;
   accessTokenExpiry: string;
@@ -131,6 +134,25 @@ function ensureGeneratedSecurityConfig(
 
 const S3_REQUIRED_FIELDS = ['endpoint', 'bucket', 'accessKeyId', 'secretAccessKey'] as const;
 
+function resolveTrustedProxyIps(value: unknown): string[] | null {
+  if (value === undefined) return null;
+  if (!Array.isArray(value)) {
+    throw new Error('config.yml server.trustedProxyIps 必须是 IP 地址数组');
+  }
+
+  const addresses = value.map((address) => {
+    if (typeof address !== 'string') {
+      throw new Error('config.yml server.trustedProxyIps 必须是 IP 地址数组');
+    }
+    const normalized = normalizeIpAddress(address.trim());
+    if (!normalized) {
+      throw new Error(`config.yml server.trustedProxyIps 包含无效 IP 地址: ${address}`);
+    }
+    return normalized;
+  });
+  return [...new Set(addresses)];
+}
+
 export function validateS3Config(s3: Partial<S3Config>): void {
   const missing = S3_REQUIRED_FIELDS.filter((k) => !s3[k]);
   if (missing.length) {
@@ -202,6 +224,7 @@ export function loadConfig(): AppConfig {
   return {
     port: resolveServerPort(server.port),
     corsOrigins: server.corsOrigins || ['http://localhost:23310'],
+    trustedProxyIps: resolveTrustedProxyIps(server.trustedProxyIps),
     database: {
       provider: database.provider,
       host: database.host,
@@ -228,4 +251,19 @@ export function getConfig(): AppConfig {
 export function reloadConfig(): AppConfig {
   _config = loadConfig();
   return _config;
+}
+
+export function persistDiscoveredTrustedProxyIp(address: string): string[] {
+  const normalized = normalizeIpAddress(address);
+  if (!normalized) throw new Error('无法保存无效的可信代理 IP 地址');
+
+  const raw = (yaml.load(fs.readFileSync(CONFIG_PATH, 'utf-8')) as ConfigFile | null) ?? {};
+  const existing = resolveTrustedProxyIps(raw.server?.trustedProxyIps);
+  if (existing !== null) return existing;
+
+  raw.server = { ...raw.server, trustedProxyIps: [normalized] };
+  fs.writeFileSync(CONFIG_PATH, yaml.dump(raw, { lineWidth: -1 }), { mode: 0o600 });
+  fs.chmodSync(CONFIG_PATH, 0o600);
+  _config = loadConfig();
+  return _config.trustedProxyIps ?? [];
 }

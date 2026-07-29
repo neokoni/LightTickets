@@ -41,7 +41,7 @@ async function requestPath(port, requestPath) {
   });
 }
 
-test('the API proxy strips client-supplied forwarding headers', async (t) => {
+test('the API proxy replaces client-supplied forwarding headers with the socket address', async (t) => {
   const distDir = await mkdtemp(path.join(tmpdir(), 'lighttickets-web-'));
   await writeFile(path.join(distDir, 'index.html'), '<!doctype html>', 'utf8');
   t.after(() => rm(distDir, { recursive: true, force: true }));
@@ -78,8 +78,9 @@ test('the API proxy strips client-supplied forwarding headers', async (t) => {
   const headers = await response.json();
   for (const name of Object.keys(headers)) {
     assert.notEqual(name, 'forwarded');
-    assert.equal(name.startsWith('x-forwarded-'), false);
+    if (name.startsWith('x-forwarded-')) assert.equal(name, 'x-forwarded-for');
   }
+  assert.equal(headers['x-forwarded-for'], '127.0.0.1');
   assert.equal(headers.authorization, 'Bearer test-token');
   assert.equal(headers['x-request-id'], 'trace-123');
   assert.equal(headers.host, `127.0.0.1:${backendPort}`);

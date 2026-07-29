@@ -2,6 +2,8 @@ server:
   port: 23320
   corsOrigins:
     - http://localhost:23310
+  # 可信反向代理的精确 IP；setup 时自动记录，空数组表示不信任代理转发头。
+  # trustedProxyIps: []
 
 database:
   # provider 缺失时进入 setup 模式；setup 完成后回写 sqlite 或 mysql。

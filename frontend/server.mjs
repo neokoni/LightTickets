@@ -101,6 +101,10 @@ function copyProxyRequestHeaders(headers) {
   return copied;
 }
 
+function normalizeRemoteAddress(address) {
+  return address?.startsWith('::ffff:') ? address.slice(7) : address;
+}
+
 function writeSecurityHeaders(response) {
   response.setHeader('Referrer-Policy', 'same-origin');
   response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -143,6 +147,8 @@ function proxyApiRequest(request, response, requestUrl, serverUrl, timeoutMs) {
   const transport = target.protocol === 'https:' ? https : http;
   const headers = copyProxyRequestHeaders(request.headers);
   headers.host = target.host;
+  const remoteAddress = normalizeRemoteAddress(request.socket.remoteAddress);
+  if (remoteAddress) headers['x-forwarded-for'] = remoteAddress;
 
   const proxyRequest = transport.request(
     target,
