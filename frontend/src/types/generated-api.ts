@@ -2443,15 +2443,12 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: {
+                user: {
+                  [key: string]: unknown;
+                };
+                playerCredential: string;
+              };
             };
           };
         };
@@ -2507,15 +2504,72 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: {
+                code: string;
+                /** Format: date-time */
+                expiresAt: string;
+                playerCredential: string;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/mc/session': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 用玩家凭据签发短期 MC session */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            minecraftUuid: string;
+            playerCredential: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                sessionToken: string;
+                /** Format: date-time */
+                expiresAt: string;
+              };
             };
           };
         };
@@ -2546,8 +2600,8 @@ export interface paths {
     /** MC 获取可见议题 */
     get: {
       parameters: {
-        query?: {
-          minecraftUuid?: string;
+        query: {
+          minecraftUuid: string;
           page?: number;
           pageSize?: number;
         };
@@ -2727,8 +2781,8 @@ export interface paths {
     /** MC 获取议题详情 */
     get: {
       parameters: {
-        query?: {
-          minecraftUuid?: string;
+        query: {
+          minecraftUuid: string;
         };
         header?: never;
         path: {
@@ -2788,8 +2842,8 @@ export interface paths {
     /** MC 获取议题评论 */
     get: {
       parameters: {
-        query?: {
-          minecraftUuid?: string;
+        query: {
+          minecraftUuid: string;
         };
         header?: never;
         path: {

@@ -53,7 +53,7 @@ public class TicketInfo {
     private void run(Player player, int ticketId, int commentPage) {
         HttpUtils.Resp resp;
         try {
-            resp = ApiClient.requestWithStatus(ApiEndpoint.MC_TICKET_DETAIL,
+            resp = ApiClient.requestWithStatusForPlayer(player, ApiEndpoint.MC_TICKET_DETAIL,
                     Map.of("id", String.valueOf(ticketId)),
                     Map.of("minecraftUuid", player.getUniqueId().toString()), null);
         } catch (RuntimeException e) {
@@ -176,7 +176,7 @@ public class TicketInfo {
 
     private JsonArray fetchComments(Player player, int ticketId) {
         try {
-            HttpUtils.Resp resp = ApiClient.requestWithStatus(
+            HttpUtils.Resp resp = ApiClient.requestWithStatusForPlayer(player,
                     ApiEndpoint.MC_TICKET_COMMENTS, Map.of("id", String.valueOf(ticketId)),
                     Map.of("minecraftUuid", player.getUniqueId().toString()), null);
             if (resp == null || resp.body() == null || resp.body().isEmpty()) {
@@ -333,8 +333,8 @@ public class TicketInfo {
 
     private JsonObject fetchAccount(Player player) {
         try {
-            HttpUtils.Resp resp = ApiClient.requestWithStatus(
-                    ApiEndpoint.MC_USER, Map.of("uuid", player.getUniqueId().toString()));
+            HttpUtils.Resp resp = ApiClient.requestWithStatusForPlayer(player,
+                    ApiEndpoint.MC_USER, Map.of("uuid", player.getUniqueId().toString()), null, null);
             if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) {
                 return null;
             }

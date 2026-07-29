@@ -83,7 +83,7 @@ public class AddComment {
 
         String resp;
         try {
-            resp = ApiClient.post(ApiEndpoint.MC_CREATE_COMMENT, JsonUtils.toJson(reqBody));
+            resp = ApiClient.postForPlayer(player, ApiEndpoint.MC_CREATE_COMMENT, JsonUtils.toJson(reqBody));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("ticket.comment_send_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));

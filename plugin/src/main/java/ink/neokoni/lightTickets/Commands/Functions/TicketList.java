@@ -61,7 +61,7 @@ public class TicketList {
     private void fetchFromApi(Player player, int page) {
         String resp;
         try {
-            resp = ApiClient.get(ApiEndpoint.MC_TICKET_LIST,
+            resp = ApiClient.getForPlayer(player, ApiEndpoint.MC_TICKET_LIST,
                     null,
                     Map.of("minecraftUuid", player.getUniqueId().toString(),
                            "page", String.valueOf(page), "pageSize", "10"));

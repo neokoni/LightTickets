@@ -32,8 +32,8 @@ public class AccountInfo {
     private void run(Player player) {
         HttpUtils.Resp resp;
         try {
-            resp = ApiClient.requestWithStatus(ApiEndpoint.MC_USER,
-                    Map.of("uuid", player.getUniqueId().toString()));
+            resp = ApiClient.requestWithStatusForPlayer(player, ApiEndpoint.MC_USER,
+                    Map.of("uuid", player.getUniqueId().toString()), null, null);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));

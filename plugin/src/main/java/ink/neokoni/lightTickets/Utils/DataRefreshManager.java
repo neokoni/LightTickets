@@ -8,6 +8,7 @@ import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -113,8 +114,10 @@ public class DataRefreshManager {
     }
 
     private static void refreshAccountInfo(UUID uuid) {
-        HttpUtils.Resp resp = ApiClient.requestWithStatus(ApiEndpoint.MC_USER,
-                Map.of("uuid", uuid.toString()));
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return;
+        HttpUtils.Resp resp = ApiClient.requestWithStatusForPlayer(player, ApiEndpoint.MC_USER,
+                Map.of("uuid", uuid.toString()), null, null);
         if (resp == null || resp.body() == null || resp.body().isEmpty()) return;
 
         boolean isBound = resp.status() == 200;
@@ -129,7 +132,9 @@ public class DataRefreshManager {
     }
 
     private static void refreshTicketList(UUID uuid) {
-        String resp = ApiClient.get(ApiEndpoint.MC_TICKET_LIST,
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return;
+        String resp = ApiClient.getForPlayer(player, ApiEndpoint.MC_TICKET_LIST,
                 null,
                 Map.of("minecraftUuid", uuid.toString(), "page", "1", "pageSize", "10"));
         if (resp == null || resp.isEmpty()) return;

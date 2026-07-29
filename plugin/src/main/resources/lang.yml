@@ -7,6 +7,7 @@ errors:
   invalid_response: "无效响应"
   unknown: "未知错误"
   no_message: "无错误信息"
+  rebind_required: "绑定凭据无效，请先在网页解绑后重新执行 /lit bind"
 http:
   request_failed: "HTTP 请求失败: {method} {url} ({message})"
   invalid_uri: "HTTP 地址无效: {url} ({message})"
@@ -39,6 +40,7 @@ bind:
 unbind:
   not_bound: "<color:#ff8181>你尚未绑定 LightTickets 账号, 无需解绑"
   success: "<color:#ffffff>已解绑 LightTickets 账号"
+  web_required: "<color:#ffdbab>为保护账号安全，请前往 LightTickets 网页端解绑 Minecraft 账号"
 register:
   invalid_email: "<color:#ff8181>邮箱格式不正确"
   password_too_short: "<color:#ff8181>密码至少8位"

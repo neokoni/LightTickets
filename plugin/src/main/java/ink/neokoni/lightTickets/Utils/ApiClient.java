@@ -3,6 +3,7 @@ package ink.neokoni.lightTickets.Utils;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.net.URLEncoder;
@@ -35,6 +36,18 @@ public class ApiClient {
         return resp == null ? null : resp.body();
     }
 
+    public static String getForPlayer(Player player, ApiEndpoint endpoint,
+                                      @Nullable Map<String, String> pathParams,
+                                      @Nullable Map<String, String> queryParams) {
+        HttpUtils.Resp resp = requestWithStatusForPlayer(player, endpoint, pathParams, queryParams, null);
+        return resp == null ? null : resp.body();
+    }
+
+    public static String postForPlayer(Player player, ApiEndpoint endpoint, String body) {
+        HttpUtils.Resp resp = requestWithStatusForPlayer(player, endpoint, null, null, body);
+        return resp == null ? null : resp.body();
+    }
+
     public static HttpUtils.Resp requestWithStatus(ApiEndpoint endpoint) {
         return requestWithStatus(endpoint, null, null, null);
     }
@@ -63,6 +76,23 @@ public class ApiClient {
         return new HttpUtils.Resp(resp.status(), unwrapEnvelope(resp.body()));
     }
 
+    public static HttpUtils.Resp requestWithStatusForPlayer(Player player, ApiEndpoint endpoint,
+                                                             @Nullable Map<String, String> pathParams,
+                                                             @Nullable Map<String, String> queryParams,
+                                                             @Nullable String body) {
+        String sessionToken = PlayerSessionManager.getSessionToken(player);
+        HttpUtils.Resp resp = request(endpoint, pathParams, queryParams, body, sessionToken);
+        if (resp != null && resp.status() == 401) {
+            PlayerSessionManager.invalidate(player.getUniqueId());
+            sessionToken = PlayerSessionManager.getSessionToken(player);
+            resp = request(endpoint, pathParams, queryParams, body, sessionToken);
+            if (resp != null && resp.status() == 401) {
+                PlayerSessionManager.markBindingUnavailable(player);
+            }
+        }
+        return unwrap(resp);
+    }
+
     public static String errorMessage(JsonObject parsed) {
         if (parsed == null) {
             return LangUtils.getRawLang("errors.invalid_response");
@@ -77,11 +107,37 @@ public class ApiClient {
     }
 
     private static Map<String, String> headers(ApiEndpoint endpoint) {
+        return headers(endpoint, null);
+    }
+
+    private static Map<String, String> headers(ApiEndpoint endpoint, @Nullable String playerSession) {
         Map<String, String> headers = new LinkedHashMap<>();
         if (endpoint.serverAuthenticated()) {
             headers.put("X-Server-Key", Config.getConfig().getServerKey());
         }
+        if (playerSession != null && !playerSession.isEmpty()) {
+            headers.put("X-Player-Session", playerSession);
+        }
         return headers;
+    }
+
+    private static HttpUtils.Resp request(ApiEndpoint endpoint,
+                                          @Nullable Map<String, String> pathParams,
+                                          @Nullable Map<String, String> queryParams,
+                                          @Nullable String body,
+                                          @Nullable String playerSession) {
+        return HttpUtils.requestWithStatus(
+                endpoint.method(),
+                url(endpoint, pathParams, queryParams),
+                body,
+                headers(endpoint, playerSession));
+    }
+
+    private static HttpUtils.Resp unwrap(HttpUtils.Resp resp) {
+        if (resp == null || resp.body() == null || resp.body().isEmpty()) {
+            return resp;
+        }
+        return new HttpUtils.Resp(resp.status(), unwrapEnvelope(resp.body()));
     }
 
     private static String url(ApiEndpoint endpoint, @Nullable Map<String, String> pathParams,

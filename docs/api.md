@@ -6,7 +6,10 @@
 - 内容类型：`application/json`
 - Web 端认证：`Authorization: Bearer <accessToken>`
 - Refresh Token：由后端通过 `HttpOnly` Cookie `lt_refresh_token` 下发；响应体中的 `refreshToken` 仅为灰度兼容字段，前端不得存入 `localStorage`。
-- MC 插件认证：`X-Server-Key: <server.apiKey>`，仅用于 `/api/mc/*`。
+- MC 插件服务器认证：`X-Server-Key: <server.apiKey>`，仅用于 `/api/mc/*`。
+- MC 玩家接口还必须携带 `X-Player-Session`。插件使用绑定时签发的
+  `playerCredential` 调用 `POST /api/mc/session` 换取 5 分钟 session；后端从绑定的 API
+  账户读取实时角色与权限，不信任请求中的 UUID 或插件本地角色。
 
 成功响应统一为：
 
@@ -685,17 +688,28 @@ S3 配置：
 
 ## MC 插件接口
 
-所有 `/api/mc/*` 接口必须带：
+所有 `/api/mc/*` 接口必须带服务器凭据：
 
 ```http
 X-Server-Key: <server.apiKey>
 ```
 
+`register`、`link-code`、`session` 和 `unlink` 以外的玩家接口还必须带：
+
+```http
+X-Player-Session: <short-lived session token>
+```
+
+玩家 session 绑定 API 账号、Minecraft UUID 和签发它的服务器。后端按 API 账号当前的
+`player` / `staff` / `admin` 角色执行权限检查，并将所有议题查询与操作限制在当前
+`X-Server-Key` 对应的服务器。
+
 ### 插件注册账号
 
 `POST /api/mc/register`
 
-受 `allowMcRegister` 控制。
+受 `allowMcRegister` 控制。成功响应只返回用户资料和 `playerCredential`，不向插件返回 Web
+Access Token 或 Refresh Token。
 
 ### 生成绑定码
 
@@ -709,6 +723,22 @@ X-Server-Key: <server.apiKey>
   "minecraftName": "Steve"
 }
 ```
+
+响应同时返回只展示一次的 `playerCredential`。插件必须安全保存该值，数据库只保存其 SHA-256
+hash；旧版插件绑定没有此凭据，必须先在 Web 解绑后重新绑定。
+
+### 签发玩家 session
+
+`POST /api/mc/session`
+
+```json
+{
+  "minecraftUuid": "uuid",
+  "playerCredential": "credential returned during binding"
+}
+```
+
+返回 5 分钟有效的 `sessionToken`。session 只能与签发时使用的同一 `X-Server-Key` 搭配使用。
 
 ### 从游戏内创建议题
 
@@ -736,7 +766,7 @@ X-Server-Key: <server.apiKey>
 
 ### MC 议题与评论
 
-- `GET /api/mc/tickets?minecraftUuid=<uuid>`：`minecraftUuid` 可选；不提供时只返回公开议题
+- `GET /api/mc/tickets?minecraftUuid=<uuid>`
 - `GET /api/mc/tickets/:uuid`：上一版本兼容路径
 - `GET /api/mc/tickets/:id/detail?minecraftUuid=<uuid>`
 - `GET /api/mc/tickets/:id/comments?minecraftUuid=<uuid>`
@@ -745,10 +775,17 @@ X-Server-Key: <server.apiKey>
 - `POST /api/mc/tickets/:id/close`
 - `POST /api/mc/tickets/:id/reopen`
 - `POST /api/mc/tickets/:id/status`
-- `POST /api/mc/unlink`
+- `POST /api/mc/unlink`：固定拒绝；解绑只能由已登录用户调用 Web 端
+  `DELETE /api/auth/link-minecraft`
 
-MC 读取接口始终需要服务器 API Key，但玩家身份上下文 `minecraftUuid` 可选。提供已绑定 UUID 后，
-玩家可以读取自己创建的隐藏议题，`staff` / `admin` 可以读取全部；未提供或未绑定时按公开访问处理。
+请求中的 `minecraftUuid` 必须与 `X-Player-Session` 绑定的 UUID 一致，否则返回 `403`。玩家可以读取
+当前服务器内的公开议题和自己创建的隐藏议题；`staff` / `admin` 可按其 API 账号权限读取当前服务器内
+的全部议题。只有 server key、没有玩家 session 时返回 `401`，不再回退为匿名公开读取。
+
+升级时先应用 credential/session 新增表迁移，再同步更新后端与插件。旧插件和没有
+`playerCredential` 的历史绑定会 fail-closed，用户需在 Web 解绑后重新绑定。数据库变更均为新增结构；
+回滚应用版本时这些表可保留，但只能回滚到仍要求玩家 session 的 hardened 版本，禁止恢复仅凭 server
+key 和自报 UUID 鉴权的旧实现。若必须回退数据库，从升级前备份恢复。
 
 ## OpenAPI
 

@@ -16,8 +16,10 @@ public class PlayerBind {
     private String codeExpiresAt;
     private boolean bound;
     private String role;
+    private String playerCredential;
 
-    public PlayerBind(Player player, UUID uuid, String mcName, String bindCode, String codeExpiresAt, boolean bound, String role) {
+    public PlayerBind(Player player, UUID uuid, String mcName, String bindCode, String codeExpiresAt,
+                      boolean bound, String role, String playerCredential) {
         this.player = player;
         this.uuid = uuid;
         this.mcName = mcName;
@@ -25,5 +27,6 @@ public class PlayerBind {
         this.codeExpiresAt = codeExpiresAt;
         this.bound = bound;
         this.role = role;
+        this.playerCredential = playerCredential;
     }
 }

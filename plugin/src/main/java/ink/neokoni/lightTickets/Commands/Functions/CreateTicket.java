@@ -202,7 +202,7 @@ public class CreateTicket {
 
         String resp;
         try {
-            resp = ApiClient.post(ApiEndpoint.MC_CREATE_TICKET, JsonUtils.toJson(reqBody));
+            resp = ApiClient.postForPlayer(player, ApiEndpoint.MC_CREATE_TICKET, JsonUtils.toJson(reqBody));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));

@@ -7,12 +7,12 @@ public enum ApiEndpoint {
     MC_TICKET_COMMENTS("GET", "/api/mc/tickets/{id}/comments", true),
     MC_REGISTER("POST", "/api/mc/register", true),
     MC_LINK_CODE("POST", "/api/mc/link-code", true),
+    MC_PLAYER_SESSION("POST", "/api/mc/session", true),
     MC_CREATE_TICKET("POST", "/api/mc/tickets", true),
     MC_TICKET_LIST("GET", "/api/mc/tickets", true),
     MC_USER("GET", "/api/mc/user/{uuid}", true),
     MC_CREATE_COMMENT("POST", "/api/mc/comments", true),
-    MC_UPDATE_TICKET_STATUS("POST", "/api/mc/tickets/{id}/status", true),
-    MC_UNLINK("POST", "/api/mc/unlink", true);
+    MC_UPDATE_TICKET_STATUS("POST", "/api/mc/tickets/{id}/status", true);
 
     private final String method;
     private final String path;

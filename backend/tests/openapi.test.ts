@@ -40,12 +40,12 @@ describe('generated OpenAPI contract', () => {
     expect(document.paths['/api/auth/refresh']?.post.requestBody?.required).toBe(false);
   });
 
-  it('documents the actual MC ticket request and apiKey authentication', () => {
+  it('documents the actual MC ticket request and both authentication headers', () => {
     const operation = document.paths['/api/mc/tickets']?.post;
     const requestSchema = operation.requestBody?.content?.['application/json']?.schema;
     const properties = requestSchema?.properties as Record<string, unknown> | undefined;
 
-    expect(operation.security).toEqual([{ apiKey: [] }]);
+    expect(operation.security).toEqual([{ apiKey: [], minecraftPlayerSession: [] }]);
     expect(properties).toHaveProperty('body');
     expect(properties).toHaveProperty('context');
     expect(properties).not.toHaveProperty('gameContext');

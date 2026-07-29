@@ -69,6 +69,7 @@ model User {
   federatedAuthIdentities FederatedAuthIdentity[]
   federatedAuthFlows FederatedAuthFlow[]
   completedTicketHooks TicketCompletionHook[] @relation("CompletionHookCompleter")
+  minecraftPlayerCredential MinecraftPlayerCredential?
 
   @@map("users")
 }
@@ -173,6 +174,7 @@ model Server {
   createdAt   DateTime   @default(now()) @map("created_at")
   tickets     Ticket[]
   linkCodes   LinkCode[]
+  minecraftPlayerSessions MinecraftPlayerSession[]
 
   @@map("servers")
 }
@@ -296,9 +298,39 @@ model LinkCode {
   serverId      String   @map("server_id")
   expiresAt     DateTime @map("expires_at")
   used          Boolean  @default(false)
+  playerCredentialHash String? @map("player_credential_hash")
   server        Server   @relation(fields: [serverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@map("link_codes")
+}
+
+model MinecraftPlayerCredential {
+  id             String                   @id @default(uuid())
+  userId         Int                      @unique @map("user_id")
+  minecraftUuid  String                   @unique @map("minecraft_uuid")
+  credentialHash String                   @unique @map("credential_hash")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sessions       MinecraftPlayerSession[]
+
+  @@map("minecraft_player_credentials")
+}
+
+model MinecraftPlayerSession {
+  id           String                    @id @default(uuid())
+  credentialId String                    @map("credential_id")
+  serverId     String                    @map("server_id")
+  tokenHash    String                    @unique @map("token_hash")
+  expiresAt    DateTime                  @map("expires_at")
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  credential   MinecraftPlayerCredential @relation(fields: [credentialId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  server       Server                    @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([credentialId])
+  @@index([serverId])
+  @@index([expiresAt])
+  @@map("minecraft_player_sessions")
 }
 
 model PasswordResetToken {

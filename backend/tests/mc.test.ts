@@ -1,46 +1,83 @@
 import { describe, it, expect } from 'vitest';
+import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
+import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
+import { generateAccessToken } from '../src/utils/token.js';
 
 const app = createApp();
 
+async function createServer(name: string) {
+  return prisma().server.create({ data: { name, apiKey: `${name}-key` } });
+}
+
+async function createAuthenticatedPlayer(
+  server: Awaited<ReturnType<typeof createServer>>,
+  name: string,
+  role: 'player' | 'staff' | 'admin' = 'player',
+) {
+  const minecraftUuid = `${name}-minecraft-uuid`;
+  const credential = `${name}-player-credential-value`.padEnd(48, 'x');
+  const user = await prisma().user.create({
+    data: {
+      email: `${name}@test.com`,
+      passwordHash: await bcrypt.hash('Password123!', 12),
+      username: name,
+      role,
+      minecraftUuid,
+      minecraftName: name,
+      minecraftPlayerCredential: {
+        create: {
+          minecraftUuid,
+          credentialHash: hashMinecraftSecret(credential),
+        },
+      },
+    },
+  });
+  const response = await request(app)
+    .post('/api/mc/session')
+    .set('X-Server-Key', server.apiKey)
+    .send({ minecraftUuid, playerCredential: credential });
+  expect(response.status).toBe(201);
+  return { user, minecraftUuid, credential, sessionToken: response.body.data.sessionToken };
+}
+
 describe('POST /api/mc/link-code', () => {
-  it('generates a 6-digit link code', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'survival', apiKey: 'test-server-key-123', address: 'mc.example.com' },
-    });
+  it('generates a 6-digit link code and independent player credential', async () => {
+    const server = await createServer('survival');
 
     const res = await request(app)
       .post('/api/mc/link-code')
       .set('X-Server-Key', server.apiKey)
-      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440000', minecraftName: 'Steve' });
+      .send({ minecraftUuid: 'link-code-uuid', minecraftName: 'Steve' });
 
     expect(res.status).toBe(201);
     expect(res.body.data.code).toMatch(/^\d{6}$/);
     expect(res.body.data).toHaveProperty('expiresAt');
+    expect(res.body.data.playerCredential.length).toBeGreaterThanOrEqual(32);
+    const stored = await prisma().linkCode.findUniqueOrThrow({
+      where: { code: res.body.data.code },
+    });
+    expect(stored.playerCredentialHash).toBe(hashMinecraftSecret(res.body.data.playerCredential));
   });
 
   it('rejects without server key', async () => {
     const res = await request(app)
       .post('/api/mc/link-code')
-      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440000', minecraftName: 'Steve' });
+      .send({ minecraftUuid: 'link-code-no-key', minecraftName: 'Steve' });
 
     expect(res.status).toBe(401);
   });
 
   it('rejects already-linked player with 409', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'survival-bound', apiKey: 'test-server-key-bound', address: 'mc.example.com' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
+    const server = await createServer('survival-bound');
     await prisma().user.create({
       data: {
         email: 'bound@test.com',
-        passwordHash: hash,
+        passwordHash: await bcrypt.hash('Password123!', 12),
         username: 'boundplayer',
-        minecraftUuid: '660e8400-e29b-41d4-a716-446655440099',
+        minecraftUuid: 'already-linked-uuid',
         minecraftName: 'BoundSteve',
       },
     });
@@ -48,36 +85,72 @@ describe('POST /api/mc/link-code', () => {
     const res = await request(app)
       .post('/api/mc/link-code')
       .set('X-Server-Key', server.apiKey)
-      .send({ minecraftUuid: '660e8400-e29b-41d4-a716-446655440099', minecraftName: 'BoundSteve' });
+      .send({ minecraftUuid: 'already-linked-uuid', minecraftName: 'BoundSteve' });
 
     expect(res.status).toBe(409);
-    expect(res.body).toHaveProperty('message');
   });
 });
 
-describe('POST /api/mc/tickets', () => {
-  it('creates a ticket from game context', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-srv', apiKey: 'mc-key-456' },
+describe('POST /api/mc/session', () => {
+  it('rejects an invalid player credential', async () => {
+    const server = await createServer('session-invalid');
+
+    const res = await request(app).post('/api/mc/session').set('X-Server-Key', server.apiKey).send({
+      minecraftUuid: 'session-invalid-uuid',
+      playerCredential: 'invalid-player-credential-value-000000',
     });
 
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    await prisma().user.create({
-      data: {
-        email: 'mcplayer@test.com',
-        passwordHash: hash,
-        username: 'mcplayer',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440000',
-        minecraftName: 'Steve',
-      },
-    });
+    expect(res.status).toBe(401);
+  });
+
+  it('requires a player session in addition to the server key', async () => {
+    const server = await createServer('session-required');
+
+    const res = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .query({ minecraftUuid: 'any-uuid' });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a request UUID that differs from the session identity', async () => {
+    const server = await createServer('session-uuid');
+    const player = await createAuthenticatedPlayer(server, 'sessionuuid');
+
+    const res = await request(app)
+      .get('/api/mc/user/different-uuid')
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken);
+
+    expect(res.status).toBe(403);
+  });
+
+  it('binds a player session to the server that issued it', async () => {
+    const serverA = await createServer('session-server-a');
+    const serverB = await createServer('session-server-b');
+    const player = await createAuthenticatedPlayer(serverA, 'sessionserver');
+
+    const res = await request(app)
+      .get(`/api/mc/user/${player.minecraftUuid}`)
+      .set('X-Server-Key', serverB.apiKey)
+      .set('X-Player-Session', player.sessionToken);
+
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('Minecraft ticket access', () => {
+  it('creates a ticket from the authenticated account and game context', async () => {
+    const server = await createServer('mc-create');
+    const player = await createAuthenticatedPlayer(server, 'mccreate');
 
     const res = await request(app)
       .post('/api/mc/tickets')
       .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
       .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440000',
+        minecraftUuid: player.minecraftUuid,
         title: 'Block glitch',
         body: 'Blocks disappear when placed',
         template: 'bug_report',
@@ -85,13 +158,12 @@ describe('POST /api/mc/tickets', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.data.title).toBe('Block glitch');
+    expect(res.body.data.authorId).toBe(player.user.id);
+    expect(res.body.data.serverId).toBe(server.id);
   });
 
-  it('rejects unlinked player', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-srv2', apiKey: 'mc-key-789' },
-    });
+  it('rejects a server key without a player session', async () => {
+    const server = await createServer('mc-create-no-session');
 
     const res = await request(app).post('/api/mc/tickets').set('X-Server-Key', server.apiKey).send({
       minecraftUuid: 'unknown-uuid',
@@ -100,388 +172,214 @@ describe('POST /api/mc/tickets', () => {
       template: 'bug_report',
     });
 
-    expect(res.status).toBe(404);
-  });
-});
-
-describe('GET /api/mc/tickets/:uuid', () => {
-  it('returns tickets for linked player', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-list', apiKey: 'mc-list-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    await prisma().user.create({
-      data: {
-        email: 'mclist@test.com',
-        passwordHash: hash,
-        username: 'mclist',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440001',
-        minecraftName: 'Alex',
-      },
-    });
-
-    await request(app).post('/api/mc/tickets').set('X-Server-Key', server.apiKey).send({
-      minecraftUuid: '550e8400-e29b-41d4-a716-446655440001',
-      title: 'MC Ticket',
-      body: 'From game',
-      template: 'bug_report',
-    });
-
-    const res = await request(app)
-      .get('/api/mc/tickets/550e8400-e29b-41d4-a716-446655440001')
-      .set('X-Server-Key', server.apiKey);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.tickets.length).toBeGreaterThanOrEqual(1);
+    expect(res.status).toBe(401);
   });
 
-  it('returns all tickets across players, servers, and web-created tickets', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-list-filter', apiKey: 'mc-list-filter-key' },
-    });
-    const otherServer = await prisma().server.create({
-      data: { name: 'mc-list-filter-other', apiKey: 'mc-list-filter-other-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    const player = await prisma().user.create({
+  it('lists visible tickets only from the current server', async () => {
+    const server = await createServer('mc-list');
+    const otherServer = await createServer('mc-list-other');
+    const player = await createAuthenticatedPlayer(server, 'mclist');
+    const local = await prisma().ticket.create({
       data: {
-        email: 'mclistfilter@test.com',
-        passwordHash: hash,
-        username: 'mclistfilter',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440101',
-        minecraftName: 'FilterPlayer',
-      },
-    });
-    const otherPlayer = await prisma().user.create({
-      data: {
-        email: 'mclistfilterother@test.com',
-        passwordHash: hash,
-        username: 'mclistfilterother',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440102',
-        minecraftName: 'OtherFilterPlayer',
-      },
-    });
-
-    const visible = await prisma().ticket.create({
-      data: {
-        title: 'Visible ticket',
+        title: 'Local ticket',
         body: 'Body',
         template: 'bug_report',
-        authorId: player.id,
+        authorId: player.user.id,
         serverId: server.id,
       },
     });
-    await prisma().ticket.create({
+    const remote = await prisma().ticket.create({
       data: {
-        title: 'Other player ticket',
+        title: 'Remote ticket',
         body: 'Body',
         template: 'bug_report',
-        authorId: otherPlayer.id,
-        serverId: server.id,
-      },
-    });
-    await prisma().ticket.create({
-      data: {
-        title: 'Other server ticket',
-        body: 'Body',
-        template: 'bug_report',
-        authorId: player.id,
+        authorId: player.user.id,
         serverId: otherServer.id,
       },
     });
-    await prisma().ticket.create({
+    const web = await prisma().ticket.create({
       data: {
         title: 'Web ticket',
         body: 'Body',
         template: 'bug_report',
-        authorId: player.id,
-        serverId: null,
+        authorId: player.user.id,
       },
     });
 
     const res = await request(app)
-      .get('/api/mc/tickets/550e8400-e29b-41d4-a716-446655440101')
-      .set('X-Server-Key', server.apiKey);
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .query({ minecraftUuid: player.minecraftUuid });
 
     expect(res.status).toBe(200);
     const ids = res.body.data.tickets.map((ticket: { id: number }) => ticket.id);
-    expect(ids).toEqual(expect.arrayContaining([visible.id]));
-    expect(ids).toContain(
-      await prisma()
-        .ticket.findFirstOrThrow({ where: { title: 'Other server ticket' }, select: { id: true } })
-        .then((ticket) => ticket.id),
-    );
-    expect(ids).toContain(
-      await prisma()
-        .ticket.findFirstOrThrow({ where: { title: 'Web ticket' }, select: { id: true } })
-        .then((ticket) => ticket.id),
-    );
-    expect(res.body.data.total).toBe(4);
+    expect(ids).toContain(local.id);
+    expect(ids).not.toContain(remote.id);
+    expect(ids).not.toContain(web.id);
   });
 
-  it('does not require the path uuid to belong to a linked player for global ticket listing', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-empty', apiKey: 'mc-empty-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    const user = await prisma().user.create({
-      data: {
-        email: 'mcemptyexisting@test.com',
-        passwordHash: hash,
-        username: 'mcemptyexisting',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440103',
-        minecraftName: 'Existing',
-      },
-    });
-    await prisma().ticket.create({
-      data: {
-        title: 'Existing ticket',
-        body: 'Body',
-        template: 'bug_report',
-        authorId: user.id,
-        serverId: server.id,
-      },
-    });
+  it('requires the compatibility path UUID to match the session', async () => {
+    const server = await createServer('mc-list-path');
+    const player = await createAuthenticatedPlayer(server, 'mclistpath');
 
     const res = await request(app)
-      .get('/api/mc/tickets/00000000-0000-0000-0000-000000000000')
-      .set('X-Server-Key', server.apiKey);
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.tickets.map((ticket: { title: string }) => ticket.title)).toContain(
-      'Existing ticket',
-    );
-  });
-});
-
-describe('POST /api/mc/comments', () => {
-  it('creates a comment from game', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-comment', apiKey: 'mc-comment-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    await prisma().user.create({
-      data: {
-        email: 'mccomment@test.com',
-        passwordHash: hash,
-        username: 'mccomment',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440002',
-        minecraftName: 'Commenter',
-      },
-    });
-
-    const ticket = await request(app)
-      .post('/api/mc/tickets')
+      .get('/api/mc/tickets/different-uuid')
       .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440002',
-        title: 'Ticket with comment',
-        body: 'Body',
-        template: 'bug_report',
-      });
-
-    const res = await request(app)
-      .post('/api/mc/comments')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440002',
-        ticketId: ticket.body.data.id,
-        body: 'Comment from game',
-      });
-
-    expect(res.status).toBe(201);
-    expect(res.body.data.body).toBe('Comment from game');
-  });
-});
-
-describe('POST /api/mc/tickets/:id/close', () => {
-  it('allows linked player to close own ticket', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-close', apiKey: 'mc-close-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    await prisma().user.create({
-      data: {
-        email: 'mcclose@test.com',
-        passwordHash: hash,
-        username: 'mcclose',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440003',
-        minecraftName: 'Closer',
-      },
-    });
-
-    const ticket = await request(app)
-      .post('/api/mc/tickets')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440003',
-        title: 'To close from MC',
-        body: 'Body',
-        template: 'bug_report',
-      });
-
-    const res = await request(app)
-      .post(`/api/mc/tickets/${ticket.body.data.id}/close`)
-      .set('X-Server-Key', server.apiKey)
-      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440003' });
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe('closed');
-  });
-});
-
-describe('POST /api/mc/tickets/:id/status', () => {
-  it('allows linked player to close own ticket', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-status-closed', apiKey: 'mc-status-closed-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    await prisma().user.create({
-      data: {
-        email: 'mcstatusresolved@test.com',
-        passwordHash: hash,
-        username: 'mcstatusresolved',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
-        minecraftName: 'StatusResolved',
-      },
-    });
-
-    const ticket = await request(app)
-      .post('/api/mc/tickets')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
-        title: 'MC Status Resolved',
-        body: 'Body',
-        template: 'bug_report',
-      });
-
-    const res = await request(app)
-      .post(`/api/mc/tickets/${ticket.body.data.id}/status`)
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
-        status: 'closed',
-      });
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe('closed');
-  });
-
-  it('rejects linked player changing own ticket to invalid state', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-status-invalid', apiKey: 'mc-status-invalid-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    await prisma().user.create({
-      data: {
-        email: 'mcstatusclosed@test.com',
-        passwordHash: hash,
-        username: 'mcstatusclosed',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440031',
-        minecraftName: 'StatusClosed',
-      },
-    });
-
-    const ticket = await request(app)
-      .post('/api/mc/tickets')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440031',
-        title: 'MC Status Closed',
-        body: 'Body',
-        template: 'bug_report',
-      });
-
-    const res = await request(app)
-      .post(`/api/mc/tickets/${ticket.body.data.id}/status`)
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440031',
-        status: 'invalid',
-      });
+      .set('X-Player-Session', player.sessionToken);
 
     expect(res.status).toBe(403);
   });
 
-  it('allows linked staff to change ticket to invalid state', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-status-staff', apiKey: 'mc-status-staff-key' },
+  it('does not read or modify a ticket belonging to another server', async () => {
+    const serverA = await createServer('mc-isolation-a');
+    const serverB = await createServer('mc-isolation-b');
+    const admin = await createAuthenticatedPlayer(serverA, 'mcisolationadmin', 'admin');
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Server B ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: admin.user.id,
+        serverId: serverB.id,
+      },
     });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
+
+    const detail = await request(app)
+      .get(`/api/mc/tickets/${ticket.id}/detail`)
+      .set('X-Server-Key', serverA.apiKey)
+      .set('X-Player-Session', admin.sessionToken)
+      .query({ minecraftUuid: admin.minecraftUuid });
+    const update = await request(app)
+      .post(`/api/mc/tickets/${ticket.id}/status`)
+      .set('X-Server-Key', serverA.apiKey)
+      .set('X-Player-Session', admin.sessionToken)
+      .send({ minecraftUuid: admin.minecraftUuid, status: 'invalid' });
+
+    expect(detail.status).toBe(404);
+    expect(update.status).toBe(404);
+  });
+
+  it('creates comments using the authenticated account', async () => {
+    const server = await createServer('mc-comment');
+    const player = await createAuthenticatedPlayer(server, 'mccomment');
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Ticket with comment',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.user.id,
+        serverId: server.id,
+      },
+    });
+
+    const res = await request(app)
+      .post('/api/mc/comments')
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .send({
+        minecraftUuid: player.minecraftUuid,
+        ticketId: ticket.id,
+        body: 'Comment from game',
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.authorId).toBe(player.user.id);
+  });
+
+  it('allows a player to close their own ticket', async () => {
+    const server = await createServer('mc-close');
+    const player = await createAuthenticatedPlayer(server, 'mcclose');
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Close me',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.user.id,
+        serverId: server.id,
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/mc/tickets/${ticket.id}/close`)
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .send({ minecraftUuid: player.minecraftUuid });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('closed');
+  });
+
+  it('rejects a player changing their own ticket to invalid', async () => {
+    const server = await createServer('mc-status-player');
+    const player = await createAuthenticatedPlayer(server, 'mcstatusplayer');
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Player ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.user.id,
+        serverId: server.id,
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/mc/tickets/${ticket.id}/status`)
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .send({ minecraftUuid: player.minecraftUuid, status: 'invalid' });
+
+    expect(res.status).toBe(403);
+  });
+
+  it('inherits admin permissions from the bound API account', async () => {
+    const server = await createServer('mc-status-admin');
+    const admin = await createAuthenticatedPlayer(server, 'mcstatusadmin');
+    await prisma().user.update({ where: { id: admin.user.id }, data: { role: 'admin' } });
     const author = await prisma().user.create({
       data: {
         email: 'mcstatusauthor@test.com',
-        passwordHash: hash,
+        passwordHash: await bcrypt.hash('Password123!', 12),
         username: 'mcstatusauthor',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440032',
-        minecraftName: 'StatusAuthor',
       },
     });
-    await prisma().user.create({
+    const hidden = await prisma().ticket.create({
       data: {
-        email: 'mcstatusstaff@test.com',
-        passwordHash: hash,
-        username: 'mcstatusstaff',
-        role: 'staff',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440033',
-        minecraftName: 'StatusStaff',
-      },
-    });
-
-    const ticket = await prisma().ticket.create({
-      data: {
-        title: 'MC Staff Status',
+        title: 'Hidden ticket',
         body: 'Body',
         template: 'bug_report',
+        hidden: true,
         authorId: author.id,
         serverId: server.id,
       },
     });
 
-    const res = await request(app)
-      .post(`/api/mc/tickets/${ticket.id}/status`)
+    const list = await request(app)
+      .get('/api/mc/tickets')
       .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440033',
-        status: 'invalid',
-      });
+      .set('X-Player-Session', admin.sessionToken)
+      .query({ minecraftUuid: admin.minecraftUuid });
+    const update = await request(app)
+      .post(`/api/mc/tickets/${hidden.id}/status`)
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', admin.sessionToken)
+      .send({ minecraftUuid: admin.minecraftUuid, status: 'invalid' });
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.status).toBe('invalid');
+    expect(list.body.data.tickets.map((ticket: { id: number }) => ticket.id)).toContain(hidden.id);
+    expect(update.status).toBe(200);
+    expect(update.body.data.status).toBe('invalid');
   });
 
-  it('rejects linked player reopening own invalid ticket through status update', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-invalid-reopen', apiKey: 'mc-invalid-reopen-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    const author = await prisma().user.create({
-      data: {
-        email: 'mcinvalidreopen@test.com',
-        passwordHash: hash,
-        username: 'mcinvalidreopen',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440034',
-        minecraftName: 'InvalidReopen',
-      },
-    });
-
+  it('rejects a player reopening their own invalid ticket', async () => {
+    const server = await createServer('mc-invalid-reopen');
+    const player = await createAuthenticatedPlayer(server, 'mcinvalidreopen');
     const ticket = await prisma().ticket.create({
       data: {
-        title: 'MC Invalid Reopen',
+        title: 'Invalid ticket',
         body: 'Body',
         template: 'bug_report',
         status: 'invalid',
-        authorId: author.id,
+        authorId: player.user.id,
         serverId: server.id,
       },
     });
@@ -489,64 +387,41 @@ describe('POST /api/mc/tickets/:id/status', () => {
     const res = await request(app)
       .post(`/api/mc/tickets/${ticket.id}/status`)
       .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440034',
-        status: 'open',
-      });
+      .set('X-Player-Session', player.sessionToken)
+      .send({ minecraftUuid: player.minecraftUuid, status: 'open' });
 
     expect(res.status).toBe(403);
   });
 });
 
 describe('POST /api/mc/unlink', () => {
-  it('unbinds a linked minecraft account', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-unlink', apiKey: 'mc-unlink-key' },
-    });
-    const bcrypt = await import('bcrypt');
-    const hash = await bcrypt.default.hash('Password123!', 12);
-    await prisma().user.create({
-      data: {
-        email: 'mcunlink@test.com',
-        passwordHash: hash,
-        username: 'mcunlink',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440020',
-        minecraftName: 'Unlinker',
-      },
-    });
+  it('rejects plugin unlink and leaves the binding unchanged', async () => {
+    const server = await createServer('mc-unlink');
+    const player = await createAuthenticatedPlayer(server, 'mcunlink');
 
     const res = await request(app)
       .post('/api/mc/unlink')
       .set('X-Server-Key', server.apiKey)
-      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440020' });
+      .send({ minecraftUuid: player.minecraftUuid });
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.minecraftUuid).toBeNull();
-    expect(res.body.data.minecraftName).toBeNull();
-    expect(res.body.data.username).toBe('mcunlink');
-
-    const dbUser = await prisma().user.findUnique({ where: { email: 'mcunlink@test.com' } });
-    expect(dbUser?.minecraftUuid).toBeNull();
-    expect(dbUser?.minecraftName).toBeNull();
+    expect(res.status).toBe(403);
+    const stored = await prisma().user.findUniqueOrThrow({ where: { id: player.user.id } });
+    expect(stored.minecraftUuid).toBe(player.minecraftUuid);
   });
 
-  it('rejects unlinked player', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-unlink-none', apiKey: 'mc-unlink-none-key' },
-    });
+  it('rejects an unlinked UUID without changing data', async () => {
+    const server = await createServer('mc-unlink-none');
 
     const res = await request(app)
       .post('/api/mc/unlink')
       .set('X-Server-Key', server.apiKey)
-      .send({ minecraftUuid: '00000000-0000-0000-0000-000000000000' });
+      .send({ minecraftUuid: 'not-linked' });
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(403);
   });
 
   it('rejects without minecraftUuid', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-unlink-noid', apiKey: 'mc-unlink-noid-key' },
-    });
+    const server = await createServer('mc-unlink-noid');
 
     const res = await request(app)
       .post('/api/mc/unlink')
@@ -557,149 +432,109 @@ describe('POST /api/mc/unlink', () => {
   });
 
   it('rejects without server key', async () => {
-    const res = await request(app)
-      .post('/api/mc/unlink')
-      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440020' });
+    const res = await request(app).post('/api/mc/unlink').send({ minecraftUuid: 'uuid' });
 
     expect(res.status).toBe(401);
+  });
+
+  it('invalidates existing player sessions after the Web account unlinks', async () => {
+    const server = await createServer('mc-web-unlink');
+    const player = await createAuthenticatedPlayer(server, 'mcwebunlink');
+    const accessToken = generateAccessToken(player.user.id, player.user.role);
+
+    const unlink = await request(app)
+      .delete('/api/auth/link-minecraft')
+      .set('Authorization', `Bearer ${accessToken}`);
+    const after = await request(app)
+      .get(`/api/mc/user/${player.minecraftUuid}`)
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken);
+
+    expect(unlink.status).toBe(200);
+    expect(after.status).toBe(401);
   });
 });
 
 describe('POST /api/mc/register', () => {
-  it('creates a user and binds the minecraft account directly', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-reg', apiKey: 'mc-reg-key' },
-    });
+  const registration = (suffix: string) => ({
+    email: `${suffix}@test.com`,
+    password: 'Password123!',
+    username: suffix,
+    minecraftUuid: `${suffix}-uuid`,
+    minecraftName: suffix,
+  });
+
+  it('creates a bound user and returns only its player credential', async () => {
+    const server = await createServer('mc-reg');
+    const body = registration('mcreguser');
 
     const res = await request(app)
       .post('/api/mc/register')
       .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'mcreg@test.com',
-        password: 'Password123!',
-        username: 'mcreguser',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440010',
-        minecraftName: 'RegPlayer',
-      });
+      .send(body);
 
     expect(res.status).toBe(201);
-    expect(res.body.data).toHaveProperty('accessToken');
-    expect(res.body.data).toHaveProperty('refreshToken');
-    expect(res.body.data.user.email).toBe('mcreg@test.com');
-    expect(res.body.data.user.minecraftUuid).toBe('550e8400-e29b-41d4-a716-446655440010');
-    expect(res.body.data.user.minecraftName).toBe('RegPlayer');
-    expect(res.body.data.user).not.toHaveProperty('passwordHash');
+    expect(res.body.data).toHaveProperty('playerCredential');
+    expect(res.body.data).not.toHaveProperty('accessToken');
+    expect(res.body.data).not.toHaveProperty('refreshToken');
+    expect(res.body.data.user.minecraftUuid).toBe(body.minecraftUuid);
 
-    // Registered player is directly bound and can create tickets
-    const ticket = await request(app)
-      .post('/api/mc/tickets')
+    const session = await request(app)
+      .post('/api/mc/session')
       .set('X-Server-Key', server.apiKey)
       .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440010',
-        title: 'From registered player',
-        body: 'Body',
-        template: 'bug_report',
+        minecraftUuid: body.minecraftUuid,
+        playerCredential: res.body.data.playerCredential,
       });
-    expect(ticket.status).toBe(201);
+    expect(session.status).toBe(201);
   });
 
   it('rejects without server key', async () => {
-    const res = await request(app).post('/api/mc/register').send({
-      email: 'nokey@test.com',
-      password: 'Password123!',
-      username: 'nokeyuser',
-      minecraftUuid: '550e8400-e29b-41d4-a716-446655440011',
-      minecraftName: 'NoKey',
-    });
-
+    const res = await request(app).post('/api/mc/register').send(registration('mcregnokey'));
     expect(res.status).toBe(401);
   });
 
   it('rejects duplicate email', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-reg-dup', apiKey: 'mc-reg-dup-key' },
-    });
-
-    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send({
-      email: 'mcregdup@test.com',
-      password: 'Password123!',
-      username: 'mcregdup1',
-      minecraftUuid: '550e8400-e29b-41d4-a716-446655440012',
-      minecraftName: 'Dup1',
-    });
+    const server = await createServer('mc-reg-dup');
+    const first = registration('mcregdup1');
+    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send(first);
 
     const res = await request(app)
       .post('/api/mc/register')
       .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'mcregdup@test.com',
-        password: 'Password123!',
-        username: 'mcregdup2',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440013',
-        minecraftName: 'Dup2',
-      });
+      .send({ ...registration('mcregdup2'), email: first.email });
 
     expect(res.status).toBe(409);
   });
 
   it('rejects duplicate username', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-reg-username', apiKey: 'mc-reg-username-key' },
-    });
-
-    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send({
-      email: 'mcregun1@test.com',
-      password: 'Password123!',
-      username: 'sharedname',
-      minecraftUuid: '550e8400-e29b-41d4-a716-446655440014',
-      minecraftName: 'Shared1',
-    });
+    const server = await createServer('mc-reg-username');
+    const first = registration('mcregshared');
+    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send(first);
 
     const res = await request(app)
       .post('/api/mc/register')
       .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'mcregun2@test.com',
-        password: 'Password123!',
-        username: 'sharedname',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440015',
-        minecraftName: 'Shared2',
-      });
+      .send({ ...registration('mcregother'), username: first.username });
 
     expect(res.status).toBe(409);
   });
 
-  it('rejects when minecraft uuid already linked to another account', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-reg-uuid', apiKey: 'mc-reg-uuid-key' },
-    });
-
-    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send({
-      email: 'mcuuid1@test.com',
-      password: 'Password123!',
-      username: 'mcuuid1',
-      minecraftUuid: '550e8400-e29b-41d4-a716-446655440016',
-      minecraftName: 'Uuid1',
-    });
+  it('rejects when minecraft uuid is already linked to another account', async () => {
+    const server = await createServer('mc-reg-uuid');
+    const first = registration('mcreguuid1');
+    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send(first);
 
     const res = await request(app)
       .post('/api/mc/register')
       .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'mcuuid2@test.com',
-        password: 'Password123!',
-        username: 'mcuuid2',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440016',
-        minecraftName: 'Uuid1Again',
-      });
+      .send({ ...registration('mcreguuid2'), minecraftUuid: first.minecraftUuid });
 
     expect(res.status).toBe(409);
   });
 
   it('rejects invalid payload', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-reg-invalid', apiKey: 'mc-reg-invalid-key' },
-    });
+    const server = await createServer('mc-reg-invalid');
 
     const res = await request(app)
       .post('/api/mc/register')
@@ -708,7 +543,7 @@ describe('POST /api/mc/register', () => {
         email: 'not-an-email',
         password: 'short',
         username: 'x',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440017',
+        minecraftUuid: 'invalid-uuid',
         minecraftName: 'Invalid',
       });
 
@@ -716,19 +551,13 @@ describe('POST /api/mc/register', () => {
   });
 
   it('rejects when allowMcRegister is disabled', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'mc-reg-disabled', apiKey: 'mc-reg-disabled-key' },
-    });
-
-    // Initialize setup so we can update settings (use token from setup response
-    // directly, since /api/auth/login is gated behind platformOnlyMiddleware)
+    const server = await createServer('mc-reg-disabled');
     const setupRes = await request(app)
       .post('/api/setup')
       .send({
         db: { provider: 'sqlite' },
         admin: { email: 'mcreg-admin@test.com', password: 'admin123', username: 'mcregadmin' },
       });
-
     await request(app)
       .patch('/api/setup/settings')
       .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
@@ -737,13 +566,7 @@ describe('POST /api/mc/register', () => {
     const res = await request(app)
       .post('/api/mc/register')
       .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'mcregdis@test.com',
-        password: 'Password123!',
-        username: 'mcregdis',
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440018',
-        minecraftName: 'Disabled',
-      });
+      .send(registration('mcregdisabled'));
 
     expect(res.status).toBe(403);
   });

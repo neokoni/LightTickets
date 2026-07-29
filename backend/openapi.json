@@ -23,6 +23,11 @@
         "in": "header",
         "name": "X-Server-Key"
       },
+      "minecraftPlayerSession": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Player-Session"
+      },
       "refreshCookie": {
         "type": "apiKey",
         "in": "cookie",
@@ -3842,32 +3847,22 @@
                       ]
                     },
                     "data": {
-                      "anyOf": [
-                        {
+                      "type": "object",
+                      "properties": {
+                        "user": {
                           "type": "object",
                           "properties": {},
                           "additionalProperties": {
                             "nullable": true
                           }
                         },
-                        {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
-                        },
-                        {
+                        "playerCredential": {
                           "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "nullable": true
                         }
+                      },
+                      "required": [
+                        "user",
+                        "playerCredential"
                       ]
                     }
                   },
@@ -3940,32 +3935,111 @@
                       ]
                     },
                     "data": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {},
-                          "additionalProperties": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
-                        },
-                        {
+                      "type": "object",
+                      "properties": {
+                        "code": {
                           "type": "string"
                         },
-                        {
-                          "type": "number"
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
                         },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "nullable": true
+                        "playerCredential": {
+                          "type": "string"
                         }
+                      },
+                      "required": [
+                        "code",
+                        "expiresAt",
+                        "playerCredential"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/mc/session": {
+      "post": {
+        "summary": "用玩家凭据签发短期 MC session",
+        "tags": [
+          "MC"
+        ],
+        "security": [
+          {
+            "apiKey": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "minecraftUuid": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "playerCredential": {
+                    "type": "string",
+                    "minLength": 32,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "minecraftUuid",
+                  "playerCredential"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "sessionToken": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "sessionToken",
+                        "expiresAt"
                       ]
                     }
                   },
@@ -3998,7 +4072,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "requestBody": {
@@ -4135,7 +4210,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "parameters": [
@@ -4144,7 +4220,7 @@
               "type": "string",
               "minLength": 1
             },
-            "required": false,
+            "required": true,
             "name": "minecraftUuid",
             "in": "query"
           },
@@ -4242,7 +4318,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "parameters": [
@@ -4328,7 +4405,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "parameters": [
@@ -4345,7 +4423,7 @@
               "type": "string",
               "minLength": 1
             },
-            "required": false,
+            "required": true,
             "name": "minecraftUuid",
             "in": "query"
           }
@@ -4423,7 +4501,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "parameters": [
@@ -4440,7 +4519,7 @@
               "type": "string",
               "minLength": 1
             },
-            "required": false,
+            "required": true,
             "name": "minecraftUuid",
             "in": "query"
           }
@@ -4518,7 +4597,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "parameters": [
@@ -4604,7 +4684,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "requestBody": {
@@ -4710,7 +4791,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "parameters": [
@@ -4815,7 +4897,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "parameters": [
@@ -4920,7 +5003,8 @@
         ],
         "security": [
           {
-            "apiKey": []
+            "apiKey": [],
+            "minecraftPlayerSession": []
           }
         ],
         "parameters": [

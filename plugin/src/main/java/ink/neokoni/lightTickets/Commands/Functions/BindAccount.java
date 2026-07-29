@@ -9,6 +9,7 @@ import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
+import ink.neokoni.lightTickets.Utils.PlayerSessionManager;
 import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -33,6 +34,13 @@ public class BindAccount {
     private void run(Player player) {
         PlayerBind cached = PlayerData.getPlayerBind(player, true, false);
         if (cached != null && cached.isBound()) {
+            if (cached.getPlayerCredential() == null || cached.getPlayerCredential().isBlank()) {
+                cached.setBound(false);
+                cached.setRole("player");
+                PlayerData.setPlayerBind(player, cached);
+                player.sendMessage(LangUtils.getLang("errors.rebind_required"));
+                return;
+            }
             player.sendMessage(LangUtils.getLang("bind.already_bound"));
             return;
         }
@@ -56,28 +64,31 @@ public class BindAccount {
         }
 
         if (resp.status() == 409) {
-            markBound(player);
-            player.sendMessage(LangUtils.getLang("bind.already_bound"));
+            player.sendMessage(LangUtils.getLang("errors.rebind_required"));
             return;
         }
 
         JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
-        if (parsed == null || !parsed.has("code")) {
+        if (parsed == null || !parsed.has("code") || !parsed.has("playerCredential")) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
         }
         String code = parsed.get("code").getAsString();
         String expiresAt = parsed.has("expiresAt") ? parsed.get("expiresAt").getAsString() : "";
+        String playerCredential = parsed.get("playerCredential").getAsString();
+
+        PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
+        bind.setBindCode(code);
+        bind.setCodeExpiresAt(expiresAt);
+        bind.setBound(false);
+        bind.setRole("player");
+        bind.setPlayerCredential(playerCredential);
+        PlayerData.setPlayerBind(player, bind);
+        PlayerSessionManager.invalidate(player.getUniqueId());
 
         player.sendMessage(LangUtils.getLang("bind.guide"));
         player.sendMessage(buildCodeMessage(code, expiresAt));
-    }
-
-    private void markBound(Player player) {
-        PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
-        bind.setBound(true);
-        PlayerData.setPlayerBind(player, bind);
     }
 
     private Component buildCodeMessage(String code, String expiresAt) {

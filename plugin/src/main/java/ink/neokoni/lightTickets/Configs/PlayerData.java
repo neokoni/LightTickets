@@ -4,6 +4,7 @@ import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.SQL.MariadbAdapter;
 import ink.neokoni.lightTickets.Configs.SQL.SQLAdapter;
 import ink.neokoni.lightTickets.Configs.SQL.SQLiteAdapter;
+import ink.neokoni.lightTickets.Utils.PlayerSessionManager;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,6 +28,7 @@ public class PlayerData {
         };
         cachedPlayerBind = new ConcurrentHashMap<>();
         cachedTicketList = new ConcurrentHashMap<>();
+        PlayerSessionManager.clearAll();
     }
 
     public static void reload() {
@@ -44,7 +46,7 @@ public class PlayerData {
         PlayerBind bind = sqlAdapter.getPlayerBind(player);
         if (bind == null) {
             if (create) {
-                bind = new PlayerBind(player, uuid, player.getName(), null, null, false, "player");
+                bind = new PlayerBind(player, uuid, player.getName(), null, null, false, "player", null);
             } else {
                 return null;
             }
@@ -70,6 +72,7 @@ public class PlayerData {
     public static void removePlayerData(UUID playerUuid) {
         cachedPlayerBind.remove(playerUuid);
         cachedTicketList.remove(playerUuid);
+        PlayerSessionManager.invalidate(playerUuid);
     }
 
     public record CachedTicket(int id, String title, String status, String createdAt) {}

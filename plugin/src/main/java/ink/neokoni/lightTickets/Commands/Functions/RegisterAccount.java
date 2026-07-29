@@ -9,6 +9,7 @@ import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
+import ink.neokoni.lightTickets.Utils.PlayerSessionManager;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -28,6 +29,13 @@ public class RegisterAccount {
     private void run(Player player, String username, String email, String password) {
         PlayerBind existing = PlayerData.getPlayerBind(player, true, false);
         if (existing != null && existing.isBound()) {
+            if (existing.getPlayerCredential() == null || existing.getPlayerCredential().isBlank()) {
+                existing.setBound(false);
+                existing.setRole("player");
+                PlayerData.setPlayerBind(player, existing);
+                player.sendMessage(LangUtils.getLang("errors.rebind_required"));
+                return;
+            }
             player.sendMessage(LangUtils.getLang("bind.already_bound"));
             return;
         }
@@ -67,9 +75,10 @@ public class RegisterAccount {
         }
 
         JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
-        if (parsed != null && parsed.has("user")) {
-            markBound(player);
+        if (parsed != null && parsed.has("user") && parsed.has("playerCredential")) {
             JsonObject user = parsed.getAsJsonObject("user");
+            markBound(player, parsed.get("playerCredential").getAsString(),
+                    user.has("role") ? user.get("role").getAsString() : "player");
             String regUsername = user.has("username") ? user.get("username").getAsString() : username;
             player.sendMessage(LangUtils.getLang("register.success",
                     Map.of("{username}", regUsername)));
@@ -80,11 +89,15 @@ public class RegisterAccount {
                 Map.of("{message}", ApiClient.errorMessage(parsed))));
     }
 
-    private void markBound(Player player) {
+    private void markBound(Player player, String playerCredential, String role) {
         PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
         bind.setBound(true);
-        bind.setRole("player");
+        bind.setBindCode(null);
+        bind.setCodeExpiresAt(null);
+        bind.setRole(role == null || role.isEmpty() ? "player" : role);
+        bind.setPlayerCredential(playerCredential);
         PlayerData.setPlayerBind(player, bind);
+        PlayerSessionManager.invalidate(player.getUniqueId());
     }
 
 }

@@ -707,6 +707,15 @@ describe('POST /api/auth/link-minecraft', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.uuid).toBe('550e8400-e29b-41d4-a716-446655440030');
     expect(res.body.data.name).toBe('Linker');
+
+    const session = await request(app)
+      .post('/api/mc/session')
+      .set('X-Server-Key', server.apiKey)
+      .send({
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
+        playerCredential: code.body.data.playerCredential,
+      });
+    expect(session.status).toBe(201);
   });
 });
 
@@ -741,6 +750,9 @@ describe('DELETE /api/auth/link-minecraft', () => {
     const dbUser = await prisma().user.findUnique({ where: { email: 'unlinkmc@test.com' } });
     expect(dbUser?.minecraftUuid).toBeNull();
     expect(dbUser?.minecraftName).toBeNull();
+    expect(
+      await prisma().minecraftPlayerCredential.findUnique({ where: { userId: dbUser!.id } }),
+    ).toBeNull();
   });
 
   it('rejects unbind when not bound', async () => {

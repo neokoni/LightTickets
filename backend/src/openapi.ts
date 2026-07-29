@@ -32,6 +32,7 @@ import {
 import {
   mcCommentSchema,
   mcLinkCodeSchema,
+  mcPlayerSessionSchema,
   mcRegisterSchema,
   mcStatusSchema,
   mcTicketActionSchema,
@@ -82,6 +83,16 @@ const apiKeySecurityScheme = registry.registerComponent('securitySchemes', 'apiK
   name: 'X-Server-Key',
 });
 
+const minecraftPlayerSessionSecurityScheme = registry.registerComponent(
+  'securitySchemes',
+  'minecraftPlayerSession',
+  {
+    type: 'apiKey',
+    in: 'header',
+    name: 'X-Player-Session',
+  },
+);
+
 const refreshCookieSecurityScheme = registry.registerComponent('securitySchemes', 'refreshCookie', {
   type: 'apiKey',
   in: 'cookie',
@@ -107,7 +118,8 @@ const genericResponseDataSchema = z.union([
   z.null(),
 ]);
 
-type AuthType = 'none' | 'jwt' | 'refresh' | 'conditional' | 'admin' | 'staff' | 'apiKey';
+type AuthType =
+  'none' | 'jwt' | 'refresh' | 'conditional' | 'admin' | 'staff' | 'apiKey' | 'minecraftPlayer';
 
 interface RouteDef {
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -168,11 +180,18 @@ function registerRoute(def: RouteDef) {
         ? []
         : def.auth === 'apiKey'
           ? [{ [apiKeySecurityScheme.name]: [] }]
-          : def.auth === 'conditional'
-            ? [{ [jwtSecurityScheme.name]: [] }, {}]
-            : def.auth === 'refresh'
-              ? [{ [refreshCookieSecurityScheme.name]: [] }, {}]
-              : [{ [jwtSecurityScheme.name]: [] }],
+          : def.auth === 'minecraftPlayer'
+            ? [
+                {
+                  [apiKeySecurityScheme.name]: [],
+                  [minecraftPlayerSessionSecurityScheme.name]: [],
+                },
+              ]
+            : def.auth === 'conditional'
+              ? [{ [jwtSecurityScheme.name]: [] }, {}]
+              : def.auth === 'refresh'
+                ? [{ [refreshCookieSecurityScheme.name]: [] }, {}]
+                : [{ [jwtSecurityScheme.name]: [] }],
     request: {
       ...(paramsSchema && { params: paramsSchema }),
       ...(def.querySchema && { query: def.querySchema }),
@@ -589,6 +608,10 @@ const registerMcRoutes = () => {
     auth: 'apiKey',
     tags: ['MC'],
     bodySchema: mcRegisterSchema,
+    responseSchema: z.object({
+      user: z.object({}).passthrough(),
+      playerCredential: z.string(),
+    }),
     successStatus: '201',
   });
   registerRoute({
@@ -598,13 +621,31 @@ const registerMcRoutes = () => {
     auth: 'apiKey',
     tags: ['MC'],
     bodySchema: mcLinkCodeSchema,
+    responseSchema: z.object({
+      code: z.string(),
+      expiresAt: z.string().datetime(),
+      playerCredential: z.string(),
+    }),
+    successStatus: '201',
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/mc/session',
+    summary: '用玩家凭据签发短期 MC session',
+    auth: 'apiKey',
+    tags: ['MC'],
+    bodySchema: mcPlayerSessionSchema,
+    responseSchema: z.object({
+      sessionToken: z.string(),
+      expiresAt: z.string().datetime(),
+    }),
     successStatus: '201',
   });
   registerRoute({
     method: 'post',
     path: '/api/mc/tickets',
     summary: 'MC 创建议题',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
     bodySchema: mcTicketSchema,
     successStatus: '201',
@@ -613,7 +654,7 @@ const registerMcRoutes = () => {
     method: 'get',
     path: '/api/mc/tickets',
     summary: 'MC 获取可见议题',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
     querySchema: mcViewerSchema.extend({
       page: z.coerce.number().int().positive().optional(),
@@ -624,14 +665,14 @@ const registerMcRoutes = () => {
     method: 'get',
     path: '/api/mc/tickets/{uuid}',
     summary: 'MC 获取玩家可见议题（兼容路径）',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
   });
   registerRoute({
     method: 'get',
     path: '/api/mc/tickets/{id}/detail',
     summary: 'MC 获取议题详情',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
     querySchema: mcViewerSchema,
   });
@@ -639,7 +680,7 @@ const registerMcRoutes = () => {
     method: 'get',
     path: '/api/mc/tickets/{id}/comments',
     summary: 'MC 获取议题评论',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
     querySchema: mcViewerSchema,
   });
@@ -647,14 +688,14 @@ const registerMcRoutes = () => {
     method: 'get',
     path: '/api/mc/user/{uuid}',
     summary: 'MC 查询用户信息',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
   });
   registerRoute({
     method: 'post',
     path: '/api/mc/comments',
     summary: 'MC 创建评论',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
     bodySchema: mcCommentSchema,
     successStatus: '201',
@@ -663,7 +704,7 @@ const registerMcRoutes = () => {
     method: 'post',
     path: '/api/mc/tickets/{id}/close',
     summary: 'MC 关闭议题',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
     bodySchema: mcTicketActionSchema,
   });
@@ -671,7 +712,7 @@ const registerMcRoutes = () => {
     method: 'post',
     path: '/api/mc/tickets/{id}/reopen',
     summary: 'MC 重开议题',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
     bodySchema: mcTicketActionSchema,
   });
@@ -679,7 +720,7 @@ const registerMcRoutes = () => {
     method: 'post',
     path: '/api/mc/tickets/{id}/status',
     summary: 'MC 更新议题状态',
-    auth: 'apiKey',
+    auth: 'minecraftPlayer',
     tags: ['MC'],
     bodySchema: mcStatusSchema,
   });

@@ -52,6 +52,8 @@ beforeEach(async () => {
   await prisma().attachment.deleteMany();
   await prisma().comment.deleteMany();
   await prisma().linkCode.deleteMany();
+  await prisma().minecraftPlayerSession.deleteMany();
+  await prisma().minecraftPlayerCredential.deleteMany();
   await prisma().passwordResetToken.deleteMany();
   await prisma().registrationEmailVerification.deleteMany();
   await prisma().ticket.deleteMany();

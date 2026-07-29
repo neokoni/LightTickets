@@ -2,12 +2,14 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { serverAuthMiddleware } from '../middleware/server-auth.js';
 import { ForbiddenError } from '../utils/errors.js';
+import { minecraftPlayerSessionMiddleware } from '../middleware/minecraft-player-session.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
 import * as authService from '../services/auth.service.js';
 import * as mcService from '../services/mc.service.js';
 import {
   mcCommentSchema,
   mcLinkCodeSchema,
+  mcPlayerSessionSchema,
   mcRegisterSchema,
   mcStatusSchema,
   mcTicketActionSchema,
@@ -51,16 +53,22 @@ router.post('/link-code', async (req: Request, res: Response) => {
   res.status(201).json(linkCode);
 });
 
-router.post('/tickets', async (req: Request, res: Response) => {
+router.post('/session', async (req: Request, res: Response) => {
+  const data = validate(mcPlayerSessionSchema, req.body);
+  const session = await mcService.issuePlayerSession({ ...data, serverId: req.server!.id });
+  res.status(201).json(session);
+});
+
+router.post('/tickets', minecraftPlayerSessionMiddleware, async (req: Request, res: Response) => {
   const data = validate(mcTicketSchema, req.body);
+  assertSessionUuid(req, data.minecraftUuid);
 
   const ticket = await mcService.createTicketFromMinecraft({
-    minecraftUuid: data.minecraftUuid,
     title: data.title,
     body: data.body,
     template: data.template,
     formData: data.formData || {},
-    serverId: req.server!.id,
+    identity: req.minecraftPlayer!,
     context: data.context,
     hidden: data.hidden,
   });
@@ -69,94 +77,130 @@ router.post('/tickets', async (req: Request, res: Response) => {
 });
 
 async function listMinecraftTickets(req: Request, res: Response, minecraftUuid?: string) {
+  assertSessionUuid(req, minecraftUuid);
   const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
   const result = await mcService.listTicketsForMinecraftViewer({
     page,
     pageSize,
-    minecraftUuid,
+    identity: req.minecraftPlayer!,
   });
   res.json(result);
 }
 
-router.get('/tickets', async (req: Request, res: Response) => {
+router.get('/tickets', minecraftPlayerSessionMiddleware, async (req: Request, res: Response) => {
   const query = validate(mcViewerSchema, req.query);
   await listMinecraftTickets(req, res, query.minecraftUuid);
 });
 
 // Backward-compatible path for plugins from the previous release.
-router.get('/tickets/:uuid', async (req: Request, res: Response) => {
-  await listMinecraftTickets(req, res, String(req.params.uuid));
-});
+router.get(
+  '/tickets/:uuid',
+  minecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    await listMinecraftTickets(req, res, String(req.params.uuid));
+  },
+);
 
-router.get('/tickets/:id/detail', async (req: Request, res: Response) => {
-  const query = validate(mcViewerSchema, req.query);
-  const ticket = await mcService.getTicketForMinecraft(
-    parseId(String(req.params.id)),
-    query.minecraftUuid,
-  );
-  res.json(ticket);
-});
+router.get(
+  '/tickets/:id/detail',
+  minecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const query = validate(mcViewerSchema, req.query);
+    assertSessionUuid(req, query.minecraftUuid);
+    const ticket = await mcService.getTicketForMinecraft(
+      parseId(String(req.params.id)),
+      req.minecraftPlayer!,
+    );
+    res.json(ticket);
+  },
+);
 
-router.get('/tickets/:id/comments', async (req: Request, res: Response) => {
-  const query = validate(mcViewerSchema, req.query);
-  const comments = await mcService.listCommentsForMinecraft(
-    parseId(String(req.params.id)),
-    query.minecraftUuid,
-  );
-  res.json(comments);
-});
+router.get(
+  '/tickets/:id/comments',
+  minecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const query = validate(mcViewerSchema, req.query);
+    assertSessionUuid(req, query.minecraftUuid);
+    const comments = await mcService.listCommentsForMinecraft(
+      parseId(String(req.params.id)),
+      req.minecraftPlayer!,
+    );
+    res.json(comments);
+  },
+);
 
-router.get('/user/:uuid', async (req: Request, res: Response) => {
-  const user = await mcService.getLinkedUser(String(req.params.uuid));
+router.get('/user/:uuid', minecraftPlayerSessionMiddleware, async (req: Request, res: Response) => {
+  assertSessionUuid(req, String(req.params.uuid));
+  const user = await mcService.getLinkedUser(req.minecraftPlayer!);
   res.json(user);
 });
 
-router.post('/comments', async (req: Request, res: Response) => {
+router.post('/comments', minecraftPlayerSessionMiddleware, async (req: Request, res: Response) => {
   const { minecraftUuid, ticketId, body } = validate(mcCommentSchema, req.body);
+  assertSessionUuid(req, minecraftUuid);
 
   const comment = await mcService.createCommentFromMinecraft({
-    minecraftUuid,
     ticketId,
     body,
+    identity: req.minecraftPlayer!,
   });
   res.status(201).json(comment);
 });
 
-router.post('/tickets/:id/close', async (req: Request, res: Response) => {
-  const { minecraftUuid } = validate(mcTicketActionSchema, req.body);
+router.post(
+  '/tickets/:id/close',
+  minecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const { minecraftUuid } = validate(mcTicketActionSchema, req.body);
+    assertSessionUuid(req, minecraftUuid);
 
-  const ticket = await mcService.closeTicketFromMinecraft(
-    parseId(String(req.params.id)),
-    minecraftUuid,
-  );
-  res.json(ticket);
+    const ticket = await mcService.closeTicketFromMinecraft(
+      parseId(String(req.params.id)),
+      req.minecraftPlayer!,
+    );
+    res.json(ticket);
+  },
+);
+
+router.post(
+  '/tickets/:id/reopen',
+  minecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const { minecraftUuid } = validate(mcTicketActionSchema, req.body);
+    assertSessionUuid(req, minecraftUuid);
+
+    const ticket = await mcService.reopenTicketFromMinecraft(
+      parseId(String(req.params.id)),
+      req.minecraftPlayer!,
+    );
+    res.json(ticket);
+  },
+);
+
+router.post(
+  '/tickets/:id/status',
+  minecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const data = validate(mcStatusSchema, req.body);
+    assertSessionUuid(req, data.minecraftUuid);
+
+    const ticket = await mcService.updateTicketStatusFromMinecraft(parseId(String(req.params.id)), {
+      status: data.status,
+      identity: req.minecraftPlayer!,
+    });
+    res.json(ticket);
+  },
+);
+
+router.post('/unlink', async (req: Request, _res: Response) => {
+  validate(mcUnlinkSchema, req.body);
+  throw new ForbiddenError('Minecraft 解绑必须由账户本人在 Web 端完成');
 });
 
-router.post('/tickets/:id/reopen', async (req: Request, res: Response) => {
-  const { minecraftUuid } = validate(mcTicketActionSchema, req.body);
-
-  const ticket = await mcService.reopenTicketFromMinecraft(
-    parseId(String(req.params.id)),
-    minecraftUuid,
-  );
-  res.json(ticket);
-});
-
-router.post('/tickets/:id/status', async (req: Request, res: Response) => {
-  const data = validate(mcStatusSchema, req.body);
-
-  const ticket = await mcService.updateTicketStatusFromMinecraft(
-    parseId(String(req.params.id)),
-    data,
-  );
-  res.json(ticket);
-});
-
-router.post('/unlink', async (req: Request, res: Response) => {
-  const { minecraftUuid } = validate(mcUnlinkSchema, req.body);
-
-  const user = await mcService.unlinkMinecraftByUuid(minecraftUuid);
-  res.json(user);
-});
+function assertSessionUuid(req: Request, minecraftUuid: string | undefined): void {
+  if (!minecraftUuid || minecraftUuid !== req.minecraftPlayer?.minecraftUuid) {
+    throw new ForbiddenError('Minecraft player session does not match requested UUID');
+  }
+}
 
 export default router;

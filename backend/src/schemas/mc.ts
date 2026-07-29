@@ -6,6 +6,11 @@ export const mcLinkCodeSchema = z.object({
   minecraftName: z.string(),
 });
 
+export const mcPlayerSessionSchema = z.object({
+  minecraftUuid: z.string().min(1),
+  playerCredential: z.string().min(32).max(128),
+});
+
 export const mcRegisterSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -33,7 +38,7 @@ export const mcTicketSchema = z.object({
 });
 
 export const mcViewerSchema = z.object({
-  minecraftUuid: z.string().min(1).optional(),
+  minecraftUuid: z.string().min(1),
 });
 
 export const mcCommentSchema = z.object({

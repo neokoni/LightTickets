@@ -56,6 +56,7 @@ public class SQLAdapter {
         runSql(enableForeignKeySql());
         runSql(getCreatePlayerBindTableSql());
         runSql(getAddPlayerRoleColumnSql());
+        runSql(getAddPlayerCredentialColumnSql());
     }
 
     public PlayerBind getPlayerBind(Player player) {
@@ -71,7 +72,8 @@ public class SQLAdapter {
                         resultSet.getString("bind_code"),
                         resultSet.getString("code_expires_at"),
                         resultSet.getBoolean("bound"),
-                        readString(resultSet, "role", "player")
+                        readString(resultSet, "role", "player"),
+                        readString(resultSet, "player_credential", null)
                 );
             }
         } catch (SQLException e) {
@@ -89,12 +91,14 @@ public class SQLAdapter {
             statement.setString(4, bind.getCodeExpiresAt());
             statement.setBoolean(5, bind.isBound());
             statement.setString(6, bind.getRole() == null ? "player" : bind.getRole());
+            statement.setString(7, bind.getPlayerCredential());
 
-            statement.setString(7, bind.getMcName());
-            statement.setString(8, bind.getBindCode());
-            statement.setString(9, bind.getCodeExpiresAt());
-            statement.setBoolean(10, bind.isBound());
-            statement.setString(11, bind.getRole() == null ? "player" : bind.getRole());
+            statement.setString(8, bind.getMcName());
+            statement.setString(9, bind.getBindCode());
+            statement.setString(10, bind.getCodeExpiresAt());
+            statement.setBoolean(11, bind.isBound());
+            statement.setString(12, bind.getRole() == null ? "player" : bind.getRole());
+            statement.setString(13, bind.getPlayerCredential());
             statement.execute();
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -109,13 +113,18 @@ public class SQLAdapter {
                     bind_code VARCHAR(16),
                     code_expires_at VARCHAR(40),
                     bound TINYINT(1) DEFAULT 0,
-                    role VARCHAR(16) DEFAULT 'player'
+                    role VARCHAR(16) DEFAULT 'player',
+                    player_credential VARCHAR(128)
                 );
                 """;
     }
 
     public String getAddPlayerRoleColumnSql() {
         return "ALTER TABLE player_bind ADD COLUMN role VARCHAR(16) DEFAULT 'player';";
+    }
+
+    public String getAddPlayerCredentialColumnSql() {
+        return "ALTER TABLE player_bind ADD COLUMN player_credential VARCHAR(128);";
     }
 
     public String getPlayerBindSql() {
@@ -126,9 +135,9 @@ public class SQLAdapter {
 
     public String setPlayerBindSql() {
         return """
-                INSERT INTO player_bind(uuid, mc_name, bind_code, code_expires_at, bound, role)
-                VALUES(?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE mc_name=?, bind_code=?, code_expires_at=?, bound=?, role=?;
+                INSERT INTO player_bind(uuid, mc_name, bind_code, code_expires_at, bound, role, player_credential)
+                VALUES(?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE mc_name=?, bind_code=?, code_expires_at=?, bound=?, role=?, player_credential=?;
                 """;
     }
 

@@ -34,7 +34,8 @@ public class SQLiteAdapter extends SQLAdapter {
                     bind_code TEXT,
                     code_expires_at TEXT,
                     bound INTEGER DEFAULT 0,
-                    role TEXT DEFAULT 'player'
+                    role TEXT DEFAULT 'player',
+                    player_credential TEXT
                 );
                 """;
     }
@@ -42,14 +43,19 @@ public class SQLiteAdapter extends SQLAdapter {
     @Override
     public String setPlayerBindSql() {
         return """
-                INSERT INTO player_bind(uuid, mc_name, bind_code, code_expires_at, bound, role)
-                VALUES(?, ?, ?, ?, ?, ?)
-                ON CONFLICT(uuid) DO UPDATE SET mc_name=?, bind_code=?, code_expires_at=?, bound=?, role=?;
+                INSERT INTO player_bind(uuid, mc_name, bind_code, code_expires_at, bound, role, player_credential)
+                VALUES(?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(uuid) DO UPDATE SET mc_name=?, bind_code=?, code_expires_at=?, bound=?, role=?, player_credential=?;
                 """;
     }
 
     @Override
     public String getAddPlayerRoleColumnSql() {
         return "ALTER TABLE player_bind ADD COLUMN role TEXT DEFAULT 'player';";
+    }
+
+    @Override
+    public String getAddPlayerCredentialColumnSql() {
+        return "ALTER TABLE player_bind ADD COLUMN player_credential TEXT;";
     }
 }
