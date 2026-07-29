@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -38,6 +38,30 @@ describe('LocalStorageAdapter', () => {
   it('delete does not throw when file does not exist', async () => {
     const adapter = new LocalStorageAdapter(tmpDir);
     await expect(adapter.delete('never-existed.png')).resolves.toBeUndefined();
+  });
+
+  it('serves using explicit trusted response headers instead of the key extension', async () => {
+    const adapter = new LocalStorageAdapter(tmpDir);
+    await adapter.save({
+      buffer: Buffer.from('<html>'),
+      key: 'legacy.html',
+      mimeType: 'text/plain',
+    });
+    const sendFile = vi.fn();
+    const res = { sendFile } as unknown as Parameters<typeof adapter.serve>[0];
+
+    await adapter.serve(res, {
+      key: 'legacy.html',
+      mimeType: 'text/plain',
+      contentDisposition: "attachment; filename*=UTF-8''legacy.txt",
+    });
+
+    expect(sendFile).toHaveBeenCalledWith(path.resolve(tmpDir, 'legacy.html'), {
+      headers: {
+        'Content-Type': 'text/plain',
+        'Content-Disposition': "attachment; filename*=UTF-8''legacy.txt",
+      },
+    });
   });
 
   it('type is local', () => {

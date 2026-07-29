@@ -67,11 +67,18 @@ describe('S3StorageAdapter', () => {
     const redirect = vi.fn();
     const res = { redirect } as unknown as Parameters<typeof adapter.serve>[0];
 
-    await adapter.serve(res, 'k.png', 'file.png');
+    await adapter.serve(res, {
+      key: 'k.png',
+      mimeType: 'image/png',
+      contentDisposition: 'inline',
+    });
 
     expect(redirect).toHaveBeenCalledTimes(1);
     expect(redirect.mock.calls[0][0]).toBe(302);
-    expect(typeof redirect.mock.calls[0][1]).toBe('string');
-    expect(redirect.mock.calls[0][1].length).toBeGreaterThan(0);
+    const signedUrl = String(redirect.mock.calls[0][1]);
+    expect(signedUrl.length).toBeGreaterThan(0);
+    const searchParams = new URL(signedUrl).searchParams;
+    expect(searchParams.get('response-content-type')).toBe('image/png');
+    expect(searchParams.get('response-content-disposition')).toBe('inline');
   });
 });

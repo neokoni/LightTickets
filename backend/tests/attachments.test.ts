@@ -74,6 +74,7 @@ describe('POST /api/attachments/upload', () => {
     expect(res.body.data.mimeType).toBe('image/png');
     expect(res.body.data.storageType).toBe('local');
     expect(res.body.data.size).toBe(PNG_1x1.length);
+    expect(path.extname(res.body.data.path)).toBe('');
 
     const filePath = path.resolve(await getUploadDir(), res.body.data.path);
     expect(fs.existsSync(filePath)).toBe(true);
@@ -104,17 +105,65 @@ describe('POST /api/attachments/upload', () => {
 });
 
 describe('GET /api/attachments/:id', () => {
-  it('returns file content for an existing attachment', async () => {
+  it('serves a related image inline with its validated MIME type', async () => {
     const token = await createUserAndGetToken('get-ok@test.com');
+    const ticket = await createTicket(token);
     const upload = await request(app)
       .post('/api/attachments/upload')
       .set('Authorization', `Bearer ${token}`)
-      .attach('file', PNG_1x1, 'test.png');
+      .attach('file', PNG_1x1, 'test.png')
+      .field('ticketId', String(ticket.body.data.id));
 
     const res = await request(app).get(`/api/attachments/${upload.body.data.id}`);
 
     expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/^image\/png/);
+    expect(res.headers['content-disposition']).toBe('inline');
     expect(res.body).toEqual(PNG_1x1);
+  });
+
+  it('forces text with an HTML filename to download instead of rendering it', async () => {
+    const token = await createUserAndGetToken('get-text-safe@test.com');
+    const ticket = await createTicket(token);
+    const payload = Buffer.from('<!doctype html><script>document.cookie</script>');
+    const upload = await request(app)
+      .post('/api/attachments/upload')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', payload, { filename: 'audit.html', contentType: 'text/plain' })
+      .field('ticketId', String(ticket.body.data.id));
+
+    expect(upload.status).toBe(201);
+    expect(path.extname(upload.body.data.path)).toBe('');
+
+    const res = await request(app).get(`/api/attachments/${upload.body.data.id}`);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toMatch(/^text\/plain/);
+    expect(res.headers['content-disposition']).toBe("attachment; filename*=UTF-8''audit.html");
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.text).toBe(payload.toString());
+  });
+
+  it('allows only the uploader or an admin to read an orphan attachment', async () => {
+    const ownerToken = await createUserAndGetToken('orphan-owner@test.com');
+    const otherToken = await createUserAndGetToken('orphan-other@test.com');
+    const adminToken = await getAdminToken('orphan-admin@test.com');
+    const upload = await request(app)
+      .post('/api/attachments/upload')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .attach('file', PNG_1x1, 'orphan.png');
+    const url = `/api/attachments/${upload.body.data.id}`;
+
+    expect((await request(app).get(url)).status).toBe(404);
+    expect((await request(app).get(url).set('Authorization', `Bearer ${otherToken}`)).status).toBe(
+      404,
+    );
+    expect((await request(app).get(url).set('Authorization', `Bearer ${ownerToken}`)).status).toBe(
+      200,
+    );
+    expect((await request(app).get(url).set('Authorization', `Bearer ${adminToken}`)).status).toBe(
+      200,
+    );
   });
 
   it('returns 404 for nonexistent attachment', async () => {
@@ -146,7 +195,7 @@ describe('DELETE /api/attachments/:id', () => {
     expect(row).toBeNull();
   });
 
-  it('rejects deletion by non-uploader with 403', async () => {
+  it('hides an orphan attachment from a non-uploader', async () => {
     const ownerToken = await createUserAndGetToken('delete-owner2@test.com');
     const otherToken = await createUserAndGetToken('delete-other@test.com');
     const upload = await request(app)
@@ -158,7 +207,7 @@ describe('DELETE /api/attachments/:id', () => {
       .delete(`/api/attachments/${upload.body.data.id}`)
       .set('Authorization', `Bearer ${otherToken}`);
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
 
     const row = await prisma().attachment.findUnique({ where: { id: upload.body.data.id } });
     expect(row).not.toBeNull();

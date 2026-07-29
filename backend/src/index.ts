@@ -39,6 +39,7 @@ async function startFullApp() {
   const app = createApp();
   const server = createServer(app);
   initSocket(server);
+  await scheduleOrphanAttachmentCleanup();
 
   server.listen(config.port, () => {
     console.log(`LightTickets API running on port ${config.port}`);
@@ -119,10 +120,35 @@ async function startFullAppAfterSetup(setupServer: Server): Promise<void> {
   const app = createApp();
   const server = createServer(app);
   initSocket(server);
+  await scheduleOrphanAttachmentCleanup();
 
   setupServer.close(() => {
     server.listen(config.port, () => {
       console.log(`LightTickets API running on port ${config.port}`);
     });
   });
+}
+
+async function scheduleOrphanAttachmentCleanup(): Promise<void> {
+  const [{ cleanupExpiredOrphanAttachments }, { ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS }] =
+    await Promise.all([
+      import('./services/attachment.service.js'),
+      import('./constants/upload.js'),
+    ]);
+  let running = false;
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await cleanupExpiredOrphanAttachments();
+    } catch {
+      console.warn('[attachments] Failed to clean up expired orphan attachments');
+    } finally {
+      running = false;
+    }
+  };
+
+  void run();
+  const timer = setInterval(() => void run(), ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS);
+  timer.unref();
 }

@@ -1,7 +1,7 @@
 import type { Response } from 'express';
 import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import type { IStorageAdapter, SaveInput } from './types.js';
+import type { IStorageAdapter, SaveInput, ServeInput } from './types.js';
 import type { S3Config } from '../../config.js';
 import { createS3Client } from './s3-client.js';
 import { StorageDriver } from '../../constants/storage-driver.js';
@@ -34,8 +34,13 @@ export class S3StorageAdapter implements IStorageAdapter {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
 
-  async serve(res: Response, key: string, _filename?: string): Promise<void> {
-    const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+  async serve(res: Response, input: ServeInput): Promise<void> {
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: input.key,
+      ResponseContentType: input.mimeType,
+      ResponseContentDisposition: input.contentDisposition,
+    });
     const url = await getSignedUrl(this.client, command, {
       expiresIn: this.presignExpiry,
     });

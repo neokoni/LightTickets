@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { Response } from 'express';
-import type { IStorageAdapter, SaveInput } from './types.js';
+import type { IStorageAdapter, SaveInput, ServeInput } from './types.js';
 import { NotFoundError } from '../../utils/errors.js';
 import { StorageDriver } from '../../constants/storage-driver.js';
 
@@ -28,13 +28,18 @@ export class LocalStorageAdapter implements IStorageAdapter {
     }
   }
 
-  async serve(res: Response, key: string, _filename?: string): Promise<void> {
-    const filePath = path.resolve(this.uploadDir, key);
+  async serve(res: Response, input: ServeInput): Promise<void> {
+    const filePath = path.resolve(this.uploadDir, input.key);
     try {
       await fs.promises.access(filePath);
     } catch {
       throw new NotFoundError('附件文件不存在');
     }
-    res.sendFile(filePath);
+    res.sendFile(filePath, {
+      headers: {
+        'Content-Type': input.mimeType,
+        'Content-Disposition': input.contentDisposition,
+      },
+    });
   }
 }

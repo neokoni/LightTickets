@@ -1,27 +1,30 @@
 import { prisma } from '../db.js';
 import { NotFoundError, ValidationError } from '../utils/errors.js';
 import crypto from 'crypto';
-import path from 'path';
 import { getStorageAdapter } from './storage/index.js';
 import type { Response } from 'express';
 import * as ticketService from './ticket.service.js';
-
-const MAGIC_BYTES: Record<string, number[][]> = {
-  'image/png': [[0x89, 0x50, 0x4e, 0x47]],
-  'image/jpeg': [[0xff, 0xd8, 0xff]],
-  'image/gif': [[0x47, 0x49, 0x46, 0x38]],
-  'image/webp': [[0x52, 0x49, 0x46, 0x46]],
-  'application/pdf': [[0x25, 0x50, 0x44, 0x46]],
-  'text/plain': [],
-};
+import { ORPHAN_ATTACHMENT_TTL_MS, UPLOAD_TYPE_BY_MIME } from '../constants/upload.js';
+import { isAdminRole } from '../constants/roles.js';
 
 function validateMagicBytes(buffer: Buffer, mimeType: string): void {
-  const signatures = MAGIC_BYTES[mimeType];
-  if (!signatures || signatures.length === 0) return;
-  const matches = signatures.some((sig) => sig.every((byte, i) => buffer[i] === byte));
+  const definition = UPLOAD_TYPE_BY_MIME.get(mimeType);
+  if (!definition) throw new ValidationError('不支持的文件类型');
+  if (definition.magicBytes.length === 0) return;
+  const matches = definition.magicBytes.some((signature) =>
+    signature.every((byte, index) => buffer[index] === byte),
+  );
   if (!matches) {
     throw new ValidationError('文件内容与声明类型不匹配');
   }
+}
+
+function encodeContentDispositionFilename(filename: string): string {
+  const encoded = encodeURIComponent(filename).replace(
+    /['()*]/g,
+    (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `attachment; filename*=UTF-8''${encoded}`;
 }
 
 type UploadedFileInput = {
@@ -72,8 +75,7 @@ export async function saveUploadedFile(input: {
     });
   }
 
-  const ext = path.extname(input.file.originalname);
-  const key = crypto.randomUUID() + ext;
+  const key = crypto.randomUUID();
   const adapter = await getStorageAdapter();
   await adapter.save({
     buffer: input.file.buffer,
@@ -127,6 +129,11 @@ async function getVisibleAttachment(id: string, viewer?: ticketService.TicketVie
   const ticketId = attachment.ticketId ?? attachment.comment?.ticketId;
   if (ticketId !== undefined && ticketId !== null) {
     await ticketService.assertTicketVisible(ticketId, viewer);
+  } else if (
+    viewer?.userId !== attachment.uploadedBy &&
+    (viewer?.role === undefined || !isAdminRole(viewer.role))
+  ) {
+    throw new NotFoundError('附件不存在');
   }
   return attachment;
 }
@@ -137,8 +144,46 @@ export async function assertAttachmentVisible(id: string, viewer?: ticketService
 
 export async function serve(id: string, res: Response, viewer?: ticketService.TicketViewer) {
   const attachment = await getVisibleAttachment(id, viewer);
+  const uploadType = UPLOAD_TYPE_BY_MIME.get(attachment.mimeType);
   const adapter = await getStorageAdapter();
-  await adapter.serve(res, attachment.path, attachment.filename);
+  await adapter.serve(res, {
+    key: attachment.path,
+    mimeType: uploadType?.mimeType ?? 'application/octet-stream',
+    contentDisposition: uploadType?.inline
+      ? 'inline'
+      : encodeContentDispositionFilename(attachment.filename),
+  });
+}
+
+export async function cleanupExpiredOrphanAttachments(now = new Date()): Promise<number> {
+  const cutoff = new Date(now.getTime() - ORPHAN_ATTACHMENT_TTL_MS);
+  const attachments = await prisma().attachment.findMany({
+    where: { ticketId: null, commentId: null, createdAt: { lte: cutoff } },
+    select: { id: true, path: true },
+  });
+  if (attachments.length === 0) return 0;
+
+  const adapter = await getStorageAdapter();
+  let deleted = 0;
+  for (const attachment of attachments) {
+    const result = await prisma().attachment.deleteMany({
+      where: {
+        id: attachment.id,
+        ticketId: null,
+        commentId: null,
+        createdAt: { lte: cutoff },
+      },
+    });
+    if (result.count === 0) continue;
+
+    deleted += 1;
+    try {
+      await adapter.delete(attachment.path);
+    } catch {
+      console.warn(`[attachments] Failed to delete expired orphan file ${attachment.id}`);
+    }
+  }
+  return deleted;
 }
 
 export async function cleanupTicketAttachments(ticketId: number): Promise<void> {

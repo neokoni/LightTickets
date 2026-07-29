@@ -9,7 +9,13 @@ import {
 import { ROLE, isAdminRole, isStaffRole } from '../src/constants/roles.js';
 import { TICKET_STATUS, canTransitionTicketStatus } from '../src/constants/ticket-status.js';
 import { TEMPLATE_HIDDEN_MODE } from '../src/constants/ticket-visibility.js';
-import { ALLOWED_MIME_TYPES } from '../src/constants/upload.js';
+import {
+  ALLOWED_MIME_TYPES,
+  ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS,
+  ORPHAN_ATTACHMENT_TTL_MS,
+  UPLOAD_TYPE_BY_MIME,
+  UPLOAD_TYPE_DEFINITIONS,
+} from '../src/constants/upload.js';
 
 describe('USER_PUBLIC_SELECT', () => {
   it('contains the 9 public user fields', () => {
@@ -148,5 +154,21 @@ describe('ALLOWED_MIME_TYPES', () => {
       'application/pdf',
       'text/plain',
     ]);
+  });
+
+  it('keeps validation and response policy synchronized with the allowlist', () => {
+    expect(UPLOAD_TYPE_DEFINITIONS.map(({ mimeType }) => mimeType)).toEqual(ALLOWED_MIME_TYPES);
+    for (const definition of UPLOAD_TYPE_DEFINITIONS) {
+      expect(UPLOAD_TYPE_BY_MIME.get(definition.mimeType)).toBe(definition);
+    }
+    expect(UPLOAD_TYPE_BY_MIME.get('image/png')?.inline).toBe(true);
+    expect(UPLOAD_TYPE_BY_MIME.get('text/plain')?.inline).toBe(false);
+    expect(UPLOAD_TYPE_BY_MIME.get('application/pdf')?.inline).toBe(false);
+  });
+
+  it('uses a one-hour orphan TTL and a shorter cleanup interval', () => {
+    expect(ORPHAN_ATTACHMENT_TTL_MS).toBe(60 * 60 * 1000);
+    expect(ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS).toBe(15 * 60 * 1000);
+    expect(ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS).toBeLessThan(ORPHAN_ATTACHMENT_TTL_MS);
   });
 });
