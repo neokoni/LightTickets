@@ -57,6 +57,8 @@ public class SQLAdapter {
         runSql(getCreatePlayerBindTableSql());
         runSql(getAddPlayerRoleColumnSql());
         runSql(getAddPlayerCredentialColumnSql());
+        runSql(getCreateHookReceiptTableSql());
+        runSql(getCleanupHookReceiptsSql());
     }
 
     public PlayerBind getPlayerBind(Player player) {
@@ -125,6 +127,33 @@ public class SQLAdapter {
 
     public String getAddPlayerCredentialColumnSql() {
         return "ALTER TABLE player_bind ADD COLUMN player_credential VARCHAR(128);";
+    }
+
+    public String getCreateHookReceiptTableSql() {
+        return """
+                CREATE TABLE IF NOT EXISTS hook_receipt (
+                    hook_id VARCHAR(128) PRIMARY KEY,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+                """;
+    }
+
+    public String getCleanupHookReceiptsSql() {
+        return "DELETE FROM hook_receipt WHERE created_at < DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 90 DAY);";
+    }
+
+    public String getClaimHookReceiptSql() {
+        return "INSERT IGNORE INTO hook_receipt(hook_id) VALUES(?);";
+    }
+
+    public boolean claimHookReceipt(String hookId) {
+        try (Connection connection = getDataSource().getConnection();
+             PreparedStatement statement = connection.prepareStatement(getClaimHookReceiptSql())) {
+            statement.setString(1, hookId);
+            return statement.executeUpdate() == 1;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public String getPlayerBindSql() {

@@ -3,7 +3,7 @@ import { prisma } from '../db.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
 import * as templateService from './template.service.js';
-import { emitResolvedHookExecute, toHookTicketPayload } from '../socket/events.js';
+import * as minecraftHookDeliveryService from './minecraft-hook-delivery.service.js';
 
 type HookValue = string | string[];
 
@@ -144,7 +144,7 @@ export async function createPendingForEvent(
   ticket: HookTicket,
   event: string,
 ): Promise<number> {
-  const definition = templateService.getDefinition(ticket.template);
+  const definition = templateService.getEnabledDefinition(ticket.template);
   if (!definition) return 0;
   const variables = templateService.createHookVariables(ticket);
   const hooks = templateService.resolveSelectionHooks(definition, event, variables);
@@ -191,8 +191,14 @@ export async function complete(
   const fields = parseJson<templateService.SelectionHookField[]>(hook.fields, '完成钩子字段');
   const normalized = validateResponse(fields, values);
   const completedAt = new Date();
+  const variables = templateService.createHookVariables(hook.ticket);
+  for (const [id, value] of Object.entries(normalized)) {
+    variables[`selection.${id}`] = Array.isArray(value) ? value.join(',') : value;
+  }
+  const actions = parseJson<templateService.CompletionHookAction[]>(hook.actions, '完成钩子动作');
+  const resolved = templateService.resolveHookActions(actions, variables);
 
-  const completed = await prisma().$transaction(async (tx) => {
+  const result = await prisma().$transaction(async (tx) => {
     const result = await tx.ticketCompletionHook.updateMany({
       where: { id: hook.id, ticketId, status: 'pending' },
       data: {
@@ -211,27 +217,21 @@ export async function complete(
         newValue: hook.title,
       },
     });
-    return tx.ticketCompletionHook.findUniqueOrThrow({
+    const completed = await tx.ticketCompletionHook.findUniqueOrThrow({
       where: { id: hook.id },
       select: hookViewSelect,
     });
-  });
-
-  if (hook.ticket.serverId) {
-    const actions = parseJson<templateService.CompletionHookAction[]>(hook.actions, '完成钩子动作');
-    const variables = templateService.createHookVariables(hook.ticket);
-    for (const [id, value] of Object.entries(normalized)) {
-      variables[`selection.${id}`] = Array.isArray(value) ? value.join(',') : value;
-    }
-    const resolved = templateService.resolveHookActions(actions, variables);
-    emitResolvedHookExecute(
-      hook.ticket.serverId,
-      toHookTicketPayload(hook.ticket),
+    const deliveryId = await minecraftHookDeliveryService.createForResolvedHooks(
+      tx,
+      hook.ticket,
       hook.event,
       resolved,
       variables,
     );
-  }
+    return { completed, deliveryId };
+  });
 
-  return toView(completed);
+  if (result.deliveryId) await minecraftHookDeliveryService.dispatch(result.deliveryId);
+
+  return toView(result.completed);
 }

@@ -75,5 +75,9 @@ public class PlayerData {
         PlayerSessionManager.invalidate(playerUuid);
     }
 
+    public static boolean claimHookExecution(String hookId) {
+        return sqlAdapter.claimHookReceipt(hookId);
+    }
+
     public record CachedTicket(int id, String title, String status, String createdAt) {}
 }

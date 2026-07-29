@@ -58,4 +58,24 @@ public class SQLiteAdapter extends SQLAdapter {
     public String getAddPlayerCredentialColumnSql() {
         return "ALTER TABLE player_bind ADD COLUMN player_credential TEXT;";
     }
+
+    @Override
+    public String getCreateHookReceiptTableSql() {
+        return """
+                CREATE TABLE IF NOT EXISTS hook_receipt (
+                    hook_id TEXT PRIMARY KEY,
+                    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+                );
+                """;
+    }
+
+    @Override
+    public String getCleanupHookReceiptsSql() {
+        return "DELETE FROM hook_receipt WHERE created_at < datetime('now', '-90 days');";
+    }
+
+    @Override
+    public String getClaimHookReceiptSql() {
+        return "INSERT INTO hook_receipt(hook_id) VALUES(?) ON CONFLICT(hook_id) DO NOTHING;";
+    }
 }

@@ -1,6 +1,7 @@
 package ink.neokoni.lightTickets.Utils;
 
 import ink.neokoni.lightTickets.Configs.Config;
+import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
 import io.socket.client.IO;
 import io.socket.client.Socket;
@@ -123,11 +124,10 @@ public class WebSocketClient {
         JSONObject data = firstObject(args);
         if (data == null) return;
 
+        String deliveryId = data.optString("deliveryId", "").trim();
+        if (deliveryId.isEmpty()) return;
         UUID playerUuid = parseUuid(data.optString("playerUuid", ""));
         JSONArray hooks = data.optJSONArray("hooks");
-        if (hooks == null) {
-            hooks = legacyCommandHooks(data.optJSONArray("commands"));
-        }
         if (hooks == null || hooks.length() == 0) return;
         final JSONArray executableHooks = hooks;
 
@@ -135,13 +135,20 @@ public class WebSocketClient {
             for (int i = 0; i < executableHooks.length(); i++) {
                 JSONObject hook = executableHooks.optJSONObject(i);
                 if (hook == null) continue;
+                String hookId = hook.optString("hookId", "").trim();
+                if (!hookId.startsWith(deliveryId + ":")) return;
+                if (!PlayerData.claimHookExecution(hookId)) continue;
                 executeHook(hook, playerUuid);
+            }
+            Socket activeSocket = socket;
+            if (activeSocket != null && activeSocket.connected()) {
+                activeSocket.emit("hook:ack", deliveryId);
             }
         });
     }
 
     private static String executeHook(JSONObject hook, UUID playerUuid) {
-        String type = hook.optString("type", "command");
+        String type = hook.optString("type", "");
         String content = hook.optString("content", "").trim();
         if (content.isEmpty()) return null;
 
@@ -176,21 +183,6 @@ public class WebSocketClient {
                 task -> player.sendMessage(component),
                 null);
         return null;
-    }
-
-    private static JSONArray legacyCommandHooks(JSONArray commands) {
-        if (commands == null) return null;
-        JSONArray hooks = new JSONArray();
-        for (int i = 0; i < commands.length(); i++) {
-            String command = commands.optString(i, "").trim();
-            if (command.isEmpty()) continue;
-            hooks.put(new JSONObject(Map.of(
-                    "hookId", "legacy:" + i + ":" + System.currentTimeMillis(),
-                    "ticketId", 0,
-                    "type", "command",
-                    "content", command)));
-        }
-        return hooks;
     }
 
     private static void sendToPlayer(UUID playerUuid, Component message) {

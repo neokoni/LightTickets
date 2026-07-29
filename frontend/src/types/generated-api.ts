@@ -817,9 +817,11 @@ export interface paths {
           'application/json': {
             title: string;
             template: string;
+            /** @description Fields declared by the selected template; unknown and invalid values are rejected */
             formData: {
               [key: string]: string;
             };
+            /** @description Minecraft source server; accepted only for staff and admin users */
             serverId?: string;
             attachmentIds?: string[];
             hidden?: boolean;

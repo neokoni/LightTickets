@@ -175,6 +175,63 @@ describe('POST /api/tickets', () => {
     expect(res.status).toBe(400);
   });
 
+  it('rejects unknown template fields and missing required fields', async () => {
+    const token = await createUserAndGetToken('strict-form@test.com');
+    const unknown = await createTicket(token, {
+      formData: { description: 'x', reproduce: 'y', marker: 'injected' },
+    });
+    const missing = await createTicket(token, {
+      formData: { description: 'x' },
+    });
+
+    expect(unknown.status).toBe(400);
+    expect(missing.status).toBe(400);
+  });
+
+  it('rejects a normal Web user assigning a Minecraft server', async () => {
+    const token = await createUserAndGetToken('server-spoof@test.com');
+    const server = await prisma().server.create({
+      data: { name: 'Spoof target', apiKey: 'spoof-target-key' },
+    });
+
+    const res = await createTicket(token, { serverId: server.id });
+
+    expect(res.status).toBe(403);
+    expect(await prisma().ticket.count()).toBe(0);
+  });
+
+  it('checks Web server assignment permission before server existence', async () => {
+    const token = await createUserAndGetToken('missing-server-spoof@test.com');
+
+    const missing = await createTicket(token, { serverId: 'missing-server' });
+    const empty = await createTicket(token, { serverId: '' });
+
+    expect(missing.status).toBe(403);
+    expect(empty.status).toBe(403);
+    expect(await prisma().ticket.count()).toBe(0);
+  });
+
+  it('allows staff to assign a server to a Web-created ticket', async () => {
+    const staffToken = await createStaffAndGetToken('server-staff@test.com');
+    const server = await prisma().server.create({
+      data: { name: 'Staff target', apiKey: 'staff-target-key' },
+    });
+
+    const res = await createTicket(staffToken, { serverId: server.id });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.serverId).toBe(server.id);
+  });
+
+  it('rejects a missing server assigned by staff', async () => {
+    const staffToken = await createStaffAndGetToken('missing-server-staff@test.com');
+
+    const res = await createTicket(staffToken, { serverId: 'missing-server' });
+
+    expect(res.status).toBe(400);
+    expect(await prisma().ticket.count()).toBe(0);
+  });
+
   it('claims pre-uploaded markdown attachments during create without body audit', async () => {
     const token = await createUserAndGetToken('create-attachment@test.com');
     const upload = await request(app)
@@ -524,6 +581,59 @@ describe('POST /api/tickets/:id/close', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('requires staff confirmation for command hooks and emits one stable delivery under concurrency', async () => {
+    const authorToken = await createUserAndGetToken('command-hook-author@test.com');
+    const staffToken = await createStaffAndGetToken('command-hook-staff@test.com');
+    const server = await prisma().server.create({
+      data: { name: 'Command Hook Server', apiKey: 'command-hook-server-key' },
+    });
+    const created = await createTicket(authorToken, {
+      template: 'permission_request',
+      formData: { reason: 'Need access', permission: 'Bot权限' },
+    });
+    const ticketId = created.body.data.id as number;
+    await prisma().ticket.update({ where: { id: ticketId }, data: { serverId: server.id } });
+
+    const playerClose = await request(app)
+      .post(`/api/tickets/${ticketId}/close`)
+      .set('Authorization', `Bearer ${authorToken}`);
+    expect(playerClose.status).toBe(403);
+
+    const playerPatch = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${authorToken}`)
+      .send({ status: 'closed' });
+    expect(playerPatch.status).toBe(403);
+
+    const results = await Promise.all([
+      request(app)
+        .post(`/api/tickets/${ticketId}/close`)
+        .set('Authorization', `Bearer ${staffToken}`),
+      request(app)
+        .post(`/api/tickets/${ticketId}/close`)
+        .set('Authorization', `Bearer ${staffToken}`),
+    ]);
+    expect(results.filter((result) => result.status === 200)).toHaveLength(1);
+    expect(results.filter((result) => result.status !== 200)).toHaveLength(1);
+    const loser = results.find((result) => result.status !== 200)!;
+    expect([403, 409]).toContain(loser.status);
+
+    const deliveries = await prisma().minecraftHookDelivery.findMany({ where: { ticketId } });
+    const audits = await prisma().auditLog.findMany({
+      where: { ticketId, action: 'status_change' },
+    });
+    expect(deliveries).toHaveLength(1);
+    expect(audits).toHaveLength(1);
+    const hooks = JSON.parse(deliveries[0].hooks) as Array<{
+      hookId: string;
+      type: string;
+      content: string;
+    }>;
+    expect(hooks).toHaveLength(2);
+    expect(hooks.every((hook) => hook.hookId.startsWith(`${deliveries[0].id}:`))).toBe(true);
+    expect(hooks.some((hook) => hook.type === 'command')).toBe(true);
+  });
 });
 
 describe('POST /api/tickets/:id/reopen', () => {
@@ -553,9 +663,9 @@ describe('POST /api/tickets/:id/completion-hooks/:hookId/complete', () => {
     const created = await createTicket(authorToken, {
       template: selectionTemplateName,
       formData: { description: 'Needs a resolution' },
-      serverId: server.id,
     });
     const ticketId = created.body.data.id as number;
+    await prisma().ticket.update({ where: { id: ticketId }, data: { serverId: server.id } });
 
     await request(app)
       .post(`/api/tickets/${ticketId}/close`)

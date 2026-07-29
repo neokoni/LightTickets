@@ -5,6 +5,7 @@ import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { dataPath } from '../src/paths.js';
 import { prisma } from './setup.js';
+import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import * as templateService from '../src/services/template.service.js';
 import * as ticketService from '../src/services/ticket.service.js';
 
@@ -198,13 +199,16 @@ describe('ticket visibility on web routes', () => {
 });
 
 describe('ticket visibility on Minecraft routes', () => {
-  it('uses optional Minecraft identity to expose own or staff-visible hidden tickets', async () => {
+  it('uses authenticated Minecraft identity to expose own or staff-visible hidden tickets', async () => {
     const authorUuid = '00000000-0000-0000-0000-000000000101';
     const otherUuid = '00000000-0000-0000-0000-000000000102';
     const staffUuid = '00000000-0000-0000-0000-000000000103';
     const author = await createUser('visibility-mc-author', { minecraftUuid: authorUuid });
-    await createUser('visibility-mc-other', { minecraftUuid: otherUuid });
-    await createUser('visibility-mc-staff', { role: 'staff', minecraftUuid: staffUuid });
+    const other = await createUser('visibility-mc-other', { minecraftUuid: otherUuid });
+    const staff = await createUser('visibility-mc-staff', {
+      role: 'staff',
+      minecraftUuid: staffUuid,
+    });
     const server = await prisma().server.create({
       data: { name: 'visibility-mc', apiKey: 'visibility-mc-key' },
     });
@@ -214,6 +218,7 @@ describe('ticket visibility on Minecraft routes', () => {
         body: 'Private body',
         template: 'bug_report',
         authorId: author.user.id,
+        serverId: server.id,
         hidden: true,
       },
     });
@@ -221,31 +226,65 @@ describe('ticket visibility on Minecraft routes', () => {
       data: { ticketId: ticket.id, authorId: author.user.id, body: 'Private MC comment' },
     });
 
-    async function mcGet(url: string) {
-      return request(app).get(url).set('X-Server-Key', server.apiKey);
+    async function createSession(userId: number, minecraftUuid: string, suffix: string) {
+      const credential = `${suffix}-credential`.padEnd(48, 'x');
+      await prisma().minecraftPlayerCredential.create({
+        data: { userId, minecraftUuid, credentialHash: hashMinecraftSecret(credential) },
+      });
+      const session = await request(app)
+        .post('/api/mc/session')
+        .set('X-Server-Key', server.apiKey)
+        .send({ minecraftUuid, playerCredential: credential });
+      return session.body.data.sessionToken as string;
+    }
+    const authorSession = await createSession(author.user.id, authorUuid, 'author');
+    const otherSession = await createSession(other.user.id, otherUuid, 'other');
+    const staffSession = await createSession(staff.user.id, staffUuid, 'staff');
+
+    async function mcGet(url: string, session: string) {
+      return request(app)
+        .get(url)
+        .set('X-Server-Key', server.apiKey)
+        .set('X-Player-Session', session);
     }
 
-    const publicList = await mcGet('/api/mc/tickets');
-    const authorList = await mcGet(`/api/mc/tickets?minecraftUuid=${authorUuid}`);
-    const otherList = await mcGet(`/api/mc/tickets?minecraftUuid=${otherUuid}`);
-    const staffList = await mcGet(`/api/mc/tickets?minecraftUuid=${staffUuid}`);
-    expect(publicList.body.data.tickets).toHaveLength(0);
+    const publicList = await request(app).get('/api/mc/tickets').set('X-Server-Key', server.apiKey);
+    const authorList = await mcGet(`/api/mc/tickets?minecraftUuid=${authorUuid}`, authorSession);
+    const otherList = await mcGet(`/api/mc/tickets?minecraftUuid=${otherUuid}`, otherSession);
+    const staffList = await mcGet(`/api/mc/tickets?minecraftUuid=${staffUuid}`, staffSession);
+    expect(publicList.status).toBe(401);
     expect(otherList.body.data.tickets).toHaveLength(0);
     expect(authorList.body.data.tickets).toHaveLength(1);
     expect(staffList.body.data.tickets).toHaveLength(1);
 
-    expect((await mcGet(`/api/mc/tickets/${ticket.id}/detail`)).status).toBe(404);
+    expect((await mcGet(`/api/mc/tickets/${ticket.id}/detail`, authorSession)).status).toBe(400);
     expect(
-      (await mcGet(`/api/mc/tickets/${ticket.id}/detail?minecraftUuid=${otherUuid}`)).status,
+      (await mcGet(`/api/mc/tickets/${ticket.id}/detail?minecraftUuid=${otherUuid}`, otherSession))
+        .status,
     ).toBe(404);
     expect(
-      (await mcGet(`/api/mc/tickets/${ticket.id}/comments?minecraftUuid=${otherUuid}`)).status,
+      (
+        await mcGet(
+          `/api/mc/tickets/${ticket.id}/comments?minecraftUuid=${otherUuid}`,
+          otherSession,
+        )
+      ).status,
     ).toBe(404);
     expect(
-      (await mcGet(`/api/mc/tickets/${ticket.id}/detail?minecraftUuid=${authorUuid}`)).status,
+      (
+        await mcGet(
+          `/api/mc/tickets/${ticket.id}/detail?minecraftUuid=${authorUuid}`,
+          authorSession,
+        )
+      ).status,
     ).toBe(200);
     expect(
-      (await mcGet(`/api/mc/tickets/${ticket.id}/comments?minecraftUuid=${staffUuid}`)).status,
+      (
+        await mcGet(
+          `/api/mc/tickets/${ticket.id}/comments?minecraftUuid=${staffUuid}`,
+          staffSession,
+        )
+      ).status,
     ).toBe(200);
   });
 });

@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import { prisma } from '../db.js';
 
 let io: Server;
+let hookRetryTimer: NodeJS.Timeout | undefined;
 
 function firstString(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0];
@@ -38,10 +39,26 @@ export function initSocket(httpServer: HttpServer) {
   });
 
   mcNamespace.on('connection', (socket: Socket) => {
-    socket.join(`server:${socket.data.serverId}`);
+    const serverId = String(socket.data.serverId);
+    socket.join(`server:${serverId}`);
     console.log(
       `[socket] Minecraft server connected: ${socket.data.serverName} (${socket.data.serverId})`,
     );
+
+    void import('../services/minecraft-hook-delivery.service.js')
+      .then((service) => service.dispatchPendingForServer(serverId))
+      .catch((error: unknown) => {
+        console.error('[socket] Failed to dispatch pending Minecraft hooks', error);
+      });
+
+    socket.on('hook:ack', (deliveryId: unknown) => {
+      if (typeof deliveryId !== 'string' || deliveryId.length > 128) return;
+      void import('../services/minecraft-hook-delivery.service.js')
+        .then((service) => service.acknowledge(serverId, deliveryId))
+        .catch((error: unknown) => {
+          console.error('[socket] Failed to acknowledge Minecraft hook', error);
+        });
+    });
 
     socket.on('disconnect', () => {
       console.log(
@@ -49,6 +66,21 @@ export function initSocket(httpServer: HttpServer) {
       );
     });
   });
+
+  if (hookRetryTimer) clearInterval(hookRetryTimer);
+  hookRetryTimer = setInterval(() => {
+    const connectedServerIds = new Set(
+      Array.from(mcNamespace.sockets.values(), (socket) => String(socket.data.serverId)),
+    );
+    for (const serverId of connectedServerIds) {
+      void import('../services/minecraft-hook-delivery.service.js')
+        .then((service) => service.dispatchPendingForServer(serverId))
+        .catch((error: unknown) => {
+          console.error('[socket] Failed to retry pending Minecraft hooks', error);
+        });
+    }
+  }, 30_000);
+  hookRetryTimer.unref();
 
   return io;
 }

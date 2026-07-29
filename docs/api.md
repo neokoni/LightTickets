@@ -326,7 +326,6 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
     "description": "问题描述",
     "reproduce": "复现步骤"
   },
-  "serverId": "server-id",
   "attachmentIds": ["attachment-id"],
   "hidden": true
 }
@@ -336,8 +335,9 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
 
 - `title`：1-200 字符
 - `template`：模板名
-- `formData`：字符串键值对象
-- `serverId`：可选
+- `formData`：严格按所选模板声明的字段提交；未知字段、缺失必填字段、非法选项和超长值会被拒绝
+- `serverId`：可选，但只有 `staff` / `admin` 可以通过 Web API 指定；普通用户提交该字段返回 `403`，
+  Minecraft API 则只能使用当前已认证 API Key 对应的服务器
 - `attachmentIds`：可选，预上传附件 ID 列表；创建成功后关联到该议题
 - `hidden`：仅当模板策略为 `optional` 时必填；其他策略由后端强制决定
 
@@ -389,6 +389,8 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
 
 作者可在规则内开关自己的议题；`staff` / `admin` 可处理任意状态和负责人。
 只有 `staff` / `admin` 可更改 `hidden`，更改会写入议题审计日志。
+状态迁移采用旧状态条件更新；并发请求未取得迁移权时返回 `409`，且不会重复创建审计或执行 Hook。
+若目标状态包含 Minecraft console command Hook，则必须由 `staff` / `admin` 操作，普通作者返回 `403`。
 
 ### 更新正文
 
@@ -436,6 +438,14 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
 
 后端按模板快照校验必填项和预设选项，原子地将状态标记为 `completed` 并记录操作人，然后按
 配置顺序下发多个动作。已完成的记录再次提交返回 `409`，不会重复下发动作。
+
+Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次投递及其中的 `hookId` 均保持
+稳定；在线插件执行后发送 ACK，后端会在重连和定时任务中重投未确认项。插件在本地数据库持久
+记录已执行的 `hookId`，因此重投不会重复执行 console command。缺少 `deliveryId`、非法 `hookId`
+或旧版仅含 `commands` 的消息会被插件拒绝。
+
+该 outbox 表为 additive migration。部署时应先应用数据库迁移，再同时升级后端和插件；应用层回滚时
+保留该表和未确认记录。不得回滚到随机 Hook ID、无 ACK 或无持久去重的旧执行路径。
 
 首次状态变化生成至少一个执行选项时，审计日志会追加一次“等待执行决策”；每次提交成功后再以
 实际操作人为 actor 追加“完成了决策”。

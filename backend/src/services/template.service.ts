@@ -411,6 +411,69 @@ export function getDefinition(name: string): TemplateDefinition | undefined {
   return cache.get(name)?.definition;
 }
 
+export function getEnabledDefinition(name: string): TemplateDefinition | undefined {
+  const entry = cache.get(name);
+  return entry?.enabled ? entry.definition : undefined;
+}
+
+function fieldOptionLabels(field: TemplateField): string[] {
+  return (field.attributes.options ?? []).map((option) =>
+    typeof option === 'string' ? option : option.label,
+  );
+}
+
+export function validateAndNormalizeFormData(
+  def: TemplateDefinition,
+  formData: Record<string, string>,
+): Record<string, string> {
+  const fields = def.body.filter(
+    (field): field is TemplateField & { id: string } => field.type !== 'markdown' && !!field.id,
+  );
+  const knownIds = new Set(fields.map((field) => field.id));
+  if (Object.keys(formData).some((id) => !knownIds.has(id))) {
+    throw new ValidationError('提交内容包含未知字段');
+  }
+
+  const normalized: Record<string, string> = {};
+  for (const field of fields) {
+    const raw = formData[field.id] ?? '';
+    const label = field.attributes.label || field.id;
+    const required = field.validations?.required === true;
+    if (raw.length > 2000) throw new ValidationError(`${label} 内容过长`);
+
+    if (field.type === 'checkboxes') {
+      const selected = Array.from(
+        new Set(
+          raw
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean),
+        ),
+      );
+      const allowed = fieldOptionLabels(field);
+      if (selected.some((value) => !allowed.includes(value))) {
+        throw new ValidationError(`${label} 包含无效选项`);
+      }
+      if (required && selected.length === 0) throw new ValidationError(`${label} 为必填项`);
+      const requiredOptions = (field.attributes.options ?? []).flatMap((option) =>
+        typeof option !== 'string' && option.required ? [option.label] : [],
+      );
+      if (requiredOptions.some((value) => !selected.includes(value))) {
+        throw new ValidationError(`${label} 缺少必选项`);
+      }
+      normalized[field.id] = selected.join(',');
+      continue;
+    }
+
+    if (required && !raw.trim()) throw new ValidationError(`${label} 为必填项`);
+    if (field.type === 'dropdown' && raw && !fieldOptionLabels(field).includes(raw)) {
+      throw new ValidationError(`${label} 包含无效选项`);
+    }
+    normalized[field.id] = raw;
+  }
+  return normalized;
+}
+
 export function renderBody(def: TemplateDefinition, formData: Record<string, string>): string {
   const parts: string[] = [];
   for (const field of def.body) {

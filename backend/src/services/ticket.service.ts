@@ -1,6 +1,6 @@
 import type { TicketStatus, Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
-import { NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.js';
+import { AppError, NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.js';
 import * as templateService from './template.service.js';
 import { TICKET_INCLUDE_BASE, TICKET_INCLUDE_DETAIL, USER_BRIEF_SELECT } from './constants.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
@@ -9,12 +9,8 @@ import { TICKET_STATUS } from '../constants/ticket-status.js';
 import { TEMPLATE_HIDDEN_MODE } from '../constants/ticket-visibility.js';
 import * as ticketNotificationService from './ticket-notification.service.js';
 import * as completionHookService from './completion-hook.service.js';
-import {
-  emitTicketUpdate,
-  emitToAllServers,
-  emitHookExecute,
-  toHookTicketPayload,
-} from '../socket/events.js';
+import * as minecraftHookDeliveryService from './minecraft-hook-delivery.service.js';
+import { emitTicketUpdate, emitToAllServers } from '../socket/events.js';
 
 type PrismaTx = Omit<
   ReturnType<typeof prisma>,
@@ -118,6 +114,18 @@ async function createPendingCompletionHooks(
   );
 }
 
+function assertDirectCommandHookPermission(
+  ticket: {
+    serverId: string | null;
+  },
+  hooks: templateService.ResolvedHook[],
+  isStaff: boolean,
+): void {
+  if (ticket.serverId && !isStaff && hooks.some((hook) => hook.type === 'command')) {
+    throw new ForbiddenError('包含控制台命令的完成操作必须由管理员或管理组确认');
+  }
+}
+
 interface CreateTicketInput {
   title: string;
   body?: string;
@@ -128,6 +136,8 @@ interface CreateTicketInput {
   gameContext?: string;
   attachmentIds?: string[];
   hidden?: boolean;
+  creatorRole?: string;
+  trustedServer?: boolean;
 }
 
 interface ListTicketsInput {
@@ -191,12 +201,20 @@ export function resolveTicketHidden(
 export async function create(input: CreateTicketInput) {
   let title = input.title;
   let body = input.body;
-  const def = templateService.getDefinition(input.template);
+  const def = templateService.getEnabledDefinition(input.template);
   if (!def) throw new ValidationError('无效的模板');
+  if (
+    input.serverId !== undefined &&
+    !input.trustedServer &&
+    !isStaffRole(input.creatorRole ?? '')
+  ) {
+    throw new ForbiddenError('只有管理组或可信 Minecraft 会话可以指定来源服务器');
+  }
+  const formData = templateService.validateAndNormalizeFormData(def, input.formData || {});
   const hidden = resolveTicketHidden(def.hidden, input.hidden);
 
   if (body === undefined) {
-    body = templateService.renderBody(def, input.formData || {});
+    body = templateService.renderBody(def, formData);
     if (def.title_prefix && !title.startsWith(def.title_prefix)) {
       title = def.title_prefix + title;
     }
@@ -206,6 +224,14 @@ export async function create(input: CreateTicketInput) {
   const labelReferences = Array.from(new Set(def.labels));
 
   return prisma().$transaction(async (tx) => {
+    if (input.serverId !== undefined) {
+      const server = await tx.server.findUnique({
+        where: { id: input.serverId },
+        select: { id: true },
+      });
+      if (!server) throw new ValidationError('来源服务器不存在');
+    }
+
     const templateLabels =
       labelReferences.length > 0
         ? await tx.label.findMany({
@@ -219,7 +245,7 @@ export async function create(input: CreateTicketInput) {
         title,
         body,
         template: input.template,
-        formData: input.formData ? JSON.stringify(input.formData) : null,
+        formData: JSON.stringify(formData),
         gameContext: input.gameContext ?? null,
         authorId: input.authorId,
         serverId: input.serverId,
@@ -349,11 +375,24 @@ export async function update(
   const statusChanged = nextStatus !== undefined && nextStatus !== ticket.status;
   const assigneeChanged = nextAssigneeId !== undefined && nextAssigneeId !== ticket.assigneeId;
   const visibilityChanged = data.hidden !== undefined && data.hidden !== ticket.hidden;
+  const hookEvent = statusChanged
+    ? minecraftHookDeliveryService.resolveTemplateEvent(ticket, nextStatus)
+    : null;
+  if (hookEvent) assertDirectCommandHookPermission(ticket, hookEvent.hooks, isStaff);
 
-  const updated = await prisma().$transaction(async (tx) => {
-    const updatedTicket = await tx.ticket.update({
+  const transition = await prisma().$transaction(async (tx) => {
+    if (statusChanged) {
+      const claimed = await tx.ticket.updateMany({
+        where: { id, status: ticket.status },
+        data: updateData,
+      });
+      if (claimed.count !== 1) throw new AppError(409, '议题状态已被其他请求修改');
+    } else {
+      await tx.ticket.update({ where: { id }, data: updateData });
+    }
+
+    const updatedTicket = await tx.ticket.findUniqueOrThrow({
       where: { id },
-      data: updateData,
       include: {
         author: { select: USER_BRIEF_SELECT },
         labels: { include: { label: true } },
@@ -361,11 +400,19 @@ export async function update(
       },
     });
 
+    let deliveryId: string | null = null;
     if (statusChanged) {
       await createAudit(tx, id, userId, AUDIT_ACTION.STATUS_CHANGE, ticket.status, nextStatus);
       if (nextStatus === TICKET_STATUS.CLOSED || nextStatus === TICKET_STATUS.INVALID) {
         await createPendingCompletionHooks(tx, ticket, nextStatus, userId);
       }
+      deliveryId = await minecraftHookDeliveryService.createForResolvedHooks(
+        tx,
+        ticket,
+        nextStatus,
+        hookEvent!.hooks,
+        hookEvent!.variables,
+      );
     }
     if (assigneeChanged) {
       await createAudit(
@@ -388,7 +435,7 @@ export async function update(
       );
     }
 
-    return updatedTicket;
+    return { updatedTicket, deliveryId };
   });
 
   if (statusChanged) {
@@ -398,21 +445,11 @@ export async function update(
       oldStatus: ticket.status,
       newStatus: nextStatus,
     });
-    if (ticket.serverId) {
-      const hookTicket = await prisma().ticket.findUnique({
-        where: { id },
-        include: {
-          author: { select: { minecraftUuid: true, minecraftName: true } },
-        },
-      });
-      if (hookTicket) {
-        emitHookExecute(ticket.serverId, toHookTicketPayload(hookTicket), nextStatus);
-      }
-    }
+    if (transition.deliveryId) await minecraftHookDeliveryService.dispatch(transition.deliveryId);
   }
 
   if (statusChanged) return getById(id, { userId, role: userRole });
-  return updated;
+  return transition.updatedTicket;
 }
 
 export async function updateBody(id: number, userId: number, userRole: string, body: string) {
@@ -500,12 +537,15 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
   if (ticket.status !== TICKET_STATUS.OPEN && ticket.status !== TICKET_STATUS.IN_PROGRESS) {
     throw new ForbiddenError('只有开放或处理中的议题可以关闭');
   }
+  const hookEvent = minecraftHookDeliveryService.resolveTemplateEvent(ticket, TICKET_STATUS.CLOSED);
+  assertDirectCommandHookPermission(ticket, hookEvent.hooks, isStaff);
 
-  await prisma().$transaction(async (tx) => {
-    await tx.ticket.update({
-      where: { id },
+  const deliveryId = await prisma().$transaction(async (tx) => {
+    const claimed = await tx.ticket.updateMany({
+      where: { id, status: ticket.status },
       data: { status: TICKET_STATUS.CLOSED, closedAt: new Date() },
     });
+    if (claimed.count !== 1) throw new AppError(409, '议题状态已被其他请求修改');
     await createAudit(
       tx,
       id,
@@ -515,6 +555,13 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
       TICKET_STATUS.CLOSED,
     );
     await createPendingCompletionHooks(tx, ticket, TICKET_STATUS.CLOSED, userId);
+    return minecraftHookDeliveryService.createForResolvedHooks(
+      tx,
+      ticket,
+      TICKET_STATUS.CLOSED,
+      hookEvent.hooks,
+      hookEvent.variables,
+    );
   });
 
   await emitStatusChanged(ticket, userId, ticket.status, TICKET_STATUS.CLOSED);
@@ -524,17 +571,7 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
     newStatus: TICKET_STATUS.CLOSED,
   });
 
-  if (ticket.serverId) {
-    const updatedTicket = await prisma().ticket.findUnique({
-      where: { id },
-      include: {
-        author: { select: { minecraftUuid: true, minecraftName: true } },
-      },
-    });
-    if (updatedTicket) {
-      emitHookExecute(ticket.serverId, toHookTicketPayload(updatedTicket), TICKET_STATUS.CLOSED);
-    }
-  }
+  if (deliveryId) await minecraftHookDeliveryService.dispatch(deliveryId);
 
   return getById(id, { userId, role: userRole });
 }
@@ -562,10 +599,11 @@ export async function reopenTicket(id: number, userId: number, userRole: string)
   }
 
   await prisma().$transaction(async (tx) => {
-    await tx.ticket.update({
-      where: { id },
+    const claimed = await tx.ticket.updateMany({
+      where: { id, status: ticket.status },
       data: { status: TICKET_STATUS.OPEN, closedAt: null },
     });
+    if (claimed.count !== 1) throw new AppError(409, '议题状态已被其他请求修改');
     await createAudit(
       tx,
       id,

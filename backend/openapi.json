@@ -1086,10 +1086,12 @@
                     "type": "object",
                     "additionalProperties": {
                       "type": "string"
-                    }
+                    },
+                    "description": "Fields declared by the selected template; unknown and invalid values are rejected"
                   },
                   "serverId": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Minecraft source server; accepted only for staff and admin users"
                   },
                   "attachmentIds": {
                     "type": "array",

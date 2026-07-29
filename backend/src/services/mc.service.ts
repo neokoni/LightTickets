@@ -139,6 +139,8 @@ export async function createTicketFromMinecraft(input: {
     formData: input.formData || {},
     authorId: input.identity.userId,
     serverId: input.identity.serverId,
+    creatorRole: input.identity.role,
+    trustedServer: true,
     gameContext: input.context ? JSON.stringify(input.context) : undefined,
     hidden: input.hidden,
   });

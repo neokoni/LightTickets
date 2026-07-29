@@ -140,7 +140,7 @@ describe('mc.service', () => {
       title: 'From service',
       body: 'Body',
       template: 'bug_report',
-      formData: {},
+      formData: { description: 'Something broke', reproduce: 'Step 1' },
       identity: identity(user, server.id),
     });
 

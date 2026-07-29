@@ -154,6 +154,7 @@ describe('Minecraft ticket access', () => {
         title: 'Block glitch',
         body: 'Blocks disappear when placed',
         template: 'bug_report',
+        formData: { description: 'Blocks disappear', reproduce: 'Place a block' },
         context: { world: 'world', x: 100, y: 64, z: -200, gameMode: 'SURVIVAL' },
       });
 

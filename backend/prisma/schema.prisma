@@ -175,6 +175,7 @@ model Server {
   tickets     Ticket[]
   linkCodes   LinkCode[]
   minecraftPlayerSessions MinecraftPlayerSession[]
+  minecraftHookDeliveries MinecraftHookDelivery[]
 
   @@map("servers")
 }
@@ -204,6 +205,7 @@ model Ticket {
   attachments Attachment[]
   auditLogs   AuditLog[]
   completionHooks TicketCompletionHook[]
+  minecraftHookDeliveries MinecraftHookDelivery[]
 
   @@map("tickets")
 }
@@ -331,6 +333,25 @@ model MinecraftPlayerSession {
   @@index([serverId])
   @@index([expiresAt])
   @@map("minecraft_player_sessions")
+}
+
+model MinecraftHookDelivery {
+  id             String    @id @default(uuid())
+  ticketId       Int       @map("ticket_id")
+  serverId       String    @map("server_id")
+  event          String
+  playerUuid     String?   @map("player_uuid")
+  hooks          String
+  attempts       Int       @default(0)
+  lastAttemptAt  DateTime? @map("last_attempt_at")
+  acknowledgedAt DateTime? @map("acknowledged_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  server         Server    @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([serverId, acknowledgedAt])
+  @@index([createdAt])
+  @@map("minecraft_hook_deliveries")
 }
 
 model PasswordResetToken {

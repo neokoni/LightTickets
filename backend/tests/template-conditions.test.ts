@@ -9,10 +9,58 @@ import {
   resolveHooks,
   resolveSelectionHooks,
   renderBody,
+  validateAndNormalizeFormData,
   type TemplateDefinition,
 } from '../src/services/template.service.js';
 
 describe('template if syntax', () => {
+  it('normalizes only declared fields and validates template options', () => {
+    const def = yaml.load(`
+name: Validation Test
+description: Validation test
+labels: []
+body:
+  - type: dropdown
+    id: priority
+    validations: { required: true }
+    attributes:
+      label: Priority
+      options: [low, high]
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: Rules accepted
+          required: true
+        - Updates accepted
+completion_hooks: []
+`) as TemplateDefinition;
+
+    expect(
+      validateAndNormalizeFormData(def, {
+        priority: 'high',
+        confirmations: 'Rules accepted,Updates accepted,Rules accepted',
+      }),
+    ).toEqual({
+      priority: 'high',
+      confirmations: 'Rules accepted,Updates accepted',
+    });
+    expect(() =>
+      validateAndNormalizeFormData(def, { priority: 'root', confirmations: 'Rules accepted' }),
+    ).toThrow('Priority 包含无效选项');
+    expect(() =>
+      validateAndNormalizeFormData(def, { priority: 'high', confirmations: 'Updates accepted' }),
+    ).toThrow('Confirmations 缺少必选项');
+    expect(() =>
+      validateAndNormalizeFormData(def, {
+        priority: 'high',
+        confirmations: 'Rules accepted',
+        marker: 'injected',
+      }),
+    ).toThrow('提交内容包含未知字段');
+  });
+
   it('evaluates supported comparison operators', () => {
     const variables = {
       ticket_id: '42',

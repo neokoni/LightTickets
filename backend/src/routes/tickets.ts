@@ -16,8 +16,13 @@ const router = Router();
 export const ticketCreateSchema = z.object({
   title: z.string().min(1).max(200),
   template: z.string().min(1),
-  formData: z.record(z.string(), z.string()),
-  serverId: z.string().optional(),
+  formData: z
+    .record(z.string(), z.string())
+    .describe('Fields declared by the selected template; unknown and invalid values are rejected'),
+  serverId: z
+    .string()
+    .optional()
+    .describe('Minecraft source server; accepted only for staff and admin users'),
   attachmentIds: z.array(z.string()).optional(),
   hidden: z.boolean().optional(),
 });
@@ -56,6 +61,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
   const ticket = await ticketService.create({
     ...data,
     authorId: req.user!.userId,
+    creatorRole: req.user!.role,
   });
   res.status(201).json(ticket);
 });
