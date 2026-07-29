@@ -243,6 +243,33 @@ describe('PATCH /api/users/:id/role', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('uses the current role instead of an old admin token after demotion', async () => {
+    const controllingAdminToken = await createAdminAndGetToken('role-controller@test.com');
+    const demotedAdminToken = await createAdminAndGetToken('role-demoted@test.com');
+    const demotedAdmin = await prisma().user.findUniqueOrThrow({
+      where: { email: 'role-demoted@test.com' },
+    });
+
+    const demotion = await request(app)
+      .patch(`/api/users/${demotedAdmin.id}/role`)
+      .set('Authorization', `Bearer ${controllingAdminToken}`)
+      .send({ role: 'player' });
+    expect(demotion.status).toBe(200);
+
+    const staleTokenRequest = await request(app)
+      .patch(`/api/users/${demotedAdmin.id}/role`)
+      .set('Authorization', `Bearer ${demotedAdminToken}`)
+      .send({ role: 'admin' });
+
+    expect(staleTokenRequest.status).toBe(403);
+    expect(
+      await prisma().user.findUnique({
+        where: { id: demotedAdmin.id },
+        select: { role: true },
+      }),
+    ).toEqual({ role: 'player' });
+  });
 });
 
 describe('DELETE /api/users/:id', () => {
@@ -269,6 +296,26 @@ describe('DELETE /api/users/:id', () => {
       .set('Authorization', `Bearer ${adminToken}`);
 
     expect(res.status).toBe(400);
+  });
+
+  it('rejects an old access token immediately after the user is deleted', async () => {
+    const controllingAdminToken = await createAdminAndGetToken('delete-controller@test.com');
+    const deletedAdminToken = await createAdminAndGetToken('delete-revoked@test.com');
+    const deletedAdmin = await prisma().user.findUniqueOrThrow({
+      where: { email: 'delete-revoked@test.com' },
+    });
+
+    const deletion = await request(app)
+      .delete(`/api/users/${deletedAdmin.id}`)
+      .set('Authorization', `Bearer ${controllingAdminToken}`);
+    expect(deletion.status).toBe(204);
+
+    const staleTokenRequest = await request(app)
+      .get('/api/users')
+      .set('Authorization', `Bearer ${deletedAdminToken}`);
+
+    expect(staleTokenRequest.status).toBe(401);
+    expect(staleTokenRequest.body).toMatchObject({ success: false, statusCode: 401 });
   });
 });
 
