@@ -144,7 +144,7 @@ export async function createPendingForEvent(
   ticket: HookTicket,
   event: string,
 ): Promise<number> {
-  const definition = templateService.getEnabledDefinition(ticket.template);
+  const definition = templateService.getDefinition(ticket.template);
   if (!definition) return 0;
   const variables = templateService.createHookVariables(ticket);
   const hooks = templateService.resolveSelectionHooks(definition, event, variables);

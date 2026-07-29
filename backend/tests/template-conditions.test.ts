@@ -49,9 +49,18 @@ completion_hooks: []
     expect(() =>
       validateAndNormalizeFormData(def, { priority: 'root', confirmations: 'Rules accepted' }),
     ).toThrow('Priority 包含无效选项');
+    expect(() => validateAndNormalizeFormData(def, { confirmations: 'Rules accepted' })).toThrow(
+      'Priority 为必填项',
+    );
     expect(() =>
       validateAndNormalizeFormData(def, { priority: 'high', confirmations: 'Updates accepted' }),
     ).toThrow('Confirmations 缺少必选项');
+    expect(() =>
+      validateAndNormalizeFormData(def, {
+        priority: 'high',
+        confirmations: 'Rules accepted,Injected option',
+      }),
+    ).toThrow('Confirmations 包含无效选项');
     expect(() =>
       validateAndNormalizeFormData(def, {
         priority: 'high',

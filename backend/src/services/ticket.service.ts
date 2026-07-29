@@ -201,7 +201,7 @@ export function resolveTicketHidden(
 export async function create(input: CreateTicketInput) {
   let title = input.title;
   let body = input.body;
-  const def = templateService.getEnabledDefinition(input.template);
+  const def = templateService.getDefinition(input.template);
   if (!def) throw new ValidationError('无效的模板');
   if (
     input.serverId !== undefined &&

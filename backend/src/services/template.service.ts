@@ -408,12 +408,12 @@ export function get(
 }
 
 export function getDefinition(name: string): TemplateDefinition | undefined {
-  return cache.get(name)?.definition;
-}
-
-export function getEnabledDefinition(name: string): TemplateDefinition | undefined {
   const entry = cache.get(name);
   return entry?.enabled ? entry.definition : undefined;
+}
+
+export function getAdminDefinition(name: string): TemplateDefinition | undefined {
+  return cache.get(name)?.definition;
 }
 
 function fieldOptionLabels(field: TemplateField): string[] {

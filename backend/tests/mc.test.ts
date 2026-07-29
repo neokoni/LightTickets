@@ -163,6 +163,40 @@ describe('Minecraft ticket access', () => {
     expect(res.body.data.serverId).toBe(server.id);
   });
 
+  it('enforces template required fields, options, and field allowlist', async () => {
+    const server = await createServer('mc-template-validation');
+    const player = await createAuthenticatedPlayer(server, 'mctemplatevalidation');
+    const createTicket = (template: string, formData: Record<string, string>) =>
+      request(app)
+        .post('/api/mc/tickets')
+        .set('X-Server-Key', server.apiKey)
+        .set('X-Player-Session', player.sessionToken)
+        .send({
+          minecraftUuid: player.minecraftUuid,
+          title: 'Template validation',
+          body: 'Untrusted pre-rendered body',
+          template,
+          formData,
+        });
+
+    const missing = await createTicket('bug_report', { description: 'Missing reproduce' });
+    const unknown = await createTicket('bug_report', {
+      description: 'Description',
+      reproduce: 'Steps',
+      marker: 'injected',
+    });
+    const invalidOption = await createTicket('full_example', {
+      priority: 'root',
+      reproduction: 'Steps',
+      checklist: '我已搜索过现有议题',
+    });
+
+    expect(missing.status).toBe(400);
+    expect(unknown.status).toBe(400);
+    expect(invalidOption.status).toBe(400);
+    expect(await prisma().ticket.count()).toBe(0);
+  });
+
   it('rejects a server key without a player session', async () => {
     const server = await createServer('mc-create-no-session');
 

@@ -7,10 +7,13 @@ import * as templateService from '../src/services/template.service.js';
 
 const app = createApp();
 const selectionTemplateName = 'selection_hook_test';
+const disabledTemplateName = 'disabled_ticket_test';
 
 beforeAll(async () => {
-  if (templateService.getDefinition(selectionTemplateName)) {
-    await templateService.adminDelete(selectionTemplateName);
+  for (const name of [selectionTemplateName, disabledTemplateName]) {
+    if (templateService.getAdminDefinition(name)) {
+      await templateService.adminDelete(name);
+    }
   }
   await templateService.adminCreate({
     name: selectionTemplateName,
@@ -76,11 +79,28 @@ beforeAll(async () => {
     ]),
     hidden: false,
   });
+  await templateService.adminCreate({
+    name: disabledTemplateName,
+    nameI18n: 'Disabled ticket test',
+    description: 'Disabled template must reject ticket creation',
+    body: JSON.stringify([
+      {
+        type: 'input',
+        id: 'reason',
+        validations: { required: true },
+        attributes: { label: 'Reason' },
+      },
+    ]),
+    enabled: false,
+    hidden: false,
+  });
 });
 
 afterAll(async () => {
-  if (templateService.getDefinition(selectionTemplateName)) {
-    await templateService.adminDelete(selectionTemplateName);
+  for (const name of [selectionTemplateName, disabledTemplateName]) {
+    if (templateService.getAdminDefinition(name)) {
+      await templateService.adminDelete(name);
+    }
   }
 });
 
@@ -186,6 +206,22 @@ describe('POST /api/tickets', () => {
 
     expect(unknown.status).toBe(400);
     expect(missing.status).toBe(400);
+  });
+
+  it('rejects a disabled template through the default service lookup', async () => {
+    const token = await createUserAndGetToken('disabled-tmpl@test.com');
+
+    expect(templateService.getAdminDefinition(disabledTemplateName)).toBeDefined();
+    expect(templateService.getDefinition(disabledTemplateName)).toBeUndefined();
+
+    const res = await createTicket(token, {
+      template: disabledTemplateName,
+      formData: { reason: 'Should not be accepted' },
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('无效的模板');
+    expect(await prisma().ticket.count()).toBe(0);
   });
 
   it('rejects a normal Web user assigning a Minecraft server', async () => {

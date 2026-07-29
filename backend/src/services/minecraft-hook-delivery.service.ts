@@ -24,7 +24,7 @@ type StoredHook = {
 };
 
 export function resolveTemplateEvent(ticket: HookTicket, event: string) {
-  const definition = templateService.getEnabledDefinition(ticket.template);
+  const definition = templateService.getDefinition(ticket.template);
   if (!definition) return { hooks: [], variables: {} };
   const variables = templateService.createHookVariables(ticket);
   return {
