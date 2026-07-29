@@ -2,22 +2,10 @@ import type { Server as HttpServer } from 'http';
 import type { Socket } from 'socket.io';
 import { Server } from 'socket.io';
 import { prisma } from '../db.js';
+import { resolveSocketServerKey } from '../utils/socket-auth.js';
 
 let io: Server;
 let hookRetryTimer: NodeJS.Timeout | undefined;
-
-function firstString(value: string | string[] | undefined) {
-  if (Array.isArray(value)) return value[0];
-  return value;
-}
-
-function resolveServerKey(socket: Socket) {
-  return (
-    firstString(socket.handshake.auth.serverKey as string | string[] | undefined) ||
-    firstString(socket.handshake.query.serverKey as string | string[] | undefined) ||
-    firstString(socket.handshake.headers['x-server-key'] as string | string[] | undefined)
-  );
-}
 
 export function initSocket(httpServer: HttpServer) {
   io = new Server(httpServer, {
@@ -27,7 +15,7 @@ export function initSocket(httpServer: HttpServer) {
   const mcNamespace = io.of('/mc');
 
   mcNamespace.use(async (socket: Socket, next) => {
-    const apiKey = resolveServerKey(socket);
+    const apiKey = resolveSocketServerKey(socket.handshake);
     if (!apiKey) return next(new Error('Missing server key'));
 
     const server = await prisma().server.findUnique({ where: { apiKey } });

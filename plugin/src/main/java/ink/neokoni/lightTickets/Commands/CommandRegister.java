@@ -10,7 +10,6 @@ import ink.neokoni.lightTickets.Commands.Functions.AddComment;
 import ink.neokoni.lightTickets.Commands.Functions.BindAccount;
 import ink.neokoni.lightTickets.Commands.Functions.ChangeStatus;
 import ink.neokoni.lightTickets.Commands.Functions.CreateTicket;
-import ink.neokoni.lightTickets.Commands.Functions.RegisterAccount;
 import ink.neokoni.lightTickets.Commands.Functions.Reload;
 import ink.neokoni.lightTickets.Commands.Functions.TicketInfo;
 import ink.neokoni.lightTickets.Commands.Functions.TicketList;
@@ -78,22 +77,12 @@ public class CommandRegister {
                 .requires(ctx -> ctx.getSender().hasPermission("lighttickets.register")
                         || ctx.getSender().hasPermission("lighttickets.player"))
                 .executes(ctx -> {
-                    ctx.getSource().getSender().sendMessage(LangUtils.getLang("register.usage"));
+                    if (ctx.getSource().getSender() instanceof Player player) {
+                        Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
+                                task -> new BindAccount(player));
+                    }
                     return Command.SINGLE_SUCCESS;
-                })
-                .then(Commands.argument("username", StringArgumentType.string())
-                        .then(Commands.argument("email", StringArgumentType.string())
-                                .then(Commands.argument("password", StringArgumentType.string())
-                                        .executes(ctx -> {
-                                            if (ctx.getSource().getSender() instanceof Player player) {
-                                                String n = StringArgumentType.getString(ctx, "username");
-                                                String e = StringArgumentType.getString(ctx, "email");
-                                                String p = StringArgumentType.getString(ctx, "password");
-                                                Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
-                                                        task -> new RegisterAccount(player, n, e, p));
-                                            }
-                                            return Command.SINGLE_SUCCESS;
-                                        })))));
+                }));
 
         var ticket = Commands.literal("ticket");
 

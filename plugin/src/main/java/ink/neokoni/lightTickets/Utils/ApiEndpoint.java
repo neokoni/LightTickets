@@ -5,7 +5,6 @@ public enum ApiEndpoint {
     TEMPLATE_DETAIL("GET", "/api/templates/{name}", false),
     MC_TICKET_DETAIL("GET", "/api/mc/tickets/{id}/detail", true),
     MC_TICKET_COMMENTS("GET", "/api/mc/tickets/{id}/comments", true),
-    MC_REGISTER("POST", "/api/mc/register", true),
     MC_LINK_CODE("POST", "/api/mc/link-code", true),
     MC_PLAYER_SESSION("POST", "/api/mc/session", true),
     MC_CREATE_TICKET("POST", "/api/mc/tickets", true),

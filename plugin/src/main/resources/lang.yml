@@ -22,7 +22,6 @@ templates:
   parse_failed: "解析模板 {key} 失败: {message}"
 logs:
   bind_failed: "绑定账号命令执行失败: {player} ({message})"
-  register_failed: "注册账号命令执行失败: {player} ({message})"
   unbind_failed: "解绑账号命令执行失败: {player} ({message})"
   account_info_failed: "获取账号信息命令执行失败: {player} ({message})"
   ticket_list_failed: "获取议题列表命令执行失败: {player} ({message})"
@@ -32,7 +31,7 @@ logs:
   status_picker_failed: "显示状态选择命令执行失败: {player} ({message})"
   status_change_failed: "变更议题状态命令执行失败: {player} ({message})"
 bind:
-  guide: "<color:#ffdbab>请前往网页完成绑定, 输入以下绑定码:"
+  guide: "<color:#ffdbab>请在网页注册或登录账号后完成绑定, 输入以下绑定码:"
   code: "<color:#ffffff>绑定码: {code} <gray>( {expiresAt} 内有效)"
   copy_hint: "<gray>点击复制"
   already_code: "<color:#ffdbab>你已生成过绑定码, 请先在网页完成绑定"
@@ -41,12 +40,6 @@ unbind:
   not_bound: "<color:#ff8181>你尚未绑定 LightTickets 账号, 无需解绑"
   success: "<color:#ffffff>已解绑 LightTickets 账号"
   web_required: "<color:#ffdbab>为保护账号安全，请前往 LightTickets 网页端解绑 Minecraft 账号"
-register:
-  invalid_email: "<color:#ff8181>邮箱格式不正确"
-  password_too_short: "<color:#ff8181>密码至少8位"
-  invalid_username: "<color:#ff8181>用户名长度需为2-32个字符"
-  success: "<color:#ffffff>注册成功, 已自动绑定账号 <color:#96bfff>{username}"
-  usage: "<color:#ffdbab>用法: /lit register <用户名> <邮箱> <密码>"
 account:
   header: "<color:#ffdbab>账号信息"
   unlink_button: "<color:#ff8181>[解绑]"
@@ -57,7 +50,7 @@ account:
   role: "<white>角色: <color:#96bfff>{role}"
   mc_name: "<white>Minecraft 名称: <color:#96bfff>{mc_name}"
   created_at: "<white>注册时间: <color:#96bfff>{date}"
-  not_bound: "<color:#ff8181>你尚未绑定 LightTickets 账号, 请先执行 /lit bind 或 /lit register"
+  not_bound: "<color:#ff8181>你尚未绑定 LightTickets 账号, 请先执行 /lit bind 或 /lit register 获取绑定码"
   role_admin: "管理员"
   role_staff: "工作人员"
   role_player: "玩家"

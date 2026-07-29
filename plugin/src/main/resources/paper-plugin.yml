@@ -43,7 +43,7 @@ permissions:
     description: "解绑 LightTickets 账号"
     default: true
   lighttickets.register:
-    description: "通过 Minecraft 注册 LightTickets 账号"
+    description: "获取 LightTickets 网页账号绑定码"
     default: true
   lighttickets.account:
     description: "查看账号绑定信息"

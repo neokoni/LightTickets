@@ -17,9 +17,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -43,8 +40,6 @@ public class WebSocketClient {
 
         IO.Options options = IO.Options.builder()
                 .setAuth(Map.of("serverKey", serverKey))
-                .setQuery("serverKey=" + URLEncoder.encode(serverKey, StandardCharsets.UTF_8))
-                .setExtraHeaders(Map.of("X-Server-Key", List.of(serverKey)))
                 .setTransports(new String[]{WebSocket.NAME})
                 .setReconnection(true)
                 .setReconnectionDelay(5000)
