@@ -6,7 +6,7 @@ import { prisma } from './setup.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import { generateAccessToken } from '../src/utils/token.js';
 
-const app = createApp();
+const app = createApp({ enableInitialSetup: true });
 
 async function createServer(name: string) {
   return prisma().server.create({ data: { name, apiKey: `${name}-key` } });

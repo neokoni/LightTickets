@@ -1220,7 +1220,7 @@ function collectRuntimeRoutes(stack: RuntimeLayer[], prefix = ''): Set<string> {
 }
 
 function getRuntimeRoutes(): Set<string> {
-  const app = createApp();
+  const app = createApp({ enableInitialSetup: true });
   const router = Reflect.get(app, '_router') as { stack?: RuntimeLayer[] } | undefined;
   if (!router?.stack) throw new Error('Unable to inspect Express routes');
   return collectRuntimeRoutes(router.stack);

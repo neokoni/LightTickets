@@ -91,7 +91,10 @@ async function startSetupServer() {
   const createSetupRoutes = (await import('./routes/setup.js')).default;
   app.use(
     '/api/setup',
-    createSetupRoutes({ onSetupComplete: () => startFullAppAfterSetup(server) }),
+    createSetupRoutes({
+      enableInitialSetup: true,
+      onSetupComplete: () => startFullAppAfterSetup(server),
+    }),
   );
 
   app.use(errorHandler);

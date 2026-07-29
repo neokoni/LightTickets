@@ -26,7 +26,11 @@ import federatedAuthRoutes from './routes/federatedauth.js';
 import adminFederatedAuthRoutes from './routes/admin-federatedauth.js';
 import { initTemplates } from './services/template.service.js';
 
-export function createApp() {
+interface AppOptions {
+  enableInitialSetup?: boolean;
+}
+
+export function createApp(options: AppOptions = {}) {
   const app = express();
 
   initTemplates();
@@ -64,7 +68,10 @@ export function createApp() {
     }
   });
 
-  app.use('/api/setup', createSetupRoutes());
+  app.use(
+    '/api/setup',
+    createSetupRoutes({ enableInitialSetup: options.enableInitialSetup === true }),
+  );
   app.use('/api/auth', authRoutes);
   app.use('/api/auth/federatedauth', federatedAuthRoutes);
   app.use('/api/i18n', i18nRoutes);

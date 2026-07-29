@@ -7,7 +7,8 @@ import { dataPath } from '../src/paths.js';
 import { prisma } from './setup.js';
 import createSetupRoutes from '../src/routes/setup.js';
 
-const app = createApp();
+const app = createApp({ enableInitialSetup: true });
+const fullApp = createApp();
 
 describe('GET /api/health', () => {
   it('returns ok status', async () => {
@@ -46,6 +47,18 @@ describe('GET /api/setup/site-config', () => {
 });
 
 describe('POST /api/setup', () => {
+  it('is not mounted in the full application', async () => {
+    const res = await request(fullApp)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: { email: 'disabled@example.com', password: 'admin123', username: 'disabled' },
+      });
+
+    expect(res.status).toBe(404);
+    await expect(prisma().user.count()).resolves.toBe(0);
+  });
+
   it('creates admin and setup record on first run', async () => {
     const res = await request(app)
       .post('/api/setup')
@@ -89,7 +102,7 @@ describe('POST /api/setup', () => {
 
     const originApp = express();
     originApp.use(express.json());
-    originApp.use('/api/setup', createSetupRoutes());
+    originApp.use('/api/setup', createSetupRoutes({ enableInitialSetup: true }));
 
     const res = await request(originApp)
       .post('/api/setup')
@@ -110,7 +123,7 @@ describe('POST /api/setup', () => {
 
     const originApp = express();
     originApp.use(express.json());
-    originApp.use('/api/setup', createSetupRoutes());
+    originApp.use('/api/setup', createSetupRoutes({ enableInitialSetup: true }));
 
     const res = await request(originApp)
       .post('/api/setup')
@@ -257,7 +270,7 @@ describe('POST /api/setup', () => {
     const onSetupComplete = vi.fn();
     const setupApp = express();
     setupApp.use(express.json());
-    setupApp.use('/api/setup', createSetupRoutes({ onSetupComplete }));
+    setupApp.use('/api/setup', createSetupRoutes({ enableInitialSetup: true, onSetupComplete }));
 
     const res = await request(setupApp)
       .post('/api/setup')

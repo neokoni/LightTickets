@@ -5,7 +5,7 @@ import path from 'path';
 import { createApp } from '../src/app.js';
 import { dataPath } from '../src/paths.js';
 
-const app = createApp();
+const app = createApp({ enableInitialSetup: true });
 
 const templatesDir = dataPath('templates');
 const testTemplateNames = ['custom_test', 'dup_tmpl', 'patch_tmpl', 'delete_tmpl', 'labeled_tmpl'];

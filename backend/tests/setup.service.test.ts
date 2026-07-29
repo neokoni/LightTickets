@@ -308,4 +308,31 @@ describe('setup.service', () => {
     expect(appConfigCreate).toHaveBeenCalledWith({ data: {} });
     expect(fs.existsSync(configPath)).toBe(false);
   });
+
+  it('fails closed without changing config when the configured database is unavailable', async () => {
+    databaseConfigured = true;
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    const originalConfig = 'database:\n  provider: mysql\n';
+    fs.writeFileSync(configPath, originalConfig, 'utf-8');
+    setupStatusFindFirst.mockRejectedValueOnce(new Error('database unavailable'));
+
+    const [{ completeSetup }, { runMigrations }] = await Promise.all([
+      import('../src/services/setup.service.js'),
+      import('../src/migrate.js'),
+    ]);
+
+    await expect(
+      completeSetup({
+        db: { provider: 'sqlite' },
+        admin: { email: 'attacker@example.com', password: 'admin123', username: 'attacker' },
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      message: '数据库暂时不可用，无法确认初始化状态',
+    });
+
+    expect(fs.readFileSync(configPath, 'utf-8')).toBe(originalConfig);
+    expect(userCount).not.toHaveBeenCalled();
+    expect(runMigrations).not.toHaveBeenCalled();
+  });
 });

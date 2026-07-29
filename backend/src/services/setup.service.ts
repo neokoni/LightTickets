@@ -412,8 +412,9 @@ export async function completeSetup(input: SetupInput) {
       if (existing) {
         throw new AppError(409, '站点已完成初始化，无法重复设置');
       }
-    } catch (e) {
+    } catch (e: unknown) {
       if (e instanceof AppError) throw e;
+      throw new AppError(503, '数据库暂时不可用，无法确认初始化状态');
     }
   }
 

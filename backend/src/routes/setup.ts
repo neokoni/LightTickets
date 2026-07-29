@@ -10,6 +10,7 @@ import { mailTestSchema } from '../schemas/mail.js';
 import { settingsUpdateSchema, setupSchema } from '../schemas/setup.js';
 
 interface SetupRouteOptions {
+  enableInitialSetup?: boolean;
   onSetupComplete?: () => void | Promise<void>;
 }
 
@@ -44,17 +45,19 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
     res.json(config);
   });
 
-  // POST /api/setup - perform initial setup
-  router.post('/', async (req: Request, res: Response) => {
-    const data = validate(setupSchema, req.body);
+  if (options.enableInitialSetup) {
+    // POST /api/setup is only mounted by the one-time setup server.
+    router.post('/', async (req: Request, res: Response) => {
+      const data = validate(setupSchema, req.body);
 
-    const result = await setupService.completeSetup({
-      ...data,
-      accessOrigin: resolveAccessOrigin(req),
+      const result = await setupService.completeSetup({
+        ...data,
+        accessOrigin: resolveAccessOrigin(req),
+      });
+      res.status(201).json(result);
+      await options.onSetupComplete?.();
     });
-    res.status(201).json(result);
-    await options.onSetupComplete?.();
-  });
+  }
 
   // PATCH /api/setup/settings - admin only
   router.get(
