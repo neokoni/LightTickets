@@ -10,6 +10,7 @@ import { LT_DEFAULT_SERVER_URL, LT_DEFAULT_WEB_PORT } from './runtime-config.mjs
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DIST_DIR = path.join(SERVER_DIR, 'dist');
 const DEFAULT_PROXY_TIMEOUT_MS = 30_000;
+const FRONTEND_REQUEST_ORIGIN = 'http://frontend.local';
 
 const MIME_TYPES = new Map([
   ['.css', 'text/css; charset=utf-8'],
@@ -60,6 +61,25 @@ function parseServerUrl(value) {
     throw new Error('LT_SERVER_URL must be an origin without a path, query, or hash');
   }
   return url;
+}
+
+function parseOriginFormRequestTarget(value) {
+  if (
+    !value.startsWith('/') ||
+    value.startsWith('//') ||
+    value.includes('\\') ||
+    value.includes('#')
+  ) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value, FRONTEND_REQUEST_ORIGIN);
+    if (url.origin !== FRONTEND_REQUEST_ORIGIN) return null;
+    return url;
+  } catch {
+    return null;
+  }
 }
 
 function copyHeaders(headers) {
@@ -116,8 +136,10 @@ function sendProxyError(response) {
   response.end(body);
 }
 
-function proxyApiRequest(request, response, serverUrl, timeoutMs) {
-  const target = new URL(request.url || '/api', serverUrl);
+function proxyApiRequest(request, response, requestUrl, serverUrl, timeoutMs) {
+  const target = new URL(serverUrl.origin);
+  target.pathname = requestUrl.pathname;
+  target.search = requestUrl.search;
   const transport = target.protocol === 'https:' ? https : http;
   const headers = copyProxyRequestHeaders(request.headers);
   headers.host = target.host;
@@ -260,9 +282,13 @@ export function createFrontendServer({
 
   return http.createServer(async (request, response) => {
     try {
-      const url = new URL(request.url || '/', 'http://frontend.local');
+      const url = parseOriginFormRequestTarget(request.url || '/');
+      if (!url) {
+        sendText(response, 400, 'Bad Request');
+        return;
+      }
       if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
-        proxyApiRequest(request, response, parsedServerUrl, proxyTimeoutMs);
+        proxyApiRequest(request, response, url, parsedServerUrl, proxyTimeoutMs);
         return;
       }
       await serveDistRequest(request, response, url, resolvedDistDir, indexPath);
