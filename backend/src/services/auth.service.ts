@@ -2,11 +2,12 @@ import { prisma } from '../db.js';
 import bcrypt from 'bcrypt';
 import type { User } from '@prisma/client';
 import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../utils/errors.js';
-import { generateAccessToken, generateTokens, verifyRefreshToken } from '../utils/token.js';
+import { generateAccessToken } from '../utils/token.js';
 import { USER_PUBLIC_SELECT } from './constants.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as registrationEmailVerificationService from './registration-email-verification.service.js';
 import { generateMinecraftSecret, hashMinecraftSecret } from '../utils/minecraft-credential.js';
+import * as refreshSessionService from './refresh-session.service.js';
 
 export async function register(
   email: string,
@@ -38,7 +39,7 @@ export async function register(
     : null;
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = await prisma().$transaction(async (tx) => {
+  const result = await prisma().$transaction(async (tx) => {
     const conflictingUser = await tx.user.findFirst({
       where: { OR: [{ email: normalizedEmail }, { username }] },
     });
@@ -55,13 +56,18 @@ export async function register(
         verificationCodeHash,
       );
     }
-    return tx.user.create({
+    const user = await tx.user.create({
       data: { email: normalizedEmail, passwordHash, username },
     });
+    const refreshToken = await refreshSessionService.createRefreshSession(user.id, tx);
+    return { user, refreshToken };
   });
 
-  const tokens = generateTokens(user.id, user.role);
-  return { user: sanitizeUser(user), ...tokens };
+  return {
+    user: sanitizeUser(result.user),
+    accessToken: generateAccessToken(result.user.id, result.user.role),
+    refreshToken: result.refreshToken,
+  };
 }
 
 export async function registerFromMinecraft(
@@ -109,21 +115,26 @@ export async function login(emailOrUsername: string, password: string) {
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) throw new UnauthorizedError('邮箱/用户名或密码错误');
 
-  const tokens = generateTokens(user.id, user.role);
-  return { user: sanitizeUser(user), ...tokens };
+  const refreshToken = await refreshSessionService.createRefreshSession(user.id);
+  return {
+    user: sanitizeUser(user),
+    accessToken: generateAccessToken(user.id, user.role),
+    refreshToken,
+  };
 }
 
 export async function refresh(refreshToken: string) {
-  try {
-    const payload = verifyRefreshToken(refreshToken);
-    const user = await prisma().user.findUnique({ where: { id: payload.userId } });
-    if (!user) throw new UnauthorizedError();
+  const rotated = await refreshSessionService.rotateRefreshSession(refreshToken);
+  if (!rotated) throw new UnauthorizedError('刷新令牌无效或已过期');
 
-    const accessToken = generateAccessToken(user.id, user.role);
-    return { accessToken, user: sanitizeUser(user) };
-  } catch {
-    throw new UnauthorizedError('刷新令牌无效或已过期');
-  }
+  const user = await prisma().user.findUnique({ where: { id: rotated.userId } });
+  if (!user) throw new UnauthorizedError('刷新令牌无效或已过期');
+
+  return {
+    accessToken: generateAccessToken(user.id, user.role),
+    refreshToken: rotated.refreshToken,
+    user: sanitizeUser(user),
+  };
 }
 
 export async function linkMinecraft(userId: number, code: string) {

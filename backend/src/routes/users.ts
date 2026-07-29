@@ -12,6 +12,7 @@ import { federatedAuthStartSchema, federatedAuthUnlinkSchema } from '../schemas/
 import { FEDERATED_AUTH_INTENT } from '../constants/federatedauth.js';
 import { setFederatedAuthFlowCookie } from '../utils/federatedauth-cookies.js';
 import { authLimiter } from '../middleware/rate-limit.js';
+import { setRefreshCookie } from '../utils/auth-cookies.js';
 
 const router = Router();
 
@@ -70,7 +71,12 @@ export const userPasswordSchema = z.object({
 router.patch('/me/password', authMiddleware, async (req: Request, res: Response) => {
   const data = validate(userPasswordSchema, req.body);
 
-  await userService.changePassword(req.user!.userId, data.currentPassword, data.newPassword);
+  const refreshToken = await userService.changePassword(
+    req.user!.userId,
+    data.currentPassword,
+    data.newPassword,
+  );
+  setRefreshCookie(res, refreshToken);
   res.json({ message: '密码已更新' });
 });
 

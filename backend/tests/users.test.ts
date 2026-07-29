@@ -8,6 +8,12 @@ import { createUnsubscribeToken } from '../src/services/ticket-notification.serv
 
 const app = createApp();
 
+function getRefreshCookie(setCookies: string[] | undefined): string {
+  const value = setCookies?.find((item) => item.startsWith('lt_refresh_token='));
+  if (!value) throw new Error('refresh cookie missing');
+  return value.split(';', 1)[0];
+}
+
 async function createAdminAndGetToken(email = 'admin@test.com') {
   const username = email.split('@')[0];
   await request(app).post('/api/auth/register').send({ email, password: 'Password123!', username });
@@ -26,7 +32,10 @@ async function createUserAndGetToken(email = 'user@test.com') {
     .send({ email, password: 'Password123!', username });
   return {
     token: res.body.data.accessToken,
-    refreshToken: res.body.data.refreshToken,
+    refreshToken: decodeURIComponent(
+      getRefreshCookie(res.headers['set-cookie']).slice('lt_refresh_token='.length),
+    ),
+    refreshCookie: getRefreshCookie(res.headers['set-cookie']),
     user: res.body.data.user,
   };
 }
@@ -221,7 +230,7 @@ describe('email notification preferences', () => {
 describe('PATCH /api/users/:id/role', () => {
   it('allows admin to change user role', async () => {
     const adminToken = await createAdminAndGetToken('admin-role@test.com');
-    const { user } = await createUserAndGetToken('target-role@test.com');
+    const { user, refreshCookie } = await createUserAndGetToken('target-role@test.com');
 
     const res = await request(app)
       .patch(`/api/users/${user.id}/role`)
@@ -230,6 +239,12 @@ describe('PATCH /api/users/:id/role', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.role).toBe('staff');
+
+    const refresh = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', refreshCookie)
+      .send({});
+    expect(refresh.status).toBe(401);
   });
 
   it('rejects invalid role', async () => {
@@ -269,6 +284,33 @@ describe('PATCH /api/users/:id/role', () => {
         select: { role: true },
       }),
     ).toEqual({ role: 'player' });
+  });
+});
+
+describe('PATCH /api/users/me/password', () => {
+  it('revokes old refresh sessions and issues a replacement cookie', async () => {
+    const { token, refreshCookie } = await createUserAndGetToken('password-change@test.com');
+
+    const changed = await request(app)
+      .patch('/api/users/me/password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'Password123!', newPassword: 'NewPassword123!' });
+
+    expect(changed.status).toBe(200);
+    const replacementCookie = getRefreshCookie(changed.headers['set-cookie']);
+    expect(replacementCookie).not.toBe(refreshCookie);
+
+    const oldRefresh = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', refreshCookie)
+      .send({});
+    expect(oldRefresh.status).toBe(401);
+
+    const replacementRefresh = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', replacementCookie)
+      .send({});
+    expect(replacementRefresh.status).toBe(200);
   });
 });
 

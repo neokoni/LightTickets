@@ -8,6 +8,7 @@ import { validate } from '../utils/validate.js';
 import { ROLE } from '../constants/roles.js';
 import { mailTestSchema } from '../schemas/mail.js';
 import { settingsUpdateSchema, setupSchema } from '../schemas/setup.js';
+import { setRefreshCookie } from '../utils/auth-cookies.js';
 
 interface SetupRouteOptions {
   enableInitialSetup?: boolean;
@@ -60,7 +61,9 @@ export default function createSetupRoutes(options: SetupRouteOptions = {}) {
         accessOrigin: resolveAccessOrigin(req),
         trustedProxyIp: resolveTrustedProxyIp(req),
       });
-      res.status(201).json(result);
+      const { refreshToken, ...response } = result;
+      setRefreshCookie(res, refreshToken);
+      res.status(201).json(response);
       await options.onSetupComplete?.();
     });
   }

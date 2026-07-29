@@ -8,7 +8,7 @@ import {
   FEDERATED_AUTH_SECRET_MODE,
   FEDERATED_AUTH_TTL,
 } from '../constants/federatedauth.js';
-import { generateTokens } from '../utils/token.js';
+import { generateAccessToken } from '../utils/token.js';
 import { readJsonPath } from '../utils/json-path.js';
 import {
   AppError,
@@ -22,6 +22,7 @@ import type { FederatedAuthRuntimeProvider } from './federatedauth-provider.serv
 import { decryptFederatedAuth, encryptFederatedAuth } from './federatedauth-crypto.service.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as registrationEmailVerificationService from './registration-email-verification.service.js';
+import * as refreshSessionService from './refresh-session.service.js';
 
 interface FlowPayload {
   verifier: string | null;
@@ -436,7 +437,10 @@ export async function finishFederatedAuth(input: {
         lastLoginAt: new Date(),
       },
     });
-    const tokens = generateTokens(identity.user.id, identity.user.role);
+    const tokens = {
+      accessToken: generateAccessToken(identity.user.id, identity.user.role),
+      refreshToken: await refreshSessionService.createRefreshSession(identity.user.id),
+    };
     const location = new URL('/federatedauth/complete', `${origin}/`);
     location.searchParams.set('returnTo', safeInternalPath(flow.returnTo));
     return { kind: 'login' as const, location: location.href, tokens };
@@ -527,7 +531,7 @@ export async function completeFederatedAuthRegistration(input: CompleteRegistrat
     : null;
   const passwordHash = await bcrypt.hash(input.password, 12);
 
-  const user = await prisma().$transaction(async (tx) => {
+  const result = await prisma().$transaction(async (tx) => {
     const currentSession = await tx.federatedAuthRegistration.findUnique({
       where: { id: session.id },
     });
@@ -577,10 +581,15 @@ export async function completeFederatedAuthRegistration(input: CompleteRegistrat
       where: { id: session.id },
       data: { usedAt: new Date() },
     });
-    return created;
+    const refreshToken = await refreshSessionService.createRefreshSession(created.id, tx);
+    return { user: created, refreshToken };
   });
 
-  return { user: sanitizeUser(user), ...generateTokens(user.id, user.role) };
+  return {
+    user: sanitizeUser(result.user),
+    accessToken: generateAccessToken(result.user.id, result.user.role),
+    refreshToken: result.refreshToken,
+  };
 }
 
 export async function listFederatedAuthIdentities(userId: number) {

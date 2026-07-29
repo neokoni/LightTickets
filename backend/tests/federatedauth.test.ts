@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
-import { generateTokens } from '../src/utils/token.js';
+import { generateAccessToken } from '../src/utils/token.js';
 import { encryptFederatedAuth } from '../src/services/federatedauth-crypto.service.js';
 
 const app = createApp();
@@ -217,6 +217,8 @@ describe('FederatedAuth registration and binding', () => {
     expect(registered.status).toBe(201);
     expect(registered.body.data.user.email).toBe('chosen@example.com');
     expect(registered.body.data.user).not.toHaveProperty('passwordHash');
+    expect(registered.body.data).not.toHaveProperty('refreshToken');
+    expect(cookie(registered.headers['set-cookie'], 'lt_refresh_token')).toBeTruthy();
     const identity = await prisma().federatedAuthIdentity.findFirstOrThrow();
     expect(identity.subject).toBe('new-subject');
   });
@@ -258,7 +260,7 @@ describe('FederatedAuth registration and binding', () => {
         passwordHash: await bcrypt.hash('Password123!', 12),
       },
     });
-    const accessToken = generateTokens(user.id, user.role).accessToken;
+    const accessToken = generateAccessToken(user.id, user.role);
     mockProvider('linked-subject');
     const startedResponse = await request(app)
       .post('/api/users/me/federatedauth/example/start')
@@ -300,7 +302,7 @@ describe('FederatedAuth Provider administration', () => {
         role: 'admin',
       },
     });
-    const accessToken = generateTokens(admin.id, admin.role).accessToken;
+    const accessToken = generateAccessToken(admin.id, admin.role);
     const providerPayload = {
       slug: 'managed',
       name: 'Managed Provider',

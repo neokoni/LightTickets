@@ -10,14 +10,11 @@ const ACCESS_TOKEN_VERSION = 1;
 
 const ACCESS_TOKEN_TYPE = 'at+jwt';
 const ACCESS_TOKEN_AUDIENCE = 'lighttickets:api';
-const REFRESH_TOKEN_TYPE = 'rt+jwt';
-const REFRESH_TOKEN_AUDIENCE = 'lighttickets:auth:refresh';
 const UNSUBSCRIBE_TOKEN_TYPE = 'lt-unsubscribe+jwt';
 const UNSUBSCRIBE_TOKEN_AUDIENCE = 'lighttickets:email-notifications:unsubscribe';
 const UNSUBSCRIBE_TOKEN_PURPOSE = 'ticket-email-unsubscribe';
 const UNSUBSCRIBE_TOKEN_EXPIRY = '30d';
 const LEGACY_ACCESS_MAX_LIFETIME_SECONDS = 2 * 60 * 60;
-const LEGACY_REFRESH_MAX_LIFETIME_SECONDS = 7 * 24 * 60 * 60;
 const LEGACY_UNSUBSCRIBE_MAX_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
 
 const userIdSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -34,18 +31,6 @@ const accessTokenSchema = z
     iat: issuedAtSchema,
     exp: expiresAtSchema,
     aud: z.literal(ACCESS_TOKEN_AUDIENCE),
-    iss: z.literal(JWT_ISSUER),
-  })
-  .strict()
-  .refine((payload) => payload.exp > payload.iat);
-
-const refreshTokenSchema = z
-  .object({
-    userId: userIdSchema,
-    type: z.literal('refresh'),
-    iat: issuedAtSchema,
-    exp: expiresAtSchema,
-    aud: z.literal(REFRESH_TOKEN_AUDIENCE),
     iss: z.literal(JWT_ISSUER),
   })
   .strict()
@@ -73,8 +58,6 @@ const legacyAccessTokenSchema = z
   })
   .strict()
   .refine((payload) => payload.exp > payload.iat);
-
-const legacyRefreshTokenSchema = legacyAccessTokenSchema;
 
 const legacyUnsubscribeTokenSchema = z
   .object({
@@ -147,26 +130,6 @@ function signAccessToken(userId: number, role: string): string {
   );
 }
 
-export function generateTokens(userId: number, role: string) {
-  const config = getConfig();
-  const accessToken = signAccessToken(userId, role);
-  const refreshToken = jwt.sign(
-    {
-      userId: userIdSchema.parse(userId),
-      type: 'refresh',
-    },
-    config.security.jwtRefreshSecret,
-    {
-      algorithm: JWT_ALGORITHM,
-      header: tokenHeader(REFRESH_TOKEN_TYPE),
-      audience: REFRESH_TOKEN_AUDIENCE,
-      issuer: JWT_ISSUER,
-      expiresIn: config.refreshTokenExpiry as SignOptions['expiresIn'],
-    },
-  );
-  return { accessToken, refreshToken };
-}
-
 export function generateAccessToken(userId: number, role: string): string {
   return signAccessToken(userId, role);
 }
@@ -186,29 +149,6 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
       LEGACY_ACCESS_MAX_LIFETIME_SECONDS,
     );
     return { userId: payload.userId, role: payload.role };
-  }
-}
-
-export function verifyRefreshToken(token: string): { userId: number } {
-  const config = getConfig();
-  try {
-    const payload = refreshTokenSchema.parse(
-      verifyPayload(
-        token,
-        config.security.jwtRefreshSecret,
-        REFRESH_TOKEN_TYPE,
-        REFRESH_TOKEN_AUDIENCE,
-      ),
-    );
-    return { userId: payload.userId };
-  } catch {
-    const payload = verifyLegacyPayload(
-      token,
-      config.security.jwtRefreshSecret,
-      legacyRefreshTokenSchema,
-      LEGACY_REFRESH_MAX_LIFETIME_SECONDS,
-    );
-    return { userId: payload.userId };
   }
 }
 

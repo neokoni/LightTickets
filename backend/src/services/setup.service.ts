@@ -4,7 +4,7 @@ import yaml from 'js-yaml';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { AppError, ValidationError } from '../utils/errors.js';
-import { generateTokens } from '../utils/token.js';
+import { generateAccessToken } from '../utils/token.js';
 import { ROLE } from '../constants/roles.js';
 import { DatabaseProvider } from '../constants/database-provider.js';
 import { StorageDriver } from '../constants/storage-driver.js';
@@ -20,6 +20,7 @@ import type { RateLimitConfigInput } from '../schemas/rate-limit.js';
 import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 import { normalizeSiteUrl, resolvePasswordResetOrigin } from '../utils/site-url.js';
 import { normalizeIpAddress } from '../trusted-proxy.js';
+import * as refreshSessionService from './refresh-session.service.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[]; trustedProxyIps?: string[] };
@@ -553,10 +554,11 @@ export async function completeSetup(input: SetupInput) {
   const { initTemplates } = await import('./template.service.js');
   await initTemplates();
 
-  const tokens = generateTokens(admin.id, admin.role);
+  const refreshToken = await refreshSessionService.createRefreshSession(admin.id, prisma);
   return {
     setup: setupRecord,
     admin: { id: admin.id, email: admin.email, username: admin.username, role: admin.role },
-    ...tokens,
+    accessToken: generateAccessToken(admin.id, admin.role),
+    refreshToken,
   };
 }

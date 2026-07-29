@@ -4,6 +4,7 @@ import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
 import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
+import crypto from 'crypto';
 
 const app = createApp();
 
@@ -24,6 +25,16 @@ const turnstileConfig = {
   secretKey: 'secret-key',
 };
 const PASSWORD_RESET_SITE_ORIGIN = 'https://tickets.example.com';
+
+function getRefreshCookie(setCookies: string[] | undefined): string {
+  const value = setCookies?.find((item) => item.startsWith('lt_refresh_token='));
+  if (!value) throw new Error('refresh cookie missing');
+  return value.split(';', 1)[0];
+}
+
+function refreshTokenFromCookie(cookie: string): string {
+  return decodeURIComponent(cookie.slice(cookie.indexOf('=') + 1));
+}
 
 async function configureApp(
   data: Parameters<ReturnType<typeof prisma>['appConfig']['create']>[0]['data'],
@@ -66,16 +77,24 @@ describe('POST /api/auth/register', () => {
     expect(getTestOutbox()).toHaveLength(0);
   });
 
-  it('creates a new user and returns tokens', async () => {
+  it('creates a new user and returns the refresh token only as an HttpOnly cookie', async () => {
     const res = await request(app)
       .post('/api/auth/register')
       .send({ email: 'test@example.com', password: 'Password123!', username: 'testuser' });
 
     expect(res.status).toBe(201);
     expect(res.body.data).toHaveProperty('accessToken');
-    expect(res.body.data).toHaveProperty('refreshToken');
+    expect(res.body.data).not.toHaveProperty('refreshToken');
     expect(res.body.data.user.email).toBe('test@example.com');
     expect(res.body.data.user).not.toHaveProperty('passwordHash');
+
+    const cookie = getRefreshCookie(res.headers['set-cookie']);
+    expect(res.headers['set-cookie'].join(';')).toContain('HttpOnly');
+    const rawToken = refreshTokenFromCookie(cookie);
+    expect(rawToken).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const session = await prisma().refreshSession.findFirstOrThrow();
+    expect(session.tokenHash).toBe(crypto.createHash('sha256').update(rawToken).digest('hex'));
+    expect(session.tokenHash).not.toContain(rawToken);
   });
 
   it('rejects duplicate email', async () => {
@@ -269,6 +288,8 @@ describe('POST /api/auth/login', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('accessToken');
+    expect(res.body.data).not.toHaveProperty('refreshToken');
+    expect(getRefreshCookie(res.headers['set-cookie'])).toBeTruthy();
   });
 
   it('returns tokens for valid username credentials', async () => {
@@ -412,26 +433,37 @@ describe('POST /api/auth/login', () => {
 });
 
 describe('POST /api/auth/refresh', () => {
-  it('returns new access token', async () => {
+  it('rotates a cookie token once and detects reuse of the old token', async () => {
     const reg = await request(app)
       .post('/api/auth/register')
       .send({ email: 'refresh@example.com', password: 'Password123!', username: 'refreshuser' });
 
-    const res = await request(app)
-      .post('/api/auth/refresh')
-      .send({ refreshToken: reg.body.data.refreshToken });
+    const oldCookie = getRefreshCookie(reg.headers['set-cookie']);
+    const res = await request(app).post('/api/auth/refresh').set('Cookie', oldCookie).send({});
 
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveProperty('accessToken');
+    expect(res.body.data).not.toHaveProperty('refreshToken');
+    const newCookie = getRefreshCookie(res.headers['set-cookie']);
+    expect(newCookie).not.toBe(oldCookie);
 
     const authenticated = await request(app)
       .patch('/api/users/me/notifications')
       .set('Authorization', `Bearer ${res.body.data.accessToken}`)
       .send({ receiveEmailNotifications: false });
     expect(authenticated.status).toBe(200);
+
+    const reuse = await request(app).post('/api/auth/refresh').set('Cookie', oldCookie).send({});
+    expect(reuse.status).toBe(401);
+
+    const revokedFamily = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', newCookie)
+      .send({});
+    expect(revokedFamily.status).toBe(401);
   });
 
-  it('rejects access and unsubscribe tokens as refresh tokens', async () => {
+  it('does not accept refresh tokens from the request body', async () => {
     const reg = await request(app).post('/api/auth/register').send({
       email: 'refresh-boundary@example.com',
       password: 'Password123!',
@@ -441,18 +473,34 @@ describe('POST /api/auth/refresh', () => {
 
     for (const wrongToken of [reg.body.data.accessToken, unsubscribeToken]) {
       const res = await request(app).post('/api/auth/refresh').send({ refreshToken: wrongToken });
-      expect(res.status).toBe(401);
-      expect(res.body).toMatchObject({ success: false, statusCode: 401 });
+      expect(res.status).toBe(400);
+      expect(res.body).toMatchObject({ success: false, statusCode: 400 });
     }
+  });
+
+  it('revokes the cookie session on logout without requiring an access token', async () => {
+    const login = await request(app).post('/api/auth/register').send({
+      email: 'logout@example.com',
+      password: 'Password123!',
+      username: 'logoutuser',
+    });
+    const cookie = getRefreshCookie(login.headers['set-cookie']);
+
+    const logout = await request(app).post('/api/auth/logout').set('Cookie', cookie);
+    expect(logout.status).toBe(204);
+
+    const refresh = await request(app).post('/api/auth/refresh').set('Cookie', cookie).send({});
+    expect(refresh.status).toBe(401);
   });
 });
 
 describe('POST /api/auth/password-reset', () => {
   it('sends a reset email and accepts the token once', async () => {
     clearTestOutbox();
-    await request(app)
+    const registration = await request(app)
       .post('/api/auth/register')
       .send({ email: 'reset@example.com', password: 'Password123!', username: 'resetuser' });
+    const oldRefreshCookie = getRefreshCookie(registration.headers['set-cookie']);
     await configureApp({ mailConfig: JSON.stringify(mailConfig) }, PASSWORD_RESET_SITE_ORIGIN);
 
     const requestRes = await request(app)
@@ -493,6 +541,12 @@ describe('POST /api/auth/password-reset', () => {
 
     expect(resetRes.status).toBe(200);
     expect(resetRes.body.data.reset).toBe(true);
+
+    const oldRefresh = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', oldRefreshCookie)
+      .send({});
+    expect(oldRefresh.status).toBe(401);
 
     const oldLogin = await request(app)
       .post('/api/auth/login')

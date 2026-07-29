@@ -99,8 +99,9 @@ router.post('/registration/complete', authLimiter, async (req: Request, res: Res
   await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
   const result = await federatedAuthService.completeFederatedAuthRegistration({ token, ...data });
   clearFederatedAuthRegistrationCookie(res);
-  setRefreshCookie(res, result.refreshToken);
-  res.status(201).json(result);
+  const { refreshToken, ...response } = result;
+  setRefreshCookie(res, refreshToken);
+  res.status(201).json(response);
 });
 
 export default router;

@@ -37,11 +37,7 @@ export const passwordResetConfirmSchema = z.object({
   password: z.string().min(8),
 });
 
-export const refreshRequestSchema = z
-  .object({
-    refreshToken: z.string().min(1).optional(),
-  })
-  .strict();
+export const refreshRequestSchema = z.object({}).strict();
 
 export const linkMinecraftSchema = z.object({
   code: z.string().min(1),

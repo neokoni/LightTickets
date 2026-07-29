@@ -34,10 +34,12 @@ describe('generated OpenAPI contract', () => {
 
   it('documents logout and refresh cookie authentication', () => {
     expect(document.paths['/api/auth/logout']?.post.responses['204']).toBeDefined();
-    expect(document.paths['/api/auth/refresh']?.post.security).toContainEqual({
-      refreshCookie: [],
-    });
-    expect(document.paths['/api/auth/refresh']?.post.requestBody?.required).toBe(false);
+    expect(document.paths['/api/auth/logout']?.post.security).toEqual([]);
+    expect(document.paths['/api/auth/refresh']?.post.security).toEqual([{ refreshCookie: [] }]);
+    expect(document.paths['/api/auth/refresh']?.post.requestBody).toBeUndefined();
+    expect(JSON.stringify(document.paths['/api/auth/refresh']?.post.responses)).not.toContain(
+      'refreshToken',
+    );
   });
 
   it('documents the actual MC ticket request and both authentication headers', () => {

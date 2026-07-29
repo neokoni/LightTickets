@@ -4,6 +4,7 @@ import { prisma } from '../db.js';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
 import { USER_PUBLIC_SELECT } from './constants.js';
 import { ROLE } from '../constants/roles.js';
+import * as refreshSessionService from './refresh-session.service.js';
 
 export async function listUsers(page = 1, pageSize = 20) {
   const skip = (page - 1) * pageSize;
@@ -38,10 +39,14 @@ export async function changeRole(userId: number, role: Role) {
   const user = await prisma().user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('用户不存在');
 
-  return prisma().user.update({
-    where: { id: userId },
-    data: { role },
-    select: USER_PUBLIC_SELECT,
+  return prisma().$transaction(async (tx) => {
+    const updated = await tx.user.update({
+      where: { id: userId },
+      data: { role },
+      select: USER_PUBLIC_SELECT,
+    });
+    await refreshSessionService.revokeAllUserRefreshSessions(userId, tx);
+    return updated;
   });
 }
 
@@ -88,7 +93,11 @@ export async function changePassword(userId: number, currentPassword: string, ne
   if (!valid) throw new ValidationError('当前密码错误');
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
-  await prisma().user.update({ where: { id: userId }, data: { passwordHash } });
+  return prisma().$transaction(async (tx) => {
+    await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+    await refreshSessionService.revokeAllUserRefreshSessions(userId, tx);
+    return refreshSessionService.createRefreshSession(userId, tx);
+  });
 }
 
 export async function updateEmail(userId: number, email: string) {

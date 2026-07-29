@@ -66,12 +66,30 @@ model User {
   attachments         Attachment[]
   auditLogs           AuditLog[]
   passwordResetTokens PasswordResetToken[]
+  refreshSessions     RefreshSession[]
   federatedAuthIdentities FederatedAuthIdentity[]
   federatedAuthFlows FederatedAuthFlow[]
   completedTicketHooks TicketCompletionHook[] @relation("CompletionHookCompleter")
   minecraftPlayerCredential MinecraftPlayerCredential?
 
   @@map("users")
+}
+
+model RefreshSession {
+  id        String    @id @default(uuid())
+  userId    Int       @map("user_id")
+  familyId  String    @map("family_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  rotatedAt DateTime? @map("rotated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@index([expiresAt])
+  @@map("refresh_sessions")
 }
 
 model FederatedAuthProvider {

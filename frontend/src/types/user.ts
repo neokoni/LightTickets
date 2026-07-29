@@ -36,8 +36,6 @@ export interface User {
 export interface AuthResponse {
   user: User;
   accessToken: string;
-  /** Deprecated: kept during refresh-cookie migration compatibility. */
-  refreshToken: string;
 }
 
 export interface RefreshResponse {

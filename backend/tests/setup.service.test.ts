@@ -123,7 +123,11 @@ vi.mock('../src/services/federatedauth-provider.service.js', () => ({
 }));
 
 vi.mock('../src/utils/token.js', () => ({
-  generateTokens: vi.fn(() => ({ accessToken: 'access', refreshToken: 'refresh' })),
+  generateAccessToken: vi.fn(() => 'access'),
+}));
+
+vi.mock('../src/services/refresh-session.service.js', () => ({
+  createRefreshSession: vi.fn(() => Promise.resolve('refresh')),
 }));
 
 describe('setup.service', () => {

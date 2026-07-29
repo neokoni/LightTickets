@@ -4,10 +4,8 @@ import { getConfig } from '../src/config.js';
 import {
   generateAccessToken,
   generateEmailUnsubscribeToken,
-  generateTokens,
   verifyAccessToken,
   verifyEmailUnsubscribeToken,
-  verifyRefreshToken,
 } from '../src/utils/token.js';
 
 const ACCESS_AUDIENCE = 'lighttickets:api';
@@ -42,11 +40,10 @@ function signAccessPayload(
 }
 
 describe('JWT token boundaries', () => {
-  it('issues access, refresh, and unsubscribe tokens with distinct claims', () => {
-    const { accessToken, refreshToken } = generateTokens(42, 'staff');
+  it('issues access and unsubscribe tokens with distinct claims', () => {
+    const accessToken = generateAccessToken(42, 'staff');
     const unsubscribeToken = generateEmailUnsubscribeToken(42);
     const access = decodeToken(accessToken);
-    const refresh = decodeToken(refreshToken);
     const unsubscribe = decodeToken(unsubscribeToken);
 
     expect(access.header).toMatchObject({ alg: 'HS256', typ: 'at+jwt' });
@@ -58,14 +55,6 @@ describe('JWT token boundaries', () => {
       aud: ACCESS_AUDIENCE,
       iss: ISSUER,
     });
-    expect(refresh.header).toMatchObject({ alg: 'HS256', typ: 'rt+jwt' });
-    expect(refresh.payload).toMatchObject({
-      userId: 42,
-      type: 'refresh',
-      aud: 'lighttickets:auth:refresh',
-      iss: ISSUER,
-    });
-    expect(refresh.payload).not.toHaveProperty('role');
     expect(unsubscribe.header).toMatchObject({ alg: 'HS256', typ: 'lt-unsubscribe+jwt' });
     expect(unsubscribe.payload).toMatchObject({
       userId: 42,
@@ -76,20 +65,18 @@ describe('JWT token boundaries', () => {
     });
   });
 
-  it('accepts each token only in its designated verifier', () => {
-    const { accessToken, refreshToken } = generateTokens(7, 'player');
+  it('accepts each JWT only in its designated verifier', () => {
+    const accessToken = generateAccessToken(7, 'player');
     const unsubscribeToken = generateEmailUnsubscribeToken(7);
+    const opaqueRefreshToken = 'not-a-jwt-refresh-token';
 
     expect(verifyAccessToken(accessToken)).toEqual({ userId: 7, role: 'player' });
-    expect(verifyRefreshToken(refreshToken)).toEqual({ userId: 7 });
     expect(verifyEmailUnsubscribeToken(unsubscribeToken)).toEqual({ userId: 7 });
 
-    expect(() => verifyAccessToken(refreshToken)).toThrow();
+    expect(() => verifyAccessToken(opaqueRefreshToken)).toThrow();
     expect(() => verifyAccessToken(unsubscribeToken)).toThrow();
-    expect(() => verifyRefreshToken(accessToken)).toThrow();
-    expect(() => verifyRefreshToken(unsubscribeToken)).toThrow();
     expect(() => verifyEmailUnsubscribeToken(accessToken)).toThrow();
-    expect(() => verifyEmailUnsubscribeToken(refreshToken)).toThrow();
+    expect(() => verifyEmailUnsubscribeToken(opaqueRefreshToken)).toThrow();
   });
 
   it('uses the same strict access signer for standalone access tokens', () => {
@@ -192,11 +179,6 @@ describe('JWT token boundaries', () => {
       algorithm: 'HS256',
       expiresIn: '2h',
     });
-    const legacyRefresh = jwt.sign(
-      { userId: 1, role: 'player' },
-      config.security.jwtRefreshSecret,
-      { algorithm: 'HS256', expiresIn: '7d' },
-    );
     const legacyUnsubscribe = jwt.sign(
       { userId: 1, purpose: 'ticket-email-unsubscribe' },
       config.security.jwtSecret,
@@ -204,7 +186,6 @@ describe('JWT token boundaries', () => {
     );
 
     expect(() => verifyAccessToken(legacyAccess)).toThrow();
-    expect(() => verifyRefreshToken(legacyRefresh)).toThrow();
     expect(() => verifyEmailUnsubscribeToken(legacyUnsubscribe)).toThrow();
   });
 
@@ -220,11 +201,6 @@ describe('JWT token boundaries', () => {
         config.security.jwtSecret,
         { algorithm: 'HS256', expiresIn: '2h' },
       );
-      const legacyRefresh = jwt.sign(
-        { userId: 3, role: 'staff', iat: cutoff },
-        config.security.jwtRefreshSecret,
-        { algorithm: 'HS256', expiresIn: '7d' },
-      );
       const legacyUnsubscribe = jwt.sign(
         { userId: 3, purpose: 'ticket-email-unsubscribe', iat: cutoff },
         config.security.jwtSecret,
@@ -232,10 +208,8 @@ describe('JWT token boundaries', () => {
       );
 
       expect(verifyAccessToken(legacyAccess)).toEqual({ userId: 3, role: 'staff' });
-      expect(verifyRefreshToken(legacyRefresh)).toEqual({ userId: 3 });
       expect(verifyEmailUnsubscribeToken(legacyUnsubscribe)).toEqual({ userId: 3 });
       expect(() => verifyAccessToken(legacyUnsubscribe)).toThrow();
-      expect(() => verifyRefreshToken(legacyAccess)).toThrow();
       expect(() => verifyEmailUnsubscribeToken(legacyAccess)).toThrow();
 
       const afterCutoff = jwt.sign(

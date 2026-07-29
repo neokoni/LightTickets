@@ -25,7 +25,6 @@ import {
   loginSchema,
   passwordResetConfirmSchema,
   passwordResetRequestSchema,
-  refreshRequestSchema,
   registerSchema,
   registrationVerificationRequestSchema,
 } from './schemas/auth.js';
@@ -118,6 +117,30 @@ const genericResponseDataSchema = z.union([
   z.null(),
 ]);
 
+const publicUserSchema = registry.register(
+  'PublicUser',
+  z.object({
+    id: z.number().int().positive(),
+    email: z.string().email(),
+    username: z.string(),
+    minecraftUuid: z.string().nullable(),
+    minecraftName: z.string().nullable(),
+    avatarUrl: z.string().nullable(),
+    receiveEmailNotifications: z.boolean(),
+    role: z.enum(['player', 'staff', 'admin']),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  }),
+);
+
+const authResponseSchema = registry.register(
+  'AuthResponse',
+  z.object({
+    user: publicUserSchema,
+    accessToken: z.string(),
+  }),
+);
+
 type AuthType =
   'none' | 'jwt' | 'refresh' | 'conditional' | 'admin' | 'staff' | 'apiKey' | 'minecraftPlayer';
 
@@ -190,7 +213,7 @@ function registerRoute(def: RouteDef) {
             : def.auth === 'conditional'
               ? [{ [jwtSecurityScheme.name]: [] }, {}]
               : def.auth === 'refresh'
-                ? [{ [refreshCookieSecurityScheme.name]: [] }, {}]
+                ? [{ [refreshCookieSecurityScheme.name]: [] }]
                 : [{ [jwtSecurityScheme.name]: [] }],
     request: {
       ...(paramsSchema && { params: paramsSchema }),
@@ -226,6 +249,7 @@ const registerAuthRoutes = () => {
     tags: ['Auth'],
     bodySchema: registerSchema,
     successStatus: '201',
+    responseSchema: authResponseSchema,
   });
   registerRoute({
     method: 'post',
@@ -246,6 +270,7 @@ const registerAuthRoutes = () => {
     auth: 'none',
     tags: ['Auth'],
     bodySchema: loginSchema,
+    responseSchema: authResponseSchema,
   });
   registerRoute({
     method: 'post',
@@ -275,14 +300,13 @@ const registerAuthRoutes = () => {
     summary: '刷新访问令牌',
     auth: 'refresh',
     tags: ['Auth'],
-    bodySchema: refreshRequestSchema,
-    bodyRequired: false,
+    responseSchema: authResponseSchema,
   });
   registerRoute({
     method: 'post',
     path: '/api/auth/logout',
     summary: '退出登录并清除刷新令牌 Cookie',
-    auth: 'jwt',
+    auth: 'none',
     tags: ['Auth'],
     successStatus: '204',
     successDescription: 'Logged out',
@@ -963,6 +987,24 @@ const registerSetupRoutes = () => {
     tags: ['Setup'],
     bodySchema: setupSchema,
     successStatus: '201',
+    responseSchema: z.object({
+      setup: z.object({
+        id: z.string(),
+        isSetup: z.boolean(),
+        siteName: z.string(),
+        siteUrl: siteUrlSchema.nullable(),
+        defaultLanguage: z.string(),
+        createdAt: z.string().datetime(),
+        updatedAt: z.string().datetime(),
+      }),
+      admin: z.object({
+        id: z.number().int().positive(),
+        email: z.string().email(),
+        username: z.string(),
+        role: z.literal('admin'),
+      }),
+      accessToken: z.string(),
+    }),
   });
   registerRoute({
     method: 'patch',
@@ -1062,6 +1104,7 @@ const registerFederatedAuthRoutes = () => {
     tags: ['外部登录'],
     bodySchema: federatedAuthRegistrationSchema,
     successStatus: '201',
+    responseSchema: authResponseSchema,
   });
   registerRoute({
     method: 'get',

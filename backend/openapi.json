@@ -59,6 +59,81 @@
           "statusCode",
           "message"
         ]
+      },
+      "PublicUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "username": {
+            "type": "string"
+          },
+          "minecraftUuid": {
+            "type": "string",
+            "nullable": true
+          },
+          "minecraftName": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiveEmailNotifications": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "player",
+              "staff",
+              "admin"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "username",
+          "minecraftUuid",
+          "minecraftName",
+          "avatarUrl",
+          "receiveEmailNotifications",
+          "role",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/PublicUser"
+          },
+          "accessToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "accessToken"
+        ]
       }
     },
     "parameters": {}
@@ -222,33 +297,7 @@
                       ]
                     },
                     "data": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {},
-                          "additionalProperties": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/AuthResponse"
                     }
                   },
                   "required": [
@@ -405,33 +454,7 @@
                       ]
                     },
                     "data": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {},
-                          "additionalProperties": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/AuthResponse"
                     }
                   },
                   "required": [
@@ -619,26 +642,8 @@
         "security": [
           {
             "refreshCookie": []
-          },
-          {}
-        ],
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "refreshToken": {
-                    "type": "string",
-                    "minLength": 1
-                  }
-                },
-                "additionalProperties": false
-              }
-            }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -654,33 +659,7 @@
                       ]
                     },
                     "data": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {},
-                          "additionalProperties": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/AuthResponse"
                     }
                   },
                   "required": [
@@ -710,11 +689,7 @@
         "tags": [
           "Auth"
         ],
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
+        "security": [],
         "responses": {
           "204": {
             "description": "Logged out"
@@ -7307,32 +7282,85 @@
                       ]
                     },
                     "data": {
-                      "anyOf": [
-                        {
+                      "type": "object",
+                      "properties": {
+                        "setup": {
                           "type": "object",
-                          "properties": {},
-                          "additionalProperties": {
-                            "nullable": true
-                          }
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "isSetup": {
+                              "type": "boolean"
+                            },
+                            "siteName": {
+                              "type": "string"
+                            },
+                            "siteUrl": {
+                              "type": "string",
+                              "nullable": true,
+                              "format": "uri",
+                              "description": "Canonical public HTTP(S) origin without credentials, path, query, or fragment"
+                            },
+                            "defaultLanguage": {
+                              "type": "string"
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            },
+                            "updatedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "isSetup",
+                            "siteName",
+                            "siteUrl",
+                            "defaultLanguage",
+                            "createdAt",
+                            "updatedAt"
+                          ]
                         },
-                        {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
+                        "admin": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            },
+                            "username": {
+                              "type": "string"
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "admin"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "email",
+                            "username",
+                            "role"
+                          ]
                         },
-                        {
+                        "accessToken": {
                           "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "nullable": true
                         }
+                      },
+                      "required": [
+                        "setup",
+                        "admin",
+                        "accessToken"
                       ]
                     }
                   },
@@ -8422,33 +8450,7 @@
                       ]
                     },
                     "data": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {},
-                          "additionalProperties": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "nullable": true
-                        }
-                      ]
+                      "$ref": "#/components/schemas/AuthResponse"
                     }
                   },
                   "required": [

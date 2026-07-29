@@ -8,6 +8,7 @@ import * as mailConfigService from './mail-config.service.js';
 import * as rateLimitConfigService from './rate-limit-config.service.js';
 import { resolveSiteTitle } from './site.js';
 import { resolvePasswordResetOrigin } from '../utils/site-url.js';
+import * as refreshSessionService from './refresh-session.service.js';
 
 const RESET_TOKEN_BYTES = 32;
 const RESET_TOKEN_EXPIRY_MS = 30 * 60 * 1000;
@@ -191,18 +192,20 @@ export async function resetPassword(token: string, newPassword: string): Promise
   if (!resetToken) throw new ValidationError('重置链接无效或已过期');
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
-  await prisma().$transaction([
-    prisma().user.update({
+  await prisma().$transaction(async (tx) => {
+    const now = new Date();
+    await tx.user.update({
       where: { id: resetToken.userId },
       data: { passwordHash },
-    }),
-    prisma().passwordResetToken.update({
+    });
+    await tx.passwordResetToken.update({
       where: { id: resetToken.id },
-      data: { usedAt: new Date() },
-    }),
-    prisma().passwordResetToken.updateMany({
+      data: { usedAt: now },
+    });
+    await tx.passwordResetToken.updateMany({
       where: { userId: resetToken.userId, usedAt: null },
-      data: { usedAt: new Date() },
-    }),
-  ]);
+      data: { usedAt: now },
+    });
+    await refreshSessionService.revokeAllUserRefreshSessions(resetToken.userId, tx);
+  });
 }

@@ -144,15 +144,7 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: components['schemas']['AuthResponse'];
             };
           };
         };
@@ -270,15 +262,7 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: components['schemas']['AuthResponse'];
             };
           };
         };
@@ -433,13 +417,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: {
-        content: {
-          'application/json': {
-            refreshToken?: string;
-          };
-        };
-      };
+      requestBody?: never;
       responses: {
         /** @description Success */
         200: {
@@ -450,15 +428,7 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: components['schemas']['AuthResponse'];
             };
           };
         };
@@ -4566,15 +4536,32 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: {
+                setup: {
+                  id: string;
+                  isSetup: boolean;
+                  siteName: string;
+                  /**
+                   * Format: uri
+                   * @description Canonical public HTTP(S) origin without credentials, path, query, or fragment
+                   */
+                  siteUrl: string | null;
+                  defaultLanguage: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                };
+                admin: {
+                  id: number;
+                  /** Format: email */
+                  email: string;
+                  username: string;
+                  /** @enum {string} */
+                  role: 'admin';
+                };
+                accessToken: string;
+              };
             };
           };
         };
@@ -5130,15 +5117,7 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: components['schemas']['AuthResponse'];
             };
           };
         };
@@ -5715,6 +5694,26 @@ export interface components {
       statusCode: number;
       message: string;
       traceId?: string;
+    };
+    PublicUser: {
+      id: number;
+      /** Format: email */
+      email: string;
+      username: string;
+      minecraftUuid: string | null;
+      minecraftName: string | null;
+      avatarUrl: string | null;
+      receiveEmailNotifications: boolean;
+      /** @enum {string} */
+      role: 'player' | 'staff' | 'admin';
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    AuthResponse: {
+      user: components['schemas']['PublicUser'];
+      accessToken: string;
     };
   };
   responses: never;

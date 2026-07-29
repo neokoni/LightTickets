@@ -83,8 +83,6 @@ export interface SetupResult {
     updatedAt?: string;
   };
   accessToken: string;
-  /** Deprecated: kept during refresh-cookie migration compatibility. */
-  refreshToken: string;
 }
 
 export interface SettingsResult {

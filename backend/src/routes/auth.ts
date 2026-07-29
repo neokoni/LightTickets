@@ -3,11 +3,12 @@ import { Router } from 'express';
 import * as authService from '../services/auth.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { authLimiter } from '../middleware/rate-limit.js';
-import { ForbiddenError, ValidationError } from '../utils/errors.js';
+import { ForbiddenError, UnauthorizedError } from '../utils/errors.js';
 import { validate } from '../utils/validate.js';
 import * as passwordResetService from '../services/password-reset.service.js';
 import * as registrationEmailVerificationService from '../services/registration-email-verification.service.js';
 import * as turnstileConfigService from '../services/turnstile-config.service.js';
+import * as refreshSessionService from '../services/refresh-session.service.js';
 import {
   REFRESH_COOKIE_NAME,
   clearRefreshCookie,
@@ -42,8 +43,9 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
     data.username,
     data.emailVerificationCode,
   );
-  setRefreshCookie(res, result.refreshToken);
-  res.status(201).json(result);
+  const { refreshToken, ...response } = result;
+  setRefreshCookie(res, refreshToken);
+  res.status(201).json(response);
 });
 
 router.post('/register/verification-code', authLimiter, async (req: Request, res: Response) => {
@@ -67,8 +69,9 @@ router.post('/login', authLimiter, async (req: Request, res: Response) => {
 
   await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
   const result = await authService.login(data.emailOrUsername, data.password);
-  setRefreshCookie(res, result.refreshToken);
-  res.json(result);
+  const { refreshToken, ...response } = result;
+  setRefreshCookie(res, refreshToken);
+  res.json(response);
 });
 
 router.post('/password-reset/request', authLimiter, async (req: Request, res: Response) => {
@@ -86,15 +89,24 @@ router.post('/password-reset/confirm', authLimiter, async (req: Request, res: Re
 
 router.post('/refresh', authLimiter, async (req: Request, res: Response) => {
   const cookies = parseCookies(req.headers.cookie);
-  const data = validate(refreshRequestSchema, req.body ?? {});
-  const refreshToken = cookies[REFRESH_COOKIE_NAME] || data.refreshToken;
-  if (!refreshToken) throw new ValidationError('refreshToken required');
+  validate(refreshRequestSchema, req.body ?? {});
+  const refreshToken = cookies[REFRESH_COOKIE_NAME];
+  if (!refreshToken) throw new UnauthorizedError('缺少刷新令牌 Cookie');
 
-  const result = await authService.refresh(refreshToken);
-  res.json(result);
+  try {
+    const result = await authService.refresh(refreshToken);
+    const { refreshToken: nextRefreshToken, ...response } = result;
+    setRefreshCookie(res, nextRefreshToken);
+    res.json(response);
+  } catch (error) {
+    clearRefreshCookie(res);
+    throw error;
+  }
 });
 
-router.post('/logout', authMiddleware, async (_req: Request, res: Response) => {
+router.post('/logout', authLimiter, async (req: Request, res: Response) => {
+  const refreshToken = parseCookies(req.headers.cookie)[REFRESH_COOKIE_NAME];
+  if (refreshToken) await refreshSessionService.revokeRefreshSession(refreshToken);
   clearRefreshCookie(res);
   res.status(204).end();
 });

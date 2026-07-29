@@ -72,7 +72,8 @@ describe('POST /api/setup', () => {
     expect(res.body.data.admin.email).toBe('admin@example.com');
     expect(res.body.data.admin.role).toBe('admin');
     expect(res.body.data).toHaveProperty('accessToken');
-    expect(res.body.data).toHaveProperty('refreshToken');
+    expect(res.body.data).not.toHaveProperty('refreshToken');
+    expect(res.headers['set-cookie'].join(';')).toContain('lt_refresh_token=');
 
     const status = await request(app).get('/api/setup/site-config');
     expect(status.body.data.isSetup).toBe(true);
