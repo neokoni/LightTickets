@@ -9,7 +9,6 @@ import io.socket.engineio.client.transports.WebSocket;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.json.JSONArray;
@@ -17,6 +16,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
@@ -164,7 +165,8 @@ public class WebSocketClient {
         try {
             return switch (type) {
                 case "command" -> executeCommandHook(content);
-                case "minimessage" -> executeMiniMessageHook(playerUuid, content);
+                case "minimessage" -> executeMiniMessageHook(playerUuid, content,
+                        hook.optJSONObject("placeholders"));
                 default -> LangUtils.getRawLang("websocket.unknown_hook_type", Map.of("{type}", type));
             };
         } catch (Throwable e) {
@@ -185,13 +187,25 @@ public class WebSocketClient {
         }
     }
 
-    private static String executeMiniMessageHook(UUID playerUuid, String message) {
+    private static String executeMiniMessageHook(UUID playerUuid, String message, JSONObject placeholders) {
         if (playerUuid == null) return LangUtils.getRawLang("websocket.missing_player_uuid");
         Player player = Bukkit.getPlayer(playerUuid);
         if (player == null) return LangUtils.getRawLang("websocket.player_not_online",
                 Map.of("{uuid}", playerUuid.toString()));
 
-        Component component = MiniMessage.miniMessage().deserialize(message);
+        Component component;
+        if (placeholders == null) {
+            // Legacy deliveries already contain interpolated data and cannot be parsed safely.
+            component = Component.text(message);
+        } else {
+            Map<String, String> values = new HashMap<>();
+            Iterator<?> keys = placeholders.keys();
+            while (keys.hasNext()) {
+                String key = String.valueOf(keys.next());
+                values.put('{' + key + '}', placeholders.optString(key, ""));
+            }
+            component = LangUtils.renderMiniMessage(message, values);
+        }
         player.getScheduler().run(LightTickets.getInstance(),
                 task -> player.sendMessage(component),
                 null);

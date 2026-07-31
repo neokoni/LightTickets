@@ -15,7 +15,6 @@ import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -58,13 +57,11 @@ public class ChangeStatus {
         Component prefixComp = LangUtils.prefixComponent();
         for (TicketStatus status : allowedStatuses(player)) {
             String label = status.label();
-            String color = status.color();
-            String raw = LangUtils.getRawLang("ticket.status_picker_item",
-                    Map.of("{color}", color, "{status}", label));
-            Component item = prefixComp.append(MiniMessage.miniMessage().deserialize(raw))
+            Component labelComponent = Component.text('[' + label + ']', status.textColor());
+            Component item = prefixComp.append(LangUtils.getLangContent("ticket.status_picker_label",
+                            Map.of(), Map.of("{status}", labelComponent)))
                     .clickEvent(ClickEvent.runCommand("/lit ticket status " + ticketId + " " + status.key()))
-                    .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
-                            LangUtils.getRawLang("ticket.status_picker_hover"))));
+                    .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.status_picker_hover")));
             player.sendMessage(item);
         }
     }

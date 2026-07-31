@@ -204,7 +204,7 @@ completion_hooks:
     expect(resolveHookActions(selections[0].actions, variables)).toEqual([
       { type: 'command', content: 'say Coins,Items' },
       { type: 'command', content: 'tell Notch done' },
-      { type: 'minimessage', content: '<green>#42</green>' },
+      { type: 'minimessage', content: '<green>#{ticket_id}</green>' },
     ]);
   });
 });

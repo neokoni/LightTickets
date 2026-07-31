@@ -544,7 +544,7 @@ export function resolveHookActions(
         : (action.messages ?? (action.message ? [action.message] : []));
     return values.map((content) => ({
       type: action.type,
-      content: resolveHookPlaceholders(content, variables),
+      content: action.type === 'command' ? resolveHookPlaceholders(content, variables) : content,
     }));
   });
 }

@@ -14,7 +14,6 @@ import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -92,25 +91,13 @@ public class BindAccount {
     }
 
     private Component buildCodeMessage(String code, String expiresAt) {
-        String raw = LangUtils.getRawLang("bind.code", Map.of("{expiresAt}", expiresAt));
-        String placeholder = "{code}";
-        int idx = raw.indexOf(placeholder);
-
         Component codeComp = Component.text(code)
                 .color(TicketStatus.CLOSED.textColor())
                 .clickEvent(ClickEvent.copyToClipboard(code))
-                .hoverEvent(HoverEvent.showText(
-                        MiniMessage.miniMessage().deserialize(LangUtils.getRawLang("bind.copy_hint"))));
+                .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("bind.copy_hint")));
 
-        if (idx < 0) {
-            return LangUtils.prefixComponent().append(MiniMessage.miniMessage().deserialize(raw));
-        }
-        String before = raw.substring(0, idx);
-        String after = raw.substring(idx + placeholder.length());
-        return LangUtils.prefixComponent()
-                .append(MiniMessage.miniMessage().deserialize(before))
-                .append(codeComp)
-                .append(MiniMessage.miniMessage().deserialize(after));
+        return LangUtils.getLang("bind.code", Map.of("{expiresAt}", expiresAt),
+                Map.of("{code}", codeComp));
     }
 
 }

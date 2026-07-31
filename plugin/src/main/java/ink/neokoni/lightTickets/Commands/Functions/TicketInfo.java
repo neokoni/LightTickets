@@ -16,10 +16,11 @@ import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -98,13 +99,12 @@ public class TicketInfo {
         final int authorId = rawAuthorId;
 
         TicketStatus ticketStatus = TicketStatus.fromKey(status);
-        String statusColor = ticketStatus.color();
         String statusText = ticketStatus.label();
 
         player.sendMessage(LangUtils.getLang("ticket.info_title",
                 Map.of("{id}", String.valueOf(id), "{title}", title)));
-        player.sendMessage(LangUtils.getLang("ticket.info_status",
-                Map.of("{status_color}", statusColor, "{status}", statusText)));
+        player.sendMessage(LangUtils.getLang("ticket.info_status_label", Map.of(),
+                Map.of("{status}", Component.text(statusText, ticketStatus.textColor()))));
         player.sendMessage(LangUtils.getLang("ticket.info_template",
                 Map.of("{template}", template)));
         player.sendMessage(LangUtils.getLang("ticket.info_author",
@@ -198,14 +198,11 @@ public class TicketInfo {
 
     private Component buildCommentComponent(String author, String date, String body, int ticketId, int commentIndex) {
         Component prefixComp = LangUtils.prefixComponent();
-        String headerRaw = LangUtils.getRawLang("ticket.comment_item",
+        Component header = LangUtils.getLangContent("ticket.comment_item",
                 Map.of("{author}", author, "{date}", date, "{body}", ""));
-
-        Component header = MiniMessage.miniMessage().deserialize(headerRaw);
         Component content = formatCommentBody(body)
                 .clickEvent(ClickEvent.runCommand("/lit ticket comment " + ticketId + " reply " + commentIndex))
-                .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
-                        LangUtils.getRawLang("ticket.reply_hint_hover"))));
+                .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.reply_hint_hover")));
 
         return prefixComp.append(header).append(content);
     }
@@ -248,27 +245,22 @@ public class TicketInfo {
                 if (linkMatcher.find()) {
                     String text = linkMatcher.group(1);
                     String url = linkMatcher.group(2);
-                    String linkRaw = LangUtils.getRawLang("ticket.comment_link",
-                            Map.of("{text}", text, "{url}", url));
-                    result = result.append(MiniMessage.miniMessage().deserialize(linkRaw));
+                    result = result.append(buildCommentLink(text, url));
                     remaining = remaining.substring(linkMatcher.end());
                 }
             } else if (minIdx == fileIdx) {
                 fileMatcher.reset(remaining);
                 if (fileMatcher.find()) {
                     String filename = fileMatcher.group(1);
-                    String fileRaw = LangUtils.getRawLang("ticket.comment_file",
-                            Map.of("{filename}", filename));
-                    result = result.append(MiniMessage.miniMessage().deserialize(fileRaw));
+                    result = result.append(LangUtils.getLangContent("ticket.comment_file",
+                            Map.of("{filename}", filename)));
                     remaining = remaining.substring(fileMatcher.end());
                 }
             } else {
                 urlMatcher.reset(remaining);
                 if (urlMatcher.find()) {
                     String url = urlMatcher.group(1);
-                    String linkRaw = LangUtils.getRawLang("ticket.comment_link",
-                            Map.of("{text}", url, "{url}", url));
-                    result = result.append(MiniMessage.miniMessage().deserialize(linkRaw));
+                    result = result.append(buildCommentLink(url, url));
                     remaining = remaining.substring(urlMatcher.end());
                 }
             }
@@ -277,48 +269,61 @@ public class TicketInfo {
         return result;
     }
 
+    private Component buildCommentLink(String text, String url) {
+        Component link = LangUtils.getLangContent("ticket.comment_link_text", Map.of("{text}", text));
+        URI uri = parseHttpUrl(url);
+        return uri == null ? link : link.clickEvent(ClickEvent.openUrl(uri.toString()));
+    }
+
+    private URI parseHttpUrl(String value) {
+        try {
+            URI uri = new URI(value);
+            String scheme = uri.getScheme();
+            if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+                return null;
+            }
+            if (uri.getHost() == null || uri.getHost().isBlank() || uri.getRawUserInfo() != null) {
+                return null;
+            }
+            return uri;
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
+
     private void sendCommentPagination(Player player, int ticketId, int authorId, int currentPage, int totalPages) {
         Component prefixComp = LangUtils.prefixComponent();
         Component line = Component.empty();
         if (currentPage > 1) {
-            String prevRaw = LangUtils.getRawLang("ticket.comments_prev");
-            line = line.append(prefixComp.append(MiniMessage.miniMessage().deserialize(prevRaw))
+            line = line.append(prefixComp.append(LangUtils.getLangContent("ticket.comments_prev"))
                     .clickEvent(ClickEvent.runCommand("/lit ticket info " + ticketId + " " + (currentPage - 1)))
-                    .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
-                            LangUtils.getRawLang("ticket.comments_prev_hover")))));
+                    .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.comments_prev_hover"))));
         }
-        String infoRaw = LangUtils.getRawLang("ticket.comments_page_info",
-                Map.of("{page}", String.valueOf(currentPage), "{total}", String.valueOf(totalPages)));
         line = line.append(Component.text(" "))
-                .append(MiniMessage.miniMessage().deserialize(infoRaw))
+                .append(LangUtils.getLangContent("ticket.comments_page_info",
+                        Map.of("{page}", String.valueOf(currentPage), "{total}", String.valueOf(totalPages))))
                 .append(Component.text(" "));
         if (currentPage < totalPages) {
-            String nextRaw = LangUtils.getRawLang("ticket.comments_next");
-            line = line.append(prefixComp.append(MiniMessage.miniMessage().deserialize(nextRaw))
+            line = line.append(prefixComp.append(LangUtils.getLangContent("ticket.comments_next"))
                     .clickEvent(ClickEvent.runCommand("/lit ticket info " + ticketId + " " + (currentPage + 1)))
-                    .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
-                            LangUtils.getRawLang("ticket.comments_next_hover")))));
+                    .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.comments_next_hover"))));
         }
         player.sendMessage(line);
     }
 
     private void sendCommentAddButton(Player player, int ticketId) {
         Component prefixComp = LangUtils.prefixComponent();
-        String addRaw = LangUtils.getRawLang("ticket.comment_add");
-        Component addComp = prefixComp.append(MiniMessage.miniMessage().deserialize(addRaw))
+        Component addComp = prefixComp.append(LangUtils.getLangContent("ticket.comment_add"))
                 .clickEvent(ClickEvent.runCommand("/lit ticket comment " + ticketId))
-                .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
-                        LangUtils.getRawLang("ticket.comment_add_hover"))));
+                .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.comment_add_hover")));
         player.sendMessage(addComp);
     }
 
     private void sendStatusChangeButton(Player player, int ticketId) {
         Component prefixComp = LangUtils.prefixComponent();
-        String raw = LangUtils.getRawLang("ticket.status_change_button");
-        Component btn = prefixComp.append(MiniMessage.miniMessage().deserialize(raw))
+        Component btn = prefixComp.append(LangUtils.getLangContent("ticket.status_change_button"))
                 .clickEvent(ClickEvent.runCommand("/lit ticket status " + ticketId))
-                .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
-                        LangUtils.getRawLang("ticket.status_change_button_hover"))));
+                .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.status_change_button_hover")));
         player.sendMessage(btn);
     }
 

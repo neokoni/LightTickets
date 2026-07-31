@@ -33,9 +33,12 @@ describe('minecraft hook delivery outbox', () => {
         'closed',
         [
           { type: 'command', content: 'say #{ticket_id}' },
-          { type: 'minimessage', content: '<green>Done</green>' },
+          { type: 'minimessage', content: '<green>{ticket_title}</green>' },
         ],
-        { ticket_id: String(ticket.id) },
+        {
+          ticket_id: String(ticket.id),
+          ticket_title: '<click:run_command:/op>Click me</click>',
+        },
       ),
     );
 
@@ -44,9 +47,18 @@ describe('minecraft hook delivery outbox', () => {
       where: { id: deliveryId! },
     });
     expect(delivery.status).toBe('pending');
-    const hooks = JSON.parse(delivery.hooks) as Array<{ hookId: string; content: string }>;
+    const hooks = JSON.parse(delivery.hooks) as Array<{
+      hookId: string;
+      content: string;
+      placeholders?: Record<string, string>;
+    }>;
     expect(hooks.map((hook) => hook.hookId)).toEqual([`${delivery.id}:0`, `${delivery.id}:1`]);
     expect(hooks[0].content).toBe(`say #${ticket.id}`);
+    expect(hooks[0].placeholders).toBeUndefined();
+    expect(hooks[1]).toMatchObject({
+      content: '<green>{ticket_title}</green>',
+      placeholders: { ticket_title: '<click:run_command:/op>Click me</click>' },
+    });
 
     await minecraftHookDeliveryService.dispatch(delivery.id);
     const offlineDelivery = await prisma().minecraftHookDelivery.findUniqueOrThrow({

@@ -13,7 +13,6 @@ import ink.neokoni.lightTickets.Utils.TicketStatus;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 
 import java.util.List;
@@ -133,20 +132,15 @@ public class TicketList {
 
     private Component buildTicketLine(int id, String title, String status, String createdAt) {
         TicketStatus ticketStatus = TicketStatus.fromKey(status);
-        String statusColor = ticketStatus.color();
         String statusText = ticketStatus.label();
         String date = createdAt.length() >= 10 ? createdAt.substring(0, 10) : createdAt;
 
-        String line = LangUtils.getRawLang("ticket.list_item",
+        Component textComp = LangUtils.getLang("ticket.list_display_item",
                 Map.of("{id}", String.valueOf(id),
                        "{title}", title,
-                       "{status_color}", statusColor,
-                       "{status}", statusText,
-                       "{date}", date));
-
-        Component textComp = LangUtils.prefixComponent().append(MiniMessage.miniMessage().deserialize(line));
-        Component hover = MiniMessage.miniMessage().deserialize(
-                LangUtils.getRawLang("ticket.list_item_hover"));
+                       "{date}", date),
+                Map.of("{status}", Component.text('[' + statusText + ']', ticketStatus.textColor())));
+        Component hover = LangUtils.getLangContent("ticket.list_item_hover");
         return textComp
                 .clickEvent(ClickEvent.runCommand("/lit ticket info " + id))
                 .hoverEvent(HoverEvent.showText(hover));
@@ -156,23 +150,18 @@ public class TicketList {
         Component prefixComp = LangUtils.prefixComponent();
         Component line = Component.empty();
         if (currentPage > 1) {
-            String prevRaw = LangUtils.getRawLang("ticket.list_prev");
-            line = line.append(prefixComp.append(MiniMessage.miniMessage().deserialize(prevRaw))
+            line = line.append(prefixComp.append(LangUtils.getLangContent("ticket.list_prev"))
                     .clickEvent(ClickEvent.runCommand("/lit ticket list " + (currentPage - 1)))
-                    .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
-                            LangUtils.getRawLang("ticket.list_prev_hover")))));
+                    .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.list_prev_hover"))));
         }
-        String infoRaw = LangUtils.getRawLang("ticket.list_page_info",
-                Map.of("{page}", String.valueOf(currentPage), "{total}", String.valueOf(totalPages)));
         line = line.append(Component.text(" "))
-                .append(MiniMessage.miniMessage().deserialize(infoRaw))
+                .append(LangUtils.getLangContent("ticket.list_page_info",
+                        Map.of("{page}", String.valueOf(currentPage), "{total}", String.valueOf(totalPages))))
                 .append(Component.text(" "));
         if (currentPage < totalPages) {
-            String nextRaw = LangUtils.getRawLang("ticket.list_next");
-            line = line.append(prefixComp.append(MiniMessage.miniMessage().deserialize(nextRaw))
+            line = line.append(prefixComp.append(LangUtils.getLangContent("ticket.list_next"))
                     .clickEvent(ClickEvent.runCommand("/lit ticket list " + (currentPage + 1)))
-                    .hoverEvent(HoverEvent.showText(MiniMessage.miniMessage().deserialize(
-                            LangUtils.getRawLang("ticket.list_next_hover")))));
+                    .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.list_next_hover"))));
         }
         player.sendMessage(line);
     }

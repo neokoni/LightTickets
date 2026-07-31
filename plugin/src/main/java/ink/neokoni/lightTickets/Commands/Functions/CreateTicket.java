@@ -13,7 +13,8 @@ import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -48,15 +49,14 @@ public class CreateTicket {
             return;
         }
         player.sendMessage(LangUtils.getLang("ticket.select_template"));
-        String hover = LangUtils.getRawLang("ticket.template_hover");
-        Component prefixComp = LangUtils.prefixComponent();
+        Component hover = LangUtils.getLangContent("ticket.template_hover");
         for (TemplateData t : templates) {
-            String raw = LangUtils.getRawLang("ticket.template_item",
-                    Map.of("{key}", t.getKey(),
-                           "{hover}", hover,
-                           "{name}", t.getName(),
-                           "{description}", t.getDescription() != null ? t.getDescription() : ""));
-            player.sendMessage(prefixComp.append(MiniMessage.miniMessage().deserialize(raw)));
+            Component item = LangUtils.getLang("ticket.template_display_item",
+                            Map.of("{name}", t.getName(),
+                                   "{description}", t.getDescription() != null ? t.getDescription() : ""))
+                    .clickEvent(ClickEvent.runCommand("/lit ticket create " + t.getKey()))
+                    .hoverEvent(HoverEvent.showText(hover));
+            player.sendMessage(item);
         }
     }
 

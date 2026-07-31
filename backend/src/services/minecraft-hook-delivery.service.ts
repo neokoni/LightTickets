@@ -23,7 +23,20 @@ type StoredHook = {
   hookId: string;
   type: templateService.ResolvedHook['type'];
   content: string;
+  placeholders?: Record<string, string>;
 };
+
+function referencedPlaceholders(
+  content: string,
+  variables: Record<string, string>,
+): Record<string, string> {
+  const keys = [...content.matchAll(/\{([a-zA-Z0-9_.-]+)\}/g)].map((match) => match[1]);
+  return Object.fromEntries(
+    [...new Set(keys)]
+      .filter((key) => Object.prototype.hasOwnProperty.call(variables, key))
+      .map((key) => [key, variables[key]]),
+  );
+}
 
 export function resolveTemplateEvent(ticket: HookTicket, event: string) {
   const definition = templateService.getDefinition(ticket.template);
@@ -45,11 +58,20 @@ export async function createForResolvedHooks(
   if (!ticket.serverId || hooks.length === 0) return null;
 
   const deliveryId = crypto.randomUUID();
-  const storedHooks: StoredHook[] = hooks.map((hook, index) => ({
-    hookId: `${deliveryId}:${index}`,
-    type: hook.type,
-    content: templateService.resolveHookPlaceholders(hook.content, variables),
-  }));
+  const storedHooks: StoredHook[] = hooks.map((hook, index) => {
+    const base = { hookId: `${deliveryId}:${index}`, type: hook.type };
+    if (hook.type === 'command') {
+      return {
+        ...base,
+        content: templateService.resolveHookPlaceholders(hook.content, variables),
+      };
+    }
+    return {
+      ...base,
+      content: hook.content,
+      placeholders: referencedPlaceholders(hook.content, variables),
+    };
+  });
   await tx.minecraftHookDelivery.create({
     data: {
       id: deliveryId,
