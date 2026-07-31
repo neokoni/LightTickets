@@ -9,16 +9,21 @@ import BaseInput from '@/components/base/BaseInput.vue';
 import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
 import { apiGetStorageConfig, apiUpdateStorageConfig, apiTestS3Connection } from '@/api/storage';
+import { getSettings, updateSettings } from '@/api/setup';
 import { StorageDriver, type StorageConfig } from '@/types/storage';
 
 const ui = useUiStore();
 
 const loading = ref(false);
 const saving = ref(false);
+const savingAttachment = ref(false);
 const testing = ref(false);
 const testResult = ref<{ success: boolean; message: string } | null>(null);
 
 const driver = ref<StorageDriver>(StorageDriver.LOCAL);
+const pendingQuotaMiB = ref(0);
+const pendingExpirationEnabled = ref(true);
+const pendingTtlDays = ref(0);
 const s3 = ref({
   endpoint: '',
   bucket: '',
@@ -41,8 +46,11 @@ const storageButtonClass =
 onMounted(async () => {
   loading.value = true;
   try {
-    const config = await apiGetStorageConfig();
-    applyConfig(config);
+    const [storageConfig, settings] = await Promise.all([apiGetStorageConfig(), getSettings()]);
+    applyConfig(storageConfig);
+    pendingQuotaMiB.value = settings.attachment.pendingQuotaMiB;
+    pendingExpirationEnabled.value = settings.attachment.pendingExpirationEnabled;
+    pendingTtlDays.value = settings.attachment.pendingTtlDays;
   } catch (e) {
     handleError(e, t('common.loadFailed'));
   } finally {
@@ -60,6 +68,27 @@ function applyConfig(config: StorageConfig) {
     } else {
       secretMasked.value = false;
     }
+  }
+}
+
+async function saveAttachment() {
+  savingAttachment.value = true;
+  try {
+    const result = await updateSettings({
+      attachment: {
+        pendingQuotaMiB: pendingQuotaMiB.value,
+        pendingExpirationEnabled: pendingExpirationEnabled.value,
+        pendingTtlDays: pendingTtlDays.value,
+      },
+    });
+    pendingQuotaMiB.value = result.attachment.pendingQuotaMiB;
+    pendingExpirationEnabled.value = result.attachment.pendingExpirationEnabled;
+    pendingTtlDays.value = result.attachment.pendingTtlDays;
+    ui.toast(t('admin.storage.attachmentSaved'), ToastType.SUCCESS);
+  } catch (e) {
+    handleError(e, t('common.saveFailed'));
+  } finally {
+    savingAttachment.value = false;
   }
 }
 
@@ -249,6 +278,45 @@ async function testConnection() {
       <BaseButton filled :loading="saving" @click="save">{{
         saving ? t('common.saving') : t('common.save')
       }}</BaseButton>
+
+      <section class="space-y-3 border-t border-slate-200 pt-5 dark:border-slate-800">
+        <h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+          {{ t('admin.storage.attachmentTitle') }}
+        </h3>
+        <BaseInput
+          v-model.number="pendingQuotaMiB"
+          :label="t('admin.storage.pendingAttachmentQuota')"
+          required
+          type="number"
+          min="1"
+          max="102400"
+        />
+        <div
+          class="flex items-center justify-between gap-4 border border-slate-200 px-4 py-3 dark:border-slate-800"
+        >
+          <div>
+            <p class="text-sm font-medium text-slate-900 dark:text-white">
+              {{ t('admin.storage.pendingAttachmentExpiration') }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {{ t('admin.storage.pendingAttachmentExpirationHelp') }}
+            </p>
+          </div>
+          <BaseToggle v-model="pendingExpirationEnabled" />
+        </div>
+        <BaseInput
+          v-if="pendingExpirationEnabled"
+          v-model.number="pendingTtlDays"
+          :label="t('admin.storage.pendingAttachmentTtl')"
+          required
+          type="number"
+          min="1"
+          max="365"
+        />
+        <BaseButton filled :loading="savingAttachment" @click="saveAttachment">{{
+          savingAttachment ? t('common.saving') : t('common.save')
+        }}</BaseButton>
+      </section>
     </div>
   </div>
 </template>

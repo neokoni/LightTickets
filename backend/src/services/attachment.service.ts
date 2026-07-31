@@ -1,11 +1,13 @@
 import { prisma } from '../db.js';
-import { NotFoundError, ValidationError } from '../utils/errors.js';
+import { ForbiddenError, NotFoundError, ValidationError } from '../utils/errors.js';
 import crypto from 'crypto';
 import { getStorageAdapter } from './storage/index.js';
 import type { Response } from 'express';
 import * as ticketService from './ticket.service.js';
-import { ORPHAN_ATTACHMENT_TTL_MS, UPLOAD_TYPE_BY_MIME } from '../constants/upload.js';
-import { isAdminRole } from '../constants/roles.js';
+import { MEBIBYTE_BYTES, UPLOAD_TYPE_BY_MIME } from '../constants/upload.js';
+import { isAdminRole, isStaffRole } from '../constants/roles.js';
+import { AttachmentStatus, Prisma } from '@prisma/client';
+import * as attachmentConfigService from './attachment-config.service.js';
 
 function validateMagicBytes(buffer: Buffer, mimeType: string): void {
   const definition = UPLOAD_TYPE_BY_MIME.get(mimeType);
@@ -41,12 +43,84 @@ interface CreateAttachmentInput {
   size: number;
   storageType: string;
   uploadedBy: number;
-  ticketId?: number;
-  commentId?: string;
+  expiresAt: Date | null;
 }
 
-export async function create(input: CreateAttachmentInput) {
-  return prisma().attachment.create({ data: input });
+async function reservePendingAttachment(input: CreateAttachmentInput, pendingQuotaBytes: number) {
+  const now = new Date();
+  return prisma().$transaction(
+    async (tx) => {
+      const pending = await tx.attachment.aggregate({
+        where: {
+          uploadedBy: input.uploadedBy,
+          status: AttachmentStatus.pending,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+        _sum: { size: true },
+      });
+      const pendingBytes = pending._sum.size ?? 0;
+      if (pendingBytes + input.size > pendingQuotaBytes) {
+        throw new ValidationError('待关联附件已达到配额，请先完成议题或删除未使用的附件');
+      }
+
+      return tx.attachment.create({
+        data: { ...input, status: AttachmentStatus.pending },
+      });
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
+}
+
+async function assertCanAttachToExistingObject(input: {
+  ticketId?: number;
+  commentId?: string;
+  uploadedBy: number;
+  userRole: string;
+}): Promise<void> {
+  if (input.ticketId !== undefined && input.commentId !== undefined) {
+    throw new ValidationError('ticketId 和 commentId 不能同时提供');
+  }
+  if (input.ticketId !== undefined) {
+    const ticket = await ticketService.assertTicketVisible(input.ticketId, {
+      userId: input.uploadedBy,
+      role: input.userRole,
+    });
+    if (ticket.authorId !== input.uploadedBy && !isStaffRole(input.userRole)) {
+      throw new ForbiddenError('只有议题作者或管理组可以向该议题上传附件');
+    }
+  }
+  if (input.commentId !== undefined) {
+    const comment = await prisma().comment.findUnique({
+      where: { id: input.commentId },
+      select: { id: true, ticketId: true, authorId: true },
+    });
+    if (!comment) throw new NotFoundError('评论不存在');
+    await ticketService.assertTicketVisible(comment.ticketId, {
+      userId: input.uploadedBy,
+      role: input.userRole,
+    });
+    if (comment.authorId !== input.uploadedBy && !isStaffRole(input.userRole)) {
+      throw new ForbiddenError('只有评论作者或管理组可以向该评论上传附件');
+    }
+  }
+}
+
+async function compensateFailedUpload(
+  attachmentId: string,
+  key: string,
+  adapter: Awaited<ReturnType<typeof getStorageAdapter>>,
+): Promise<void> {
+  try {
+    await adapter.delete(key);
+  } catch {
+    console.warn(`[attachments] Failed to compensate stored file ${attachmentId}`);
+    return;
+  }
+  try {
+    await prisma().attachment.deleteMany({ where: { id: attachmentId } });
+  } catch {
+    console.warn(`[attachments] Failed to compensate attachment row ${attachmentId}`);
+  }
 }
 
 export async function saveUploadedFile(input: {
@@ -57,42 +131,52 @@ export async function saveUploadedFile(input: {
   userRole?: string;
 }) {
   validateMagicBytes(input.file.buffer, input.file.mimetype);
-  if (input.ticketId) {
-    await ticketService.assertTicketVisible(input.ticketId, {
-      userId: input.uploadedBy,
-      role: input.userRole ?? 'player',
-    });
-  }
-  if (input.commentId) {
-    const comment = await prisma().comment.findUnique({
-      where: { id: input.commentId },
-      select: { id: true, ticketId: true },
-    });
-    if (!comment) throw new NotFoundError('评论不存在');
-    await ticketService.assertTicketVisible(comment.ticketId, {
-      userId: input.uploadedBy,
-      role: input.userRole ?? 'player',
-    });
-  }
+  await assertCanAttachToExistingObject({
+    ticketId: input.ticketId,
+    commentId: input.commentId,
+    uploadedBy: input.uploadedBy,
+    userRole: input.userRole ?? 'player',
+  });
 
   const key = crypto.randomUUID();
   const adapter = await getStorageAdapter();
-  await adapter.save({
-    buffer: input.file.buffer,
-    key,
-    mimeType: input.file.mimetype,
-  });
+  const attachmentConfig = await attachmentConfigService.getAttachmentConfig();
+  const attachment = await reservePendingAttachment(
+    {
+      filename: input.file.originalname,
+      path: key,
+      mimeType: input.file.mimetype,
+      size: input.file.size,
+      storageType: adapter.type,
+      uploadedBy: input.uploadedBy,
+      expiresAt: attachmentConfig.pendingExpirationEnabled
+        ? new Date(Date.now() + attachmentConfig.pendingTtlDays * 24 * 60 * 60 * 1_000)
+        : null,
+    },
+    attachmentConfig.pendingQuotaMiB * MEBIBYTE_BYTES,
+  );
 
-  return create({
-    filename: input.file.originalname,
-    path: key,
-    mimeType: input.file.mimetype,
-    size: input.file.size,
-    storageType: adapter.type,
-    uploadedBy: input.uploadedBy,
-    ticketId: input.ticketId,
-    commentId: input.commentId,
-  });
+  try {
+    await adapter.save({
+      buffer: input.file.buffer,
+      key,
+      mimeType: input.file.mimetype,
+    });
+
+    if (input.ticketId === undefined && input.commentId === undefined) return attachment;
+    return await prisma().attachment.update({
+      where: { id: attachment.id },
+      data: {
+        status: AttachmentStatus.attached,
+        expiresAt: null,
+        ticketId: input.ticketId,
+        commentId: input.commentId,
+      },
+    });
+  } catch (error) {
+    await compensateFailedUpload(attachment.id, key, adapter);
+    throw error;
+  }
 }
 
 export async function getById(id: string) {
@@ -115,7 +199,7 @@ export async function deleteAttachment(id: string) {
 export async function listByTicket(ticketId: number, viewer?: ticketService.TicketViewer) {
   await ticketService.assertTicketVisible(ticketId, viewer);
   return prisma().attachment.findMany({
-    where: { ticketId },
+    where: { ticketId, status: AttachmentStatus.attached },
     orderBy: { createdAt: 'desc' },
   });
 }
@@ -126,6 +210,14 @@ async function getVisibleAttachment(id: string, viewer?: ticketService.TicketVie
     include: { comment: { select: { ticketId: true } } },
   });
   if (!attachment) throw new NotFoundError('附件不存在');
+  if (
+    attachment.status === AttachmentStatus.deleting ||
+    (attachment.status === AttachmentStatus.pending &&
+      attachment.expiresAt !== null &&
+      attachment.expiresAt <= new Date())
+  ) {
+    throw new NotFoundError('附件不存在');
+  }
   const ticketId = attachment.ticketId ?? attachment.comment?.ticketId;
   if (ticketId !== undefined && ticketId !== null) {
     await ticketService.assertTicketVisible(ticketId, viewer);
@@ -156,9 +248,15 @@ export async function serve(id: string, res: Response, viewer?: ticketService.Ti
 }
 
 export async function cleanupExpiredOrphanAttachments(now = new Date()): Promise<number> {
-  const cutoff = new Date(now.getTime() - ORPHAN_ATTACHMENT_TTL_MS);
   const attachments = await prisma().attachment.findMany({
-    where: { ticketId: null, commentId: null, createdAt: { lte: cutoff } },
+    where: {
+      ticketId: null,
+      commentId: null,
+      OR: [
+        { status: AttachmentStatus.pending, expiresAt: { lte: now } },
+        { status: AttachmentStatus.deleting },
+      ],
+    },
     select: { id: true, path: true },
   });
   if (attachments.length === 0) return 0;
@@ -166,19 +264,31 @@ export async function cleanupExpiredOrphanAttachments(now = new Date()): Promise
   const adapter = await getStorageAdapter();
   let deleted = 0;
   for (const attachment of attachments) {
-    const result = await prisma().attachment.deleteMany({
+    const claimed = await prisma().attachment.updateMany({
       where: {
         id: attachment.id,
         ticketId: null,
         commentId: null,
-        createdAt: { lte: cutoff },
+        OR: [
+          { status: AttachmentStatus.pending, expiresAt: { lte: now } },
+          { status: AttachmentStatus.deleting },
+        ],
       },
+      data: { status: AttachmentStatus.deleting },
     });
-    if (result.count === 0) continue;
+    if (claimed.count === 0) continue;
 
-    deleted += 1;
     try {
       await adapter.delete(attachment.path);
+      const result = await prisma().attachment.deleteMany({
+        where: {
+          id: attachment.id,
+          status: AttachmentStatus.deleting,
+          ticketId: null,
+          commentId: null,
+        },
+      });
+      deleted += result.count;
     } catch {
       console.warn(`[attachments] Failed to delete expired orphan file ${attachment.id}`);
     }

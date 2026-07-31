@@ -63,4 +63,28 @@ describe('generated OpenAPI contract', () => {
     expect(responseSchema?.properties).toHaveProperty('data');
     expect(required).toEqual(expect.arrayContaining(['success', 'data']));
   });
+
+  it('documents attachment uploads as validated multipart form data', () => {
+    const operation = document.paths['/api/attachments/upload']?.post;
+    const requestSchema = operation.requestBody?.content?.['multipart/form-data']?.schema;
+    const properties = requestSchema?.properties as Record<string, unknown> | undefined;
+
+    expect(operation.requestBody?.content?.['application/json']).toBeUndefined();
+    expect(properties).toHaveProperty('file');
+    expect(properties).toHaveProperty('ticketId');
+    expect(properties).toHaveProperty('commentId');
+  });
+
+  it('documents configurable attachment quota and expiration in admin settings', () => {
+    const patchOperation = document.paths['/api/setup/settings']?.patch;
+    const requestSchema = patchOperation.requestBody?.content?.['application/json']?.schema;
+    const requestProperties = requestSchema?.properties as Record<string, unknown> | undefined;
+    const responseSchema = patchOperation.responses[200].content?.['application/json']?.schema
+      ?.properties as Record<string, { properties?: Record<string, unknown> }> | undefined;
+    const dataProperties = responseSchema?.data?.properties;
+
+    expect(requestProperties).toHaveProperty('attachment');
+    expect(dataProperties).toHaveProperty('attachment');
+    expect(dataProperties).toHaveProperty('attachmentDefaults');
+  });
 });

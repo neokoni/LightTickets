@@ -31,6 +31,12 @@ enum CompletionHookVisibility {
   staff
 }
 
+enum AttachmentStatus {
+  pending
+  attached
+  deleting
+}
+
 enum FederatedAuthProtocol {
   oidc
   oauth
@@ -293,20 +299,24 @@ model Comment {
 }
 
 model Attachment {
-  id          String   @id @default(uuid())
-  ticketId    Int?     @map("ticket_id")
-  commentId   String?  @map("comment_id")
+  id          String           @id @default(uuid())
+  ticketId    Int?             @map("ticket_id")
+  commentId   String?          @map("comment_id")
   filename    String
   path        String
-  mimeType    String   @map("mime_type")
+  mimeType    String           @map("mime_type")
   size        Int
-  storageType String   @default("local") @map("storage_type")
-  uploadedBy  Int      @map("uploaded_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  ticket      Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  comment     Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  uploader    User     @relation(fields: [uploadedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  storageType String           @default("local") @map("storage_type")
+  status      AttachmentStatus @default(pending)
+  expiresAt   DateTime?        @map("expires_at")
+  uploadedBy  Int              @map("uploaded_by")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  ticket      Ticket?          @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  comment     Comment?         @relation(fields: [commentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  uploader    User             @relation(fields: [uploadedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@index([status, expiresAt])
+  @@index([uploadedBy, status])
   @@map("attachments")
 }
 
@@ -422,6 +432,7 @@ model AppConfig {
   mailConfig      String?  @map("mail_config")
   turnstileConfig String?  @map("turnstile_config")
   rateLimitConfig String?  @map("rate_limit_config")
+  attachmentConfig String? @map("attachment_config")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("app_config")

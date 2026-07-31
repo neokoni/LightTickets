@@ -11,8 +11,8 @@ import { TICKET_STATUS, canTransitionTicketStatus } from '../src/constants/ticke
 import { TEMPLATE_HIDDEN_MODE } from '../src/constants/ticket-visibility.js';
 import {
   ALLOWED_MIME_TYPES,
+  DEFAULT_ATTACHMENT_CONFIG,
   ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS,
-  ORPHAN_ATTACHMENT_TTL_MS,
   UPLOAD_TYPE_BY_MIME,
   UPLOAD_TYPE_DEFINITIONS,
 } from '../src/constants/upload.js';
@@ -166,9 +166,12 @@ describe('ALLOWED_MIME_TYPES', () => {
     expect(UPLOAD_TYPE_BY_MIME.get('application/pdf')?.inline).toBe(false);
   });
 
-  it('uses a one-hour orphan TTL and a shorter cleanup interval', () => {
-    expect(ORPHAN_ATTACHMENT_TTL_MS).toBe(60 * 60 * 1000);
+  it('uses a seven-day pending lifetime and a fifteen-minute cleanup interval', () => {
+    expect(DEFAULT_ATTACHMENT_CONFIG).toEqual({
+      pendingQuotaMiB: 50,
+      pendingExpirationEnabled: true,
+      pendingTtlDays: 7,
+    });
     expect(ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS).toBe(15 * 60 * 1000);
-    expect(ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS).toBeLessThan(ORPHAN_ATTACHMENT_TTL_MS);
   });
 });

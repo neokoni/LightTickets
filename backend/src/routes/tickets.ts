@@ -23,7 +23,7 @@ export const ticketCreateSchema = z.object({
     .string()
     .optional()
     .describe('Minecraft source server; accepted only for staff and admin users'),
-  attachmentIds: z.array(z.string()).optional(),
+  attachmentIds: z.array(z.string().uuid()).optional(),
   hidden: z.boolean().optional(),
 });
 

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
 import { reinitStorageAdapter } from '../src/services/storage/index.js';
@@ -73,6 +74,8 @@ describe('POST /api/attachments/upload', () => {
     expect(res.body.data.filename).toBe('test.png');
     expect(res.body.data.mimeType).toBe('image/png');
     expect(res.body.data.storageType).toBe('local');
+    expect(res.body.data.status).toBe('attached');
+    expect(res.body.data.expiresAt).toBeNull();
     expect(res.body.data.size).toBe(PNG_1x1.length);
     expect(path.extname(res.body.data.path)).toBe('');
 
@@ -101,6 +104,53 @@ describe('POST /api/attachments/upload', () => {
       .attach('file', big, 'big.png');
 
     expect(res.status).toBe(400);
+  });
+
+  it.each(['0', '-1', 'not-a-number'])('rejects invalid ticketId %s before storage', async (id) => {
+    const token = await createUserAndGetToken(`upload-invalid-${id.replaceAll('-', 'x')}@test.com`);
+    const before = new Set(await fs.promises.readdir(await getUploadDir()));
+
+    const res = await request(app)
+      .post('/api/attachments/upload')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', PNG_1x1, 'invalid-target.png')
+      .field('ticketId', id);
+
+    expect(res.status).toBe(400);
+    expect(await prisma().attachment.count()).toBe(0);
+    expect(new Set(await fs.promises.readdir(await getUploadDir()))).toEqual(before);
+  });
+
+  it('rejects ticketId and commentId when both are provided', async () => {
+    const token = await createUserAndGetToken('upload-conflicting-target@test.com');
+    const ticket = await createTicket(token);
+
+    const res = await request(app)
+      .post('/api/attachments/upload')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', PNG_1x1, 'conflict.png')
+      .field('ticketId', String(ticket.body.data.id))
+      .field('commentId', crypto.randomUUID());
+
+    expect(res.status).toBe(400);
+    expect(await prisma().attachment.count()).toBe(0);
+  });
+
+  it('prevents a viewer from attaching files to another users ticket', async () => {
+    const ownerToken = await createUserAndGetToken('target-owner@test.com');
+    const viewerToken = await createUserAndGetToken('target-viewer@test.com');
+    const ticket = await createTicket(ownerToken);
+    const before = new Set(await fs.promises.readdir(await getUploadDir()));
+
+    const res = await request(app)
+      .post('/api/attachments/upload')
+      .set('Authorization', `Bearer ${viewerToken}`)
+      .attach('file', PNG_1x1, 'pollution.png')
+      .field('ticketId', String(ticket.body.data.id));
+
+    expect(res.status).toBe(403);
+    expect(await prisma().attachment.count()).toBe(0);
+    expect(new Set(await fs.promises.readdir(await getUploadDir()))).toEqual(before);
   });
 });
 

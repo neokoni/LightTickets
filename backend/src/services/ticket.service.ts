@@ -1,4 +1,4 @@
-import type { TicketStatus, Prisma } from '@prisma/client';
+import { AttachmentStatus, type TicketStatus, type Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { AppError, NotFoundError, ForbiddenError, ValidationError } from '../utils/errors.js';
 import * as templateService from './template.service.js';
@@ -262,10 +262,16 @@ export async function create(input: CreateTicketInput) {
         where: {
           id: { in: attachmentIds },
           uploadedBy: input.authorId,
+          status: AttachmentStatus.pending,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
           ticketId: null,
           commentId: null,
         },
-        data: { ticketId: ticket.id },
+        data: {
+          ticketId: ticket.id,
+          status: AttachmentStatus.attached,
+          expiresAt: null,
+        },
       });
 
       if (claimed.count !== attachmentIds.length) {

@@ -338,7 +338,7 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
 - `formData`：严格按所选模板声明的字段提交；未知字段、缺失必填字段、非法选项和超长值会被拒绝
 - `serverId`：可选，但只有 `staff` / `admin` 可以通过 Web API 指定；普通用户提交该字段返回 `403`，
   Minecraft API 则只能使用当前已认证 API Key 对应的服务器
-- `attachmentIds`：可选，预上传附件 ID 列表；创建成功后关联到该议题
+- `attachmentIds`：可选，预上传附件 UUID 列表；只能认领当前用户所有、仍为 `pending` 且未过期的附件，创建成功后原子关联到该议题
 - `hidden`：仅当模板策略为 `optional` 时必填；其他策略由后端强制决定
 
 ### 议题列表
@@ -491,10 +491,17 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 需要认证，`multipart/form-data`：
 
 - `file`：文件
-- `ticketId`：可选
-- `commentId`：可选
+- `ticketId`：可选，只接受正整数
+- `commentId`：可选，只接受 UUID
 
-文件会先校验 mimetype 白名单，再做 magic bytes 二次校验。支持本地存储和 S3/MinIO。
+`ticketId` 和 `commentId` 不能同时提供。向已有对象上传时，仅对象作者或 `staff` / `admin`
+可以操作；不提供对象 ID 时创建一条归当前用户所有的预上传记录。未关联附件不限制文件数量，
+只计算当前用户所有仍有效 pending 文件的合计容量。默认额度为 50 MiB；过期开关默认开启，
+有效期为 7 天，管理员可以修改。关闭开关后，新上传的未关联附件不会自动过期；到期文件立即
+停止占用额度，并由定时任务删除数据库记录和物理对象。
+
+文件会先校验 mimetype 白名单，再做 magic bytes 二次校验。上传先创建 `pending` 数据库记录，
+再写入本地存储或 S3/MinIO；任一步失败时执行补偿清理。
 
 ### 获取附件
 
@@ -556,11 +563,12 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 
 `GET /api/setup/settings`
 
-需要 `admin`。返回站点设置、邮件设置、Turnstile 设置和限流策略；邮件密码和 Turnstile Secret Key 只返回是否已设置，不返回明文。
+需要 `admin`。返回站点设置、邮件设置、Turnstile 设置、限流策略和附件策略；邮件密码和 Turnstile Secret Key 只返回是否已设置，不返回明文。
 `sendEmailNotifications` 表示是否发送议题回复和状态变更邮件，默认 `false`。
 `passwordResetEnabled` 仅在 SMTP 可用且 `siteUrl` 为 HTTPS origin 时为 `true`；
 `registrationEmailVerificationEnabled` 只取决于 SMTP 是否可用。
 `rateLimit` 是当前生效值，`rateLimitDefaults` 是内置默认值，管理页输入框的 placeholder 直接使用后者。
+`attachment` 是当前附件策略，`attachmentDefaults` 是内置默认值。
 
 `PATCH /api/setup/settings`
 
@@ -604,6 +612,11 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
     "email": {
       "cooldownSeconds": 60
     }
+  },
+  "attachment": {
+    "pendingQuotaMiB": 50,
+    "pendingExpirationEnabled": true,
+    "pendingTtlDays": 7
   }
 }
 ```
@@ -618,6 +631,13 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 限流策略保存在数据库 `AppConfig` 中，修改后立即应用。全局限流按 IP 统计所有 API 请求；认证限流按 IP 统计所有挂载认证限流器的接口并共享额度。请求窗口内前 `maxRequests` 次放行，之后返回 429，到窗口结束后重新计数。注册验证码和密码重置邮件统一读取 `email.cooldownSeconds`；前者按规范化邮箱统计，后者按用户账号统计。所有秒数和请求额度必须为正整数；秒数最大 86400，请求额度最大 100000。
 
 内置默认策略为：全局每 60 秒 100 次、认证接口每 60 秒 10 次、邮件发送冷却 60 秒。默认值只在后端 `constants/rate-limit.ts` 定义，API、业务逻辑和管理页共同读取该定义。读取已保存的旧版分项邮件配置时会取两项冷却时间中的较大值作为统一配置。
+
+附件策略保存在数据库 `AppConfig` 中，只限制每个用户仍有效 pending 附件的合计容量，不限制
+文件数量。`pendingQuotaMiB` 范围为 1-102400 MiB，默认 50 MiB；
+`pendingExpirationEnabled` 控制新上传的 pending 附件是否自动过期，默认开启；
+`pendingTtlDays` 范围为 1-365 天，默认 7 天。配置变更不追溯修改已有附件的 `expiresAt`。
+未启用过期的附件仍参与配额聚合；过期记录不参与配额聚合，并由后台清理任务删除，删除失败时
+保留 `deleting` 状态供下轮重试。上述策略在管理员后台的“存储设置”页面维护。
 
 `POST /api/setup/settings/mail/test`
 

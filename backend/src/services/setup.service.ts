@@ -15,8 +15,10 @@ import * as i18nService from './i18n.service.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as turnstileConfigService from './turnstile-config.service.js';
 import * as rateLimitConfigService from './rate-limit-config.service.js';
+import * as attachmentConfigService from './attachment-config.service.js';
 import * as federatedAuthProviderService from './federatedauth-provider.service.js';
 import type { RateLimitConfigInput } from '../schemas/rate-limit.js';
+import type { AttachmentConfigInput } from '../schemas/attachment.js';
 import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 import { normalizeSiteUrl, resolvePasswordResetOrigin } from '../utils/site-url.js';
 import { normalizeIpAddress } from '../trusted-proxy.js';
@@ -101,6 +103,8 @@ export interface AdminSettings extends Omit<SiteConfig, 'isSetup'> {
   turnstile: turnstileConfigService.PublicTurnstileConfig;
   rateLimit: Awaited<ReturnType<typeof rateLimitConfigService.getRateLimitConfig>>;
   rateLimitDefaults: ReturnType<typeof rateLimitConfigService.getDefaultRateLimitConfig>;
+  attachment: Awaited<ReturnType<typeof attachmentConfigService.getAttachmentConfig>>;
+  attachmentDefaults: ReturnType<typeof attachmentConfigService.getDefaultAttachmentConfig>;
 }
 
 export interface SiteConfigInput {
@@ -305,6 +309,7 @@ export async function updateSettings(data: {
   mail?: MailConfigInput;
   turnstile?: turnstileConfigService.TurnstileConfigInput;
   rateLimit?: RateLimitConfigInput;
+  attachment?: AttachmentConfigInput;
 }) {
   const { getPrisma } = await import('../db.js');
   const prisma = getPrisma();
@@ -339,6 +344,9 @@ export async function updateSettings(data: {
   const rateLimit = data.rateLimit
     ? await rateLimitConfigService.updateRateLimitConfig(data.rateLimit)
     : await rateLimitConfigService.getRateLimitConfig();
+  const attachment = data.attachment
+    ? await attachmentConfigService.updateAttachmentConfig(data.attachment)
+    : await attachmentConfigService.getAttachmentConfig();
   const mailFeatureAvailability = getMailFeatureAvailability(updated.siteUrl, mail);
 
   return {
@@ -355,6 +363,8 @@ export async function updateSettings(data: {
     turnstile,
     rateLimit,
     rateLimitDefaults: rateLimitConfigService.getDefaultRateLimitConfig(),
+    attachment,
+    attachmentDefaults: attachmentConfigService.getDefaultAttachmentConfig(),
   };
 }
 
@@ -378,6 +388,8 @@ export async function getAdminSettings(): Promise<AdminSettings> {
     mail: await mailConfigService.getMailConfig(),
     rateLimit: await rateLimitConfigService.getRateLimitConfig(),
     rateLimitDefaults: rateLimitConfigService.getDefaultRateLimitConfig(),
+    attachment: await attachmentConfigService.getAttachmentConfig(),
+    attachmentDefaults: attachmentConfigService.getDefaultAttachmentConfig(),
     federatedAuthProviders: siteConfig.federatedAuthProviders,
   };
 }

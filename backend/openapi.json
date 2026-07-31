@@ -1071,7 +1071,8 @@
                   "attachmentIds": {
                     "type": "array",
                     "items": {
-                      "type": "string"
+                      "type": "string",
+                      "format": "uuid"
                     }
                   },
                   "hidden": {
@@ -3203,6 +3204,34 @@
             "bearerAuth": []
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "ticketId": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true
+                  },
+                  "commentId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Success",
@@ -7540,6 +7569,25 @@
                       }
                     },
                     "additionalProperties": false
+                  },
+                  "attachment": {
+                    "type": "object",
+                    "properties": {
+                      "pendingQuotaMiB": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 102400
+                      },
+                      "pendingExpirationEnabled": {
+                        "type": "boolean"
+                      },
+                      "pendingTtlDays": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 365
+                      }
+                    },
+                    "additionalProperties": false
                   }
                 }
               }
@@ -7700,13 +7748,63 @@
                             "email"
                           ],
                           "additionalProperties": false
+                        },
+                        "attachment": {
+                          "type": "object",
+                          "properties": {
+                            "pendingQuotaMiB": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 102400
+                            },
+                            "pendingExpirationEnabled": {
+                              "type": "boolean"
+                            },
+                            "pendingTtlDays": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 365
+                            }
+                          },
+                          "required": [
+                            "pendingQuotaMiB",
+                            "pendingExpirationEnabled",
+                            "pendingTtlDays"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "attachmentDefaults": {
+                          "type": "object",
+                          "properties": {
+                            "pendingQuotaMiB": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 102400
+                            },
+                            "pendingExpirationEnabled": {
+                              "type": "boolean"
+                            },
+                            "pendingTtlDays": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 365
+                            }
+                          },
+                          "required": [
+                            "pendingQuotaMiB",
+                            "pendingExpirationEnabled",
+                            "pendingTtlDays"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "passwordResetEnabled",
                         "registrationEmailVerificationEnabled",
                         "rateLimit",
-                        "rateLimitDefaults"
+                        "rateLimitDefaults",
+                        "attachment",
+                        "attachmentDefaults"
                       ],
                       "additionalProperties": {
                         "nullable": true
@@ -7897,13 +7995,63 @@
                             "email"
                           ],
                           "additionalProperties": false
+                        },
+                        "attachment": {
+                          "type": "object",
+                          "properties": {
+                            "pendingQuotaMiB": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 102400
+                            },
+                            "pendingExpirationEnabled": {
+                              "type": "boolean"
+                            },
+                            "pendingTtlDays": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 365
+                            }
+                          },
+                          "required": [
+                            "pendingQuotaMiB",
+                            "pendingExpirationEnabled",
+                            "pendingTtlDays"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "attachmentDefaults": {
+                          "type": "object",
+                          "properties": {
+                            "pendingQuotaMiB": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 102400
+                            },
+                            "pendingExpirationEnabled": {
+                              "type": "boolean"
+                            },
+                            "pendingTtlDays": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 365
+                            }
+                          },
+                          "required": [
+                            "pendingQuotaMiB",
+                            "pendingExpirationEnabled",
+                            "pendingTtlDays"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "passwordResetEnabled",
                         "registrationEmailVerificationEnabled",
                         "rateLimit",
-                        "rateLimitDefaults"
+                        "rateLimitDefaults",
+                        "attachment",
+                        "attachmentDefaults"
                       ],
                       "additionalProperties": {
                         "nullable": true

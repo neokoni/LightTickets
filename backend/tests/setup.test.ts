@@ -331,6 +331,66 @@ describe('PATCH /api/setup/settings', () => {
       email: { cooldownSeconds: 60 },
     });
     expect(res.body.data.rateLimitDefaults).toEqual(res.body.data.rateLimit);
+    expect(res.body.data.attachment).toEqual({
+      pendingQuotaMiB: 50,
+      pendingExpirationEnabled: true,
+      pendingTtlDays: 7,
+    });
+    expect(res.body.data.attachmentDefaults).toEqual(res.body.data.attachment);
+  });
+
+  it('allows admin to update attachment quota and expiration settings', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-attachment@test.com',
+          password: 'admin123',
+          username: 'settingsattachment',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        attachment: {
+          pendingQuotaMiB: 128,
+          pendingExpirationEnabled: false,
+          pendingTtlDays: 30,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.attachment).toEqual({
+      pendingQuotaMiB: 128,
+      pendingExpirationEnabled: false,
+      pendingTtlDays: 30,
+    });
+    expect(JSON.parse((await prisma().appConfig.findFirst())!.attachmentConfig!)).toEqual(
+      res.body.data.attachment,
+    );
+  });
+
+  it('rejects attachment expiration settings shorter than one day', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-attachment-invalid@test.com',
+          password: 'admin123',
+          username: 'settingsattachmentinvalid',
+        },
+      });
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({ attachment: { pendingTtlDays: 0 } });
+
+    expect(res.status).toBe(400);
   });
 
   it('allows admin to update rate limit settings', async () => {

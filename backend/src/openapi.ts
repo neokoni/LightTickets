@@ -65,6 +65,8 @@ import {
   usernameSchema,
 } from './routes/users.js';
 import { adminTemplateCreateSchema, adminTemplateUpdateSchema } from './routes/admin-templates.js';
+import { attachmentTargetFields } from './routes/attachments.js';
+import { attachmentConfigSchema } from './schemas/attachment.js';
 
 extendZodWithOpenApi(z);
 
@@ -157,6 +159,7 @@ interface RouteDef {
   successStatus?: '200' | '201' | '204' | '303';
   successDescription?: string;
   bodyRequired?: boolean;
+  requestMediaType?: 'application/json' | 'multipart/form-data';
   responseKind?: 'envelope' | 'raw' | 'none';
   responseMediaType?: string;
 }
@@ -221,7 +224,7 @@ function registerRoute(def: RouteDef) {
       ...(def.bodySchema && {
         body: {
           required: def.bodyRequired ?? true,
-          content: { 'application/json': { schema: def.bodySchema } },
+          content: { [def.requestMediaType ?? 'application/json']: { schema: def.bodySchema } },
         },
       }),
     },
@@ -560,6 +563,13 @@ const registerAttachmentRoutes = () => {
     summary: '上传附件',
     auth: 'jwt',
     tags: ['Attachments'],
+    bodySchema: z
+      .object({
+        file: z.string().openapi({ type: 'string', format: 'binary' }),
+        ...attachmentTargetFields,
+      })
+      .refine((value) => value.ticketId === undefined || value.commentId === undefined),
+    requestMediaType: 'multipart/form-data',
     successStatus: '201',
   });
   registerRoute({
@@ -935,7 +945,7 @@ const registerUserRoutes = () => {
 };
 
 const registerSetupRoutes = () => {
-  const rateLimitSettingsResponseSchema = z
+  const adminSettingsResponseSchema = z
     .object({
       passwordResetEnabled: z
         .boolean()
@@ -943,6 +953,8 @@ const registerSetupRoutes = () => {
       registrationEmailVerificationEnabled: z.boolean().describe('True when SMTP is usable'),
       rateLimit: rateLimitConfigSchema,
       rateLimitDefaults: rateLimitConfigSchema,
+      attachment: attachmentConfigSchema,
+      attachmentDefaults: attachmentConfigSchema,
     })
     .passthrough();
 
@@ -1013,7 +1025,7 @@ const registerSetupRoutes = () => {
     auth: 'admin',
     tags: ['Setup'],
     bodySchema: settingsUpdateSchema,
-    responseSchema: rateLimitSettingsResponseSchema,
+    responseSchema: adminSettingsResponseSchema,
   });
   registerRoute({
     method: 'get',
@@ -1021,7 +1033,7 @@ const registerSetupRoutes = () => {
     summary: '获取管理端站点设置',
     auth: 'admin',
     tags: ['Setup'],
-    responseSchema: rateLimitSettingsResponseSchema,
+    responseSchema: adminSettingsResponseSchema,
   });
   registerRoute({
     method: 'post',

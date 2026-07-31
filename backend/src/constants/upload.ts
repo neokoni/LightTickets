@@ -21,5 +21,17 @@ export const UPLOAD_TYPE_BY_MIME: ReadonlyMap<string, UploadTypeDefinition> = ne
   UPLOAD_TYPE_DEFINITIONS.map((definition) => [definition.mimeType, definition]),
 );
 
-export const ORPHAN_ATTACHMENT_TTL_MS = 60 * 60 * 1000;
 export const ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
+export const MEBIBYTE_BYTES = 1024 * 1024;
+
+export interface AttachmentConfig {
+  pendingQuotaMiB: number;
+  pendingExpirationEnabled: boolean;
+  pendingTtlDays: number;
+}
+
+export const DEFAULT_ATTACHMENT_CONFIG: AttachmentConfig = {
+  pendingQuotaMiB: 50,
+  pendingExpirationEnabled: true,
+  pendingTtlDays: 7,
+};

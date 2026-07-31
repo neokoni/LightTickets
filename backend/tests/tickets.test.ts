@@ -291,11 +291,35 @@ describe('POST /api/tickets', () => {
       where: { id: upload.body.data.id },
     });
     expect(attachment?.ticketId).toBe(res.body.data.id);
+    expect(attachment?.status).toBe('attached');
+    expect(attachment?.expiresAt).toBeNull();
 
     const auditCount = await prisma().auditLog.count({
       where: { ticketId: res.body.data.id, action: 'body_change' },
     });
     expect(auditCount).toBe(0);
+  });
+
+  it('atomically rejects an expired pre-uploaded attachment', async () => {
+    const token = await createUserAndGetToken('create-expired-attachment@test.com');
+    const upload = await request(app)
+      .post('/api/attachments/upload')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', PNG_1x1, 'expired.png');
+    await prisma().attachment.update({
+      where: { id: upload.body.data.id },
+      data: { expiresAt: new Date(Date.now() - 1) },
+    });
+
+    const res = await createTicket(token, { attachmentIds: [upload.body.data.id] });
+
+    expect(res.status).toBe(400);
+    expect(await prisma().ticket.count()).toBe(0);
+    const attachment = await prisma().attachment.findUnique({
+      where: { id: upload.body.data.id },
+    });
+    expect(attachment?.status).toBe('pending');
+    expect(attachment?.ticketId).toBeNull();
   });
 });
 

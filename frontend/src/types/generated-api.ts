@@ -1999,7 +1999,17 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /** Format: binary */
+            file: string;
+            ticketId?: number;
+            /** Format: uuid */
+            commentId?: string;
+          };
+        };
+      };
       responses: {
         /** @description Success */
         201: {
@@ -4639,6 +4649,16 @@ export interface paths {
                     cooldownSeconds: number;
                   };
                 };
+                attachment: {
+                  pendingQuotaMiB: number;
+                  pendingExpirationEnabled: boolean;
+                  pendingTtlDays: number;
+                };
+                attachmentDefaults: {
+                  pendingQuotaMiB: number;
+                  pendingExpirationEnabled: boolean;
+                  pendingTtlDays: number;
+                };
               } & {
                 [key: string]: unknown;
               };
@@ -4709,6 +4729,11 @@ export interface paths {
                 cooldownSeconds?: number;
               };
             };
+            attachment?: {
+              pendingQuotaMiB?: number;
+              pendingExpirationEnabled?: boolean;
+              pendingTtlDays?: number;
+            };
           };
         };
       };
@@ -4752,6 +4777,16 @@ export interface paths {
                   email: {
                     cooldownSeconds: number;
                   };
+                };
+                attachment: {
+                  pendingQuotaMiB: number;
+                  pendingExpirationEnabled: boolean;
+                  pendingTtlDays: number;
+                };
+                attachmentDefaults: {
+                  pendingQuotaMiB: number;
+                  pendingExpirationEnabled: boolean;
+                  pendingTtlDays: number;
                 };
               } & {
                 [key: string]: unknown;

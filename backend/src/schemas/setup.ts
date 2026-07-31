@@ -5,6 +5,7 @@ import { mailConfigInputSchema } from './mail.js';
 import { rateLimitConfigInputSchema } from './rate-limit.js';
 import { siteUrlInputSchema } from './site.js';
 import { storageS3Schema } from './storage.js';
+import { attachmentConfigInputSchema } from './attachment.js';
 
 export const setupSchema = z
   .object({
@@ -81,4 +82,5 @@ export const settingsUpdateSchema = z.object({
     })
     .optional(),
   rateLimit: rateLimitConfigInputSchema.optional(),
+  attachment: attachmentConfigInputSchema.optional(),
 });

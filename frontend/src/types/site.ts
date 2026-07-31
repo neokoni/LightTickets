@@ -100,6 +100,8 @@ export interface SettingsResult {
   turnstile: TurnstileSettings;
   rateLimit: RateLimitConfig;
   rateLimitDefaults: RateLimitConfig;
+  attachment: AttachmentConfig;
+  attachmentDefaults: AttachmentConfig;
   federatedAuthProviders: FederatedAuthPublicProvider[];
 }
 
@@ -115,6 +117,13 @@ export interface SettingsPayload {
   mail?: MailSettingsPayload;
   turnstile?: TurnstileSettingsPayload;
   rateLimit?: RateLimitConfigPayload;
+  attachment?: Partial<AttachmentConfig>;
+}
+
+export interface AttachmentConfig {
+  pendingQuotaMiB: number;
+  pendingExpirationEnabled: boolean;
+  pendingTtlDays: number;
 }
 
 export interface RequestRateLimitRule {
