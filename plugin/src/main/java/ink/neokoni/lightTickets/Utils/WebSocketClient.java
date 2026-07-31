@@ -32,8 +32,8 @@ public class WebSocketClient {
             return;
         }
 
-        String baseUrl = trimTrailingSlash(Config.getConfig().getBaseUrl());
-        if (baseUrl.isBlank()) {
+        String baseUrl = Config.getConfig().getBaseUrl();
+        if (baseUrl == null || baseUrl.isBlank()) {
             LogUtils.warning("websocket.base_url_empty");
             return;
         }
@@ -41,6 +41,7 @@ public class WebSocketClient {
         IO.Options options = IO.Options.builder()
                 .setAuth(Map.of("serverKey", serverKey))
                 .setTransports(new String[]{WebSocket.NAME})
+                .setPath(LightTicketsUri.SOCKET_TRANSPORT_PATH)
                 .setReconnection(true)
                 .setReconnectionDelay(5000)
                 .setReconnectionDelayMax(30000)
@@ -48,8 +49,8 @@ public class WebSocketClient {
                 .build();
 
         try {
-            socket = IO.socket(baseUrl + "/mc", options);
-        } catch (URISyntaxException e) {
+            socket = IO.socket(LightTicketsUri.socketNamespaceUrl(baseUrl), options);
+        } catch (URISyntaxException | IllegalArgumentException e) {
             LogUtils.warning("websocket.invalid_base_url", Map.of("{message}", LogUtils.exceptionText(e)));
             return;
         }
@@ -280,11 +281,6 @@ public class WebSocketClient {
     private static String compactText(String value) {
         if (value == null) return "";
         return value.replace('\n', ' ').replace('\r', ' ').trim();
-    }
-
-    private static String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
 }

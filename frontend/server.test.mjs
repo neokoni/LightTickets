@@ -41,6 +41,46 @@ async function requestPath(port, requestPath) {
   });
 }
 
+async function upgradeWebSocket(port, requestPath, extraHeaders = {}) {
+  return new Promise((resolve, reject) => {
+    const request = http.request({
+      host: '127.0.0.1',
+      port,
+      path: requestPath,
+      headers: {
+        Connection: 'Upgrade',
+        Upgrade: 'websocket',
+        'Sec-WebSocket-Key': 'bGlnaHR0aWNrZXRzLXRlc3Q=',
+        'Sec-WebSocket-Version': '13',
+        ...extraHeaders,
+      },
+    });
+    request.once('upgrade', (response, socket, head) => {
+      resolve({ response, socket, head });
+    });
+    request.once('response', (response) => {
+      response.resume();
+      response.once('end', () => resolve({ response, socket: null, head: Buffer.alloc(0) }));
+    });
+    request.once('error', reject);
+    request.end();
+  });
+}
+
+async function withTimeout(promise, message) {
+  let timeout;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(message)), 3_000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 test('the API proxy replaces client-supplied forwarding headers with the socket address', async (t) => {
   const distDir = await mkdtemp(path.join(tmpdir(), 'lighttickets-web-'));
   await writeFile(path.join(distDir, 'index.html'), '<!doctype html>', 'utf8');
@@ -142,4 +182,68 @@ test('the API proxy rejects request targets that can override the backend origin
   );
   assert.deepEqual(backendRequestUrls, ['/api/redirect-probe?returnTo=%2Fdashboard']);
   assert.equal(attackerRequests, 0);
+});
+
+test('the WebSocket proxy tunnels only /socket.io upgrades to the backend', async (t) => {
+  const distDir = await mkdtemp(path.join(tmpdir(), 'lighttickets-web-'));
+  await writeFile(path.join(distDir, 'index.html'), '<!doctype html>', 'utf8');
+  t.after(() => rm(distDir, { recursive: true, force: true }));
+
+  let backendUpgrade;
+  let backendSocket;
+  const backend = http.createServer();
+  backend.on('upgrade', (request, socket) => {
+    backendUpgrade = { url: request.url, headers: request.headers };
+    backendSocket = socket;
+    socket.write(
+      'HTTP/1.1 101 Switching Protocols\r\n' +
+        'Connection: Upgrade\r\n' +
+        'Upgrade: websocket\r\n\r\n',
+    );
+    socket.on('data', (chunk) => socket.write(chunk));
+  });
+  const backendPort = await listen(backend);
+
+  const frontend = createFrontendServer({
+    distDir,
+    serverUrl: `http://127.0.0.1:${backendPort}`,
+  });
+  const frontendPort = await listen(frontend);
+  t.after(async () => {
+    backendSocket?.destroy();
+    await Promise.all([close(frontend), close(backend)]);
+  });
+
+  const rejected = await withTimeout(
+    upgradeWebSocket(frontendPort, '/api/not-a-websocket'),
+    'non-Socket.IO upgrade rejection timed out',
+  );
+  assert.equal(rejected.response.statusCode, 404);
+  assert.equal(backendUpgrade, undefined);
+
+  const upgraded = await withTimeout(
+    upgradeWebSocket(frontendPort, '/socket.io/?EIO=4&transport=websocket', {
+      Forwarded: 'for=192.0.2.1;host=attacker.example',
+      'X-Forwarded-For': '192.0.2.1',
+      'X-Forwarded-Host': 'attacker.example',
+    }),
+    'Socket.IO upgrade timed out',
+  );
+  assert.equal(upgraded.response.statusCode, 101);
+  assert(upgraded.socket);
+  assert.equal(backendUpgrade.url, '/socket.io/?EIO=4&transport=websocket');
+  assert.equal(backendUpgrade.headers.host, `127.0.0.1:${backendPort}`);
+  assert.equal(backendUpgrade.headers['x-forwarded-for'], '127.0.0.1');
+  assert.equal(backendUpgrade.headers.forwarded, undefined);
+  assert.equal(backendUpgrade.headers['x-forwarded-host'], undefined);
+
+  const echo = new Promise((resolve) => upgraded.socket.once('data', resolve));
+  upgraded.socket.write('socket-probe');
+  assert.equal(
+    (await withTimeout(echo, 'WebSocket tunnel echo timed out')).toString(),
+    'socket-probe',
+  );
+  const closed = new Promise((resolve) => upgraded.socket.once('close', resolve));
+  upgraded.socket.destroy();
+  await withTimeout(closed, 'WebSocket client close timed out');
 });

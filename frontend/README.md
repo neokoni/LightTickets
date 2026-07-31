@@ -35,6 +35,7 @@ npm start
 - serves files only from `dist/`;
 - falls back to `dist/index.html` for Vue Router history routes;
 - proxies `/api` to `LT_SERVER_URL`;
+- proxies `/socket.io` WebSocket upgrades to `LT_SERVER_URL`;
 - applies immutable caching to Vite's hashed `dist/assets/` files.
 
 Supported runtime environment variables:
@@ -43,7 +44,7 @@ Supported runtime environment variables:
 | --------------- | ----------------------- | -------------------------------------- |
 | `LT_WEB_HOST`   | `0.0.0.0`               | HTTP listen address                    |
 | `LT_WEB_PORT`   | `23310`                 | HTTP listen port                       |
-| `LT_SERVER_URL` | `http://127.0.0.1:23320` | Server origin used for `/api` proxying |
+| `LT_SERVER_URL` | `http://127.0.0.1:23320` | Server origin used for `/api` and `/socket.io` proxying |
 
 ## Minimal Runtime Package
 

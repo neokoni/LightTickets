@@ -723,6 +723,10 @@ S3 配置：
 
 ## MC 插件接口
 
+插件的 `baseUrl` 必须配置为平台公开 origin（例如 `https://tickets.example.com`），不得附加
+`/api`。HTTP 请求使用 `/api/mc/*`；Socket.IO transport 使用 `/socket.io`，namespace 使用 `/mc`。
+Docker 部署只需公开 Web 容器，Web 容器会把这两类流量转发到内部后端。
+
 所有 `/api/mc/*` 接口必须带服务器凭据：
 
 ```http

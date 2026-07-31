@@ -171,6 +171,81 @@ function proxyApiRequest(request, response, requestUrl, serverUrl, timeoutMs) {
   request.pipe(proxyRequest);
 }
 
+function writeSocketResponseHead(socket, response) {
+  let head = `HTTP/1.1 ${response.statusCode || 502} ${response.statusMessage || ''}\r\n`;
+  for (let index = 0; index < response.rawHeaders.length; index += 2) {
+    head += `${response.rawHeaders[index]}: ${response.rawHeaders[index + 1]}\r\n`;
+  }
+  socket.write(`${head}\r\n`);
+}
+
+function sendUpgradeError(socket, statusCode, message) {
+  if (socket.destroyed) return;
+  const body = `${message}\n`;
+  socket.end(
+    `HTTP/1.1 ${statusCode} ${message}\r\n` +
+      'Connection: close\r\n' +
+      'Content-Type: text/plain; charset=utf-8\r\n' +
+      `Content-Length: ${Buffer.byteLength(body)}\r\n\r\n` +
+      body,
+  );
+}
+
+function isWebSocketUpgrade(request) {
+  const upgrade = request.headers.upgrade;
+  return typeof upgrade === 'string' && upgrade.toLowerCase() === 'websocket';
+}
+
+function proxyWebSocketUpgrade(
+  request,
+  clientSocket,
+  clientHead,
+  requestUrl,
+  serverUrl,
+  timeoutMs,
+) {
+  const target = new URL(serverUrl.origin);
+  target.pathname = requestUrl.pathname;
+  target.search = requestUrl.search;
+  const transport = target.protocol === 'https:' ? https : http;
+  const headers = copyProxyRequestHeaders(request.headers);
+  headers.host = target.host;
+  headers.connection = 'Upgrade';
+  headers.upgrade = 'websocket';
+  const remoteAddress = normalizeRemoteAddress(request.socket.remoteAddress);
+  if (remoteAddress) headers['x-forwarded-for'] = remoteAddress;
+
+  let upgraded = false;
+  const proxyRequest = transport.request(target, { method: 'GET', headers });
+  proxyRequest.setTimeout(timeoutMs, () => {
+    proxyRequest.destroy(new Error('Server WebSocket upgrade timed out'));
+  });
+  proxyRequest.once('upgrade', (proxyResponse, proxySocket, proxyHead) => {
+    upgraded = true;
+    writeSocketResponseHead(clientSocket, proxyResponse);
+    if (proxyHead.length) clientSocket.write(proxyHead);
+    if (clientHead.length) proxySocket.write(clientHead);
+
+    proxySocket.once('error', () => clientSocket.destroy());
+    clientSocket.once('error', () => proxySocket.destroy());
+    clientSocket.once('close', () => proxySocket.destroy());
+    proxySocket.pipe(clientSocket).pipe(proxySocket);
+  });
+  proxyRequest.once('response', (proxyResponse) => {
+    writeSocketResponseHead(clientSocket, proxyResponse);
+    proxyResponse.pipe(clientSocket);
+  });
+  proxyRequest.once('error', (error) => {
+    console.error('[frontend] WebSocket proxy error:', error.message);
+    if (!upgraded) sendUpgradeError(clientSocket, 502, 'Bad Gateway');
+    else clientSocket.destroy();
+  });
+  clientSocket.once('close', () => {
+    if (!upgraded) proxyRequest.destroy();
+  });
+  proxyRequest.end();
+}
+
 function isPathInside(root, candidate) {
   const relative = path.relative(root, candidate);
   return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
@@ -286,7 +361,7 @@ export function createFrontendServer({
   const parsedServerUrl = parseServerUrl(String(serverUrl));
   const indexPath = path.join(resolvedDistDir, 'index.html');
 
-  return http.createServer(async (request, response) => {
+  const server = http.createServer(async (request, response) => {
     try {
       const url = parseOriginFormRequestTarget(request.url || '/');
       if (!url) {
@@ -304,6 +379,25 @@ export function createFrontendServer({
       else response.destroy();
     }
   });
+
+  server.on('upgrade', (request, socket, head) => {
+    const url = parseOriginFormRequestTarget(request.url || '/');
+    if (!url) {
+      sendUpgradeError(socket, 400, 'Bad Request');
+      return;
+    }
+    if (
+      request.method !== 'GET' ||
+      !isWebSocketUpgrade(request) ||
+      !(url.pathname === '/socket.io' || url.pathname.startsWith('/socket.io/'))
+    ) {
+      sendUpgradeError(socket, 404, 'Not Found');
+      return;
+    }
+    proxyWebSocketUpgrade(request, socket, head, url, parsedServerUrl, proxyTimeoutMs);
+  });
+
+  return server;
 }
 
 function startFromEnvironment() {
@@ -320,6 +414,7 @@ function startFromEnvironment() {
     const serverOrigin = parseServerUrl(serverUrl).origin;
     console.log(`[frontend] Serving ${DEFAULT_DIST_DIR} on http://${host}:${port}`);
     console.log(`[frontend] Proxying /api to ${serverOrigin}`);
+    console.log(`[frontend] Proxying /socket.io WebSocket upgrades to ${serverOrigin}`);
   });
 }
 

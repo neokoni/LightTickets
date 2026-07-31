@@ -149,8 +149,8 @@ public class ApiClient {
             }
         }
 
-        StringBuilder url = new StringBuilder(trimTrailingSlash(Config.getConfig().getBaseUrl()))
-                .append(path);
+        StringBuilder url = new StringBuilder(
+                LightTicketsUri.httpApiUrl(Config.getConfig().getBaseUrl(), path));
         if (queryParams != null && !queryParams.isEmpty()) {
             boolean first = true;
             for (Map.Entry<String, String> entry : queryParams.entrySet()) {
@@ -190,8 +190,4 @@ public class ApiClient {
                 .replace("+", "%20");
     }
 
-    private static String trimTrailingSlash(String url) {
-        if (url == null) return "";
-        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    }
 }

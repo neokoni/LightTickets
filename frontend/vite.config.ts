@@ -64,6 +64,7 @@ export default defineConfig(({ mode }) => {
   const webPort = Number(env.LT_WEB_PORT || LT_DEFAULT_WEB_PORT);
   const buildCommit = resolveBuildCommit(env.LT_GIT_COMMIT || process.env.GITHUB_SHA);
   const appVersion = resolveAppVersion();
+  const serverTarget = env.LT_SERVER_URL || LT_DEFAULT_SERVER_URL;
 
   return {
     envPrefix: 'LT_',
@@ -81,8 +82,13 @@ export default defineConfig(({ mode }) => {
       port: webPort,
       proxy: {
         '/api': {
-          target: env.LT_SERVER_URL || LT_DEFAULT_SERVER_URL,
+          target: serverTarget,
           changeOrigin: true,
+        },
+        '/socket.io': {
+          target: serverTarget,
+          changeOrigin: true,
+          ws: true,
         },
       },
     },

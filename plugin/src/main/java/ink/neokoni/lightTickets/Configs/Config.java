@@ -20,9 +20,9 @@ public class Config {
 
     @Configuration
     public static class BasicConfig {
-        @Comment("LightTickets 平台 API 地址")
+        @Comment("LightTickets 平台地址")
         @Getter
-        private String baseUrl = "http://localhost:23310/api";
+        private String baseUrl = "http://localhost:23310";
         @Comment("LightTickets 服务器密钥 (请求头 X-Server-Key)")
         @Getter
         private String serverKey = "";
