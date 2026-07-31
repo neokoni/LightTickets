@@ -106,8 +106,8 @@ router.post('/refresh', authLimiter, async (req: Request, res: Response) => {
 
 router.post('/logout', authLimiter, async (req: Request, res: Response) => {
   const refreshToken = parseCookies(req.headers.cookie)[REFRESH_COOKIE_NAME];
-  if (refreshToken) await refreshSessionService.revokeRefreshSession(refreshToken);
   clearRefreshCookie(res);
+  if (refreshToken) await refreshSessionService.revokeRefreshSession(refreshToken);
   res.status(204).end();
 });
 

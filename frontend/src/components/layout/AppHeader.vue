@@ -15,6 +15,7 @@ const router = useRouter();
 const route = useRoute();
 
 const profileMenuOpen = ref(false);
+const loggingOut = ref(false);
 const profileMenuRef = ref<HTMLElement | null>(null);
 
 function handleClickOutside(e: MouseEvent) {
@@ -26,12 +27,16 @@ function handleClickOutside(e: MouseEvent) {
 onMounted(() => document.addEventListener('click', handleClickOutside));
 onBeforeUnmount(() => document.removeEventListener('click', handleClickOutside));
 
-function handleLogout() {
-  auth.logout();
+async function handleLogout() {
+  if (loggingOut.value) return;
+  loggingOut.value = true;
   ui.mobileMenuOpen = false;
   profileMenuOpen.value = false;
-  if (siteConfig.requireLogin) {
-    router.push({ name: 'login' });
+  try {
+    await auth.logout();
+    await router.replace({ name: 'tickets' });
+  } finally {
+    loggingOut.value = false;
   }
 }
 </script>
@@ -136,6 +141,7 @@ function handleLogout() {
               >
               <button
                 class="base-dropdown-option w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                :disabled="loggingOut"
                 @click="handleLogout"
               >
                 {{ t('nav.logout') }}
@@ -222,6 +228,7 @@ function handleLogout() {
                 </RouterLink>
                 <button
                   class="w-full rounded-md px-4 py-2.5 text-left text-sm font-medium text-red-600 dark:text-red-400 transition hover:text-red-700 dark:hover:text-red-300"
+                  :disabled="loggingOut"
                   @click="handleLogout"
                 >
                   {{ t('nav.logout') }}

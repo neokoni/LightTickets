@@ -7,34 +7,50 @@ export const useLabelsStore = defineStore('labels', () => {
   const labels = ref<Label[]>([]);
   const loaded = ref(false);
   const loading = ref(false);
+  let sessionVersion = 0;
 
   async function fetchList() {
+    const version = sessionVersion;
     loading.value = true;
     try {
-      labels.value = await apiGetLabels();
-      loaded.value = true;
+      const result = await apiGetLabels();
+      if (version === sessionVersion) {
+        labels.value = result;
+        loaded.value = true;
+      }
     } finally {
-      loading.value = false;
+      if (version === sessionVersion) loading.value = false;
     }
   }
 
   async function create(data: CreateLabelPayload) {
+    const version = sessionVersion;
     const label = await apiCreateLabel(data);
-    labels.value.push(label);
+    if (version === sessionVersion) labels.value.push(label);
     return label;
   }
 
   async function update(id: string, data: UpdateLabelPayload) {
+    const version = sessionVersion;
     const label = await apiUpdateLabel(id, data);
+    if (version !== sessionVersion) return label;
     const idx = labels.value.findIndex((l) => l.id === id);
     if (idx !== -1) labels.value[idx] = label;
     return label;
   }
 
   async function remove(id: string) {
+    const version = sessionVersion;
     await apiDeleteLabel(id);
-    labels.value = labels.value.filter((l) => l.id !== id);
+    if (version === sessionVersion) labels.value = labels.value.filter((l) => l.id !== id);
   }
 
-  return { labels, loaded, loading, fetchList, create, update, remove };
+  function clearSessionState() {
+    sessionVersion++;
+    labels.value = [];
+    loaded.value = false;
+    loading.value = false;
+  }
+
+  return { labels, loaded, loading, fetchList, create, update, remove, clearSessionState };
 });

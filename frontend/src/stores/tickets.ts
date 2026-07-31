@@ -19,6 +19,7 @@ export const useTicketsStore = defineStore('tickets', () => {
   const loading = ref(false);
   const detailLoading = ref(false);
   let detailRequestId = 0;
+  let sessionVersion = 0;
 
   const filters = reactive<TicketFilters>({
     page: 1,
@@ -34,13 +35,16 @@ export const useTicketsStore = defineStore('tickets', () => {
   });
 
   async function fetchList() {
+    const version = sessionVersion;
     loading.value = true;
     try {
       const res: PaginatedResponse<Ticket> = await apiGetTickets(filters);
-      tickets.value = res.tickets;
-      total.value = res.total;
+      if (version === sessionVersion) {
+        tickets.value = res.tickets;
+        total.value = res.total;
+      }
     } finally {
-      loading.value = false;
+      if (version === sessionVersion) loading.value = false;
     }
   }
 
@@ -69,35 +73,66 @@ export const useTicketsStore = defineStore('tickets', () => {
     detailLoading.value = false;
   }
 
-  function syncTicketUpdate(updated: Ticket) {
+  function clearSessionState() {
+    sessionVersion++;
+    detailRequestId++;
+    tickets.value = [];
+    total.value = 0;
+    currentTicket.value = null;
+    loading.value = false;
+    detailLoading.value = false;
+    Object.assign(filters, {
+      page: 1,
+      pageSize: 20,
+      statuses: undefined,
+      type: undefined,
+      labelId: undefined,
+      serverId: undefined,
+      serverName: undefined,
+      hasServer: undefined,
+      authorName: undefined,
+      search: '',
+    });
+  }
+
+  function syncTicketUpdate(updated: Ticket, version: number) {
+    if (version !== sessionVersion) return;
     if (currentTicket.value?.id === updated.id) currentTicket.value = updated;
     const idx = tickets.value.findIndex((t) => t.id === updated.id);
     if (idx !== -1) tickets.value[idx] = updated;
   }
 
   async function updateStatus(id: number, status: TicketStatus) {
-    syncTicketUpdate(await apiUpdateTicket(id, { status }));
+    const version = sessionVersion;
+    syncTicketUpdate(await apiUpdateTicket(id, { status }), version);
   }
 
   async function updateVisibility(id: number, hidden: boolean) {
-    syncTicketUpdate(await apiUpdateTicket(id, { hidden }));
+    const version = sessionVersion;
+    syncTicketUpdate(await apiUpdateTicket(id, { hidden }), version);
   }
 
   async function closeTicket(id: number) {
-    syncTicketUpdate(await apiCloseTicket(id));
+    const version = sessionVersion;
+    syncTicketUpdate(await apiCloseTicket(id), version);
   }
 
   async function reopenTicket(id: number) {
-    syncTicketUpdate(await apiReopenTicket(id));
+    const version = sessionVersion;
+    syncTicketUpdate(await apiReopenTicket(id), version);
   }
 
   async function updateTitle(id: number, title: string) {
-    syncTicketUpdate(await apiUpdateTicketTitle(id, title));
+    const version = sessionVersion;
+    syncTicketUpdate(await apiUpdateTicketTitle(id, title), version);
   }
 
   async function updateBody(id: number, body: string) {
+    const version = sessionVersion;
     const updated = await apiUpdateTicketBody(id, body);
-    if (currentTicket.value?.id === id) currentTicket.value = updated;
+    if (version === sessionVersion && currentTicket.value?.id === id) {
+      currentTicket.value = updated;
+    }
   }
 
   function setFilter(key: keyof TicketFilters, value: string | number | undefined) {
@@ -115,6 +150,7 @@ export const useTicketsStore = defineStore('tickets', () => {
     fetchList,
     fetchDetail,
     clearCurrentTicket,
+    clearSessionState,
     updateStatus,
     updateVisibility,
     closeTicket,

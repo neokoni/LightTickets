@@ -294,7 +294,8 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
 
 `POST /api/auth/logout`
 
-需要 Bearer Token。清除 refresh cookie，返回 `204`。
+无需 Bearer Token。若存在 refresh cookie，则幂等撤销对应 refresh session；无论 Cookie 是否存在，
+都会清除 refresh cookie 并返回 `204`。
 
 ### 绑定 / 解绑 Minecraft
 

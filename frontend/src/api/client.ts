@@ -8,9 +8,16 @@ function getBaseUrl(): string {
 }
 
 let accessToken: string | null = null;
+const activeRequestControllers = new Set<AbortController>();
 
 export function setAccessToken(token: string | null) {
   accessToken = token;
+}
+
+export function clearApiSession() {
+  accessToken = null;
+  for (const controller of activeRequestControllers) controller.abort();
+  activeRequestControllers.clear();
 }
 
 async function readErrorMessage(res: Response): Promise<string> {
@@ -47,33 +54,48 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
-  const res = await fetch(`${getBaseUrl()}${path}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
-
-  if (res.status === 401 && accessToken) {
-    accessToken = null;
+  const controller = new AbortController();
+  const abortFromCaller = () => controller.abort(options.signal?.reason);
+  if (options.signal?.aborted) {
+    abortFromCaller();
+  } else {
+    options.signal?.addEventListener('abort', abortFromCaller, { once: true });
   }
+  activeRequestControllers.add(controller);
 
-  if (!res.ok) {
-    const message = await readErrorMessage(res);
-    const requestId = res.headers.get('cf-ray') ?? undefined;
-    const isCloudflareChallenge = res.headers.get('cf-mitigated') === 'challenge';
-    throw new ApiError(res.status, message, requestId, isCloudflareChallenge);
-  }
+  try {
+    const res = await fetch(`${getBaseUrl()}${path}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+      signal: controller.signal,
+    });
 
-  if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
-  const payload = (await res.json()) as T | ApiEnvelope<T>;
-  if (
-    payload &&
-    typeof payload === 'object' &&
-    'success' in payload &&
-    (payload as { success?: unknown }).success === true &&
-    'data' in payload
-  ) {
-    return (payload as ApiEnvelope<T>).data;
+    if (res.status === 401 && accessToken) {
+      accessToken = null;
+    }
+
+    if (!res.ok) {
+      const message = await readErrorMessage(res);
+      const requestId = res.headers.get('cf-ray') ?? undefined;
+      const isCloudflareChallenge = res.headers.get('cf-mitigated') === 'challenge';
+      throw new ApiError(res.status, message, requestId, isCloudflareChallenge);
+    }
+
+    if (res.status === 204 || res.headers.get('content-length') === '0') return undefined as T;
+    const payload = (await res.json()) as T | ApiEnvelope<T>;
+    if (
+      payload &&
+      typeof payload === 'object' &&
+      'success' in payload &&
+      (payload as { success?: unknown }).success === true &&
+      'data' in payload
+    ) {
+      return (payload as ApiEnvelope<T>).data;
+    }
+    return payload as T;
+  } finally {
+    activeRequestControllers.delete(controller);
+    options.signal?.removeEventListener('abort', abortFromCaller);
   }
-  return payload as T;
 }

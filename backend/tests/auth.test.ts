@@ -4,6 +4,7 @@ import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
 import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
+import * as refreshSessionService from '../src/services/refresh-session.service.js';
 import crypto from 'crypto';
 
 const app = createApp();
@@ -478,7 +479,7 @@ describe('POST /api/auth/refresh', () => {
     }
   });
 
-  it('revokes the cookie session on logout without requiring an access token', async () => {
+  it('idempotently clears and revokes the cookie session without a valid access token', async () => {
     const login = await request(app).post('/api/auth/register').send({
       email: 'logout@example.com',
       password: 'Password123!',
@@ -486,11 +487,33 @@ describe('POST /api/auth/refresh', () => {
     });
     const cookie = getRefreshCookie(login.headers['set-cookie']);
 
-    const logout = await request(app).post('/api/auth/logout').set('Cookie', cookie);
+    const logout = await request(app)
+      .post('/api/auth/logout')
+      .set('Authorization', 'Bearer expired-or-invalid')
+      .set('Cookie', cookie);
     expect(logout.status).toBe(204);
+    expect(logout.headers['set-cookie']?.join(';')).toContain('lt_refresh_token=;');
 
     const refresh = await request(app).post('/api/auth/refresh').set('Cookie', cookie).send({});
     expect(refresh.status).toBe(401);
+
+    const repeated = await request(app).post('/api/auth/logout').set('Cookie', cookie);
+    expect(repeated.status).toBe(204);
+    expect(repeated.headers['set-cookie']?.join(';')).toContain('lt_refresh_token=;');
+  });
+
+  it('clears the refresh cookie even when server-side revocation fails', async () => {
+    const revoke = vi
+      .spyOn(refreshSessionService, 'revokeRefreshSession')
+      .mockRejectedValueOnce(new Error('simulated database failure'));
+
+    const logout = await request(app)
+      .post('/api/auth/logout')
+      .set('Cookie', 'lt_refresh_token=unrevoked-token');
+
+    expect(logout.status).toBe(500);
+    expect(logout.headers['set-cookie']?.join(';')).toContain('lt_refresh_token=;');
+    expect(revoke).toHaveBeenCalledWith('unrevoked-token');
   });
 });
 

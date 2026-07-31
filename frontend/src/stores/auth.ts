@@ -14,7 +14,10 @@ import {
   apiUpdateEmail,
   apiUpdateEmailNotifications,
 } from '@/api/auth';
-import { setAccessToken } from '@/api/client';
+import { clearApiSession, setAccessToken } from '@/api/client';
+import { useLabelsStore } from '@/stores/labels';
+import { useTemplatesStore } from '@/stores/templates';
+import { useTicketsStore } from '@/stores/tickets';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
@@ -23,6 +26,14 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value);
   const isStaff = computed(() => (user.value ? isStaffRole(user.value.role) : false));
   const isAdmin = computed(() => (user.value ? isAdminRole(user.value.role) : false));
+
+  function clearUserSession() {
+    user.value = null;
+    clearApiSession();
+    useLabelsStore().clearSessionState();
+    useTemplatesStore().clearSessionState();
+    useTicketsStore().clearSessionState();
+  }
 
   async function login(emailOrUsername: string, password: string, turnstileToken?: string) {
     const res = await apiLogin(emailOrUsername, password, turnstileToken);
@@ -48,21 +59,19 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = res.user;
       setAccessToken(res.accessToken);
     } catch {
-      user.value = null;
-      setAccessToken(null);
+      clearUserSession();
     } finally {
       loading.value = false;
     }
   }
 
   async function logout() {
+    clearUserSession();
     try {
-      if (user.value) await apiLogout();
+      await apiLogout();
     } catch {
-      // Local state should still be cleared if the session is already gone.
+      // Local state is already cleared even if the server session is gone or unreachable.
     }
-    user.value = null;
-    setAccessToken(null);
   }
 
   function setTokens(accessToken: string, userData: User) {
