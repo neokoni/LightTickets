@@ -79,5 +79,9 @@ public class PlayerData {
         return sqlAdapter.claimHookReceipt(hookId);
     }
 
+    public static void releaseHookExecution(String hookId) {
+        sqlAdapter.releaseHookReceipt(hookId);
+    }
+
     public record CachedTicket(int id, String title, String status, String createdAt) {}
 }

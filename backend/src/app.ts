@@ -24,6 +24,7 @@ import adminStorageRoutes from './routes/admin-storage.js';
 import userRoutes from './routes/users.js';
 import federatedAuthRoutes from './routes/federatedauth.js';
 import adminFederatedAuthRoutes from './routes/admin-federatedauth.js';
+import adminMinecraftHookDeliveryRoutes from './routes/admin-minecraft-hook-deliveries.js';
 import { initTemplates } from './services/template.service.js';
 import { trustFrontendProxy } from './trusted-proxy.js';
 
@@ -81,6 +82,7 @@ export function createApp(options: AppOptions = {}) {
   app.use('/api/admin/templates', adminTemplateRoutes);
   app.use('/api/admin/storage', adminStorageRoutes);
   app.use('/api/admin/federatedauth', adminFederatedAuthRoutes);
+  app.use('/api/admin/minecraft-hook-deliveries', adminMinecraftHookDeliveryRoutes);
   app.use('/api/tickets', ticketRoutes);
   app.use('/api/tickets/:id/comments', commentRoutes);
   app.use('/api/tickets/:ticketId/audit', auditRoutes);

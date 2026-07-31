@@ -156,6 +156,20 @@ public class SQLAdapter {
         }
     }
 
+    public void releaseHookReceipt(String hookId) {
+        try (Connection connection = getDataSource().getConnection();
+             PreparedStatement statement = connection.prepareStatement(getReleaseHookReceiptSql())) {
+            statement.setString(1, hookId);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public String getReleaseHookReceiptSql() {
+        return "DELETE FROM hook_receipt WHERE hook_id=?;";
+    }
+
     public String getPlayerBindSql() {
         return """
                 SELECT * FROM player_bind WHERE uuid=?;

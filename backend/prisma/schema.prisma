@@ -31,6 +31,13 @@ enum CompletionHookVisibility {
   staff
 }
 
+enum MinecraftHookDeliveryStatus {
+  pending
+  delivering
+  delivered
+  failed
+}
+
 enum AttachmentStatus {
   pending
   attached
@@ -370,14 +377,17 @@ model MinecraftHookDelivery {
   event          String
   playerUuid     String?   @map("player_uuid")
   hooks          String
+  status         MinecraftHookDeliveryStatus @default(pending)
   attempts       Int       @default(0)
   lastAttemptAt  DateTime? @map("last_attempt_at")
   acknowledgedAt DateTime? @map("acknowledged_at")
+  failedAt       DateTime? @map("failed_at")
   createdAt      DateTime  @default(now()) @map("created_at")
   ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   server         Server    @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   @@index([serverId, acknowledgedAt])
+  @@index([serverId, status])
   @@index([createdAt])
   @@map("minecraft_hook_deliveries")
 }

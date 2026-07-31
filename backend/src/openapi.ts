@@ -67,6 +67,7 @@ import {
 import { adminTemplateCreateSchema, adminTemplateUpdateSchema } from './routes/admin-templates.js';
 import { attachmentTargetFields } from './routes/attachments.js';
 import { attachmentConfigSchema } from './schemas/attachment.js';
+import { deliveryIdSchema } from './routes/admin-minecraft-hook-deliveries.js';
 
 extendZodWithOpenApi(z);
 
@@ -862,6 +863,25 @@ const registerStorageRoutes = () => {
   });
 };
 
+const registerMinecraftHookDeliveryRoutes = () => {
+  registerRoute({
+    method: 'get',
+    path: '/api/admin/minecraft-hook-deliveries',
+    summary: '获取失败的 Minecraft Hook 投递',
+    auth: 'admin',
+    tags: ['Admin Minecraft Hook Deliveries'],
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/admin/minecraft-hook-deliveries/{id}/retry',
+    summary: '重试失败的 Minecraft Hook 投递',
+    auth: 'admin',
+    tags: ['Admin Minecraft Hook Deliveries'],
+    paramsSchema: deliveryIdSchema,
+    responseSchema: z.object({ retried: z.boolean() }),
+  });
+};
+
 const registerUserRoutes = () => {
   registerRoute({
     method: 'get',
@@ -1208,6 +1228,7 @@ registerServerRoutes();
 registerMcRoutes();
 registerTemplateRoutes();
 registerStorageRoutes();
+registerMinecraftHookDeliveryRoutes();
 registerUserRoutes();
 registerSetupRoutes();
 registerFederatedAuthRoutes();

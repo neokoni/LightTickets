@@ -445,6 +445,10 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 记录已执行的 `hookId`，因此重投不会重复执行 console command。缺少 `deliveryId`、非法 `hookId`
 或旧版仅含 `commands` 的消息会被插件拒绝。
 
+投递状态依次为 `pending`、`delivering`、`delivered`；15 秒起始的指数退避最多尝试 5 次，耗尽后
+进入 `failed` dead-letter。管理员可通过 `GET /api/admin/minecraft-hook-deliveries` 查看失败投递，
+并用 `POST /api/admin/minecraft-hook-deliveries/:id/retry` 重置为待投递状态。
+
 该 outbox 表为 additive migration。部署时应先应用数据库迁移，再同时升级后端和插件；应用层回滚时
 保留该表和未确认记录。不得回滚到随机 Hook ID、无 ACK 或无持久去重的旧执行路径。
 

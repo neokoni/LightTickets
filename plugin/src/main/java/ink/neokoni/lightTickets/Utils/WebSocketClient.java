@@ -127,16 +127,29 @@ public class WebSocketClient {
         final JSONArray executableHooks = hooks;
 
         Bukkit.getGlobalRegionScheduler().run(LightTickets.getInstance(), task -> {
+            boolean allSucceeded = true;
             for (int i = 0; i < executableHooks.length(); i++) {
                 JSONObject hook = executableHooks.optJSONObject(i);
-                if (hook == null) continue;
+                if (hook == null) {
+                    allSucceeded = false;
+                    continue;
+                }
                 String hookId = hook.optString("hookId", "").trim();
-                if (!hookId.startsWith(deliveryId + ":")) return;
+                if (!hookId.startsWith(deliveryId + ":")) {
+                    allSucceeded = false;
+                    continue;
+                }
                 if (!PlayerData.claimHookExecution(hookId)) continue;
-                executeHook(hook, playerUuid);
+                String failure = executeHook(hook, playerUuid);
+                if (failure != null) {
+                    PlayerData.releaseHookExecution(hookId);
+                    allSucceeded = false;
+                    LogUtils.warning("websocket.hook_execution_failed",
+                            Map.of("{message}", failure));
+                }
             }
             Socket activeSocket = socket;
-            if (activeSocket != null && activeSocket.connected()) {
+            if (allSucceeded && activeSocket != null && activeSocket.connected()) {
                 activeSocket.emit("hook:ack", deliveryId);
             }
         });
@@ -147,11 +160,15 @@ public class WebSocketClient {
         String content = hook.optString("content", "").trim();
         if (content.isEmpty()) return null;
 
-        return switch (type) {
-            case "command" -> executeCommandHook(content);
-            case "minimessage" -> executeMiniMessageHook(playerUuid, content);
-            default -> LangUtils.getRawLang("websocket.unknown_hook_type", Map.of("{type}", type));
-        };
+        try {
+            return switch (type) {
+                case "command" -> executeCommandHook(content);
+                case "minimessage" -> executeMiniMessageHook(playerUuid, content);
+                default -> LangUtils.getRawLang("websocket.unknown_hook_type", Map.of("{type}", type));
+            };
+        } catch (Throwable e) {
+            return LogUtils.exceptionText(e);
+        }
     }
 
     private static String executeCommandHook(String command) {

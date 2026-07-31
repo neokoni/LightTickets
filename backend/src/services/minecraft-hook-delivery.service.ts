@@ -5,7 +5,9 @@ import { getIO } from '../socket/index.js';
 import { ValidationError } from '../utils/errors.js';
 import * as templateService from './template.service.js';
 
-const RETRY_DELAY_MS = 15_000;
+export const HOOK_DELIVERY_MAX_ATTEMPTS = 5;
+export const HOOK_DELIVERY_RETRY_BASE_MS = 15_000;
+export const HOOK_DELIVERY_RETRY_MAX_MS = 15 * 60_000;
 const RETRY_BATCH_SIZE = 100;
 
 type HookTicket = {
@@ -64,10 +66,25 @@ export async function createForResolvedHooks(
 export async function dispatch(deliveryId: string): Promise<void> {
   const io = getIO();
   if (!io) return;
-  const delivery = await prisma().minecraftHookDelivery.findFirst({
-    where: { id: deliveryId, acknowledgedAt: null },
+  const delivery = await prisma().minecraftHookDelivery.findUnique({
+    where: { id: deliveryId },
   });
   if (!delivery) return;
+
+  if (delivery.status === 'delivered' || delivery.status === 'failed') return;
+
+  const now = Date.now();
+  if (
+    delivery.status === 'delivering' &&
+    delivery.lastAttemptAt &&
+    now - delivery.lastAttemptAt.getTime() < retryDelayMs(delivery.attempts)
+  ) {
+    return;
+  }
+  if (delivery.attempts >= HOOK_DELIVERY_MAX_ATTEMPTS) {
+    await markFailed(delivery.id);
+    return;
+  }
 
   const namespace = io.of('/mc');
   const room = `server:${delivery.serverId}`;
@@ -75,8 +92,17 @@ export async function dispatch(deliveryId: string): Promise<void> {
 
   const hooks = parseHooks(delivery.hooks);
   const claimed = await prisma().minecraftHookDelivery.updateMany({
-    where: { id: delivery.id, acknowledgedAt: null },
-    data: { attempts: { increment: 1 }, lastAttemptAt: new Date() },
+    where: {
+      id: delivery.id,
+      acknowledgedAt: null,
+      status: { in: ['pending', 'delivering'] },
+      attempts: { lt: HOOK_DELIVERY_MAX_ATTEMPTS },
+    },
+    data: {
+      status: 'delivering',
+      attempts: { increment: 1 },
+      lastAttemptAt: new Date(),
+    },
   });
   if (claimed.count !== 1) return;
 
@@ -90,12 +116,11 @@ export async function dispatch(deliveryId: string): Promise<void> {
 }
 
 export async function dispatchPendingForServer(serverId: string): Promise<void> {
-  const retryBefore = new Date(Date.now() - RETRY_DELAY_MS);
   const pending = await prisma().minecraftHookDelivery.findMany({
     where: {
       serverId,
       acknowledgedAt: null,
-      OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lte: retryBefore } }],
+      status: { in: ['pending', 'delivering'] },
     },
     orderBy: { createdAt: 'asc' },
     take: RETRY_BATCH_SIZE,
@@ -106,10 +131,51 @@ export async function dispatchPendingForServer(serverId: string): Promise<void> 
 
 export async function acknowledge(serverId: string, deliveryId: string): Promise<boolean> {
   const result = await prisma().minecraftHookDelivery.updateMany({
-    where: { id: deliveryId, serverId, acknowledgedAt: null },
-    data: { acknowledgedAt: new Date() },
+    where: {
+      id: deliveryId,
+      serverId,
+      acknowledgedAt: null,
+      status: { in: ['pending', 'delivering'] },
+    },
+    data: { status: 'delivered', acknowledgedAt: new Date() },
   });
   return result.count === 1;
+}
+
+export async function listDeadLetters() {
+  return prisma().minecraftHookDelivery.findMany({
+    where: { status: 'failed' },
+    orderBy: { failedAt: 'desc' },
+  });
+}
+
+export async function retryDeadLetter(deliveryId: string): Promise<boolean> {
+  const result = await prisma().minecraftHookDelivery.updateMany({
+    where: { id: deliveryId, status: 'failed' },
+    data: {
+      status: 'pending',
+      attempts: 0,
+      lastAttemptAt: null,
+      failedAt: null,
+    },
+  });
+  return result.count === 1;
+}
+
+async function markFailed(deliveryId: string): Promise<void> {
+  await prisma().minecraftHookDelivery.updateMany({
+    where: {
+      id: deliveryId,
+      status: { in: ['pending', 'delivering'] },
+      acknowledgedAt: null,
+    },
+    data: { status: 'failed', failedAt: new Date() },
+  });
+}
+
+function retryDelayMs(attempts: number): number {
+  if (attempts <= 0) return 0;
+  return Math.min(HOOK_DELIVERY_RETRY_BASE_MS * 2 ** (attempts - 1), HOOK_DELIVERY_RETRY_MAX_MS);
 }
 
 function parseHooks(value: string): StoredHook[] {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import request from 'supertest';
+import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
 import * as minecraftHookDeliveryService from '../src/services/minecraft-hook-delivery.service.js';
+import { generateAccessToken } from '../src/utils/token.js';
+
+const app = createApp();
 
 describe('minecraft hook delivery outbox', () => {
   it('creates stable hook IDs and accepts ACK only from the target server', async () => {
@@ -38,6 +43,7 @@ describe('minecraft hook delivery outbox', () => {
     const delivery = await prisma().minecraftHookDelivery.findUniqueOrThrow({
       where: { id: deliveryId! },
     });
+    expect(delivery.status).toBe('pending');
     const hooks = JSON.parse(delivery.hooks) as Array<{ hookId: string; content: string }>;
     expect(hooks.map((hook) => hook.hookId)).toEqual([`${delivery.id}:0`, `${delivery.id}:1`]);
     expect(hooks[0].content).toBe(`say #${ticket.id}`);
@@ -55,6 +61,65 @@ describe('minecraft hook delivery outbox', () => {
     const acknowledged = await prisma().minecraftHookDelivery.findUniqueOrThrow({
       where: { id: delivery.id },
     });
+    expect(acknowledged.status).toBe('delivered');
     expect(acknowledged.acknowledgedAt).toBeInstanceOf(Date);
+  });
+
+  it('moves exhausted deliveries to a dead letter and supports manual retry', async () => {
+    const server = await prisma().server.create({
+      data: { name: 'hook-dead-letter', apiKey: 'hook-dead-letter-key' },
+    });
+    const user = await prisma().user.create({
+      data: { email: 'hook-dead-letter@test.com', username: 'hookdeadletter', passwordHash: 'x' },
+    });
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Hook dead letter',
+        body: 'Body',
+        template: 'suggestion',
+        authorId: user.id,
+        serverId: server.id,
+      },
+    });
+    const deliveryId = await prisma().minecraftHookDelivery.create({
+      data: {
+        ticketId: ticket.id,
+        serverId: server.id,
+        event: 'closed',
+        hooks: '[]',
+        status: 'failed',
+        attempts: 5,
+        failedAt: new Date(),
+      },
+    });
+
+    expect((await minecraftHookDeliveryService.listDeadLetters()).map((item) => item.id)).toContain(
+      deliveryId.id,
+    );
+    expect(await minecraftHookDeliveryService.retryDeadLetter(deliveryId.id)).toBe(true);
+    const retried = await prisma().minecraftHookDelivery.findUniqueOrThrow({
+      where: { id: deliveryId.id },
+    });
+    expect(retried.status).toBe('pending');
+    expect(retried.attempts).toBe(0);
+    expect(retried.failedAt).toBeNull();
+  });
+
+  it('restricts dead-letter management to admins', async () => {
+    const user = await prisma().user.create({
+      data: {
+        email: 'hook-admin@test.com',
+        username: 'hookadmin',
+        passwordHash: 'x',
+        role: 'admin',
+      },
+    });
+    const token = generateAccessToken(user.id, 'admin');
+    const res = await request(app)
+      .get('/api/admin/minecraft-hook-deliveries')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeInstanceOf(Array);
   });
 });
