@@ -94,22 +94,13 @@ export async function changePassword(userId: number, currentPassword: string, ne
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
   return prisma().$transaction(async (tx) => {
-    await tx.user.update({ where: { id: userId }, data: { passwordHash } });
+    await tx.emailChangeRequest.deleteMany({ where: { userId } });
+    await tx.user.update({
+      where: { id: userId },
+      data: { passwordHash, pendingEmail: null },
+    });
     await refreshSessionService.revokeAllUserRefreshSessions(userId, tx);
     return refreshSessionService.createRefreshSession(userId, tx);
-  });
-}
-
-export async function updateEmail(userId: number, email: string) {
-  const existing = await prisma().user.findFirst({
-    where: { email, id: { not: userId } },
-  });
-  if (existing) throw new AppError(409, '该邮箱已被注册');
-
-  return prisma().user.update({
-    where: { id: userId },
-    data: { email },
-    select: USER_PUBLIC_SELECT,
   });
 }
 

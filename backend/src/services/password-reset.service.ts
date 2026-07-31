@@ -194,9 +194,10 @@ export async function resetPassword(token: string, newPassword: string): Promise
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await prisma().$transaction(async (tx) => {
     const now = new Date();
+    await tx.emailChangeRequest.deleteMany({ where: { userId: resetToken.userId } });
     await tx.user.update({
       where: { id: resetToken.userId },
-      data: { passwordHash },
+      data: { passwordHash, pendingEmail: null },
     });
     await tx.passwordResetToken.update({
       where: { id: resetToken.id },

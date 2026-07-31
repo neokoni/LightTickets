@@ -72,6 +72,11 @@
             "type": "string",
             "format": "email"
           },
+          "pendingEmail": {
+            "type": "string",
+            "nullable": true,
+            "format": "email"
+          },
           "username": {
             "type": "string"
           },
@@ -110,6 +115,7 @@
         "required": [
           "id",
           "email",
+          "pendingEmail",
           "username",
           "minecraftUuid",
           "minecraftName",
@@ -6742,7 +6748,7 @@
     },
     "/api/users/me/email": {
       "patch": {
-        "summary": "更新邮箱",
+        "summary": "请求更换邮箱",
         "tags": [
           "Users"
         ],
@@ -6761,11 +6767,18 @@
                   "email": {
                     "type": "string",
                     "format": "email"
+                  },
+                  "currentPassword": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
                   }
                 },
                 "required": [
-                  "email"
-                ]
+                  "email",
+                  "currentPassword"
+                ],
+                "additionalProperties": false
               }
             }
           }
@@ -6785,32 +6798,234 @@
                       ]
                     },
                     "data": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {},
-                          "additionalProperties": {
-                            "nullable": true
-                          }
+                      "type": "object",
+                      "properties": {
+                        "accepted": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
                         },
-                        {
-                          "type": "array",
-                          "items": {
-                            "nullable": true
-                          }
+                        "pendingEmail": {
+                          "type": "string",
+                          "format": "email"
                         },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "number"
-                        },
-                        {
-                          "type": "boolean"
-                        },
-                        {
-                          "nullable": true
+                        "retryAfterSeconds": {
+                          "type": "integer",
+                          "minimum": 0
                         }
+                      },
+                      "required": [
+                        "accepted",
+                        "pendingEmail",
+                        "retryAfterSeconds"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "取消待验证的邮箱更换",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cancelled": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "cancelled"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/me/email/verify": {
+      "post": {
+        "summary": "验证并切换邮箱",
+        "tags": [
+          "Users"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PublicUser"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/users/email-change/cancel": {
+      "post": {
+        "summary": "通过旧邮箱中的令牌撤销邮箱更换",
+        "tags": [
+          "Users"
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  }
+                },
+                "required": [
+                  "token"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cancelled": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "cancelled"
                       ]
                     }
                   },

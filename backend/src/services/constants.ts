@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 export const USER_PUBLIC_SELECT = {
   id: true,
   email: true,
+  pendingEmail: true,
   username: true,
   minecraftUuid: true,
   minecraftName: true,

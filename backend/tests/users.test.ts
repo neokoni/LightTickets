@@ -5,8 +5,47 @@ import { createApp } from '../src/app.js';
 import { getConfig } from '../src/config.js';
 import { prisma } from './setup.js';
 import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
+import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 
 const app = createApp();
+
+const mailConfig = {
+  enabled: true,
+  host: 'smtp.example.com',
+  port: 587,
+  secure: false,
+  username: 'mailer',
+  password: 'secret',
+  fromName: 'LightTickets',
+  fromAddress: 'noreply@example.com',
+};
+
+async function configureEmailChangeMail() {
+  const setupStatus = await prisma().setupStatus.findFirst();
+  if (setupStatus) {
+    await prisma().setupStatus.update({
+      where: { id: setupStatus.id },
+      data: { isSetup: true, siteUrl: 'https://tickets.example.com', defaultLanguage: 'zh-CN' },
+    });
+  } else {
+    await prisma().setupStatus.create({
+      data: {
+        isSetup: true,
+        siteUrl: 'https://tickets.example.com',
+        defaultLanguage: 'zh-CN',
+      },
+    });
+  }
+  const appConfig = await prisma().appConfig.findFirst();
+  if (appConfig) {
+    await prisma().appConfig.update({
+      where: { id: appConfig.id },
+      data: { mailConfig: JSON.stringify(mailConfig) },
+    });
+  } else {
+    await prisma().appConfig.create({ data: { mailConfig: JSON.stringify(mailConfig) } });
+  }
+}
 
 function getRefreshCookie(setCookies: string[] | undefined): string {
   const value = setCookies?.find((item) => item.startsWith('lt_refresh_token='));
@@ -289,7 +328,20 @@ describe('PATCH /api/users/:id/role', () => {
 
 describe('PATCH /api/users/me/password', () => {
   it('revokes old refresh sessions and issues a replacement cookie', async () => {
-    const { token, refreshCookie } = await createUserAndGetToken('password-change@test.com');
+    const { token, refreshCookie, user } = await createUserAndGetToken('password-change@test.com');
+    await prisma().user.update({
+      where: { id: user.id },
+      data: { pendingEmail: 'password-change-pending@test.com' },
+    });
+    await prisma().emailChangeRequest.create({
+      data: {
+        userId: user.id,
+        newEmail: 'password-change-pending@test.com',
+        codeHash: 'code-hash',
+        cancelTokenHash: 'cancel-token-hash',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
 
     const changed = await request(app)
       .patch('/api/users/me/password')
@@ -299,6 +351,12 @@ describe('PATCH /api/users/me/password', () => {
     expect(changed.status).toBe(200);
     const replacementCookie = getRefreshCookie(changed.headers['set-cookie']);
     expect(replacementCookie).not.toBe(refreshCookie);
+    await expect(
+      prisma().user.findUniqueOrThrow({ where: { id: user.id }, select: { pendingEmail: true } }),
+    ).resolves.toEqual({ pendingEmail: null });
+    await expect(prisma().emailChangeRequest.count({ where: { userId: user.id } })).resolves.toBe(
+      0,
+    );
 
     const oldRefresh = await request(app)
       .post('/api/auth/refresh')
@@ -311,6 +369,147 @@ describe('PATCH /api/users/me/password', () => {
       .set('Cookie', replacementCookie)
       .send({});
     expect(replacementRefresh.status).toBe(200);
+  });
+});
+
+describe('email change verification', () => {
+  it('requires the current password and keeps the current email pending verification', async () => {
+    clearTestOutbox();
+    const { token, user } = await createUserAndGetToken('email-change-request@test.com');
+    await configureEmailChangeMail();
+
+    const missingPassword = await request(app)
+      .patch('/api/users/me/email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'email-change-new@test.com' });
+    expect(missingPassword.status).toBe(400);
+
+    const wrongPassword = await request(app)
+      .patch('/api/users/me/email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'email-change-new@test.com', currentPassword: 'wrong-password' });
+    expect(wrongPassword.status).toBe(400);
+    expect(wrongPassword.body.message).toBe('当前密码错误');
+
+    const requested = await request(app)
+      .patch('/api/users/me/email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'Email-Change-New@test.com', currentPassword: 'Password123!' });
+    expect(requested.status, JSON.stringify(requested.body)).toBe(200);
+    expect(requested.body.data).toMatchObject({
+      accepted: true,
+      pendingEmail: 'email-change-new@test.com',
+      retryAfterSeconds: 60,
+    });
+
+    const unchanged = await prisma().user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(unchanged.email).toBe('email-change-request@test.com');
+    expect(unchanged.pendingEmail).toBe('email-change-new@test.com');
+    expect(getTestOutbox()).toHaveLength(2);
+    expect(getTestOutbox().map((mail) => mail.to)).toEqual([
+      'email-change-new@test.com',
+      'email-change-request@test.com',
+    ]);
+    expect(getTestOutbox()[1].text).toContain('https://tickets.example.com/cancel-email-change');
+
+    const cancelled = await request(app)
+      .delete('/api/users/me/email')
+      .set('Authorization', `Bearer ${token}`);
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.body.data).toEqual({ cancelled: true });
+    await expect(
+      prisma().user.findUniqueOrThrow({ where: { id: user.id }, select: { pendingEmail: true } }),
+    ).resolves.toEqual({ pendingEmail: null });
+    await expect(prisma().emailChangeRequest.count({ where: { userId: user.id } })).resolves.toBe(
+      0,
+    );
+  });
+
+  it('atomically verifies the new email and replaces refresh sessions', async () => {
+    clearTestOutbox();
+    const { token, refreshCookie, user } = await createUserAndGetToken(
+      'email-change-verify@test.com',
+    );
+    await configureEmailChangeMail();
+
+    await request(app)
+      .patch('/api/users/me/email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'email-change-verified@test.com', currentPassword: 'Password123!' });
+    const code = getTestOutbox()[0].text.match(/\b\d{6}\b/)?.[0];
+    expect(code).toMatch(/^\d{6}$/);
+
+    const invalid = await request(app)
+      .post('/api/users/me/email/verify')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code: '000000' });
+    expect(invalid.status).toBe(400);
+    expect((await prisma().user.findUniqueOrThrow({ where: { id: user.id } })).email).toBe(
+      'email-change-verify@test.com',
+    );
+
+    const verified = await request(app)
+      .post('/api/users/me/email/verify')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code });
+    expect(verified.status).toBe(200);
+    expect(verified.body.data.email).toBe('email-change-verified@test.com');
+    expect(verified.body.data.pendingEmail).toBeNull();
+    const replacementCookie = getRefreshCookie(verified.headers['set-cookie']);
+    expect(replacementCookie).not.toBe(refreshCookie);
+
+    const persisted = await prisma().user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(persisted.email).toBe('email-change-verified@test.com');
+    expect(persisted.pendingEmail).toBeNull();
+    await expect(prisma().emailChangeRequest.count({ where: { userId: user.id } })).resolves.toBe(
+      0,
+    );
+
+    const oldRefresh = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', refreshCookie)
+      .send({});
+    expect(oldRefresh.status).toBe(401);
+    const replacementRefresh = await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', replacementCookie)
+      .send({});
+    expect(replacementRefresh.status).toBe(200);
+  });
+
+  it('allows the old address to cancel a pending email change with its one-time token', async () => {
+    clearTestOutbox();
+    const { token, user } = await createUserAndGetToken('email-change-cancel@test.com');
+    await configureEmailChangeMail();
+
+    await request(app)
+      .patch('/api/users/me/email')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ email: 'email-change-cancelled@test.com', currentPassword: 'Password123!' });
+    const oldAddressMail = getTestOutbox().find(
+      (mail) => mail.to === 'email-change-cancel@test.com',
+    );
+    const cancelUrl = oldAddressMail?.text.split('\n').find((line) => line.startsWith('https://'));
+    expect(cancelUrl).toBeTruthy();
+    const cancelToken = new URL(cancelUrl!).searchParams.get('token');
+
+    const cancelled = await request(app)
+      .post('/api/users/email-change/cancel')
+      .send({ token: cancelToken });
+    expect(cancelled.status).toBe(200);
+    expect(cancelled.body.data).toEqual({ cancelled: true });
+
+    const unchanged = await prisma().user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(unchanged.email).toBe('email-change-cancel@test.com');
+    expect(unchanged.pendingEmail).toBeNull();
+    await expect(prisma().emailChangeRequest.count({ where: { userId: user.id } })).resolves.toBe(
+      0,
+    );
+
+    const reused = await request(app)
+      .post('/api/users/email-change/cancel')
+      .send({ token: cancelToken });
+    expect(reused.status).toBe(400);
   });
 });
 

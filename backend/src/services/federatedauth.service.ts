@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import * as oidc from 'openid-client';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import {
   FEDERATED_AUTH_INTENT,
@@ -49,6 +50,34 @@ interface CompleteRegistrationInput {
   username: string;
   password: string;
   emailVerificationCode?: string;
+}
+
+type RegistrationConflictClient = Pick<Prisma.TransactionClient, 'user'>;
+
+async function assertRegistrationFieldsAvailable(
+  client: RegistrationConflictClient,
+  email: string,
+  username: string,
+): Promise<void> {
+  const emailConflict = await client.user.findFirst({
+    where: {
+      OR: [
+        { email },
+        {
+          pendingEmail: email,
+          emailChangeRequest: { is: { expiresAt: { gt: new Date() } } },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  if (emailConflict) throw new AppError(409, '该邮箱已被注册或正在等待验证');
+
+  const usernameConflict = await client.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+  if (usernameConflict) throw new AppError(409, '该用户名已被占用');
 }
 
 const sha256 = (value: string): string => crypto.createHash('sha256').update(value).digest('hex');
@@ -508,15 +537,7 @@ export async function completeFederatedAuthRegistration(input: CompleteRegistrat
   const setup = await prisma().setupStatus.findFirst({ select: { allowWebRegister: true } });
   if (!setup?.allowWebRegister) throw new ForbiddenError('网页注册已关闭，请联系管理员');
 
-  const existing = await prisma().user.findFirst({
-    where: { OR: [{ email: normalizedEmail }, { username: input.username }] },
-  });
-  if (existing) {
-    throw new AppError(
-      409,
-      existing.email === normalizedEmail ? '该邮箱已被注册' : '该用户名已被占用',
-    );
-  }
+  await assertRegistrationFieldsAvailable(prisma(), normalizedEmail, input.username);
 
   const mailConfig = await mailConfigService.getFullMailConfig();
   const verificationRequired = mailConfigService.canSendPasswordResetMail(mailConfig);
@@ -538,15 +559,7 @@ export async function completeFederatedAuthRegistration(input: CompleteRegistrat
     if (!currentSession || currentSession.usedAt || currentSession.expiresAt <= new Date()) {
       throw new UnauthorizedError('外部登录注册会话无效或已过期');
     }
-    const conflictingUser = await tx.user.findFirst({
-      where: { OR: [{ email: normalizedEmail }, { username: input.username }] },
-    });
-    if (conflictingUser) {
-      throw new AppError(
-        409,
-        conflictingUser.email === normalizedEmail ? '该邮箱已被注册' : '该用户名已被占用',
-      );
-    }
+    await assertRegistrationFieldsAvailable(tx, normalizedEmail, input.username);
     const conflictingIdentity = await tx.federatedAuthIdentity.findUnique({
       where: {
         providerId_subject: {

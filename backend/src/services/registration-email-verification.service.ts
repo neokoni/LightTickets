@@ -129,7 +129,17 @@ export async function requestRegistrationEmailVerification(email: string): Promi
   }
 
   const normalizedEmail = normalizeEmail(email);
-  const existingUser = await prisma().user.findUnique({ where: { email: normalizedEmail } });
+  const existingUser = await prisma().user.findFirst({
+    where: {
+      OR: [
+        { email: normalizedEmail },
+        {
+          pendingEmail: normalizedEmail,
+          emailChangeRequest: { is: { expiresAt: { gt: new Date() } } },
+        },
+      ],
+    },
+  });
   if (existingUser) throw new AppError(409, '该邮箱已被注册');
 
   const code = createCode();

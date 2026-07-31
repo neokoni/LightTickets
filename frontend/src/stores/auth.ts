@@ -11,7 +11,9 @@ import {
   apiUpdateAvatar,
   apiUpdateUsername,
   apiChangePassword,
-  apiUpdateEmail,
+  apiRequestEmailChange,
+  apiVerifyEmailChange,
+  apiCancelPendingEmailChange,
   apiUpdateEmailNotifications,
 } from '@/api/auth';
 import { clearApiSession, setAccessToken } from '@/api/client';
@@ -113,11 +115,22 @@ export const useAuthStore = defineStore('auth', () => {
     await apiChangePassword(currentPassword, newPassword);
   }
 
-  async function updateEmail(email: string) {
-    const updated = await apiUpdateEmail(email);
+  async function requestEmailChange(email: string, currentPassword: string) {
+    const result = await apiRequestEmailChange(email, currentPassword);
     if (user.value) {
-      user.value.email = updated.email;
+      user.value.pendingEmail = result.pendingEmail;
     }
+    return result;
+  }
+
+  async function verifyEmailChange(code: string) {
+    const updated = await apiVerifyEmailChange(code);
+    if (user.value) user.value = updated;
+  }
+
+  async function cancelPendingEmailChange() {
+    await apiCancelPendingEmailChange();
+    if (user.value) user.value.pendingEmail = null;
   }
 
   async function updateEmailNotifications(receiveEmailNotifications: boolean) {
@@ -143,7 +156,9 @@ export const useAuthStore = defineStore('auth', () => {
     updateAvatar,
     updateUsername,
     changePassword,
-    updateEmail,
+    requestEmailChange,
+    verifyEmailChange,
+    cancelPendingEmailChange,
     updateEmailNotifications,
   };
 });

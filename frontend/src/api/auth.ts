@@ -1,6 +1,7 @@
 import { apiFetch } from './client';
 import type {
   AuthResponse,
+  EmailChangeRequestResponse,
   RefreshResponse,
   RegistrationVerificationResponse,
   User,
@@ -99,10 +100,28 @@ export function apiChangePassword(currentPassword: string, newPassword: string) 
   });
 }
 
-export function apiUpdateEmail(email: string) {
-  return apiFetch<User>('/users/me/email', {
+export function apiRequestEmailChange(email: string, currentPassword: string) {
+  return apiFetch<EmailChangeRequestResponse>('/users/me/email', {
     method: 'PATCH',
-    body: JSON.stringify({ email }),
+    body: JSON.stringify({ email, currentPassword }),
+  });
+}
+
+export function apiVerifyEmailChange(code: string) {
+  return apiFetch<User>('/users/me/email/verify', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
+  });
+}
+
+export function apiCancelPendingEmailChange() {
+  return apiFetch<{ cancelled: true }>('/users/me/email', { method: 'DELETE' });
+}
+
+export function apiCancelEmailChange(token: string) {
+  return apiFetch<{ cancelled: true }>('/users/email-change/cancel', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
   });
 }
 

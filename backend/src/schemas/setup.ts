@@ -34,7 +34,7 @@ export const setupSchema = z
         }
       }),
     admin: z.object({
-      email: z.string().email(),
+      email: z.string().trim().toLowerCase().email(),
       password: z.string().min(6),
       username: z.string().min(2).max(30),
     }),

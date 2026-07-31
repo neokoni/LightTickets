@@ -74,6 +74,8 @@ const savingUsername = ref(false);
 
 const editingEmail = ref(false);
 const emailInput = ref(auth.user?.email || '');
+const emailCurrentPassword = ref('');
+const emailCode = ref('');
 const savingEmail = ref(false);
 
 const currentPassword = ref('');
@@ -171,10 +173,48 @@ async function saveEmail() {
     return;
   }
   if (val === auth.user?.email) return;
+  if (!emailCurrentPassword.value) {
+    ui.toast(t('profile.password.required'), ToastType.ERROR);
+    return;
+  }
   savingEmail.value = true;
   try {
-    await auth.updateEmail(val);
+    await auth.requestEmailChange(val, emailCurrentPassword.value);
+    emailCurrentPassword.value = '';
+    ui.toast(t('profile.account.emailCodeSent'), ToastType.SUCCESS);
+  } catch (e) {
+    handleError(e, t('common.updateFailed'));
+  } finally {
+    savingEmail.value = false;
+  }
+}
+
+async function verifyEmail() {
+  if (!/^\d{6}$/.test(emailCode.value)) {
+    ui.toast(t('profile.account.emailCodePlaceholder'), ToastType.ERROR);
+    return;
+  }
+  savingEmail.value = true;
+  try {
+    await auth.verifyEmailChange(emailCode.value);
+    emailInput.value = auth.user?.email || '';
+    emailCode.value = '';
+    editingEmail.value = false;
     ui.toast(t('profile.account.emailUpdated'), ToastType.SUCCESS);
+  } catch (e) {
+    handleError(e, t('common.updateFailed'));
+  } finally {
+    savingEmail.value = false;
+  }
+}
+
+async function cancelEmailChange() {
+  savingEmail.value = true;
+  try {
+    await auth.cancelPendingEmailChange();
+    emailInput.value = auth.user?.email || '';
+    emailCurrentPassword.value = '';
+    emailCode.value = '';
     editingEmail.value = false;
   } catch (e) {
     handleError(e, t('common.updateFailed'));
@@ -332,38 +372,83 @@ async function changeLanguage(languageId: string) {
                 >
               </div>
             </template>
-            <template v-if="!editingEmail">
+            <template v-if="!editingEmail && !auth.user?.pendingEmail">
               <div class="flex items-center gap-2">
                 <p class="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">
                   {{ t('user.email') }}: {{ auth.user?.email }}
                 </p>
-                <BaseButton :class="iconButtonClass" @click="editingEmail = true">
+                <BaseButton
+                  :class="iconButtonClass"
+                  :disabled="!siteConfig.passwordResetEnabled"
+                  :title="
+                    siteConfig.passwordResetEnabled
+                      ? t('user.email')
+                      : t('profile.account.emailChangeUnavailable')
+                  "
+                  @click="editingEmail = true"
+                >
                   <Icon icon="lucide:pencil" class="w-3.5 h-3.5" />
                 </BaseButton>
               </div>
             </template>
             <template v-else>
-              <div class="flex items-center gap-2 max-w-lg">
+              <div v-if="auth.user?.pendingEmail" class="space-y-2 max-w-lg pt-1">
+                <p class="text-xs text-amber-700 dark:text-amber-300">
+                  {{ t('profile.account.emailPending', { email: auth.user.pendingEmail }) }}
+                </p>
+                <div class="flex flex-wrap items-end gap-2">
+                  <BaseInput
+                    v-model="emailCode"
+                    :label="t('profile.account.emailCode')"
+                    :placeholder="t('profile.account.emailCodePlaceholder')"
+                    inputmode="numeric"
+                    maxlength="6"
+                    required
+                    class="min-w-56 flex-1"
+                  />
+                  <BaseButton size="sm" :loading="savingEmail" @click="verifyEmail">
+                    {{ t('profile.account.emailVerify') }}
+                  </BaseButton>
+                  <BaseButton size="sm" :disabled="savingEmail" @click="cancelEmailChange">
+                    {{ t('profile.account.emailCancel') }}
+                  </BaseButton>
+                </div>
+              </div>
+              <div v-else class="space-y-2 max-w-lg pt-1">
                 <BaseInput
                   v-model="emailInput"
+                  :label="t('user.email')"
                   placeholder="your@email.com"
-                  class="flex-1 !py-1 !text-sm"
+                  type="email"
+                  required
                 />
-                <BaseButton
-                  size="sm"
-                  :loading="savingEmail"
-                  :disabled="emailInput.trim() === auth.user?.email"
-                  @click="saveEmail"
-                  >{{ t('common.confirm') }}</BaseButton
-                >
-                <BaseButton
-                  size="sm"
-                  @click="
-                    editingEmail = false;
-                    emailInput = auth.user?.email || '';
-                  "
-                  >{{ t('common.cancel') }}</BaseButton
-                >
+                <BaseInput
+                  v-model="emailCurrentPassword"
+                  :label="t('profile.account.emailCurrentPassword')"
+                  :placeholder="t('profile.account.emailCurrentPasswordPlaceholder')"
+                  type="password"
+                  required
+                />
+                <div class="flex gap-2">
+                  <BaseButton
+                    size="sm"
+                    :loading="savingEmail"
+                    :disabled="emailInput.trim() === auth.user?.email"
+                    @click="saveEmail"
+                  >
+                    {{ t('profile.account.emailRequest') }}
+                  </BaseButton>
+                  <BaseButton
+                    size="sm"
+                    @click="
+                      editingEmail = false;
+                      emailInput = auth.user?.email || '';
+                      emailCurrentPassword = '';
+                    "
+                  >
+                    {{ t('common.cancel') }}
+                  </BaseButton>
+                </div>
               </div>
             </template>
             <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">

@@ -521,9 +521,10 @@ export async function completeSetup(input: SetupInput) {
   const { initPrisma, getPrisma } = await import('../db.js');
   initPrisma();
   const prisma = getPrisma();
+  const normalizedAdminEmail = input.admin.email.trim().toLowerCase();
 
   const existingUser = await prisma.user.findFirst({
-    where: { OR: [{ email: input.admin.email }, { username: input.admin.username }] },
+    where: { OR: [{ email: normalizedAdminEmail }, { username: input.admin.username }] },
   });
   if (existingUser) {
     throw new AppError(409, '该邮箱或用户名已被使用');
@@ -532,7 +533,7 @@ export async function completeSetup(input: SetupInput) {
   const passwordHash = await bcrypt.hash(input.admin.password, 12);
   const admin = await prisma.user.create({
     data: {
-      email: input.admin.email,
+      email: normalizedAdminEmail,
       passwordHash,
       username: input.admin.username,
       role: ROLE.ADMIN,

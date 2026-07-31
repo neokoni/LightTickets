@@ -64,7 +64,7 @@ describe('POST /api/setup', () => {
       .post('/api/setup')
       .send({
         db: { provider: 'sqlite' },
-        admin: { email: 'admin@example.com', password: 'admin123', username: 'admin' },
+        admin: { email: ' Admin@Example.com ', password: 'admin123', username: 'admin' },
       });
 
     expect(res.status).toBe(201);

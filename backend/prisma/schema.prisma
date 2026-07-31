@@ -63,6 +63,7 @@ enum FederatedAuthSecretMode {
 model User {
   id                  Int                  @id @default(autoincrement())
   email               String               @unique
+  pendingEmail        String?              @unique @map("pending_email")
   passwordHash        String               @map("password_hash")
   username            String               @unique
   minecraftUuid       String?              @unique @map("minecraft_uuid")
@@ -79,6 +80,7 @@ model User {
   attachments         Attachment[]
   auditLogs           AuditLog[]
   passwordResetTokens PasswordResetToken[]
+  emailChangeRequest  EmailChangeRequest?
   refreshSessions     RefreshSession[]
   federatedAuthIdentities FederatedAuthIdentity[]
   federatedAuthFlows FederatedAuthFlow[]
@@ -415,6 +417,21 @@ model RegistrationEmailVerification {
 
   @@index([expiresAt])
   @@map("registration_email_verifications")
+}
+
+model EmailChangeRequest {
+  id              String   @id @default(uuid())
+  userId          Int      @unique @map("user_id")
+  newEmail        String   @unique @map("new_email")
+  codeHash        String   @map("code_hash")
+  cancelTokenHash String   @unique @map("cancel_token_hash")
+  expiresAt       DateTime @map("expires_at")
+  attempts        Int      @default(0)
+  createdAt       DateTime @default(now()) @map("created_at")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([expiresAt])
+  @@map("email_change_requests")
 }
 
 model SetupStatus {

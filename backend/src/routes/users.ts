@@ -13,15 +13,22 @@ import { FEDERATED_AUTH_INTENT } from '../constants/federatedauth.js';
 import { setFederatedAuthFlowCookie } from '../utils/federatedauth-cookies.js';
 import { authLimiter } from '../middleware/rate-limit.js';
 import { setRefreshCookie } from '../utils/auth-cookies.js';
+import * as emailChangeService from '../services/email-change.service.js';
 
 const router = Router();
 
 export const unsubscribeSchema = z.object({ token: z.string().min(1) });
+export const emailChangeCancelSchema = z.object({ token: z.string().min(1).max(256) }).strict();
 
 router.post('/email-notifications/unsubscribe', async (req: Request, res: Response) => {
   const data = validate(unsubscribeSchema, req.body);
   const result = await ticketNotificationService.unsubscribe(data.token);
   res.json(result);
+});
+
+router.post('/email-change/cancel', authLimiter, async (req: Request, res: Response) => {
+  const data = validate(emailChangeCancelSchema, req.body);
+  res.json(await emailChangeService.cancelEmailChange(data.token));
 });
 
 router.get('/', authMiddleware, requireRole(ROLE.ADMIN), async (req: Request, res: Response) => {
@@ -80,15 +87,38 @@ router.patch('/me/password', authMiddleware, async (req: Request, res: Response)
   res.json({ message: '密码已更新' });
 });
 
-export const userEmailSchema = z.object({
-  email: z.string().email(),
+export const userEmailSchema = z
+  .object({
+    email: z.string().trim().email(),
+    currentPassword: z.string().min(1, '请输入当前密码').max(128),
+  })
+  .strict();
+
+export const userEmailVerificationSchema = z
+  .object({ code: z.string().regex(/^\d{6}$/, '请输入 6 位邮箱验证码') })
+  .strict();
+
+router.patch('/me/email', authLimiter, authMiddleware, async (req: Request, res: Response) => {
+  const data = validate(userEmailSchema, req.body);
+  res.json(
+    await emailChangeService.requestEmailChange(req.user!.userId, data.email, data.currentPassword),
+  );
 });
 
-router.patch('/me/email', authMiddleware, async (req: Request, res: Response) => {
-  const data = validate(userEmailSchema, req.body);
+router.post(
+  '/me/email/verify',
+  authLimiter,
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const data = validate(userEmailVerificationSchema, req.body);
+    const result = await emailChangeService.verifyEmailChange(req.user!.userId, data.code);
+    setRefreshCookie(res, result.refreshToken);
+    res.json(result.user);
+  },
+);
 
-  const user = await userService.updateEmail(req.user!.userId, data.email);
-  res.json(user);
+router.delete('/me/email', authLimiter, authMiddleware, async (req: Request, res: Response) => {
+  res.json(await emailChangeService.cancelPendingEmailChange(req.user!.userId));
 });
 
 export const userNotificationSettingsSchema = z.object({

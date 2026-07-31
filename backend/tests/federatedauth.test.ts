@@ -210,7 +210,7 @@ describe('FederatedAuth registration and binding', () => {
       .post('/api/auth/federatedauth/registration/complete')
       .set('Cookie', registrationCookie)
       .send({
-        email: 'chosen@example.com',
+        email: ' Chosen@Example.com ',
         username: 'chosen-name',
         password: 'Password123!',
       });
@@ -221,6 +221,46 @@ describe('FederatedAuth registration and binding', () => {
     expect(cookie(registered.headers['set-cookie'], 'lt_refresh_token')).toBeTruthy();
     const identity = await prisma().federatedAuthIdentity.findFirstOrThrow();
     expect(identity.subject).toBe('new-subject');
+  });
+
+  it('reports a username conflict when the same user only has an expired pending email', async () => {
+    await createProvider();
+    const existing = await prisma().user.create({
+      data: {
+        email: 'existing@example.com',
+        pendingEmail: 'available@example.com',
+        username: 'existing-name',
+        passwordHash: await bcrypt.hash('Password123!', 12),
+      },
+    });
+    await prisma().emailChangeRequest.create({
+      data: {
+        userId: existing.id,
+        newEmail: 'available@example.com',
+        codeHash: 'expired-code-hash',
+        cancelTokenHash: 'expired-cancel-token-hash',
+        expiresAt: new Date(Date.now() - 1_000),
+      },
+    });
+    mockProvider('conflict-subject');
+    const started = await start();
+    const completed = await callbackRequest(started.authorizationUrl, started.flowCookie);
+    const registrationCookie = cookie(
+      completed.headers['set-cookie'],
+      'lt_federatedauth_registration',
+    );
+
+    const rejected = await request(app)
+      .post('/api/auth/federatedauth/registration/complete')
+      .set('Cookie', registrationCookie)
+      .send({
+        email: 'available@example.com',
+        username: 'existing-name',
+        password: 'Password123!',
+      });
+
+    expect(rejected.status).toBe(409);
+    expect(rejected.body.message).toBe('该用户名已被占用');
   });
 
   it('never uses Provider email to bind an existing local account', async () => {

@@ -23,6 +23,7 @@ export function isAdminRole(role: Role): boolean {
 export interface User {
   id: number;
   email: string;
+  pendingEmail?: string | null;
   username: string;
   minecraftUuid?: string;
   minecraftName?: string;
@@ -45,6 +46,12 @@ export interface RefreshResponse {
 
 export interface RegistrationVerificationResponse {
   accepted: true;
+  retryAfterSeconds: number;
+}
+
+export interface EmailChangeRequestResponse {
+  accepted: true;
+  pendingEmail: string;
   retryAfterSeconds: number;
 }
 

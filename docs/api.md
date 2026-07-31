@@ -548,7 +548,14 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 - `PATCH /api/users/me/avatar`
 - `PATCH /api/users/me/username`
 - `PATCH /api/users/me/password`
-- `PATCH /api/users/me/email`
+- `PATCH /api/users/me/email`：请求更换邮箱，请求体为
+  `{ "email": string, "currentPassword": string }`。该操作只写入 `pendingEmail`，并分别向新邮箱发送
+  6 位验证码、向旧邮箱发送撤销链接；要求 SMTP 可用且 `siteUrl` 是 HTTPS origin
+- `POST /api/users/me/email/verify`：请求体为 `{ "code": string }`。验证码通过后在事务内切换邮箱、
+  清除 pending 状态、撤销旧 Refresh Session，并通过 Cookie 下发替换 Refresh Token
+- `DELETE /api/users/me/email`：登录用户取消自己的待验证邮箱更换
+- `POST /api/users/email-change/cancel`：公开接口，请求体为旧邮箱撤销链接中的
+  `{ "token": string }`；仅取消尚未完成的 pending 更换
 - `PATCH /api/users/me/notifications`：登录用户更新个人邮件通知偏好，请求体为
   `{ "receiveEmailNotifications": boolean }`，新用户默认 `true`
 - `POST /api/users/email-notifications/unsubscribe`：公开接口，请求体为邮件中的签名

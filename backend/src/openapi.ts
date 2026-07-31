@@ -56,9 +56,11 @@ import {
 import { commentBodyUpdateSchema, commentCreateSchema } from './routes/comments.js';
 import { serverCreateSchema, serverUpdateSchema } from './routes/servers.js';
 import {
+  emailChangeCancelSchema,
   unsubscribeSchema,
   userAvatarSchema,
   userEmailSchema,
+  userEmailVerificationSchema,
   userNotificationSettingsSchema,
   userPasswordSchema,
   userRoleSchema,
@@ -125,6 +127,7 @@ const publicUserSchema = registry.register(
   z.object({
     id: z.number().int().positive(),
     email: z.string().email(),
+    pendingEmail: z.string().email().nullable(),
     username: z.string(),
     minecraftUuid: z.string().nullable(),
     minecraftName: z.string().nullable(),
@@ -924,10 +927,41 @@ const registerUserRoutes = () => {
   registerRoute({
     method: 'patch',
     path: '/api/users/me/email',
-    summary: '更新邮箱',
+    summary: '请求更换邮箱',
     auth: 'jwt',
     tags: ['Users'],
     bodySchema: userEmailSchema,
+    responseSchema: z.object({
+      accepted: z.literal(true),
+      pendingEmail: z.string().email(),
+      retryAfterSeconds: z.number().int().nonnegative(),
+    }),
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/users/me/email/verify',
+    summary: '验证并切换邮箱',
+    auth: 'jwt',
+    tags: ['Users'],
+    bodySchema: userEmailVerificationSchema,
+    responseSchema: publicUserSchema,
+  });
+  registerRoute({
+    method: 'delete',
+    path: '/api/users/me/email',
+    summary: '取消待验证的邮箱更换',
+    auth: 'jwt',
+    tags: ['Users'],
+    responseSchema: z.object({ cancelled: z.literal(true) }),
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/users/email-change/cancel',
+    summary: '通过旧邮箱中的令牌撤销邮箱更换',
+    auth: 'none',
+    tags: ['Users'],
+    bodySchema: emailChangeCancelSchema,
+    responseSchema: z.object({ cancelled: z.literal(true) }),
   });
   registerRoute({
     method: 'patch',

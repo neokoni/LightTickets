@@ -41,6 +41,7 @@ const prisma = () => getPrisma();
 
 beforeEach(async () => {
   await prisma().refreshSession.deleteMany();
+  await prisma().emailChangeRequest.deleteMany();
   await prisma().federatedAuthRegistration.deleteMany();
   await prisma().federatedAuthFlow.deleteMany();
   await prisma().federatedAuthIdentity.deleteMany();

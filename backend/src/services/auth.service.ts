@@ -1,6 +1,6 @@
 import { prisma } from '../db.js';
 import bcrypt from 'bcrypt';
-import type { User } from '@prisma/client';
+import type { Prisma, User } from '@prisma/client';
 import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../utils/errors.js';
 import { generateAccessToken } from '../utils/token.js';
 import { USER_PUBLIC_SELECT } from './constants.js';
@@ -9,6 +9,34 @@ import * as registrationEmailVerificationService from './registration-email-veri
 import { generateMinecraftSecret, hashMinecraftSecret } from '../utils/minecraft-credential.js';
 import * as refreshSessionService from './refresh-session.service.js';
 
+type RegistrationConflictClient = Pick<Prisma.TransactionClient, 'user'>;
+
+async function assertRegistrationFieldsAvailable(
+  client: RegistrationConflictClient,
+  email: string,
+  username: string,
+): Promise<void> {
+  const emailConflict = await client.user.findFirst({
+    where: {
+      OR: [
+        { email },
+        {
+          pendingEmail: email,
+          emailChangeRequest: { is: { expiresAt: { gt: new Date() } } },
+        },
+      ],
+    },
+    select: { id: true },
+  });
+  if (emailConflict) throw new AppError(409, '该邮箱已被注册或正在等待验证');
+
+  const usernameConflict = await client.user.findUnique({
+    where: { username },
+    select: { id: true },
+  });
+  if (usernameConflict) throw new AppError(409, '该用户名已被占用');
+}
+
 export async function register(
   email: string,
   password: string,
@@ -16,15 +44,7 @@ export async function register(
   emailVerificationCode?: string,
 ) {
   const normalizedEmail = registrationEmailVerificationService.normalizeEmail(email);
-  const existing = await prisma().user.findFirst({
-    where: { OR: [{ email: normalizedEmail }, { username }] },
-  });
-  if (existing) {
-    throw new AppError(
-      409,
-      existing.email === normalizedEmail ? '该邮箱已被注册' : '该用户名已被占用',
-    );
-  }
+  await assertRegistrationFieldsAvailable(prisma(), normalizedEmail, username);
 
   const mailConfig = await mailConfigService.getFullMailConfig();
   const verificationRequired = mailConfigService.canSendPasswordResetMail(mailConfig);
@@ -40,15 +60,7 @@ export async function register(
 
   const passwordHash = await bcrypt.hash(password, 12);
   const result = await prisma().$transaction(async (tx) => {
-    const conflictingUser = await tx.user.findFirst({
-      where: { OR: [{ email: normalizedEmail }, { username }] },
-    });
-    if (conflictingUser) {
-      throw new AppError(
-        409,
-        conflictingUser.email === normalizedEmail ? '该邮箱已被注册' : '该用户名已被占用',
-      );
-    }
+    await assertRegistrationFieldsAvailable(tx, normalizedEmail, username);
     if (verificationCodeHash) {
       await registrationEmailVerificationService.consumeRegistrationCode(
         tx,
@@ -77,20 +89,19 @@ export async function registerFromMinecraft(
   minecraftUuid: string,
   minecraftName: string,
 ) {
-  const existing = await prisma().user.findFirst({
-    where: { OR: [{ email }, { username }, { minecraftUuid }] },
+  const normalizedEmail = registrationEmailVerificationService.normalizeEmail(email);
+  await assertRegistrationFieldsAvailable(prisma(), normalizedEmail, username);
+  const minecraftConflict = await prisma().user.findUnique({
+    where: { minecraftUuid },
+    select: { id: true },
   });
-  if (existing) {
-    if (existing.email === email) throw new AppError(409, '该邮箱已被注册');
-    if (existing.username === username) throw new AppError(409, '该用户名已被占用');
-    throw new AppError(409, '该Minecraft账号已绑定到其他账户');
-  }
+  if (minecraftConflict) throw new AppError(409, '该Minecraft账号已绑定到其他账户');
 
   const passwordHash = await bcrypt.hash(password, 12);
   const playerCredential = generateMinecraftSecret();
   const user = await prisma().$transaction(async (tx) => {
     const created = await tx.user.create({
-      data: { email, passwordHash, username, minecraftUuid, minecraftName },
+      data: { email: normalizedEmail, passwordHash, username, minecraftUuid, minecraftName },
     });
     await tx.minecraftPlayerCredential.create({
       data: {

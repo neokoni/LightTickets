@@ -501,7 +501,7 @@ describe('POST /api/mc/register', () => {
 
   it('creates a bound user and returns only its player credential', async () => {
     const server = await createServer('mc-reg');
-    const body = registration('mcreguser');
+    const body = { ...registration('mcreguser'), email: ' MCRegUser@Test.Com ' };
 
     const res = await request(app)
       .post('/api/mc/register')
@@ -513,6 +513,7 @@ describe('POST /api/mc/register', () => {
     expect(res.body.data).not.toHaveProperty('accessToken');
     expect(res.body.data).not.toHaveProperty('refreshToken');
     expect(res.body.data.user.minecraftUuid).toBe(body.minecraftUuid);
+    expect(res.body.data.user.email).toBe('mcreguser@test.com');
 
     const session = await request(app)
       .post('/api/mc/session')

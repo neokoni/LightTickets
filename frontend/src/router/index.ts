@@ -68,6 +68,12 @@ const router = createRouter({
       meta: { guest: true, allowAuthenticated: true },
     },
     {
+      path: '/cancel-email-change',
+      name: 'cancel-email-change',
+      component: () => import('@/views/CancelEmailChangeView.vue'),
+      meta: { guest: true, allowAuthenticated: true },
+    },
+    {
       path: '/',
       name: 'tickets',
       component: () => import('@/views/TicketListView.vue'),

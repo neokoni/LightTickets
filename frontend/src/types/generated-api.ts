@@ -3799,6 +3799,116 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/admin/minecraft-hook-deliveries': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 获取失败的 Minecraft Hook 投递 */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/admin/minecraft-hook-deliveries/{id}/retry': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 重试失败的 Minecraft Hook 投递 */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                retried: boolean;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/users': {
     parameters: {
       query?: never;
@@ -4113,25 +4223,15 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    /** 更新邮箱 */
-    patch: {
+    /** 取消待验证的邮箱更换 */
+    delete: {
       parameters: {
         query?: never;
         header?: never;
         path?: never;
         cookie?: never;
       };
-      requestBody: {
-        content: {
-          'application/json': {
-            /** Format: email */
-            email: string;
-          };
-        };
-      };
+      requestBody?: never;
       responses: {
         /** @description Success */
         200: {
@@ -4142,15 +4242,10 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: {
+                /** @enum {boolean} */
+                cancelled: true;
+              };
             };
           };
         };
@@ -4165,6 +4260,169 @@ export interface paths {
         };
       };
     };
+    options?: never;
+    head?: never;
+    /** 请求更换邮箱 */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** Format: email */
+            email: string;
+            currentPassword: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** @enum {boolean} */
+                accepted: true;
+                /** Format: email */
+                pendingEmail: string;
+                retryAfterSeconds: number;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/users/me/email/verify': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 验证并切换邮箱 */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            code: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: components['schemas']['PublicUser'];
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/users/email-change/cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 通过旧邮箱中的令牌撤销邮箱更换 */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            token: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** @enum {boolean} */
+                cancelled: true;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   '/api/users/me/notifications': {
@@ -5734,6 +5992,8 @@ export interface components {
       id: number;
       /** Format: email */
       email: string;
+      /** Format: email */
+      pendingEmail: string | null;
       username: string;
       minecraftUuid: string | null;
       minecraftName: string | null;
