@@ -4,7 +4,7 @@ import { AppError, NotFoundError, ForbiddenError, ValidationError } from '../uti
 import * as templateService from './template.service.js';
 import { TICKET_INCLUDE_BASE, TICKET_INCLUDE_DETAIL, USER_BRIEF_SELECT } from './constants.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
-import { isStaffRole } from '../constants/roles.js';
+import { ROLE, isStaffRole } from '../constants/roles.js';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
 import { TEMPLATE_HIDDEN_MODE } from '../constants/ticket-visibility.js';
 import * as ticketNotificationService from './ticket-notification.service.js';
@@ -88,6 +88,35 @@ function createAudit(
   return tx.auditLog.create({
     data: { ticketId, actorId, action, oldValue, newValue },
   });
+}
+
+function normalizeAssigneeIds(assigneeIds: number[]): number[] {
+  if (assigneeIds.some((id) => !Number.isInteger(id) || id <= 0)) {
+    throw new ValidationError('受理人 ID 必须是正整数');
+  }
+
+  const normalized = [...new Set(assigneeIds)].sort((a, b) => a - b);
+  if (normalized.length !== assigneeIds.length) {
+    throw new ValidationError('受理人不能重复');
+  }
+  return normalized;
+}
+
+async function assertAssignableUserIds(
+  tx: Prisma.TransactionClient,
+  assigneeIds: number[],
+): Promise<void> {
+  if (assigneeIds.length === 0) return;
+
+  const assignableCount = await tx.user.count({
+    where: {
+      id: { in: assigneeIds },
+      role: { in: [ROLE.STAFF, ROLE.ADMIN] },
+    },
+  });
+  if (assignableCount !== assigneeIds.length) {
+    throw new ValidationError('受理人必须是存在的 staff 或 admin 用户');
+  }
 }
 
 async function createPendingCompletionHooks(
@@ -370,14 +399,18 @@ export async function update(
       updateData.closedAt = null;
     }
   }
-  if (data.assigneeId && isStaff) updateData.assigneeId = data.assigneeId;
+  let nextAssigneeId: number | undefined;
+  if (data.assigneeId !== undefined) {
+    if (!isStaff) throw new ForbiddenError('只有管理员或管理组可以更改议题负责人');
+    nextAssigneeId = data.assigneeId;
+    updateData.assigneeId = nextAssigneeId;
+  }
   if (data.hidden !== undefined) {
     if (!isStaff) throw new ForbiddenError('只有管理员或管理组可以更改议题可见性');
     updateData.hidden = data.hidden;
   }
 
   const nextStatus = data.status;
-  const nextAssigneeId = data.assigneeId;
   const statusChanged = nextStatus !== undefined && nextStatus !== ticket.status;
   const assigneeChanged = nextAssigneeId !== undefined && nextAssigneeId !== ticket.assigneeId;
   const visibilityChanged = data.hidden !== undefined && data.hidden !== ticket.hidden;
@@ -387,6 +420,10 @@ export async function update(
   if (hookEvent) assertDirectCommandHookPermission(ticket, hookEvent.hooks, isStaff);
 
   const transition = await prisma().$transaction(async (tx) => {
+    if (nextAssigneeId !== undefined) {
+      await assertAssignableUserIds(tx, [nextAssigneeId]);
+    }
+
     if (statusChanged) {
       const claimed = await tx.ticket.updateMany({
         where: { id, status: ticket.status },
@@ -639,26 +676,38 @@ export function completeCompletionHook(
   return completionHookService.complete(ticketId, hookId, userId, values);
 }
 
-export async function setAssignees(id: number, userId: number, assigneeIds: number[]) {
-  const ticket = await prisma().ticket.findUnique({
-    where: { id },
-    include: {
-      assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } },
-    },
-  });
-  if (!ticket) throw new NotFoundError('议题不存在');
-
-  const oldIds = ticket.assignees.map((a) => a.user.id);
-  const toAdd = assigneeIds.filter((aid) => !oldIds.includes(aid));
-  const toRemove = oldIds.filter((oid) => !assigneeIds.includes(oid));
+export async function setAssignees(
+  id: number,
+  userId: number,
+  userRole: string,
+  assigneeIds: number[],
+) {
+  if (!isStaffRole(userRole)) throw new ForbiddenError('只有管理员或管理组可以更改议题负责人');
+  const normalizedAssigneeIds = normalizeAssigneeIds(assigneeIds);
 
   await prisma().$transaction(async (tx) => {
-    await Promise.all([
-      ...toRemove.map((uid) =>
-        tx.ticketAssignee.delete({ where: { ticketId_userId: { ticketId: id, userId: uid } } }),
-      ),
-      ...toAdd.map((uid) => tx.ticketAssignee.create({ data: { ticketId: id, userId: uid } })),
-    ]);
+    const ticket = await tx.ticket.findUnique({
+      where: { id },
+      include: { assignees: { select: { userId: true } } },
+    });
+    if (!ticket) throw new NotFoundError('议题不存在');
+
+    await assertAssignableUserIds(tx, normalizedAssigneeIds);
+
+    const oldIds = ticket.assignees.map((assignee) => assignee.userId).sort((a, b) => a - b);
+    const toAdd = normalizedAssigneeIds.filter((assigneeId) => !oldIds.includes(assigneeId));
+    const toRemove = oldIds.filter((assigneeId) => !normalizedAssigneeIds.includes(assigneeId));
+
+    if (toRemove.length > 0) {
+      await tx.ticketAssignee.deleteMany({
+        where: { ticketId: id, userId: { in: toRemove } },
+      });
+    }
+    if (toAdd.length > 0) {
+      await tx.ticketAssignee.createMany({
+        data: toAdd.map((assigneeId) => ({ ticketId: id, userId: assigneeId })),
+      });
+    }
 
     if (toAdd.length > 0 || toRemove.length > 0) {
       await createAudit(
@@ -667,10 +716,10 @@ export async function setAssignees(id: number, userId: number, assigneeIds: numb
         userId,
         AUDIT_ACTION.ASSIGNEES_CHANGE,
         JSON.stringify(oldIds),
-        JSON.stringify(assigneeIds),
+        JSON.stringify(normalizedAssigneeIds),
       );
     }
   });
 
-  return getById(id, { userId, role: 'staff' });
+  return getById(id, { userId, role: userRole });
 }

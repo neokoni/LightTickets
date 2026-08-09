@@ -2246,7 +2246,9 @@
                   "assigneeIds": {
                     "type": "array",
                     "items": {
-                      "type": "integer"
+                      "type": "integer",
+                      "minimum": 0,
+                      "exclusiveMinimum": true
                     }
                   }
                 },

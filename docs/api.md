@@ -388,7 +388,8 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
 }
 ```
 
-作者可在规则内开关自己的议题；`staff` / `admin` 可处理任意状态和负责人。
+作者可在规则内开关自己的议题，但提交 `assigneeId` 会返回 `403`；只有 `staff` / `admin`
+可以修改负责人，并且目标用户必须存在且角色为 `staff` 或 `admin`。
 只有 `staff` / `admin` 可更改 `hidden`，更改会写入议题审计日志。
 状态迁移采用旧状态条件更新；并发请求未取得迁移权时返回 `409`，且不会重复创建审计或执行 Hook。
 若目标状态包含 Minecraft console command Hook，则必须由 `staff` / `admin` 操作，普通作者返回 `403`。
@@ -459,7 +460,9 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 
 `PUT /api/tickets/:id/assignees`
 
-需要 `staff` 权限。
+需要 `staff` 或 `admin` 权限。数组中的用户必须全部存在且角色为 `staff` 或 `admin`；包含
+不存在用户、普通用户或重复 ID 时返回 `400`，且不会部分修改负责人或写入审计日志。空数组用于
+清空全部负责人。
 
 请求体：
 

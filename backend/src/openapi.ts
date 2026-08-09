@@ -436,7 +436,7 @@ const registerTicketRoutes = () => {
     method: 'put',
     path: '/api/tickets/{id}/assignees',
     summary: '设置受理人',
-    auth: 'jwt',
+    auth: 'staff',
     tags: ['Tickets'],
     bodySchema: ticketAssigneesSchema,
   });

@@ -559,6 +559,199 @@ describe('PATCH /api/tickets/:id', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('rejects an author assigning a ticket without creating a forged audit', async () => {
+    const authorToken = await createUserAndGetToken('assignee-spoof-author@test.com');
+    await createStaffAndGetToken('assignee-spoof-target@test.com');
+    const target = await prisma().user.findUniqueOrThrow({
+      where: { email: 'assignee-spoof-target@test.com' },
+    });
+    const created = await createTicket(authorToken);
+    const ticketId = created.body.data.id as number;
+
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${authorToken}`)
+      .send({ assigneeId: target.id });
+
+    expect(res.status).toBe(403);
+    expect((await prisma().ticket.findUniqueOrThrow({ where: { id: ticketId } })).assigneeId).toBe(
+      null,
+    );
+    expect(await prisma().auditLog.count({ where: { ticketId, action: 'assign' } })).toBe(0);
+  });
+
+  it('rejects a staff assignment to a player without changing the ticket or audit', async () => {
+    const authorToken = await createUserAndGetToken('invalid-assignee-author@test.com');
+    await createUserAndGetToken('invalid-assignee-player@test.com');
+    const staffToken = await createStaffAndGetToken('invalid-assignee-staff@test.com');
+    const player = await prisma().user.findUniqueOrThrow({
+      where: { email: 'invalid-assignee-player@test.com' },
+    });
+    const created = await createTicket(authorToken);
+    const ticketId = created.body.data.id as number;
+
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ assigneeId: player.id });
+
+    expect(res.status).toBe(400);
+    expect((await prisma().ticket.findUniqueOrThrow({ where: { id: ticketId } })).assigneeId).toBe(
+      null,
+    );
+    expect(await prisma().auditLog.count({ where: { ticketId, action: 'assign' } })).toBe(0);
+  });
+
+  it('allows staff to assign another staff or admin user and records the committed change', async () => {
+    const authorToken = await createUserAndGetToken('valid-assignee-author@test.com');
+    const staffToken = await createStaffAndGetToken('valid-assignee-actor@test.com');
+    await createAdminAndGetToken('valid-assignee-target@test.com');
+    const target = await prisma().user.findUniqueOrThrow({
+      where: { email: 'valid-assignee-target@test.com' },
+    });
+    const created = await createTicket(authorToken);
+    const ticketId = created.body.data.id as number;
+
+    const res = await request(app)
+      .patch(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ assigneeId: target.id });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.assigneeId).toBe(target.id);
+    const audit = await prisma().auditLog.findFirstOrThrow({
+      where: { ticketId, action: 'assign' },
+    });
+    expect(audit.oldValue).toBe('unassigned');
+    expect(audit.newValue).toBe(String(target.id));
+  });
+});
+
+describe('PUT /api/tickets/:id/assignees', () => {
+  it('rejects player access before changing assignees', async () => {
+    const authorToken = await createUserAndGetToken('multi-assignee-player@test.com');
+    await createStaffAndGetToken('multi-assignee-player-target@test.com');
+    const target = await prisma().user.findUniqueOrThrow({
+      where: { email: 'multi-assignee-player-target@test.com' },
+    });
+    const created = await createTicket(authorToken);
+    const ticketId = created.body.data.id as number;
+
+    const res = await request(app)
+      .put(`/api/tickets/${ticketId}/assignees`)
+      .set('Authorization', `Bearer ${authorToken}`)
+      .send({ assigneeIds: [target.id] });
+
+    expect(res.status).toBe(403);
+    expect(await prisma().ticketAssignee.count({ where: { ticketId } })).toBe(0);
+    expect(await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } })).toBe(
+      0,
+    );
+  });
+
+  it('atomically rejects a list containing a player or missing user', async () => {
+    const authorToken = await createUserAndGetToken('multi-invalid-author@test.com');
+    const staffToken = await createStaffAndGetToken('multi-invalid-actor@test.com');
+    await createAdminAndGetToken('multi-invalid-valid@test.com');
+    await createUserAndGetToken('multi-invalid-player@test.com');
+    const valid = await prisma().user.findUniqueOrThrow({
+      where: { email: 'multi-invalid-valid@test.com' },
+    });
+    const player = await prisma().user.findUniqueOrThrow({
+      where: { email: 'multi-invalid-player@test.com' },
+    });
+    const created = await createTicket(authorToken);
+    const ticketId = created.body.data.id as number;
+
+    const initial = await request(app)
+      .put(`/api/tickets/${ticketId}/assignees`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ assigneeIds: [valid.id] });
+    expect(initial.status).toBe(200);
+
+    for (const invalidId of [player.id, 2_000_000_000]) {
+      const res = await request(app)
+        .put(`/api/tickets/${ticketId}/assignees`)
+        .set('Authorization', `Bearer ${staffToken}`)
+        .send({ assigneeIds: [valid.id, invalidId] });
+
+      expect(res.status).toBe(400);
+      const storedIds = (
+        await prisma().ticketAssignee.findMany({ where: { ticketId }, select: { userId: true } })
+      ).map((assignee) => assignee.userId);
+      expect(storedIds).toEqual([valid.id]);
+      expect(
+        await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } }),
+      ).toBe(1);
+    }
+  });
+
+  it('rejects duplicate assignee IDs', async () => {
+    const authorToken = await createUserAndGetToken('multi-duplicate-author@test.com');
+    const staffToken = await createStaffAndGetToken('multi-duplicate-actor@test.com');
+    const target = await prisma().user.findUniqueOrThrow({
+      where: { email: 'multi-duplicate-actor@test.com' },
+    });
+    const created = await createTicket(authorToken);
+    const ticketId = created.body.data.id as number;
+
+    const res = await request(app)
+      .put(`/api/tickets/${ticketId}/assignees`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ assigneeIds: [target.id, target.id] });
+
+    expect(res.status).toBe(400);
+    expect(await prisma().ticketAssignee.count({ where: { ticketId } })).toBe(0);
+    expect(await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } })).toBe(
+      0,
+    );
+  });
+
+  it('accepts staff and admin users, ignores ordering, and supports clearing the set', async () => {
+    const authorToken = await createUserAndGetToken('multi-valid-author@test.com');
+    const actorToken = await createStaffAndGetToken('multi-valid-actor@test.com');
+    await createStaffAndGetToken('multi-valid-staff@test.com');
+    await createAdminAndGetToken('multi-valid-admin@test.com');
+    const staff = await prisma().user.findUniqueOrThrow({
+      where: { email: 'multi-valid-staff@test.com' },
+    });
+    const admin = await prisma().user.findUniqueOrThrow({
+      where: { email: 'multi-valid-admin@test.com' },
+    });
+    const created = await createTicket(authorToken);
+    const ticketId = created.body.data.id as number;
+
+    const first = await request(app)
+      .put(`/api/tickets/${ticketId}/assignees`)
+      .set('Authorization', `Bearer ${actorToken}`)
+      .send({ assigneeIds: [staff.id, admin.id] });
+    expect(first.status).toBe(200);
+    expect(
+      first.body.data.assignees
+        .map((assignee: { user: { id: number } }) => assignee.user.id)
+        .sort((a: number, b: number) => a - b),
+    ).toEqual([staff.id, admin.id].sort((a, b) => a - b));
+
+    const reordered = await request(app)
+      .put(`/api/tickets/${ticketId}/assignees`)
+      .set('Authorization', `Bearer ${actorToken}`)
+      .send({ assigneeIds: [admin.id, staff.id] });
+    expect(reordered.status).toBe(200);
+    expect(await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } })).toBe(
+      1,
+    );
+
+    const cleared = await request(app)
+      .put(`/api/tickets/${ticketId}/assignees`)
+      .set('Authorization', `Bearer ${actorToken}`)
+      .send({ assigneeIds: [] });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.data.assignees).toEqual([]);
+    expect(await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } })).toBe(
+      2,
+    );
+  });
 });
 
 describe('PATCH /api/tickets/:id/title', () => {

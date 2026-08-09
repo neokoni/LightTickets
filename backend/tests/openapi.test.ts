@@ -53,6 +53,18 @@ describe('generated OpenAPI contract', () => {
     expect(properties).not.toHaveProperty('gameContext');
   });
 
+  it('documents assignee IDs as positive integers', () => {
+    const operation = document.paths['/api/tickets/{id}/assignees']?.put;
+    const requestSchema = operation.requestBody?.content?.['application/json']?.schema;
+    const properties = requestSchema?.properties as
+      Record<string, { items?: Record<string, unknown> }> | undefined;
+    const assigneeItemSchema = properties?.assigneeIds?.items;
+
+    expect(assigneeItemSchema?.type).toBe('integer');
+    expect(assigneeItemSchema?.minimum).toBe(0);
+    expect(assigneeItemSchema?.exclusiveMinimum).toBe(true);
+  });
+
   it('describes successful JSON responses with the standard envelope', () => {
     const responseSchema =
       document.paths['/api/admin/storage/test']?.post.responses[200].content?.['application/json']

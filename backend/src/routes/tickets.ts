@@ -191,7 +191,9 @@ router.post(
 
 // Assignees
 export const ticketAssigneesSchema = z.object({
-  assigneeIds: z.array(z.number().int()),
+  assigneeIds: z
+    .array(z.number().int().positive())
+    .refine((ids) => new Set(ids).size === ids.length, '受理人不能重复'),
 });
 
 router.put(
@@ -204,6 +206,7 @@ router.put(
     const ticket = await ticketService.setAssignees(
       parseId(String(req.params.id)),
       req.user!.userId,
+      req.user!.role,
       data.assigneeIds,
     );
     res.json(ticket);
