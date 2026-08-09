@@ -661,7 +661,6 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 {
   "success": true,
   "data": {
-    "success": true,
     "message": "SMTP 连接成功"
   }
 }
@@ -719,7 +718,7 @@ S3 配置：
 
 `secretAccessKey` 查询时会被掩码；更新时不传则保留原值。
 `POST /test` 成功时在标准成功 envelope 的 `data` 中返回
-`{ "success": true, "message": "连接成功" }`。尚未配置 S3 时返回 `400`，连接失败时返回
+`{ "message": "连接成功" }`。尚未配置 S3 时返回 `400`，连接失败时返回
 `502`，并统一使用标准错误 envelope。
 
 ## 审计日志

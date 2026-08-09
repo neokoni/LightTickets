@@ -3775,8 +3775,6 @@ export interface paths {
               /** @enum {boolean} */
               success: true;
               data: {
-                /** @enum {boolean} */
-                success: true;
                 message: string;
               };
             };
@@ -5082,7 +5080,7 @@ export interface paths {
         path?: never;
         cookie?: never;
       };
-      requestBody: {
+      requestBody?: {
         content: {
           'application/json': {
             mail?: {
@@ -5109,8 +5107,6 @@ export interface paths {
               /** @enum {boolean} */
               success: true;
               data: {
-                /** @enum {boolean} */
-                success: true;
                 message: string;
               };
             };

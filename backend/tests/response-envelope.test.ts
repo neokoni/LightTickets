@@ -12,6 +12,9 @@ function createEnvelopeTestApp() {
   app.get('/standard-envelope', (_req, res) => {
     res.json({ success: true, data: { value: 1 } });
   });
+  app.get('/near-envelope', (_req, res) => {
+    res.json({ success: true, data: { value: 1 }, meta: 'business field' });
+  });
   app.get('/standard-error', (_req, res) => {
     res.status(400).json({ success: false, statusCode: 400, message: 'bad request' });
   });
@@ -34,6 +37,15 @@ describe('responseEnvelope', () => {
     const response = await request(app).get('/standard-envelope');
 
     expect(response.body).toEqual({ success: true, data: { value: 1 } });
+  });
+
+  it('wraps success/data objects that contain extra business fields', async () => {
+    const response = await request(app).get('/near-envelope');
+
+    expect(response.body).toEqual({
+      success: true,
+      data: { success: true, data: { value: 1 }, meta: 'business field' },
+    });
   });
 
   it('does not double-wrap a strict error envelope', async () => {

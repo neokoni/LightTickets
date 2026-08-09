@@ -22,6 +22,5 @@ export interface StorageConfig {
 }
 
 export interface StorageTestResult {
-  success: boolean;
   message: string;
 }

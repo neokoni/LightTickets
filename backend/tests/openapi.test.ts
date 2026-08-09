@@ -64,6 +64,19 @@ describe('generated OpenAPI contract', () => {
     expect(required).toEqual(expect.arrayContaining(['success', 'data']));
   });
 
+  it('keeps connection-test results inside data without a nested success field', () => {
+    for (const path of ['/api/admin/storage/test', '/api/setup/settings/mail/test']) {
+      const operation = document.paths[path]?.post;
+      const envelopeProperties = operation.responses[200].content?.['application/json']?.schema
+        ?.properties as Record<string, { properties?: Record<string, unknown> }> | undefined;
+      const dataProperties = envelopeProperties?.data?.properties;
+
+      expect(dataProperties).toHaveProperty('message');
+      expect(dataProperties).not.toHaveProperty('success');
+    }
+    expect(document.paths['/api/setup/settings/mail/test']?.post.requestBody?.required).toBe(false);
+  });
+
   it('documents attachment uploads as validated multipart form data', () => {
     const operation = document.paths['/api/attachments/upload']?.post;
     const requestSchema = operation.requestBody?.content?.['multipart/form-data']?.schema;

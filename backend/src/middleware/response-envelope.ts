@@ -8,14 +8,25 @@ function isResponseEnvelope(body: unknown): boolean {
   if (!isRecord(body)) return false;
 
   if (body.success === true) {
-    return Object.prototype.hasOwnProperty.call(body, 'data');
+    const keys = Object.keys(body);
+    return keys.length === 2 && keys.includes('success') && keys.includes('data');
   }
 
+  if (
+    body.success !== false ||
+    typeof body.statusCode !== 'number' ||
+    !Number.isInteger(body.statusCode) ||
+    typeof body.message !== 'string'
+  ) {
+    return false;
+  }
+
+  const keys = Object.keys(body);
+  const allowedKeys = new Set(['success', 'statusCode', 'message', 'traceId']);
   return (
-    body.success === false &&
-    typeof body.statusCode === 'number' &&
-    Number.isInteger(body.statusCode) &&
-    typeof body.message === 'string'
+    keys.every((key) => allowedKeys.has(key)) &&
+    keys.length === (Object.prototype.hasOwnProperty.call(body, 'traceId') ? 4 : 3) &&
+    (!Object.prototype.hasOwnProperty.call(body, 'traceId') || typeof body.traceId === 'string')
   );
 }
 

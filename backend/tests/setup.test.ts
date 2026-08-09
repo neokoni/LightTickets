@@ -914,7 +914,7 @@ describe('PATCH /api/setup/settings', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data).toEqual({ success: true, message: 'SMTP 连接成功' });
+    expect(res.body.data).toEqual({ message: 'SMTP 连接成功' });
   });
 
   it('returns a standard error envelope when SMTP settings are incomplete', async () => {

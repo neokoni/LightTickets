@@ -136,12 +136,8 @@ async function testConnection() {
   testResult.value = null;
   try {
     const result = await apiTestS3Connection();
-    testResult.value = result;
-    if (result.success) {
-      ui.toast(t('admin.storage.connectionSuccess'), ToastType.SUCCESS);
-    } else {
-      ui.toast(result.message || t('admin.storage.connectionFailed'), ToastType.ERROR);
-    }
+    testResult.value = { success: true, message: result.message };
+    ui.toast(t('admin.storage.connectionSuccess'), ToastType.SUCCESS);
   } catch (e) {
     const msg = e instanceof Error ? e.message : t('admin.storage.connectionFailed');
     testResult.value = { success: false, message: msg };

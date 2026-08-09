@@ -95,10 +95,10 @@ export async function verifyMailConfig(
 
 export async function testMailConfig(
   input?: mailConfigService.MailConfigInput,
-): Promise<{ success: true; message: string }> {
+): Promise<{ message: string }> {
   try {
     await verifyMailConfig(input);
-    return { success: true, message: 'SMTP 连接成功' };
+    return { message: 'SMTP 连接成功' };
   } catch (err) {
     if (err instanceof AppError) throw err;
     throw new AppError(502, 'SMTP 连接失败');

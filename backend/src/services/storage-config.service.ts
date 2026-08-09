@@ -83,7 +83,7 @@ export async function updateStorageConfig(input: {
   return getStorageConfig();
 }
 
-export async function testS3Connection(): Promise<{ success: true; message: string }> {
+export async function testS3Connection(): Promise<{ message: string }> {
   const config = await getStorageConfig();
   if (!config.s3) {
     throw new ValidationError('尚未配置 S3 存储后端');
@@ -101,7 +101,7 @@ export async function testS3Connection(): Promise<{ success: true; message: stri
   const client = createS3Client(s3);
   try {
     await client.send(new HeadBucketCommand({ Bucket: s3.bucket }));
-    return { success: true, message: '连接成功' };
+    return { message: '连接成功' };
   } catch {
     throw new AppError(502, 'S3 连接失败');
   }

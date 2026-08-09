@@ -860,7 +860,6 @@ const registerStorageRoutes = () => {
     auth: 'admin',
     tags: ['Admin Storage'],
     responseSchema: z.object({
-      success: z.literal(true),
       message: z.string(),
     }),
   });
@@ -1096,8 +1095,8 @@ const registerSetupRoutes = () => {
     auth: 'admin',
     tags: ['Setup'],
     bodySchema: mailTestSchema,
+    bodyRequired: false,
     responseSchema: z.object({
-      success: z.literal(true),
       message: z.string(),
     }),
   });

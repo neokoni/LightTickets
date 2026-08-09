@@ -30,10 +30,8 @@ export async function getSettings(): Promise<SettingsResult> {
   return apiFetch<SettingsResult>('/setup/settings', { method: 'GET' });
 }
 
-export async function testMailSettings(
-  mail: MailSettingsPayload,
-): Promise<{ success: boolean; message: string }> {
-  return apiFetch<{ success: boolean; message: string }>('/setup/settings/mail/test', {
+export async function testMailSettings(mail: MailSettingsPayload): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>('/setup/settings/mail/test', {
     method: 'POST',
     body: JSON.stringify({ mail }),
   });

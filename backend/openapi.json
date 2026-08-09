@@ -6107,18 +6107,11 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "enum": [
-                            true
-                          ]
-                        },
                         "message": {
                           "type": "string"
                         }
                       },
                       "required": [
-                        "success",
                         "message"
                       ]
                     }
@@ -8451,7 +8444,7 @@
           }
         ],
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {
@@ -8525,18 +8518,11 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "success": {
-                          "type": "boolean",
-                          "enum": [
-                            true
-                          ]
-                        },
                         "message": {
                           "type": "string"
                         }
                       },
                       "required": [
-                        "success",
                         "message"
                       ]
                     }
