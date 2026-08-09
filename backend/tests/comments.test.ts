@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
+import { prisma } from './setup.js';
 
 const app = createApp();
 
@@ -39,6 +40,53 @@ describe('PATCH /api/tickets/:id/comments/:commentId/body', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.body).toBe('Edited comment');
+    await expect(
+      prisma().auditLog.findFirst({
+        where: { ticketId: ticket.body.data.id, action: 'comment_edit' },
+        select: { oldValue: true, newValue: true },
+      }),
+    ).resolves.toEqual({ oldValue: 'Original comment', newValue: 'Edited comment' });
+  });
+
+  it('rolls back the body update when the audit insert fails', async () => {
+    const token = await createUserAndGetToken('comment-transaction@test.com');
+    const ticket = await createTicket(token);
+    const comment = await request(app)
+      .post(`/api/tickets/${ticket.body.data.id}/comments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ body: 'Transaction original' });
+
+    await prisma().$executeRawUnsafe(`
+      CREATE TRIGGER fail_comment_edit_audit
+      BEFORE INSERT ON audit_logs
+      WHEN NEW.action = 'comment_edit'
+      BEGIN
+        SELECT RAISE(ABORT, 'forced audit failure');
+      END
+    `);
+    const res = await (async () => {
+      try {
+        return await request(app)
+          .patch(`/api/tickets/${ticket.body.data.id}/comments/${comment.body.data.id}/body`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({ body: 'Must not persist' });
+      } finally {
+        await prisma().$executeRawUnsafe('DROP TRIGGER IF EXISTS fail_comment_edit_audit');
+      }
+    })();
+
+    expect(res.status).toBe(500);
+    await expect(
+      prisma().comment.findUniqueOrThrow({
+        where: { id: comment.body.data.id },
+        select: { body: true },
+      }),
+    ).resolves.toEqual({ body: 'Transaction original' });
+    await expect(
+      prisma().auditLog.count({
+        where: { ticketId: ticket.body.data.id, action: 'comment_edit' },
+      }),
+    ).resolves.toBe(0);
   });
 
   it("rejects editing another user's comment", async () => {

@@ -1,8 +1,11 @@
 import { prisma } from '../db.js';
+import type { Prisma } from '@prisma/client';
 import { ValidationError } from '../utils/errors.js';
 
 const APP_CONFIG_ID = 'default';
 const SECRET_MASK = '••••••••';
+
+type AppConfigClient = Pick<Prisma.TransactionClient, 'appConfig'>;
 
 export interface MailConfig {
   enabled: boolean;
@@ -48,10 +51,10 @@ const defaultMailConfig: MailConfig = {
   fromAddress: '',
 };
 
-async function ensureAppConfig() {
-  const existing = await prisma().appConfig.findFirst();
+async function ensureAppConfig(client: AppConfigClient = prisma()) {
+  const existing = await client.appConfig.findFirst();
   if (!existing) {
-    return prisma().appConfig.create({ data: { id: APP_CONFIG_ID } });
+    return client.appConfig.create({ data: { id: APP_CONFIG_ID } });
   }
   return existing;
 }
@@ -118,13 +121,13 @@ export function canSendPasswordResetMail(config: MailConfig | PublicMailConfig):
   return true;
 }
 
-export async function getFullMailConfig(): Promise<MailConfig> {
-  const appConfig = await ensureAppConfig();
+export async function getFullMailConfig(client: AppConfigClient = prisma()): Promise<MailConfig> {
+  const appConfig = await ensureAppConfig(client);
   return parseMailConfig(appConfig.mailConfig);
 }
 
-export async function getMailConfig(): Promise<PublicMailConfig> {
-  return toPublicMailConfig(await getFullMailConfig());
+export async function getMailConfig(client: AppConfigClient = prisma()): Promise<PublicMailConfig> {
+  return toPublicMailConfig(await getFullMailConfig(client));
 }
 
 function mergeMailConfig(current: MailConfig, input: MailConfigInput): MailConfig {
@@ -151,14 +154,17 @@ export async function resolveMailConfigForTest(input: MailConfigInput = {}): Pro
   return config;
 }
 
-export async function updateMailConfig(input: MailConfigInput): Promise<PublicMailConfig> {
-  const existing = await ensureAppConfig();
+export async function updateMailConfig(
+  input: MailConfigInput,
+  client: AppConfigClient = prisma(),
+): Promise<PublicMailConfig> {
+  const existing = await ensureAppConfig(client);
   const current = parseMailConfig(existing.mailConfig);
   const next = mergeMailConfig(current, input);
 
   validateMailConfig(next);
 
-  await prisma().appConfig.update({
+  await client.appConfig.update({
     where: { id: existing.id },
     data: { mailConfig: JSON.stringify(next) },
   });

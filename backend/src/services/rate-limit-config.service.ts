@@ -1,10 +1,13 @@
 import { DEFAULT_RATE_LIMIT_CONFIG, type RateLimitConfig } from '../constants/rate-limit.js';
+import type { Prisma } from '@prisma/client';
 import { rateLimitConfigSchema, type RateLimitConfigInput } from '../schemas/rate-limit.js';
 import { prisma } from '../db.js';
 import { isDatabaseConfigured } from '../config.js';
 
 const APP_CONFIG_ID = 'default';
 const CACHE_TTL_MS = process.env.NODE_ENV === 'test' || process.env.VITEST ? 0 : 5_000;
+
+type AppConfigClient = Pick<Prisma.TransactionClient, 'appConfig'>;
 
 let cachedConfig: RateLimitConfig | null = null;
 let cacheExpiresAt = 0;
@@ -22,10 +25,10 @@ function cloneConfig(config: RateLimitConfig): RateLimitConfig {
   };
 }
 
-async function ensureAppConfig() {
-  const existing = await prisma().appConfig.findFirst();
+async function ensureAppConfig(client: AppConfigClient = prisma()) {
+  const existing = await client.appConfig.findFirst();
   if (existing) return existing;
-  return prisma().appConfig.create({ data: { id: APP_CONFIG_ID } });
+  return client.appConfig.create({ data: { id: APP_CONFIG_ID } });
 }
 
 function mergeConfig(current: RateLimitConfig, input: RateLimitConfigInput): RateLimitConfig {
@@ -64,8 +67,12 @@ export function getDefaultRateLimitConfig(): RateLimitConfig {
   return cloneConfig(DEFAULT_RATE_LIMIT_CONFIG);
 }
 
-export async function getRateLimitConfig(): Promise<RateLimitConfig> {
+export async function getRateLimitConfig(client?: AppConfigClient): Promise<RateLimitConfig> {
   if (!isDatabaseConfigured()) return cloneConfig(DEFAULT_RATE_LIMIT_CONFIG);
+  if (client) {
+    const appConfig = await ensureAppConfig(client);
+    return parseConfig(appConfig.rateLimitConfig);
+  }
   if (cachedConfig && Date.now() < cacheExpiresAt) return cloneConfig(cachedConfig);
 
   const appConfig = await ensureAppConfig();
@@ -74,18 +81,21 @@ export async function getRateLimitConfig(): Promise<RateLimitConfig> {
   return cloneConfig(cachedConfig);
 }
 
-export async function updateRateLimitConfig(input: RateLimitConfigInput): Promise<RateLimitConfig> {
-  const existing = await ensureAppConfig();
+export async function updateRateLimitConfig(
+  input: RateLimitConfigInput,
+  client: AppConfigClient = prisma(),
+): Promise<RateLimitConfig> {
+  const existing = await ensureAppConfig(client);
   const next = rateLimitConfigSchema.parse(
     mergeConfig(parseConfig(existing.rateLimitConfig), input),
   );
 
-  await prisma().appConfig.update({
+  await client.appConfig.update({
     where: { id: existing.id },
     data: { rateLimitConfig: JSON.stringify(next) },
   });
 
-  cachedConfig = next;
-  cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+  cachedConfig = null;
+  cacheExpiresAt = 0;
   return cloneConfig(next);
 }

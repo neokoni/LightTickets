@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { AppError, ValidationError } from '../utils/errors.js';
 
@@ -7,6 +8,8 @@ const SECRET_MASK = '••••••••';
 const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 const SITEVERIFY_TIMEOUT_MS = 10_000;
 const SITEVERIFY_MAX_ATTEMPTS = 2;
+
+type AppConfigClient = Pick<Prisma.TransactionClient, 'appConfig'>;
 
 export interface TurnstileConfig {
   enabled: boolean;
@@ -42,10 +45,10 @@ const defaultTurnstileConfig: TurnstileConfig = {
   secretKey: null,
 };
 
-async function ensureAppConfig() {
-  const existing = await prisma().appConfig.findFirst();
+async function ensureAppConfig(client: AppConfigClient = prisma()) {
+  const existing = await client.appConfig.findFirst();
   if (!existing) {
-    return prisma().appConfig.create({ data: { id: APP_CONFIG_ID } });
+    return client.appConfig.create({ data: { id: APP_CONFIG_ID } });
   }
   return existing;
 }
@@ -85,19 +88,24 @@ export function toTurnstilePublicConfig(config: PublicTurnstileConfig): Turnstil
   };
 }
 
-export async function getFullTurnstileConfig(): Promise<TurnstileConfig> {
-  const appConfig = await ensureAppConfig();
+export async function getFullTurnstileConfig(
+  client: AppConfigClient = prisma(),
+): Promise<TurnstileConfig> {
+  const appConfig = await ensureAppConfig(client);
   return parseTurnstileConfig(appConfig.turnstileConfig);
 }
 
-export async function getTurnstileConfig(): Promise<PublicTurnstileConfig> {
-  return toPublicTurnstileConfig(await getFullTurnstileConfig());
+export async function getTurnstileConfig(
+  client: AppConfigClient = prisma(),
+): Promise<PublicTurnstileConfig> {
+  return toPublicTurnstileConfig(await getFullTurnstileConfig(client));
 }
 
 export async function updateTurnstileConfig(
   input: TurnstileConfigInput,
+  client: AppConfigClient = prisma(),
 ): Promise<PublicTurnstileConfig> {
-  const existing = await ensureAppConfig();
+  const existing = await ensureAppConfig(client);
   const current = parseTurnstileConfig(existing.turnstileConfig);
   const next: TurnstileConfig = {
     enabled: input.enabled ?? current.enabled,
@@ -112,7 +120,7 @@ export async function updateTurnstileConfig(
 
   validateTurnstileConfig(next);
 
-  await prisma().appConfig.update({
+  await client.appConfig.update({
     where: { id: existing.id },
     data: { turnstileConfig: JSON.stringify(next) },
   });

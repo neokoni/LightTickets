@@ -315,38 +315,44 @@ export async function updateSettings(data: {
   const prisma = getPrisma();
   const siteUrl = normalizeConfiguredSiteUrl(data.siteUrl);
 
-  const status = await prisma.setupStatus.findFirst();
-  if (!status) throw new AppError(404, '站点尚未初始化');
+  const { updated, mail, turnstile, rateLimit, attachment } = await prisma.$transaction(
+    async (tx) => {
+      const status = await tx.setupStatus.findFirst();
+      if (!status) throw new AppError(404, '站点尚未初始化');
 
-  const updated = await prisma.setupStatus.update({
-    where: { id: status.id },
-    data: {
-      ...(data.requireLogin !== undefined && { requireLogin: data.requireLogin }),
-      ...(data.allowWebRegister !== undefined && { allowWebRegister: data.allowWebRegister }),
-      ...(data.allowMcRegister !== undefined && { allowMcRegister: data.allowMcRegister }),
-      ...(data.siteName !== undefined && { siteName: data.siteName }),
-      ...(siteUrl !== undefined && { siteUrl }),
-      ...(data.footerContent !== undefined && { footerContent: data.footerContent }),
-      ...(data.defaultLanguage !== undefined && {
-        defaultLanguage: i18nService.resolveLanguageId(data.defaultLanguage),
-      }),
-      ...(data.sendEmailNotifications !== undefined && {
-        sendEmailNotifications: data.sendEmailNotifications,
-      }),
+      const updated = await tx.setupStatus.update({
+        where: { id: status.id },
+        data: {
+          ...(data.requireLogin !== undefined && { requireLogin: data.requireLogin }),
+          ...(data.allowWebRegister !== undefined && { allowWebRegister: data.allowWebRegister }),
+          ...(data.allowMcRegister !== undefined && { allowMcRegister: data.allowMcRegister }),
+          ...(data.siteName !== undefined && { siteName: data.siteName }),
+          ...(siteUrl !== undefined && { siteUrl }),
+          ...(data.footerContent !== undefined && { footerContent: data.footerContent }),
+          ...(data.defaultLanguage !== undefined && {
+            defaultLanguage: i18nService.resolveLanguageId(data.defaultLanguage),
+          }),
+          ...(data.sendEmailNotifications !== undefined && {
+            sendEmailNotifications: data.sendEmailNotifications,
+          }),
+        },
+      });
+      const mail = data.mail
+        ? await mailConfigService.updateMailConfig(data.mail, tx)
+        : await mailConfigService.getMailConfig(tx);
+      const turnstile = data.turnstile
+        ? await turnstileConfigService.updateTurnstileConfig(data.turnstile, tx)
+        : await turnstileConfigService.getTurnstileConfig(tx);
+      const rateLimit = data.rateLimit
+        ? await rateLimitConfigService.updateRateLimitConfig(data.rateLimit, tx)
+        : await rateLimitConfigService.getRateLimitConfig(tx);
+      const attachment = data.attachment
+        ? await attachmentConfigService.updateAttachmentConfig(data.attachment, tx)
+        : await attachmentConfigService.getAttachmentConfig(tx);
+
+      return { updated, mail, turnstile, rateLimit, attachment };
     },
-  });
-  const mail = data.mail
-    ? await mailConfigService.updateMailConfig(data.mail)
-    : await mailConfigService.getMailConfig();
-  const turnstile = data.turnstile
-    ? await turnstileConfigService.updateTurnstileConfig(data.turnstile)
-    : await turnstileConfigService.getTurnstileConfig();
-  const rateLimit = data.rateLimit
-    ? await rateLimitConfigService.updateRateLimitConfig(data.rateLimit)
-    : await rateLimitConfigService.getRateLimitConfig();
-  const attachment = data.attachment
-    ? await attachmentConfigService.updateAttachmentConfig(data.attachment)
-    : await attachmentConfigService.getAttachmentConfig();
+  );
   const mailFeatureAvailability = getMailFeatureAvailability(updated.siteUrl, mail);
 
   return {

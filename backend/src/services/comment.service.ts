@@ -122,23 +122,29 @@ export async function updateBody(id: string, userId: number, body: string, userR
   await ticketService.assertTicketVisible(comment.ticketId, { userId, role: userRole });
   if (comment.authorId !== userId) throw new ForbiddenError('无权操作此评论');
 
-  const updated = await prisma().comment.update({
-    where: { id },
-    data: { body },
-    include: {
-      author: { select: { id: true, username: true, minecraftName: true, avatarUrl: true } },
-    },
+  return prisma().$transaction(async (tx) => {
+    const current = await tx.comment.findUnique({ where: { id }, select: { body: true } });
+    if (!current) throw new NotFoundError('评论不存在');
+
+    const updated = await tx.comment.update({
+      where: { id },
+      data: { body },
+      include: {
+        author: { select: { id: true, username: true, minecraftName: true, avatarUrl: true } },
+      },
+    });
+
+    await auditService.create(
+      comment.ticketId,
+      userId,
+      AUDIT_ACTION.COMMENT_EDIT,
+      current.body,
+      body,
+      tx,
+    );
+
+    return updated;
   });
-
-  await auditService.create(
-    comment.ticketId,
-    userId,
-    AUDIT_ACTION.COMMENT_EDIT,
-    comment.body,
-    body,
-  );
-
-  return updated;
 }
 
 export async function deleteComment(id: string, userId: number, userRole: string) {

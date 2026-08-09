@@ -339,6 +339,37 @@ describe('PATCH /api/setup/settings', () => {
     expect(res.body.data.attachmentDefaults).toEqual(res.body.data.attachment);
   });
 
+  it('rolls back all settings when a later config update fails', async () => {
+    const setupRes = await request(app)
+      .post('/api/setup')
+      .send({
+        db: { provider: 'sqlite' },
+        admin: {
+          email: 'settings-transaction@test.com',
+          password: 'admin123',
+          username: 'settingstransaction',
+        },
+      });
+    const beforeStatus = await prisma().setupStatus.findFirstOrThrow();
+    const beforeAppConfig = await prisma().appConfig.findFirstOrThrow();
+
+    const res = await request(app)
+      .patch('/api/setup/settings')
+      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
+      .send({
+        siteName: 'Must Not Persist',
+        mail: { host: 'smtp.must-not-persist.test' },
+        turnstile: { enabled: true, siteKey: '', secretKey: null },
+      });
+
+    expect(res.status).toBe(400);
+    const afterStatus = await prisma().setupStatus.findFirstOrThrow();
+    const afterAppConfig = await prisma().appConfig.findFirstOrThrow();
+    expect(afterStatus.siteName).toBe(beforeStatus.siteName);
+    expect(afterAppConfig.mailConfig).toBe(beforeAppConfig.mailConfig);
+    expect(afterAppConfig.turnstileConfig).toBe(beforeAppConfig.turnstileConfig);
+  });
+
   it('allows admin to update attachment quota and expiration settings', async () => {
     const setupRes = await request(app)
       .post('/api/setup')
