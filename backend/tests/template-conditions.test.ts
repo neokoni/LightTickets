@@ -6,6 +6,7 @@ import {
   evaluateTemplateCondition,
   createHookVariables,
   resolveHookActions,
+  resolveHookPlaceholders,
   resolveHooks,
   resolveSelectionHooks,
   renderBody,
@@ -231,5 +232,21 @@ completion_hooks:
       { type: 'command', content: 'tell Notch done' },
       { type: 'minimessage', content: '<green>#{ticket_id}</green>' },
     ]);
+  });
+
+  it('sanitizes command placeholder values before interpolation', () => {
+    const longValue = 'x'.repeat(2_001);
+    const resolved = resolveHookPlaceholders(
+      'say {ticket_title} {field.body} {field.long}',
+      {
+        ticket_title: 'first\nsecond\rthird',
+        'field.body': 'hello @a @e[limit=1]',
+        'field.long': longValue,
+      },
+    );
+
+    expect(resolved).toBe(`say first second third hello ＠a ＠e[limit=1] ${'x'.repeat(2_000)}`);
+    expect(resolved).not.toMatch(/[\r\n]/);
+    expect(resolved).not.toMatch(/(^|\s)@[pares]/);
   });
 });

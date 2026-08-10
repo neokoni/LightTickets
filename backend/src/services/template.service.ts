@@ -550,12 +550,28 @@ export function resolveHookActions(
   });
 }
 
+const COMMAND_PLACEHOLDER_MAX_LENGTH = 2000;
+
+function sanitizeCommandPlaceholderValue(value: string): string {
+  // Command content is dispatched directly by Bukkit, so values must stay on one line
+  // and cannot introduce native target selectors as a new command argument.
+  const withoutControls = Array.from(value, (character) => {
+    const codePoint = character.codePointAt(0)!;
+    if (character === '\n' || character === '\r') return ' ';
+    return codePoint <= 0x1f || codePoint === 0x7f ? '' : character;
+  }).join('');
+  const limited = Array.from(withoutControls).slice(0, COMMAND_PLACEHOLDER_MAX_LENGTH).join('');
+  return limited.replace(/(^|\s)@(?=[pares])/g, '$1＠');
+}
+
 export function resolveHookPlaceholders(
   content: string,
   variables: Record<string, string>,
 ): string {
   return content.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (placeholder, key: string) =>
-    Object.prototype.hasOwnProperty.call(variables, key) ? variables[key] : placeholder,
+    Object.prototype.hasOwnProperty.call(variables, key)
+      ? sanitizeCommandPlaceholderValue(variables[key])
+      : placeholder,
   );
 }
 
