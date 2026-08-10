@@ -26,6 +26,7 @@ const providerButtonClass =
   '!flex-1 !py-3 rounded-xl border text-sm font-medium data-[active=true]:bg-slate-900 data-[active=true]:text-white data-[active=true]:border-slate-900 data-[active=true]:dark:bg-slate-200 data-[active=true]:dark:text-slate-900 data-[active=true]:dark:border-slate-200 data-[active=false]:bg-white/95 data-[active=false]:dark:bg-slate-900/95 data-[active=false]:text-slate-700 data-[active=false]:dark:text-slate-300 data-[active=false]:border-slate-200/80 data-[active=false]:dark:border-slate-800/80 data-[active=false]:backdrop-blur';
 const storageButtonClass =
   '!flex-1 !justify-start !px-4 !py-3 border text-sm transition data-[active=true]:border-slate-900 data-[active=true]:dark:border-slate-200 data-[active=true]:bg-slate-50 data-[active=true]:dark:bg-slate-800 data-[active=true]:text-slate-900 data-[active=true]:dark:text-white data-[active=true]:font-medium data-[active=false]:border-slate-200 data-[active=false]:dark:border-slate-700 data-[active=false]:text-slate-600 data-[active=false]:dark:text-slate-400 data-[active=false]:hover:border-slate-400';
+const ADMIN_PASSWORD_MIN_LENGTH = 8;
 
 const payload = reactive<SetupPayload>({
   db: {
@@ -108,7 +109,7 @@ const canNext = computed(() => {
     case 4:
       return (
         payload.admin.email &&
-        payload.admin.password.length >= 6 &&
+        payload.admin.password.length >= ADMIN_PASSWORD_MIN_LENGTH &&
         payload.admin.username.length >= 2
       );
     case 5:
@@ -424,6 +425,7 @@ async function changeSetupLanguage(languageId: string) {
           v-model="payload.admin.password"
           :label="t('setup.admin.password')"
           required
+          :minlength="ADMIN_PASSWORD_MIN_LENGTH"
           :placeholder="t('setup.admin.passwordPlaceholder')"
           type="password"
         />

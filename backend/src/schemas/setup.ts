@@ -6,6 +6,7 @@ import { rateLimitConfigInputSchema } from './rate-limit.js';
 import { siteUrlInputSchema } from './site.js';
 import { storageS3Schema } from './storage.js';
 import { attachmentConfigInputSchema } from './attachment.js';
+import { MIN_PASSWORD_LENGTH } from '../constants/auth.js';
 
 export const setupSchema = z
   .object({
@@ -35,7 +36,7 @@ export const setupSchema = z
       }),
     admin: z.object({
       email: z.string().trim().toLowerCase().email(),
-      password: z.string().min(6),
+      password: z.string().min(MIN_PASSWORD_LENGTH),
       username: z.string().min(2).max(30),
     }),
     site: z

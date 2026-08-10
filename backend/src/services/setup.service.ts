@@ -23,6 +23,7 @@ import { DEFAULT_SITE_TITLE, resolveSiteTitle } from './site.js';
 import { normalizeSiteUrl, resolvePasswordResetOrigin } from '../utils/site-url.js';
 import { normalizeIpAddress } from '../trusted-proxy.js';
 import * as refreshSessionService from './refresh-session.service.js';
+import { MIN_PASSWORD_LENGTH } from '../constants/auth.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[]; trustedProxyIps?: string[] };
@@ -449,8 +450,8 @@ export async function completeSetup(input: SetupInput) {
   if (!input.admin.email || !input.admin.password || !input.admin.username) {
     throw new ValidationError('管理员邮箱、密码和用户名均为必填项');
   }
-  if (input.admin.password.length < 6) {
-    throw new ValidationError('管理员密码长度不能低于 6 位');
+  if (input.admin.password.length < MIN_PASSWORD_LENGTH) {
+    throw new ValidationError(`管理员密码长度不能低于 ${MIN_PASSWORD_LENGTH} 位`);
   }
 
   const storageConfig = buildStorageConfig(input.storage);

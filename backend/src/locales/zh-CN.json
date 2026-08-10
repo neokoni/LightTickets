@@ -471,7 +471,7 @@
     "settings.language.personal": "语言",
     "setup.admin.email": "邮箱",
     "setup.admin.password": "密码",
-    "setup.admin.passwordPlaceholder": "至少 6 位字符",
+    "setup.admin.passwordPlaceholder": "至少 8 位字符",
     "setup.admin.title": "管理员账户",
     "setup.admin.username": "用户名",
     "setup.complete.restarting": "服务器正在重启，请稍候...",

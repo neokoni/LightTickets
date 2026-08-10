@@ -238,6 +238,22 @@ describe('POST /api/setup', () => {
     expect([400, 422]).toContain(res.status);
   });
 
+  it.each(['abc123', '1234567'])(
+    'rejects setup admin password shorter than 8 characters',
+    async (password) => {
+      const res = await request(app)
+        .post('/api/setup')
+        .send({
+          db: { provider: 'sqlite' },
+          admin: { email: 'weak-password@example.com', password, username: 'weakpassword' },
+        });
+
+      expect([400, 422]).toContain(res.status);
+      await expect(prisma().user.count()).resolves.toBe(0);
+      await expect(prisma().setupStatus.count()).resolves.toBe(0);
+    },
+  );
+
   it('rejects legacy mysql databaseUrl and user fields', async () => {
     const res = await request(app)
       .post('/api/setup')

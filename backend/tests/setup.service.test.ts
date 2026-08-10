@@ -249,6 +249,19 @@ describe('setup.service', () => {
     expect(fs.existsSync(configPath)).toBe(false);
   });
 
+  it('rejects setup admin passwords shorter than 8 characters', async () => {
+    const { completeSetup } = await import('../src/services/setup.service.js');
+
+    await expect(
+      completeSetup({
+        db: { provider: 'sqlite' },
+        admin: { email: 'admin@example.com', password: '1234567', username: 'admin' },
+      }),
+    ).rejects.toThrow('管理员密码长度不能低于 8 位');
+
+    expect(fs.existsSync(configPath)).toBe(false);
+  });
+
   it('throws site-config errors when database is configured but setup status cannot be queried', async () => {
     databaseConfigured = true;
     setupStatusFindFirst.mockRejectedValueOnce(new Error('database unavailable'));
