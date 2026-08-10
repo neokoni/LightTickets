@@ -18,6 +18,10 @@ export const mcRegisterSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
   username: z.string().min(2).max(32),
+  emailVerificationCode: z
+    .string()
+    .regex(/^\d{6}$/)
+    .optional(),
   minecraftUuid: minecraftUuidSchema,
   minecraftName: minecraftNameSchema,
 });

@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import { serverAuthMiddleware } from '../middleware/server-auth.js';
+import { authLimiter } from '../middleware/rate-limit.js';
 import { ForbiddenError } from '../utils/errors.js';
 import { minecraftPlayerSessionMiddleware } from '../middleware/minecraft-player-session.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
@@ -22,7 +23,7 @@ const router = Router();
 
 router.use(serverAuthMiddleware);
 
-router.post('/register', async (req: Request, res: Response) => {
+router.post('/register', authLimiter, async (req: Request, res: Response) => {
   const data = validate(mcRegisterSchema, req.body);
 
   const { getSiteConfig } = await import('../services/setup.service.js');
@@ -37,6 +38,7 @@ router.post('/register', async (req: Request, res: Response) => {
     data.username,
     data.minecraftUuid,
     data.minecraftName,
+    data.emailVerificationCode,
   );
   res.status(201).json(result);
 });

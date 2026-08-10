@@ -90,6 +90,7 @@ export async function registerFromMinecraft(
   username: string,
   minecraftUuid: string,
   minecraftName: string,
+  emailVerificationCode?: string,
 ) {
   const normalizedEmail = registrationEmailVerificationService.normalizeEmail(email);
   await assertRegistrationFieldsAvailable(prisma(), normalizedEmail, username);
@@ -99,9 +100,29 @@ export async function registerFromMinecraft(
   });
   if (minecraftConflict) throw new AppError(409, '该Minecraft账号已绑定到其他账户');
 
+  const mailConfig = await mailConfigService.getFullMailConfig();
+  const verificationRequired = mailConfigService.canSendPasswordResetMail(mailConfig);
+  if (verificationRequired && !emailVerificationCode) {
+    throw new ValidationError('请输入邮箱验证码');
+  }
+  const verificationCodeHash = verificationRequired
+    ? await registrationEmailVerificationService.verifyRegistrationCode(
+        normalizedEmail,
+        emailVerificationCode!,
+      )
+    : null;
+
   const passwordHash = await bcrypt.hash(password, 12);
   const playerCredential = generateMinecraftSecret();
   const user = await prisma().$transaction(async (tx) => {
+    await assertRegistrationFieldsAvailable(tx, normalizedEmail, username);
+    if (verificationCodeHash) {
+      await registrationEmailVerificationService.consumeRegistrationCode(
+        tx,
+        normalizedEmail,
+        verificationCodeHash,
+      );
+    }
     const created = await tx.user.create({
       data: { email: normalizedEmail, passwordHash, username, minecraftUuid, minecraftName },
     });

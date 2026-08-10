@@ -1,13 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma, serverData } from './setup.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import { generateAccessToken } from '../src/utils/token.js';
+import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
+import * as rateLimitConfigService from '../src/services/rate-limit-config.service.js';
 
 const app = createApp({ enableInitialSetup: true });
 let testMinecraftUuidCounter = 0;
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 function createMinecraftUuid(): string {
   testMinecraftUuidCounter += 1;
@@ -550,6 +556,48 @@ describe('POST /api/mc/register', () => {
     expect(session.status).toBe(201);
   });
 
+  it('requires and consumes an email verification code when SMTP is enabled', async () => {
+    clearTestOutbox();
+    const server = await createServer('mc-reg-email');
+    await prisma().appConfig.create({
+      data: {
+        id: 'default',
+        mailConfig: JSON.stringify({
+          enabled: true,
+          host: 'smtp.example.com',
+          port: 587,
+          secure: false,
+          username: 'mailer',
+          password: 'secret',
+          fromName: 'LightTickets',
+          fromAddress: 'noreply@example.com',
+        }),
+      },
+    });
+    const body = registration('mcregverify');
+
+    const codeRequest = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: body.email });
+    expect(codeRequest.status).toBe(200);
+    const code = getTestOutbox()[0].text.match(/\b\d{6}\b/)?.[0];
+    expect(code).toMatch(/^\d{6}$/);
+
+    const missing = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send(body);
+    expect(missing.status).toBe(400);
+    expect(missing.body.message).toBe('请输入邮箱验证码');
+
+    const valid = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({ ...body, emailVerificationCode: code });
+    expect(valid.status).toBe(201);
+    await expect(prisma().registrationEmailVerification.count()).resolves.toBe(0);
+  });
+
   it('rejects without server key', async () => {
     const res = await request(app).post('/api/mc/register').send(registration('mcregnokey'));
     expect(res.status).toBe(401);
@@ -626,6 +674,27 @@ describe('POST /api/mc/register', () => {
       .set('X-Server-Key', server.apiKey)
       .send({ ...base, minecraftName: '<click:run_command:/op>' });
     expect(invalidName.status).toBe(400);
+  });
+
+  it('applies the configured auth rate limit', async () => {
+    const server = await createServer('mc-reg-rate-limit');
+    await rateLimitConfigService.updateRateLimitConfig({
+      auth: { windowSeconds: 60, maxRequests: 1 },
+    });
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VITEST', '');
+
+    const first = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send(registration('mcregrate1'));
+    const limited = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send(registration('mcregrate2'));
+
+    expect(first.status).toBe(201);
+    expect(limited.status).toBe(429);
   });
 
   it('rejects when allowMcRegister is disabled', async () => {

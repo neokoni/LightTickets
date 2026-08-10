@@ -2410,6 +2410,8 @@ export interface paths {
             email: string;
             password: string;
             username: string;
+            emailVerificationCode?: string;
+            /** Format: uuid */
             minecraftUuid: string;
             minecraftName: string;
           };
@@ -2471,6 +2473,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            /** Format: uuid */
             minecraftUuid: string;
             minecraftName: string;
           };
