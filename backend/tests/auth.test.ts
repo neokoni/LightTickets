@@ -524,6 +524,7 @@ describe('POST /api/auth/password-reset', () => {
       .post('/api/auth/register')
       .send({ email: 'reset@example.com', password: 'Password123!', username: 'resetuser' });
     const oldRefreshCookie = getRefreshCookie(registration.headers['set-cookie']);
+    const oldAccessToken = registration.body.data.accessToken;
     await configureApp({ mailConfig: JSON.stringify(mailConfig) }, PASSWORD_RESET_SITE_ORIGIN);
 
     const requestRes = await request(app)
@@ -564,6 +565,12 @@ describe('POST /api/auth/password-reset', () => {
 
     expect(resetRes.status).toBe(200);
     expect(resetRes.body.data.reset).toBe(true);
+
+    const staleAccess = await request(app)
+      .patch('/api/users/me/notifications')
+      .set('Authorization', `Bearer ${oldAccessToken}`)
+      .send({ receiveEmailNotifications: false });
+    expect(staleAccess.status).toBe(401);
 
     const oldRefresh = await request(app)
       .post('/api/auth/refresh')

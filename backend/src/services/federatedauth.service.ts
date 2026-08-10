@@ -467,7 +467,11 @@ export async function finishFederatedAuth(input: {
       },
     });
     const tokens = {
-      accessToken: generateAccessToken(identity.user.id, identity.user.role),
+      accessToken: generateAccessToken(
+        identity.user.id,
+        identity.user.role,
+        identity.user.tokenEpoch,
+      ),
       refreshToken: await refreshSessionService.createRefreshSession(identity.user.id),
     };
     const location = new URL('/federatedauth/complete', `${origin}/`);
@@ -600,7 +604,7 @@ export async function completeFederatedAuthRegistration(input: CompleteRegistrat
 
   return {
     user: sanitizeUser(result.user),
-    accessToken: generateAccessToken(result.user.id, result.user.role),
+    accessToken: generateAccessToken(result.user.id, result.user.role, result.user.tokenEpoch),
     refreshToken: result.refreshToken,
   };
 }

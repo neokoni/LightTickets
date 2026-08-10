@@ -79,7 +79,7 @@ export async function register(
 
   return {
     user: sanitizeUser(result.user),
-    accessToken: generateAccessToken(result.user.id, result.user.role),
+    accessToken: generateAccessToken(result.user.id, result.user.role, result.user.tokenEpoch),
     refreshToken: result.refreshToken,
   };
 }
@@ -131,7 +131,7 @@ export async function login(emailOrUsername: string, password: string) {
   const refreshToken = await refreshSessionService.createRefreshSession(user.id);
   return {
     user: sanitizeUser(user),
-    accessToken: generateAccessToken(user.id, user.role),
+    accessToken: generateAccessToken(user.id, user.role, user.tokenEpoch),
     refreshToken,
   };
 }
@@ -144,7 +144,7 @@ export async function refresh(refreshToken: string) {
   if (!user) throw new UnauthorizedError('刷新令牌无效或已过期');
 
   return {
-    accessToken: generateAccessToken(user.id, user.role),
+    accessToken: generateAccessToken(user.id, user.role, user.tokenEpoch),
     refreshToken: rotated.refreshToken,
     user: sanitizeUser(user),
   };

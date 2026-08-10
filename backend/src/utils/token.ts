@@ -19,6 +19,7 @@ const LEGACY_UNSUBSCRIBE_MAX_LIFETIME_SECONDS = 30 * 24 * 60 * 60;
 
 const userIdSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const roleSchema = z.enum([ROLE.PLAYER, ROLE.STAFF, ROLE.ADMIN]);
+const tokenEpochSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const issuedAtSchema = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const expiresAtSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 
@@ -28,6 +29,7 @@ const accessTokenSchema = z
     role: roleSchema,
     type: z.literal('access'),
     tokenVersion: z.literal(ACCESS_TOKEN_VERSION),
+    tokenEpoch: tokenEpochSchema.default(0),
     iat: issuedAtSchema,
     exp: expiresAtSchema,
     aud: z.literal(ACCESS_TOKEN_AUDIENCE),
@@ -72,6 +74,7 @@ const legacyUnsubscribeTokenSchema = z
 export interface AccessTokenPayload {
   userId: number;
   role: z.infer<typeof roleSchema>;
+  tokenEpoch: number;
 }
 
 function tokenHeader(type: string): JwtHeader {
@@ -111,13 +114,14 @@ function verifyLegacyPayload<T extends { iat: number; exp: number }>(
   return payload;
 }
 
-function signAccessToken(userId: number, role: string): string {
+function signAccessToken(userId: number, role: string, tokenEpoch = 0): string {
   return jwt.sign(
     {
       userId: userIdSchema.parse(userId),
       role: roleSchema.parse(role),
       type: 'access',
       tokenVersion: ACCESS_TOKEN_VERSION,
+      tokenEpoch: tokenEpochSchema.parse(tokenEpoch),
     },
     getConfig().security.jwtSecret,
     {
@@ -130,8 +134,8 @@ function signAccessToken(userId: number, role: string): string {
   );
 }
 
-export function generateAccessToken(userId: number, role: string): string {
-  return signAccessToken(userId, role);
+export function generateAccessToken(userId: number, role: string, tokenEpoch = 0): string {
+  return signAccessToken(userId, role, tokenEpoch);
 }
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
@@ -140,7 +144,7 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
     const payload = accessTokenSchema.parse(
       verifyPayload(token, config.security.jwtSecret, ACCESS_TOKEN_TYPE, ACCESS_TOKEN_AUDIENCE),
     );
-    return { userId: payload.userId, role: payload.role };
+    return { userId: payload.userId, role: payload.role, tokenEpoch: payload.tokenEpoch };
   } catch {
     const payload = verifyLegacyPayload(
       token,
@@ -148,7 +152,7 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
       legacyAccessTokenSchema,
       LEGACY_ACCESS_MAX_LIFETIME_SECONDS,
     );
-    return { userId: payload.userId, role: payload.role };
+    return { userId: payload.userId, role: payload.role, tokenEpoch: 0 };
   }
 }
 

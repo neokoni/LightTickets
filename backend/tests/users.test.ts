@@ -316,7 +316,7 @@ describe('PATCH /api/users/:id/role', () => {
       .set('Authorization', `Bearer ${demotedAdminToken}`)
       .send({ role: 'admin' });
 
-    expect(staleTokenRequest.status).toBe(403);
+    expect(staleTokenRequest.status).toBe(401);
     expect(
       await prisma().user.findUnique({
         where: { id: demotedAdmin.id },
@@ -349,6 +349,11 @@ describe('PATCH /api/users/me/password', () => {
       .send({ currentPassword: 'Password123!', newPassword: 'NewPassword123!' });
 
     expect(changed.status).toBe(200);
+    const staleAccess = await request(app)
+      .patch('/api/users/me/notifications')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ receiveEmailNotifications: false });
+    expect(staleAccess.status).toBe(401);
     const replacementCookie = getRefreshCookie(changed.headers['set-cookie']);
     expect(replacementCookie).not.toBe(refreshCookie);
     await expect(
@@ -455,6 +460,11 @@ describe('email change verification', () => {
     expect(verified.status).toBe(200);
     expect(verified.body.data.email).toBe('email-change-verified@test.com');
     expect(verified.body.data.pendingEmail).toBeNull();
+    const staleAccess = await request(app)
+      .patch('/api/users/me/notifications')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ receiveEmailNotifications: false });
+    expect(staleAccess.status).toBe(401);
     const replacementCookie = getRefreshCookie(verified.headers['set-cookie']);
     expect(replacementCookie).not.toBe(refreshCookie);
 

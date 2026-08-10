@@ -65,6 +65,7 @@ model User {
   email               String               @unique
   pendingEmail        String?              @unique @map("pending_email")
   passwordHash        String               @map("password_hash")
+  tokenEpoch          Int                  @default(0) @map("token_epoch")
   username            String               @unique
   minecraftUuid       String?              @unique @map("minecraft_uuid")
   minecraftName       String?              @map("minecraft_name")

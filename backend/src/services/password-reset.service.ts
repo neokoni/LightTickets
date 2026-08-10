@@ -197,7 +197,7 @@ export async function resetPassword(token: string, newPassword: string): Promise
     await tx.emailChangeRequest.deleteMany({ where: { userId: resetToken.userId } });
     await tx.user.update({
       where: { id: resetToken.userId },
-      data: { passwordHash, pendingEmail: null },
+      data: { passwordHash, pendingEmail: null, tokenEpoch: { increment: 1 } },
     });
     await tx.passwordResetToken.update({
       where: { id: resetToken.id },

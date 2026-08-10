@@ -578,7 +578,7 @@ export async function completeSetup(input: SetupInput) {
   return {
     setup: setupRecord,
     admin: { id: admin.id, email: admin.email, username: admin.username, role: admin.role },
-    accessToken: generateAccessToken(admin.id, admin.role),
+    accessToken: generateAccessToken(admin.id, admin.role, admin.tokenEpoch),
     refreshToken,
   };
 }

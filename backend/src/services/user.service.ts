@@ -42,7 +42,7 @@ export async function changeRole(userId: number, role: Role) {
   return prisma().$transaction(async (tx) => {
     const updated = await tx.user.update({
       where: { id: userId },
-      data: { role },
+      data: { role, tokenEpoch: { increment: 1 } },
       select: USER_PUBLIC_SELECT,
     });
     await refreshSessionService.revokeAllUserRefreshSessions(userId, tx);
@@ -97,7 +97,7 @@ export async function changePassword(userId: number, currentPassword: string, ne
     await tx.emailChangeRequest.deleteMany({ where: { userId } });
     await tx.user.update({
       where: { id: userId },
-      data: { passwordHash, pendingEmail: null },
+      data: { passwordHash, pendingEmail: null, tokenEpoch: { increment: 1 } },
     });
     await refreshSessionService.revokeAllUserRefreshSessions(userId, tx);
     return refreshSessionService.createRefreshSession(userId, tx);

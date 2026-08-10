@@ -41,7 +41,7 @@ function signAccessPayload(
 
 describe('JWT token boundaries', () => {
   it('issues access and unsubscribe tokens with distinct claims', () => {
-    const accessToken = generateAccessToken(42, 'staff');
+    const accessToken = generateAccessToken(42, 'staff', 7);
     const unsubscribeToken = generateEmailUnsubscribeToken(42);
     const access = decodeToken(accessToken);
     const unsubscribe = decodeToken(unsubscribeToken);
@@ -52,6 +52,7 @@ describe('JWT token boundaries', () => {
       role: 'staff',
       type: 'access',
       tokenVersion: 1,
+      tokenEpoch: 7,
       aud: ACCESS_AUDIENCE,
       iss: ISSUER,
     });
@@ -70,7 +71,7 @@ describe('JWT token boundaries', () => {
     const unsubscribeToken = generateEmailUnsubscribeToken(7);
     const opaqueRefreshToken = 'not-a-jwt-refresh-token';
 
-    expect(verifyAccessToken(accessToken)).toEqual({ userId: 7, role: 'player' });
+    expect(verifyAccessToken(accessToken)).toEqual({ userId: 7, role: 'player', tokenEpoch: 0 });
     expect(verifyEmailUnsubscribeToken(unsubscribeToken)).toEqual({ userId: 7 });
 
     expect(() => verifyAccessToken(opaqueRefreshToken)).toThrow();
@@ -82,7 +83,7 @@ describe('JWT token boundaries', () => {
   it('uses the same strict access signer for standalone access tokens', () => {
     const token = generateAccessToken(9, 'admin');
 
-    expect(verifyAccessToken(token)).toEqual({ userId: 9, role: 'admin' });
+    expect(verifyAccessToken(token)).toEqual({ userId: 9, role: 'admin', tokenEpoch: 0 });
     expect(decodeToken(token).payload).toMatchObject({
       type: 'access',
       tokenVersion: 1,
@@ -207,7 +208,11 @@ describe('JWT token boundaries', () => {
         { algorithm: 'HS256', expiresIn: '30d' },
       );
 
-      expect(verifyAccessToken(legacyAccess)).toEqual({ userId: 3, role: 'staff' });
+      expect(verifyAccessToken(legacyAccess)).toEqual({
+        userId: 3,
+        role: 'staff',
+        tokenEpoch: 0,
+      });
       expect(verifyEmailUnsubscribeToken(legacyUnsubscribe)).toEqual({ userId: 3 });
       expect(() => verifyAccessToken(legacyUnsubscribe)).toThrow();
       expect(() => verifyEmailUnsubscribeToken(legacyAccess)).toThrow();

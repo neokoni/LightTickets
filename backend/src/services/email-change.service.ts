@@ -304,7 +304,11 @@ export async function verifyEmailChange(
 
       const updated = await tx.user.update({
         where: { id: userId, pendingEmail: current.newEmail },
-        data: { email: current.newEmail, pendingEmail: null },
+        data: {
+          email: current.newEmail,
+          pendingEmail: null,
+          tokenEpoch: { increment: 1 },
+        },
         select: USER_PUBLIC_SELECT,
       });
       await tx.emailChangeRequest.delete({ where: { id: current.id } });

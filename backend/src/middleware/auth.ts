@@ -7,6 +7,7 @@ import { prisma } from '../db.js';
 export interface AuthPayload {
   userId: number;
   role: string;
+  tokenEpoch: number;
 }
 
 declare global {
@@ -31,10 +32,10 @@ async function resolveCurrentUser(header: string | undefined): Promise<AuthPaylo
   if (!payload) return null;
   const user = await prisma().user.findUnique({
     where: { id: payload.userId },
-    select: { id: true, role: true },
+    select: { id: true, role: true, tokenEpoch: true },
   });
-  if (!user) return null;
-  return { userId: user.id, role: user.role };
+  if (!user || user.tokenEpoch !== payload.tokenEpoch) return null;
+  return { userId: user.id, role: user.role, tokenEpoch: user.tokenEpoch };
 }
 
 export async function authMiddleware(req: Request, _res: Response, next: NextFunction) {
