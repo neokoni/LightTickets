@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { prisma } from './setup.js';
 import * as mcService from '../src/services/mc.service.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import type { MinecraftPlayerIdentity } from '../src/middleware/minecraft-player-session.js';
 import { createApp } from '../src/app.js';
+import { generateLinkCode } from '../src/utils/link-code.js';
 
 createApp();
 
@@ -44,6 +46,12 @@ function identity(
 }
 
 describe('mc.service', () => {
+  it('supports the complete six-digit code space including leading zeroes', () => {
+    const randomInt = vi.spyOn(crypto, 'randomInt').mockReturnValue(0);
+    expect(generateLinkCode()).toBe('000000');
+    randomInt.mockRestore();
+  });
+
   it('creates a link code and credential for an unlinked minecraft account', async () => {
     const server = await createServer('mc-service-link');
 

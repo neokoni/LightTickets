@@ -150,6 +150,39 @@ async function save() {
         />
       </section>
 
+      <section
+        class="space-y-4 px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
+      >
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-white">
+            {{ t('admin.rateLimit.minecraftLinkTitle') }}
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {{ t('admin.rateLimit.minecraftLinkHelp') }}
+          </p>
+        </div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <BaseInput
+            v-model.number="config.minecraftLink.maxAttempts"
+            :label="t('admin.rateLimit.minecraftLinkMaxAttempts')"
+            required
+            type="number"
+            min="1"
+            max="100"
+            :placeholder="placeholder(defaults?.minecraftLink.maxAttempts)"
+          />
+          <BaseInput
+            v-model.number="config.minecraftLink.lockSeconds"
+            :label="t('admin.rateLimit.minecraftLinkLockSeconds')"
+            required
+            type="number"
+            min="1"
+            max="86400"
+            :placeholder="placeholder(defaults?.minecraftLink.lockSeconds)"
+          />
+        </div>
+      </section>
+
       <BaseButton filled :loading="saving" @click="save">
         {{ saving ? t('common.saving') : t('common.save') }}
       </BaseButton>

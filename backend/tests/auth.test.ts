@@ -794,6 +794,69 @@ describe('POST /api/auth/link-minecraft', () => {
       });
     expect(session.status).toBe(201);
   });
+
+  it('rejects link codes that are not exactly six digits', async () => {
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'link-format@test.com', password: 'Password123!', username: 'linkformat' });
+
+    const res = await request(app)
+      .post('/api/auth/link-minecraft')
+      .set('Authorization', `Bearer ${reg.body.data.accessToken}`)
+      .send({ code: '12345' });
+
+    expect(res.status).toBe(400);
+  });
+
+  it('locks binding attempts after five invalid codes', async () => {
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'link-lock@test.com', password: 'Password123!', username: 'linklock' });
+    const token = reg.body.data.accessToken;
+
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      const res = await request(app)
+        .post('/api/auth/link-minecraft')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ code: '000000' });
+
+      expect(res.status).toBe(400);
+    }
+
+    const user = await prisma().user.findUniqueOrThrow({ where: { username: 'linklock' } });
+    expect(user.minecraftLinkFailedAttempts).toBe(5);
+    expect(user.minecraftLinkLockedUntil).not.toBeNull();
+
+    const blocked = await request(app)
+      .post('/api/auth/link-minecraft')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code: '111111' });
+    expect(blocked.status).toBe(400);
+    expect(blocked.body.message).toBe('绑定尝试次数过多，请稍后再试');
+  });
+
+  it('uses the platform-configured binding attempt policy', async () => {
+    await configureApp({
+      rateLimitConfig: JSON.stringify({
+        minecraftLink: { maxAttempts: 2, lockSeconds: 30 },
+      }),
+    });
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'link-policy@test.com', password: 'Password123!', username: 'linkpolicy' });
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await request(app)
+        .post('/api/auth/link-minecraft')
+        .set('Authorization', `Bearer ${reg.body.data.accessToken}`)
+        .send({ code: '000000' });
+    }
+
+    const user = await prisma().user.findUniqueOrThrow({ where: { username: 'linkpolicy' } });
+    expect(user.minecraftLinkFailedAttempts).toBe(2);
+    expect(user.minecraftLinkLockedUntil).not.toBeNull();
+    expect(user.minecraftLinkLockedUntil!.getTime() - Date.now()).toBeGreaterThan(28_000);
+  });
 });
 
 describe('DELETE /api/auth/link-minecraft', () => {

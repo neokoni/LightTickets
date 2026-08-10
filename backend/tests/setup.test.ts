@@ -345,6 +345,7 @@ describe('PATCH /api/setup/settings', () => {
       global: { windowSeconds: 60, maxRequests: 100 },
       auth: { windowSeconds: 60, maxRequests: 10 },
       email: { cooldownSeconds: 60 },
+      minecraftLink: { maxAttempts: 5, lockSeconds: 900 },
     });
     expect(res.body.data.rateLimitDefaults).toEqual(res.body.data.rateLimit);
     expect(res.body.data.attachment).toEqual({
@@ -460,6 +461,7 @@ describe('PATCH /api/setup/settings', () => {
           global: { windowSeconds: 120, maxRequests: 250 },
           auth: { windowSeconds: 60, maxRequests: 12 },
           email: { cooldownSeconds: 90 },
+          minecraftLink: { maxAttempts: 7, lockSeconds: 1800 },
         },
       });
 
@@ -468,6 +470,7 @@ describe('PATCH /api/setup/settings', () => {
       global: { windowSeconds: 120, maxRequests: 250 },
       auth: { windowSeconds: 60, maxRequests: 12 },
       email: { cooldownSeconds: 90 },
+      minecraftLink: { maxAttempts: 7, lockSeconds: 1800 },
     });
     expect(JSON.parse((await prisma().appConfig.findFirst())!.rateLimitConfig!)).toEqual(
       res.body.data.rateLimit,

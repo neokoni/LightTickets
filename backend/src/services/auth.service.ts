@@ -8,6 +8,8 @@ import * as mailConfigService from './mail-config.service.js';
 import * as registrationEmailVerificationService from './registration-email-verification.service.js';
 import { generateMinecraftSecret, hashMinecraftSecret } from '../utils/minecraft-credential.js';
 import * as refreshSessionService from './refresh-session.service.js';
+import { AUTH_ERROR_MESSAGES } from '../constants/auth.js';
+import * as rateLimitConfigService from './rate-limit-config.service.js';
 
 type RegistrationConflictClient = Pick<Prisma.TransactionClient, 'user'>;
 
@@ -149,21 +151,58 @@ export async function refresh(refreshToken: string) {
 }
 
 export async function linkMinecraft(userId: number, code: string) {
-  return prisma().$transaction(async (tx) => {
-    const linkCode = await tx.linkCode.findFirst({
-      where: { code, used: false, expiresAt: { gt: new Date() } },
+  const outcome = await prisma().$transaction(async (tx) => {
+    const now = new Date();
+    const { minecraftLink } = await rateLimitConfigService.getRateLimitConfig(tx);
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { minecraftLinkFailedAttempts: true, minecraftLinkLockedUntil: true },
     });
-    if (!linkCode?.playerCredentialHash) throw new ValidationError('无效或已过期的绑定码');
+    if (!user) throw new NotFoundError('用户不存在');
+    if (user.minecraftLinkLockedUntil && user.minecraftLinkLockedUntil > now) {
+      return { status: 'locked' } as const;
+    }
+
+    const linkCode = await tx.linkCode.findUnique({ where: { code } });
+    if (
+      !linkCode ||
+      linkCode.used ||
+      linkCode.expiresAt <= now ||
+      linkCode.attempts >= minecraftLink.maxAttempts ||
+      !linkCode.playerCredentialHash
+    ) {
+      if (linkCode && !linkCode.used && linkCode.attempts < minecraftLink.maxAttempts) {
+        await tx.linkCode.update({
+          where: { id: linkCode.id },
+          data: { attempts: { increment: 1 } },
+        });
+      }
+      const locked = await recordLinkCodeFailure(tx, userId, user, now, minecraftLink);
+      return { status: locked ? 'locked' : 'invalid' } as const;
+    }
 
     const consumed = await tx.linkCode.updateMany({
-      where: { id: linkCode.id, used: false, expiresAt: { gt: new Date() } },
+      where: {
+        id: linkCode.id,
+        used: false,
+        expiresAt: { gt: now },
+        attempts: { lt: minecraftLink.maxAttempts },
+      },
       data: { used: true },
     });
-    if (consumed.count !== 1) throw new ValidationError('无效或已过期的绑定码');
+    if (consumed.count !== 1) {
+      const locked = await recordLinkCodeFailure(tx, userId, user, now, minecraftLink);
+      return { status: locked ? 'locked' : 'invalid' } as const;
+    }
 
     await tx.user.update({
       where: { id: userId },
-      data: { minecraftUuid: linkCode.minecraftUuid, minecraftName: linkCode.minecraftName },
+      data: {
+        minecraftUuid: linkCode.minecraftUuid,
+        minecraftName: linkCode.minecraftName,
+        minecraftLinkFailedAttempts: 0,
+        minecraftLinkLockedUntil: null,
+      },
     });
     await tx.minecraftPlayerCredential.deleteMany({ where: { userId } });
     await tx.minecraftPlayerCredential.create({
@@ -173,8 +212,40 @@ export async function linkMinecraft(userId: number, code: string) {
         credentialHash: linkCode.playerCredentialHash,
       },
     });
-    return { uuid: linkCode.minecraftUuid, name: linkCode.minecraftName };
+    return {
+      status: 'linked',
+      value: { uuid: linkCode.minecraftUuid, name: linkCode.minecraftName },
+    } as const;
   });
+
+  if (outcome.status === 'locked') throw new ValidationError(AUTH_ERROR_MESSAGES.LOCKED_MESSAGE);
+  if (outcome.status === 'invalid')
+    throw new ValidationError(AUTH_ERROR_MESSAGES.INVALID_CODE_MESSAGE);
+  return outcome.value;
+}
+
+async function recordLinkCodeFailure(
+  tx: Prisma.TransactionClient,
+  userId: number,
+  user: { minecraftLinkFailedAttempts: number; minecraftLinkLockedUntil: Date | null },
+  now: Date,
+  policy: { maxAttempts: number; lockSeconds: number },
+): Promise<boolean> {
+  const resetExpiredLock = user.minecraftLinkLockedUntil && user.minecraftLinkLockedUntil <= now;
+  const updated = await tx.user.update({
+    where: { id: userId },
+    data: resetExpiredLock
+      ? { minecraftLinkFailedAttempts: 1, minecraftLinkLockedUntil: null }
+      : { minecraftLinkFailedAttempts: { increment: 1 } },
+    select: { minecraftLinkFailedAttempts: true },
+  });
+  if (updated.minecraftLinkFailedAttempts < policy.maxAttempts) return false;
+
+  await tx.user.update({
+    where: { id: userId },
+    data: { minecraftLinkLockedUntil: new Date(now.getTime() + policy.lockSeconds * 1_000) },
+  });
+  return true;
 }
 
 export async function unlinkMinecraft(userId: number) {
@@ -193,6 +264,11 @@ export async function unlinkMinecraft(userId: number) {
 }
 
 function sanitizeUser(user: User) {
-  const { passwordHash: _passwordHash, ...safe } = user;
+  const {
+    passwordHash: _passwordHash,
+    minecraftLinkFailedAttempts: _minecraftLinkFailedAttempts,
+    minecraftLinkLockedUntil: _minecraftLinkLockedUntil,
+    ...safe
+  } = user;
   return safe;
 }

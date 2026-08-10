@@ -22,6 +22,7 @@ function cloneConfig(config: RateLimitConfig): RateLimitConfig {
     global: { ...config.global },
     auth: { ...config.auth },
     email: { ...config.email },
+    minecraftLink: { ...config.minecraftLink },
   };
 }
 
@@ -36,6 +37,7 @@ function mergeConfig(current: RateLimitConfig, input: RateLimitConfigInput): Rat
     global: { ...current.global, ...input.global },
     auth: { ...current.auth, ...input.auth },
     email: { ...current.email, ...input.email },
+    minecraftLink: { ...current.minecraftLink, ...input.minecraftLink },
   };
 }
 

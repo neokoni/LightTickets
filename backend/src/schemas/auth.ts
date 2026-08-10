@@ -40,5 +40,5 @@ export const passwordResetConfirmSchema = z.object({
 export const refreshRequestSchema = z.object({}).strict();
 
 export const linkMinecraftSchema = z.object({
-  code: z.string().min(1),
+  code: z.string().regex(/^\d{6}$/),
 });

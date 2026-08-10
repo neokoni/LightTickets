@@ -111,7 +111,7 @@ router.post('/logout', authLimiter, async (req: Request, res: Response) => {
   res.status(204).end();
 });
 
-router.post('/link-minecraft', authMiddleware, async (req: Request, res: Response) => {
+router.post('/link-minecraft', authLimiter, authMiddleware, async (req: Request, res: Response) => {
   const { code } = validate(linkMinecraftSchema, req.body);
 
   const result = await authService.linkMinecraft(req.user!.userId, code);

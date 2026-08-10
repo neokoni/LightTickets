@@ -135,16 +135,23 @@ export interface EmailRateLimitRule {
   cooldownSeconds: number;
 }
 
+export interface MinecraftLinkRateLimitRule {
+  maxAttempts: number;
+  lockSeconds: number;
+}
+
 export interface RateLimitConfig {
   global: RequestRateLimitRule;
   auth: RequestRateLimitRule;
   email: EmailRateLimitRule;
+  minecraftLink: MinecraftLinkRateLimitRule;
 }
 
 export interface RateLimitConfigPayload {
   global?: Partial<RequestRateLimitRule>;
   auth?: Partial<RequestRateLimitRule>;
   email?: Partial<EmailRateLimitRule>;
+  minecraftLink?: Partial<MinecraftLinkRateLimitRule>;
 }
 
 export interface MailSettings {

@@ -4891,6 +4891,10 @@ export interface paths {
                   email: {
                     cooldownSeconds: number;
                   };
+                  minecraftLink: {
+                    maxAttempts: number;
+                    lockSeconds: number;
+                  };
                 };
                 rateLimitDefaults: {
                   global: {
@@ -4903,6 +4907,10 @@ export interface paths {
                   };
                   email: {
                     cooldownSeconds: number;
+                  };
+                  minecraftLink: {
+                    maxAttempts: number;
+                    lockSeconds: number;
                   };
                 };
                 attachment: {
@@ -4984,6 +4992,10 @@ export interface paths {
               email?: {
                 cooldownSeconds?: number;
               };
+              minecraftLink?: {
+                maxAttempts?: number;
+                lockSeconds?: number;
+              };
             };
             attachment?: {
               pendingQuotaMiB?: number;
@@ -5020,6 +5032,10 @@ export interface paths {
                   email: {
                     cooldownSeconds: number;
                   };
+                  minecraftLink: {
+                    maxAttempts: number;
+                    lockSeconds: number;
+                  };
                 };
                 rateLimitDefaults: {
                   global: {
@@ -5032,6 +5048,10 @@ export interface paths {
                   };
                   email: {
                     cooldownSeconds: number;
+                  };
+                  minecraftLink: {
+                    maxAttempts: number;
+                    lockSeconds: number;
                   };
                 };
                 attachment: {

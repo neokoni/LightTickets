@@ -68,6 +68,8 @@ model User {
   username            String               @unique
   minecraftUuid       String?              @unique @map("minecraft_uuid")
   minecraftName       String?              @map("minecraft_name")
+  minecraftLinkFailedAttempts Int           @default(0) @map("minecraft_link_failed_attempts")
+  minecraftLinkLockedUntil DateTime?       @map("minecraft_link_locked_until")
   avatarUrl           String?              @map("avatar_url")
   receiveEmailNotifications Boolean        @default(true) @map("receive_email_notifications")
   role                Role                 @default(player)
@@ -337,6 +339,7 @@ model LinkCode {
   serverId      String   @map("server_id")
   expiresAt     DateTime @map("expires_at")
   used          Boolean  @default(false)
+  attempts      Int      @default(0)
   playerCredentialHash String? @map("player_credential_hash")
   server        Server   @relation(fields: [serverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
