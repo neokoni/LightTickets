@@ -7,6 +7,12 @@ import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import { generateAccessToken } from '../src/utils/token.js';
 
 const app = createApp({ enableInitialSetup: true });
+let testMinecraftUuidCounter = 0;
+
+function createMinecraftUuid(): string {
+  testMinecraftUuidCounter += 1;
+  return `550e8400-e29b-41d4-a716-${testMinecraftUuidCounter.toString(16).padStart(12, '0')}`;
+}
 
 async function createServer(name: string) {
   return prisma().server.create({ data: { name, apiKey: `${name}-key` } });
@@ -50,7 +56,7 @@ describe('POST /api/mc/link-code', () => {
     const res = await request(app)
       .post('/api/mc/link-code')
       .set('X-Server-Key', server.apiKey)
-      .send({ minecraftUuid: 'link-code-uuid', minecraftName: 'Steve' });
+      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440010', minecraftName: 'Steve' });
 
     expect(res.status).toBe(201);
     expect(res.body.data.code).toMatch(/^\d{6}$/);
@@ -77,7 +83,7 @@ describe('POST /api/mc/link-code', () => {
         email: 'bound@test.com',
         passwordHash: await bcrypt.hash('Password123!', 12),
         username: 'boundplayer',
-        minecraftUuid: 'already-linked-uuid',
+        minecraftUuid: '550e8400-e29b-41d4-a716-446655440011',
         minecraftName: 'BoundSteve',
       },
     });
@@ -85,9 +91,26 @@ describe('POST /api/mc/link-code', () => {
     const res = await request(app)
       .post('/api/mc/link-code')
       .set('X-Server-Key', server.apiKey)
-      .send({ minecraftUuid: 'already-linked-uuid', minecraftName: 'BoundSteve' });
+      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440011', minecraftName: 'BoundSteve' });
 
     expect(res.status).toBe(409);
+  });
+
+  it('rejects invalid Minecraft identity formats', async () => {
+    const server = await createServer('survival-format');
+    const cases = [
+      { minecraftUuid: 'not-a-uuid', minecraftName: 'Steve' },
+      { minecraftUuid: '550e8400-e29b-41d4-a716-446655440012', minecraftName: 'ab' },
+      { minecraftUuid: '550e8400-e29b-41d4-a716-446655440013', minecraftName: 'Player Name' },
+    ];
+
+    for (const payload of cases) {
+      const res = await request(app)
+        .post('/api/mc/link-code')
+        .set('X-Server-Key', server.apiKey)
+        .send(payload);
+      expect(res.status).toBe(400);
+    }
   });
 });
 
@@ -495,7 +518,7 @@ describe('POST /api/mc/register', () => {
     email: `${suffix}@test.com`,
     password: 'Password123!',
     username: suffix,
-    minecraftUuid: `${suffix}-uuid`,
+    minecraftUuid: createMinecraftUuid(),
     minecraftName: suffix,
   });
 
@@ -584,6 +607,23 @@ describe('POST /api/mc/register', () => {
       });
 
     expect([400, 422]).toContain(res.status);
+  });
+
+  it('rejects invalid Minecraft identity formats', async () => {
+    const server = await createServer('mc-reg-format');
+    const base = registration('mcregformat');
+
+    const invalidUuid = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({ ...base, minecraftUuid: 'not-a-uuid' });
+    expect(invalidUuid.status).toBe(400);
+
+    const invalidName = await request(app)
+      .post('/api/mc/register')
+      .set('X-Server-Key', server.apiKey)
+      .send({ ...base, minecraftName: '<click:run_command:/op>' });
+    expect(invalidName.status).toBe(400);
   });
 
   it('rejects when allowMcRegister is disabled', async () => {

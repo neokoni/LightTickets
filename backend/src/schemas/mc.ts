@@ -1,9 +1,12 @@
 import { z } from 'zod';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
 
+export const minecraftUuidSchema = z.string().uuid();
+export const minecraftNameSchema = z.string().regex(/^[a-zA-Z0-9_]{3,16}$/);
+
 export const mcLinkCodeSchema = z.object({
-  minecraftUuid: z.string(),
-  minecraftName: z.string(),
+  minecraftUuid: minecraftUuidSchema,
+  minecraftName: minecraftNameSchema,
 });
 
 export const mcPlayerSessionSchema = z.object({
@@ -15,8 +18,8 @@ export const mcRegisterSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
   username: z.string().min(2).max(32),
-  minecraftUuid: z.string(),
-  minecraftName: z.string(),
+  minecraftUuid: minecraftUuidSchema,
+  minecraftName: minecraftNameSchema,
 });
 
 export const mcTicketSchema = z.object({
