@@ -18,7 +18,7 @@ import {
 } from '../src/constants/upload.js';
 
 describe('USER_PUBLIC_SELECT', () => {
-  it('contains the 9 public user fields', () => {
+  it('contains the public user fields', () => {
     const keys = Object.keys(USER_PUBLIC_SELECT).sort();
     expect(keys).toEqual(
       [
@@ -28,6 +28,8 @@ describe('USER_PUBLIC_SELECT', () => {
         'id',
         'minecraftName',
         'minecraftUuid',
+        'pendingEmail',
+        'receiveEmailNotifications',
         'role',
         'updatedAt',
         'username',
