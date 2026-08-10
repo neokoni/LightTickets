@@ -123,7 +123,7 @@ export interface AuditLog {
 }
 
 export interface TemplateField {
-  type: 'markdown' | 'input' | 'textarea' | 'checkboxes' | 'dropdown';
+  type: 'markdown' | 'input' | 'textarea' | 'checkboxes' | 'dropdown' | 'select_input';
   id?: string;
   validations?: { required?: boolean };
   attributes: {

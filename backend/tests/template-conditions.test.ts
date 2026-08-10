@@ -70,6 +70,31 @@ completion_hooks: []
     ).toThrow('提交内容包含未知字段');
   });
 
+  it('accepts preset and custom values for select_input fields', () => {
+    const def = yaml.load(`
+name: Select Input Test
+description: Select input test
+labels: []
+body:
+  - type: select_input
+    id: platform
+    validations: { required: true }
+    attributes:
+      label: Platform
+      options: [Paper, Fabric]
+completion_hooks: []
+`) as TemplateDefinition;
+
+    expect(validateAndNormalizeFormData(def, { platform: 'Paper' })).toEqual({
+      platform: 'Paper',
+    });
+    expect(validateAndNormalizeFormData(def, { platform: 'Custom server' })).toEqual({
+      platform: 'Custom server',
+    });
+    expect(renderBody(def, { platform: 'Custom server' })).toBe('**Platform:** Custom server');
+    expect(() => validateAndNormalizeFormData(def, { platform: '' })).toThrow('Platform 为必填项');
+  });
+
   it('evaluates supported comparison operators', () => {
     const variables = {
       ticket_id: '42',

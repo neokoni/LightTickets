@@ -10,6 +10,7 @@ import BaseInput from '@/components/base/BaseInput.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue';
+import BaseCombobox from '@/components/base/BaseCombobox.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import { t } from '@/i18n';
@@ -262,6 +263,22 @@ async function submit() {
           :label="field.attributes.label"
           :required="field.validations?.required === true"
           :placeholder="field.attributes.placeholder || t('common.selectPlaceholderWithDots')"
+          :model-value="formValues[field.id || ''] || ''"
+          :options="
+            (field.attributes.options || []).map((opt) => ({
+              value: typeof opt === 'string' ? opt : opt.label,
+              label: typeof opt === 'string' ? opt : opt.label,
+            }))
+          "
+          @update:model-value="setFieldValue(field.id || '', $event || '')"
+        />
+
+        <!-- select or input -->
+        <BaseCombobox
+          v-else-if="field.type === 'select_input'"
+          :label="field.attributes.label"
+          :required="field.validations?.required === true"
+          :placeholder="field.attributes.placeholder || t('common.selectOrInputPlaceholder')"
           :model-value="formValues[field.id || ''] || ''"
           :options="
             (field.attributes.options || []).map((opt) => ({

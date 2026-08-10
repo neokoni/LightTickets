@@ -240,7 +240,7 @@ function serializeField(field: EditableTemplateField): TemplateField {
     if (field.label.trim()) attributes.label = field.label.trim();
     if (field.description.trim()) attributes.description = field.description.trim();
     if (field.placeholder.trim()) attributes.placeholder = field.placeholder.trim();
-    if (field.type === 'checkboxes' || field.type === 'dropdown') {
+    if (field.type === 'checkboxes' || field.type === 'dropdown' || field.type === 'select_input') {
       attributes.options = field.options
         .filter((option) => option.label.trim())
         .map((option) =>
@@ -531,6 +531,7 @@ function fieldIcon(type: EditableTemplateField['type']): string {
   if (type === 'markdown') return 'lucide:text';
   if (type === 'checkboxes') return 'lucide:list-checks';
   if (type === 'dropdown') return 'lucide:list-collapse';
+  if (type === 'select_input') return 'lucide:list-plus';
   if (type === 'input') return 'lucide:text-cursor-input';
   return 'lucide:align-left';
 }
@@ -629,6 +630,11 @@ const fieldTypeOptions = [
     value: 'dropdown',
     label: t('admin.templates.fieldType.dropdown'),
     icon: 'lucide:list-collapse',
+  },
+  {
+    value: 'select_input',
+    label: t('admin.templates.fieldType.select_input'),
+    icon: 'lucide:list-plus',
   },
 ];
 
@@ -928,7 +934,11 @@ onMounted(async () => {
                     <BaseInput v-model="field.label" :label="t('admin.templates.fieldLabel')" />
 
                     <div
-                      v-if="field.type === 'checkboxes' || field.type === 'dropdown'"
+                      v-if="
+                        field.type === 'checkboxes' ||
+                        field.type === 'dropdown' ||
+                        field.type === 'select_input'
+                      "
                       class="space-y-2"
                     >
                       <div class="flex items-center justify-between gap-3">
@@ -996,7 +1006,11 @@ onMounted(async () => {
                         :label="t('common.descriptionOptional')"
                       />
                       <BaseInput
-                        v-if="field.type === 'textarea' || field.type === 'input'"
+                        v-if="
+                          field.type === 'textarea' ||
+                          field.type === 'input' ||
+                          field.type === 'select_input'
+                        "
                         v-model="field.placeholder"
                         :label="t('admin.templates.placeholderOptional')"
                       />
@@ -1193,7 +1207,11 @@ onMounted(async () => {
                             :label="t('admin.templates.fieldDescriptionOptional')"
                           />
                           <BaseInput
-                            v-if="field.type === 'input' || field.type === 'textarea'"
+                            v-if="
+                              field.type === 'input' ||
+                              field.type === 'textarea' ||
+                              field.type === 'select_input'
+                            "
                             v-model="field.placeholder"
                             :label="t('admin.templates.placeholderOptional')"
                           />
@@ -1205,7 +1223,11 @@ onMounted(async () => {
                           </label>
                         </div>
                         <div
-                          v-if="field.type === 'checkboxes' || field.type === 'dropdown'"
+                          v-if="
+                            field.type === 'checkboxes' ||
+                            field.type === 'dropdown' ||
+                            field.type === 'select_input'
+                          "
                           class="space-y-2"
                         >
                           <div class="flex items-center justify-between gap-2">

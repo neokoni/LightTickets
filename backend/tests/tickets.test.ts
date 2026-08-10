@@ -44,6 +44,15 @@ beforeAll(async () => {
             id: 'note',
             attributes: { label: 'Note', placeholder: 'Optional note' },
           },
+          {
+            type: 'select_input',
+            id: 'resolution',
+            attributes: {
+              label: 'Resolution',
+              placeholder: 'Select or enter a resolution',
+              options: ['Approved', 'Rejected'],
+            },
+          },
         ],
         actions: [
           {
@@ -994,12 +1003,22 @@ describe('POST /api/tickets/:id/completion-hooks/:hookId/complete', () => {
     const completed = await request(app)
       .post(`/api/tickets/${ticketId}/completion-hooks/${hookId}/complete`)
       .set('Authorization', `Bearer ${staffToken}`)
-      .send({ values: { rewards: ['Coins', 'Items'], note: 'Granted' } });
+      .send({
+        values: {
+          rewards: ['Coins', 'Items'],
+          note: 'Granted',
+          resolution: 'Needs follow-up',
+        },
+      });
     expect(completed.status).toBe(200);
     expect(completed.body.data).toMatchObject({
       id: hookId,
       status: 'completed',
-      response: { rewards: ['Coins', 'Items'], note: 'Granted' },
+      response: {
+        rewards: ['Coins', 'Items'],
+        note: 'Granted',
+        resolution: 'Needs follow-up',
+      },
     });
     expect(completed.body.data.completedBy.username).toBe('hook-staff');
     expect(completed.body.data.completedAt).toEqual(expect.any(String));

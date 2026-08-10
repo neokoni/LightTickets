@@ -4,6 +4,7 @@ import { Icon } from '@iconify/vue';
 import BaseBadge from '@/components/base/BaseBadge.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue';
+import BaseCombobox from '@/components/base/BaseCombobox.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
@@ -168,6 +169,15 @@ function statusLabel(status: TicketCompletionHook['status']): string {
             :required="field.validations?.required === true"
             :options="optionsFor(field).map((option) => ({ value: option, label: option }))"
             :placeholder="t('common.selectPlaceholder')"
+            :error="errors[hook.id]?.[field.id]"
+          />
+          <BaseCombobox
+            v-else-if="field.type === 'select_input' && field.id"
+            v-model="textValuesFor(hook)[field.id]"
+            :label="fieldLabel(field)"
+            :required="field.validations?.required === true"
+            :options="optionsFor(field).map((option) => ({ value: option, label: option }))"
+            :placeholder="field.attributes.placeholder || t('common.selectOrInputPlaceholder')"
             :error="errors[hook.id]?.[field.id]"
           />
           <fieldset v-else-if="field.type === 'checkboxes' && field.id" class="space-y-2">

@@ -10,7 +10,7 @@ const dataTemplatesDir = dataPath('templates');
 const templatesInitializedMarker = dataPath('.templates_initialized');
 
 export interface TemplateField {
-  type: 'markdown' | 'input' | 'textarea' | 'checkboxes' | 'dropdown';
+  type: 'markdown' | 'input' | 'textarea' | 'checkboxes' | 'dropdown' | 'select_input';
   id?: string;
   validations?: { required?: boolean };
   attributes: {
@@ -36,7 +36,7 @@ export interface CompletionHook {
 }
 
 export interface SelectionHookField {
-  type: 'input' | 'textarea' | 'checkboxes' | 'dropdown';
+  type: 'input' | 'textarea' | 'checkboxes' | 'dropdown' | 'select_input';
   id: string;
   validations?: { required?: boolean };
   attributes: {
@@ -210,7 +210,7 @@ function assertValidHookAction(value: unknown): asserts value is CompletionHookA
 function assertValidSelectionField(value: unknown): asserts value is SelectionHookField {
   if (
     !isRecord(value) ||
-    !['input', 'textarea', 'checkboxes', 'dropdown'].includes(String(value.type)) ||
+    !['input', 'textarea', 'checkboxes', 'dropdown', 'select_input'].includes(String(value.type)) ||
     typeof value.id !== 'string' ||
     !/^[a-zA-Z0-9_-]+$/.test(value.id) ||
     !isRecord(value.attributes) ||
@@ -219,7 +219,7 @@ function assertValidSelectionField(value: unknown): asserts value is SelectionHo
   ) {
     throw new Error('invalid selection hook field');
   }
-  if (value.type === 'checkboxes' || value.type === 'dropdown') {
+  if (value.type === 'checkboxes' || value.type === 'dropdown' || value.type === 'select_input') {
     const options = value.attributes.options;
     if (
       !Array.isArray(options) ||
@@ -490,7 +490,7 @@ export function renderBody(def: TemplateDefinition, formData: Record<string, str
       if (!field.id) continue;
       const label = field.attributes.label || field.id;
       const value = formData[field.id] || '';
-      if (field.type === 'input' || field.type === 'dropdown') {
+      if (field.type === 'input' || field.type === 'dropdown' || field.type === 'select_input') {
         parts.push(`**${label}:** ${value}`);
       } else if (field.type === 'textarea') {
         parts.push(`**${label}:**\n\n${value}`);
