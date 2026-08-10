@@ -1,6 +1,6 @@
 name: "完整语法示例"
 description: "展示输入、选择、复选框、Markdown、if 条件与完成钩子"
-title_prefix: "[示例] "
+title_prefix: "[示例]"
 labels: []
 body:
   - type: markdown

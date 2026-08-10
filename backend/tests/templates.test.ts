@@ -63,6 +63,7 @@ describe('GET /api/templates/:name', () => {
     expect(res.body.data.name).toBeDefined();
     expect(res.body.data.description).toBeDefined();
     expect(res.body.data.body).toBeInstanceOf(Array);
+    expect(res.body.data.title_prefix).toBe('[Bug]');
   });
 
   it('returns 404 for nonexistent template', async () => {
@@ -125,6 +126,7 @@ describe('POST /api/admin/templates', () => {
     const source = [
       'name: Custom Test',
       'description: A test template',
+      'title_prefix: "[Custom]  "',
       'body:',
       '  - type: input',
       '    id: reason',
@@ -156,6 +158,7 @@ describe('POST /api/admin/templates', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.data.name).toBe('custom_test');
+    expect(res.body.data.titlePrefix).toBe('[Custom]');
     expect(res.body.data.source).toBe(source);
     expect(JSON.parse(res.body.data.completionHooks)).toEqual([
       { event: 'closed', type: 'command', commands: ['say completed'] },

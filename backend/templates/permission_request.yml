@@ -1,6 +1,6 @@
 name: "权限申请"
 description: "申请权限组或特殊节点"
-title_prefix: "[权限] "
+title_prefix: "[权限]"
 labels: []
 body:
   - type: textarea

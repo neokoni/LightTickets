@@ -227,6 +227,14 @@ export function resolveTicketHidden(
   return mode;
 }
 
+function applyTitlePrefix(title: string, prefix: string | undefined): string {
+  if (!prefix) return title;
+  const titleWithoutPrefix = title.startsWith(prefix)
+    ? title.slice(prefix.length).trimStart()
+    : title;
+  return titleWithoutPrefix ? `${prefix} ${titleWithoutPrefix}` : prefix;
+}
+
 export async function create(input: CreateTicketInput) {
   let title = input.title;
   let body = input.body;
@@ -241,12 +249,10 @@ export async function create(input: CreateTicketInput) {
   }
   const formData = templateService.validateAndNormalizeFormData(def, input.formData || {});
   const hidden = resolveTicketHidden(def.hidden, input.hidden);
+  title = applyTitlePrefix(title, def.title_prefix);
 
   if (body === undefined) {
     body = templateService.renderBody(def, formData);
-    if (def.title_prefix && !title.startsWith(def.title_prefix)) {
-      title = def.title_prefix + title;
-    }
   }
 
   const attachmentIds = Array.from(new Set(input.attachmentIds ?? []));

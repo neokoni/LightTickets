@@ -1,6 +1,6 @@
 name: "建议"
 description: "提出改进建议"
-title_prefix: "[建议] "
+title_prefix: "[建议]"
 labels: []
 body:
   - type: textarea

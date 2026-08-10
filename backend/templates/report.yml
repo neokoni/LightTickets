@@ -1,6 +1,6 @@
 name: "举报"
 description: "举报违规玩家"
-title_prefix: "[举报] "
+title_prefix: "[举报]"
 labels: []
 body:
   - type: input

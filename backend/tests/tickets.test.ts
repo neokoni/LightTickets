@@ -163,6 +163,14 @@ describe('POST /api/tickets', () => {
     expect(res.body.data.template).toBe('bug_report');
   });
 
+  it('normalizes spacing when the submitted title already contains the template prefix', async () => {
+    const token = await createUserAndGetToken('prefixed-title@test.com');
+    const res = await createTicket(token, { title: '[Bug]Already prefixed' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.title).toBe('[Bug] Already prefixed');
+  });
+
   it('rejects unauthenticated request', async () => {
     const res = await request(app)
       .post('/api/tickets')
@@ -340,6 +348,24 @@ describe('ticketService.create', () => {
     expect(ticket.title).toBe('[Bug] Service Bug');
     expect(ticket.body).toContain('Something broke');
     expect(ticket.body).toContain('Step 1');
+  });
+
+  it('normalizes the template prefix when a trusted client supplies the rendered body', async () => {
+    await templateService.initTemplates();
+    const user = await prisma().user.create({
+      data: { email: 'rendered-create@test.com', passwordHash: 'x', username: 'rendered-create' },
+    });
+
+    const ticket = await ticketService.create({
+      title: '[Bug]Rendered client title',
+      body: 'Rendered body',
+      template: 'bug_report',
+      formData: { description: 'Something broke', reproduce: 'Step 1' },
+      authorId: user.id,
+    });
+
+    expect(ticket.title).toBe('[Bug] Rendered client title');
+    expect(ticket.body).toBe('Rendered body');
   });
 });
 

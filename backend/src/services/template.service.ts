@@ -287,6 +287,7 @@ function parseTemplateSource(raw: string): TemplateDefinition {
   if (
     (def.labels !== undefined &&
       (!Array.isArray(def.labels) || !def.labels.every((label) => typeof label === 'string'))) ||
+    (def.title_prefix !== undefined && typeof def.title_prefix !== 'string') ||
     (def.completion_hooks !== undefined && !Array.isArray(def.completion_hooks)) ||
     (def.enabled !== undefined && typeof def.enabled !== 'boolean')
   ) {
@@ -299,7 +300,7 @@ function parseTemplateSource(raw: string): TemplateDefinition {
   return {
     name: def.name,
     description: def.description,
-    title_prefix: def.title_prefix,
+    title_prefix: def.title_prefix?.trim() || undefined,
     labels: Array.isArray(def.labels) ? def.labels : [],
     body: def.body,
     completion_hooks: completionHooks,
@@ -670,7 +671,8 @@ function writeTemplateFile(
     enabled: data.enabled ?? true,
     hidden: normalizeTemplateHiddenMode(data.hidden),
   };
-  if (data.titlePrefix) template.title_prefix = data.titlePrefix;
+  const titlePrefix = data.titlePrefix?.trim();
+  if (titlePrefix) template.title_prefix = titlePrefix;
 
   fs.mkdirSync(dataTemplatesDir, { recursive: true });
   const content = yaml.dump(template, { lineWidth: -1, noRefs: true });
