@@ -19,11 +19,20 @@ public class AddComment {
     private static final Map<UUID, CommentSession> sessions = new ConcurrentHashMap<>();
 
     public static CommentSession getSession(Player player) {
-        return sessions.get(player.getUniqueId());
+        CommentSession session = sessions.get(player.getUniqueId());
+        if (session != null && session.isExpired()) {
+            sessions.remove(player.getUniqueId(), session);
+            return null;
+        }
+        return session;
     }
 
     public static void removeSession(Player player) {
         sessions.remove(player.getUniqueId());
+    }
+
+    public static void clearSessions() {
+        sessions.clear();
     }
 
     public AddComment(Player player, int ticketId) {
@@ -53,7 +62,7 @@ public class AddComment {
     }
 
     public static void submitComment(Player player, CommentSession session, String input) {
-        sessions.remove(player.getUniqueId());
+        sessions.remove(player.getUniqueId(), session);
 
         String body;
         if (session.isReply()) {

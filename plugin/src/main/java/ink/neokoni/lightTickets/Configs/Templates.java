@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateData;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateField;
+import ink.neokoni.lightTickets.Configs.Datas.TemplateOption;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.ApiClient;
 import ink.neokoni.lightTickets.Utils.ApiEndpoint;
@@ -157,14 +158,19 @@ public class Templates {
         String value = attrs.has("value") && !attrs.get("value").isJsonNull()
                 ? attrs.get("value").getAsString() : "";
 
-        List<String> options = new ArrayList<>();
+        List<TemplateOption> options = new ArrayList<>();
         if (attrs.has("options") && attrs.get("options").isJsonArray()) {
             for (JsonElement opt : attrs.getAsJsonArray("options")) {
                 if (opt.isJsonPrimitive()) {
-                    options.add(opt.getAsString());
+                    options.add(new TemplateOption(opt.getAsString(), false));
                 } else if (opt.isJsonObject()) {
                     JsonObject optObj = opt.getAsJsonObject();
-                    if (optObj.has("label")) options.add(optObj.get("label").getAsString());
+                    if (optObj.has("label") && !optObj.get("label").isJsonNull()) {
+                        boolean optionRequired = optObj.has("required")
+                                && !optObj.get("required").isJsonNull()
+                                && optObj.get("required").getAsBoolean();
+                        options.add(new TemplateOption(optObj.get("label").getAsString(), optionRequired));
+                    }
                 }
             }
         }

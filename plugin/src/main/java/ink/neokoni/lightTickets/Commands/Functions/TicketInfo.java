@@ -31,7 +31,8 @@ import java.util.regex.Pattern;
 
 public class TicketInfo {
     private static final int COMMENTS_PER_PAGE = 5;
-    private static final Map<UUID, List<JsonObject>> playerComments = new ConcurrentHashMap<>();
+    private static final long COMMENTS_CACHE_TTL_MILLIS = 10 * 60 * 1_000L;
+    private static final Map<CommentCacheKey, CachedComments> playerComments = new ConcurrentHashMap<>();
     private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\((https?://[^\\)]+)\\)");
     private static final Pattern URL_PATTERN = Pattern.compile("(https?://\\S+)");
     private static final Pattern FILE_PATTERN = Pattern.compile("\\[([^\\]]+\\.[a-zA-Z0-9]+)\\]");
@@ -137,7 +138,8 @@ public class TicketInfo {
             commentList.add(el.getAsJsonObject());
         }
 
-        playerComments.put(player.getUniqueId(), commentList);
+        playerComments.put(new CommentCacheKey(player.getUniqueId(), ticketId),
+                new CachedComments(commentList, System.currentTimeMillis() + COMMENTS_CACHE_TTL_MILLIS));
 
         if (commentList.isEmpty()) {
             player.sendMessage(LangUtils.getLang("ticket.comments_empty"));
@@ -207,9 +209,28 @@ public class TicketInfo {
         return prefixComp.append(header).append(content);
     }
 
-    public static List<JsonObject> getPlayerComments(UUID playerUuid) {
-        return playerComments.get(playerUuid);
+    public static List<JsonObject> getPlayerComments(UUID playerUuid, int ticketId) {
+        CommentCacheKey key = new CommentCacheKey(playerUuid, ticketId);
+        CachedComments cached = playerComments.get(key);
+        if (cached == null) return null;
+        if (cached.expiresAtMillis() <= System.currentTimeMillis()) {
+            playerComments.remove(key, cached);
+            return null;
+        }
+        return cached.comments();
     }
+
+    public static void removePlayerComments(UUID playerUuid) {
+        playerComments.keySet().removeIf(key -> key.playerUuid().equals(playerUuid));
+    }
+
+    public static void clearPlayerComments() {
+        playerComments.clear();
+    }
+
+    private record CommentCacheKey(UUID playerUuid, int ticketId) {}
+
+    private record CachedComments(List<JsonObject> comments, long expiresAtMillis) {}
 
     private Component formatCommentBody(String body) {
         if (body == null || body.isEmpty()) {

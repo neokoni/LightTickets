@@ -80,13 +80,21 @@ public class ApiClient {
                                                              @Nullable Map<String, String> pathParams,
                                                              @Nullable Map<String, String> queryParams,
                                                              @Nullable String body) {
+        return requestWithStatusForPlayer(player, endpoint, pathParams, queryParams, body, true);
+    }
+
+    public static HttpUtils.Resp requestWithStatusForPlayer(Player player, ApiEndpoint endpoint,
+                                                             @Nullable Map<String, String> pathParams,
+                                                             @Nullable Map<String, String> queryParams,
+                                                             @Nullable String body,
+                                                             boolean markBindingUnavailable) {
         String sessionToken = PlayerSessionManager.getSessionToken(player);
         HttpUtils.Resp resp = request(endpoint, pathParams, queryParams, body, sessionToken);
         if (resp != null && resp.status() == 401) {
             PlayerSessionManager.invalidate(player.getUniqueId());
             sessionToken = PlayerSessionManager.getSessionToken(player);
             resp = request(endpoint, pathParams, queryParams, body, sessionToken);
-            if (resp != null && resp.status() == 401) {
+            if (markBindingUnavailable && resp != null && resp.status() == 401) {
                 PlayerSessionManager.markBindingUnavailable(player);
             }
         }

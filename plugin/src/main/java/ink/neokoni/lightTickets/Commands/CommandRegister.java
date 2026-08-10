@@ -213,7 +213,7 @@ public class CommandRegister {
     }
 
     private static void handleReply(Player player, int ticketId, int commentIndex) {
-        List<JsonObject> comments = TicketInfo.getPlayerComments(player.getUniqueId());
+        List<JsonObject> comments = TicketInfo.getPlayerComments(player.getUniqueId(), ticketId);
         if (comments == null || commentIndex < 0 || commentIndex >= comments.size()) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", LangUtils.getRawLang("errors.invalid_response"))));

@@ -2,6 +2,10 @@ package ink.neokoni.lightTickets;
 
 import ink.neokoni.lightTickets.Commands.CommandRegister;
 import ink.neokoni.lightTickets.Configs.Templates;
+import ink.neokoni.lightTickets.Commands.Functions.AddComment;
+import ink.neokoni.lightTickets.Commands.Functions.CreateTicket;
+import ink.neokoni.lightTickets.Commands.Functions.TicketInfo;
+import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.Listeners.PlayerJoinLeaveListener;
 import ink.neokoni.lightTickets.Listeners.TicketChatListener;
 import ink.neokoni.lightTickets.Utils.ConfigUtils;
@@ -35,5 +39,9 @@ public final class LightTickets extends JavaPlugin {
     public void onDisable() {
         WebSocketClient.shutdown();
         DataRefreshManager.shutdown();
+        AddComment.clearSessions();
+        CreateTicket.clearSessions();
+        PlayerData.clearAll();
+        TicketInfo.clearPlayerComments();
     }
 }

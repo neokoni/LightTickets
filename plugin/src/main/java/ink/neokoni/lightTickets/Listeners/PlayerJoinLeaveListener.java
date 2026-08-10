@@ -1,6 +1,7 @@
 package ink.neokoni.lightTickets.Listeners;
 
 import ink.neokoni.lightTickets.Configs.PlayerData;
+import ink.neokoni.lightTickets.Commands.Functions.TicketInfo;
 import ink.neokoni.lightTickets.Utils.DataRefreshManager;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -20,5 +21,6 @@ public class PlayerJoinLeaveListener implements Listener {
         var uuid = event.getPlayer().getUniqueId();
         DataRefreshManager.onPlayerQuit(uuid);
         PlayerData.removePlayerData(uuid);
+        TicketInfo.removePlayerComments(uuid);
     }
 }

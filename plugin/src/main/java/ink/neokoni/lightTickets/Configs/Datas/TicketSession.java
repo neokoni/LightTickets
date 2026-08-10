@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Getter
 @Setter
 public class TicketSession {
+    public static final long TTL_MILLIS = 10 * 60 * 1_000L;
     private Player player;
     private TemplateData template;
     private int step;
@@ -22,6 +23,7 @@ public class TicketSession {
     private String gameMode;
     private boolean includeContext;
     private Boolean hidden;
+    private final long createdAtMillis;
 
     public TicketSession(Player player, TemplateData template,
                          String world, int x, int y, int z, String gameMode) {
@@ -41,6 +43,7 @@ public class TicketSession {
             case "false" -> false;
             default -> null;
         };
+        this.createdAtMillis = System.currentTimeMillis();
     }
 
     public boolean isTitleStep() {
@@ -63,5 +66,9 @@ public class TicketSession {
     public TemplateField currentField() {
         if (step < 1 || step > template.getFields().size()) return null;
         return template.getFields().get(step - 1);
+    }
+
+    public boolean isExpired() {
+        return System.currentTimeMillis() - createdAtMillis >= TTL_MILLIS;
     }
 }

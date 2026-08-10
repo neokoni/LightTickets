@@ -75,6 +75,12 @@ public class PlayerData {
         PlayerSessionManager.invalidate(playerUuid);
     }
 
+    public static void clearAll() {
+        cachedPlayerBind.clear();
+        cachedTicketList.clear();
+        PlayerSessionManager.clearAll();
+    }
+
     public static boolean claimHookExecution(String hookId) {
         return sqlAdapter.claimHookReceipt(hookId);
     }

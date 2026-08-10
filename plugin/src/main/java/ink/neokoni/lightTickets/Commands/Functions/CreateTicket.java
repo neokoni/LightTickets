@@ -3,6 +3,7 @@ package ink.neokoni.lightTickets.Commands.Functions;
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateData;
 import ink.neokoni.lightTickets.Configs.Datas.TemplateField;
+import ink.neokoni.lightTickets.Configs.Datas.TemplateOption;
 import ink.neokoni.lightTickets.Configs.Datas.TicketSession;
 import ink.neokoni.lightTickets.Configs.Templates;
 import ink.neokoni.lightTickets.LightTickets;
@@ -27,11 +28,20 @@ public class CreateTicket {
     private static final Map<UUID, TicketSession> sessions = new ConcurrentHashMap<>();
 
     public static TicketSession getSession(Player player) {
-        return sessions.get(player.getUniqueId());
+        TicketSession session = sessions.get(player.getUniqueId());
+        if (session != null && session.isExpired()) {
+            sessions.remove(player.getUniqueId(), session);
+            return null;
+        }
+        return session;
     }
 
     public static void removeSession(Player player) {
         sessions.remove(player.getUniqueId());
+    }
+
+    public static void clearSessions() {
+        sessions.clear();
     }
 
     public CreateTicket(Player player) {
@@ -139,17 +149,17 @@ public class CreateTicket {
             }
         } else if (field.isSelectType()) {
             player.sendMessage(LangUtils.getLang("ticket.field_single_select", placeholders));
-            List<String> options = field.getOptions();
+            List<TemplateOption> options = field.getOptions();
             for (int i = 0; i < options.size(); i++) {
                 player.sendMessage(LangUtils.getLang("ticket.option",
-                        Map.of("{num}", String.valueOf(i + 1), "{option}", options.get(i))));
+                        Map.of("{num}", String.valueOf(i + 1), "{option}", options.get(i).getLabel())));
             }
         } else if (field.isMultiSelectType()) {
             player.sendMessage(LangUtils.getLang("ticket.field_multi_select", placeholders));
-            List<String> options = field.getOptions();
+            List<TemplateOption> options = field.getOptions();
             for (int i = 0; i < options.size(); i++) {
                 player.sendMessage(LangUtils.getLang("ticket.option",
-                        Map.of("{num}", String.valueOf(i + 1), "{option}", options.get(i))));
+                        Map.of("{num}", String.valueOf(i + 1), "{option}", options.get(i).getLabel())));
             }
         }
     }

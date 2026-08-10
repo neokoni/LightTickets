@@ -61,6 +61,7 @@ public class TicketChatListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         CreateTicket.removeSession(event.getPlayer());
+        AddComment.removeSession(event.getPlayer());
     }
 
     private void handleTitleInput(Player player, TicketSession session, String input) {
@@ -113,8 +114,12 @@ public class TicketChatListener implements Listener {
                         Map.of("{message}", error)));
                 return;
             }
-            int idx = Integer.parseInt(input) - 1;
-            session.getFormData().put(field.getId(), field.getOptions().get(idx));
+            if (input.isEmpty()) {
+                session.getFormData().put(field.getId(), "");
+            } else {
+                int idx = Integer.parseInt(input) - 1;
+                session.getFormData().put(field.getId(), field.getOptions().get(idx).getLabel());
+            }
         } else if (field.isMultiSelectType()) {
             String error = validateMultiSelect(field, input);
             if (error != null) {
@@ -122,12 +127,14 @@ public class TicketChatListener implements Listener {
                         Map.of("{message}", error)));
                 return;
             }
-            String[] parts = input.split("\\s+");
             StringBuilder labels = new StringBuilder();
-            for (String p : parts) {
-                int idx = Integer.parseInt(p) - 1;
-                if (labels.length() > 0) labels.append(",");
-                labels.append(field.getOptions().get(idx));
+            if (!input.isEmpty()) {
+                String[] parts = input.split("\\s+");
+                for (String p : parts) {
+                    int idx = Integer.parseInt(p) - 1;
+                    if (labels.length() > 0) labels.append(",");
+                    labels.append(field.getOptions().get(idx).getLabel());
+                }
             }
             session.getFormData().put(field.getId(), labels.toString());
         }
@@ -183,11 +190,13 @@ public class TicketChatListener implements Listener {
     }
 
     private String validateMultiSelect(TemplateField field, String input) {
-        if (field.isRequired() && input.isEmpty()) {
+        boolean hasRequiredOption = field.getOptions().stream().anyMatch(option -> option.isRequired());
+        if (input.isEmpty() && (field.isRequired() || hasRequiredOption)) {
             return LangUtils.getRawLang("ticket.err_multi_required");
         }
         if (!input.isEmpty()) {
             String[] parts = input.split("\\s+");
+            java.util.Set<Integer> selected = new java.util.HashSet<>();
             for (String p : parts) {
                 try {
                     int idx = Integer.parseInt(p);
@@ -195,8 +204,14 @@ public class TicketChatListener implements Listener {
                         return LangUtils.getRawLang("ticket.err_range",
                                 Map.of("{max}", String.valueOf(field.getOptions().size())));
                     }
+                    selected.add(idx);
                 } catch (NumberFormatException e) {
                     return LangUtils.getRawLang("ticket.err_multi_number");
+                }
+            }
+            for (int i = 0; i < field.getOptions().size(); i++) {
+                if (field.getOptions().get(i).isRequired() && !selected.contains(i + 1)) {
+                    return LangUtils.getRawLang("ticket.err_multi_required");
                 }
             }
         }

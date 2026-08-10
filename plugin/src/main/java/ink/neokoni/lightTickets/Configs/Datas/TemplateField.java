@@ -15,11 +15,11 @@ public class TemplateField {
     private String description;
     private String placeholder;
     private String value;
-    private List<String> options;
+    private List<TemplateOption> options;
 
     public TemplateField(String type, String id, boolean required, String label,
                          String description, String placeholder, String value,
-                         List<String> options) {
+                         List<?> options) {
         this.type = type;
         this.id = id;
         this.required = required;
@@ -27,7 +27,11 @@ public class TemplateField {
         this.description = description;
         this.placeholder = placeholder;
         this.value = value;
-        this.options = options;
+        this.options = options == null ? new java.util.ArrayList<>() : options.stream()
+                .map(option -> option instanceof TemplateOption templateOption
+                        ? templateOption
+                        : new TemplateOption(String.valueOf(option), false))
+                .toList();
     }
 
     public boolean isInputType() {

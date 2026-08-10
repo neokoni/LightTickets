@@ -131,23 +131,25 @@ public class ChangeStatus {
         JsonObject ticket = fetchTicket(player, ticketId);
         if (ticket == null) return false;
 
-        TicketStatus currentStatus = TicketStatus.fromKey(ticket.has("status") && !ticket.get("status").isJsonNull()
-                ? ticket.get("status").getAsString()
-                : "");
-        if (!nextStatus.canPlayerTransitionFrom(currentStatus)) {
-            return false;
-        }
-
         int authorId = -1;
         if (ticket.has("authorId") && !ticket.get("authorId").isJsonNull()) {
             authorId = ticket.get("authorId").getAsInt();
         }
 
         JsonObject account = fetchAccount(player);
-        return account != null
+        boolean isAuthor = account != null
                 && account.has("id")
                 && !account.get("id").isJsonNull()
                 && account.get("id").getAsInt() == authorId;
+        if (!isAuthor) return false;
+
+        // The picker only needs authorization. A transition check requires a target status.
+        if (nextStatus == null) return true;
+
+        TicketStatus currentStatus = TicketStatus.fromKey(ticket.has("status") && !ticket.get("status").isJsonNull()
+                ? ticket.get("status").getAsString()
+                : "");
+        return nextStatus.canPlayerTransitionFrom(currentStatus);
     }
 
     private JsonObject fetchTicket(Player player, int ticketId) {
