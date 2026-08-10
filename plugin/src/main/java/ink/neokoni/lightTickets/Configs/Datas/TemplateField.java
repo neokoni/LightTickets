@@ -35,7 +35,11 @@ public class TemplateField {
     }
 
     public boolean isInputType() {
-        return "input".equals(type) || "textarea".equals(type);
+        return "input".equals(type) || "textarea".equals(type) || "select_input".equals(type);
+    }
+
+    public boolean isSelectInputType() {
+        return "select_input".equals(type);
     }
 
     public boolean isSelectType() {

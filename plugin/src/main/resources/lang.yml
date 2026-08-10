@@ -74,6 +74,8 @@ ticket:
   markdown: "<gray>{content}"
   field_input: "<color:#ffdbab>请输入 {field} 的内容:"
   field_input_placeholder: "<color:#ffdbab>请输入 {field} <gray>({placeholder})"
+  field_select_input: "<color:#ffdbab>请选择或输入 {field} (发送选项编号或自定义内容):"
+  field_select_input_placeholder: "<color:#ffdbab>请选择或输入 {field} <gray>({placeholder}) <gray>(发送选项编号或自定义内容)"
   field_single_select: "<color:#ffdbab>请选择 {field}, 发送选项编号 (仅一个):"
   field_multi_select: "<color:#ffdbab>请选择 {field}, 发送选项编号 (多个用空格分隔):"
   option: "<white>  <color:#96bfff>{num}. <white>{option}"

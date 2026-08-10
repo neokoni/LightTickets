@@ -140,7 +140,19 @@ public class CreateTicket {
         String label = field.getLabel() != null ? field.getLabel() : field.getId();
         Map<String, String> placeholders = Map.of("{field}", label);
 
-        if (field.isInputType()) {
+        if (field.isSelectInputType()) {
+            if (field.getPlaceholder() != null && !field.getPlaceholder().isEmpty()) {
+                player.sendMessage(LangUtils.getLang("ticket.field_select_input_placeholder",
+                        Map.of("{field}", label, "{placeholder}", field.getPlaceholder())));
+            } else {
+                player.sendMessage(LangUtils.getLang("ticket.field_select_input", placeholders));
+            }
+            List<TemplateOption> options = field.getOptions();
+            for (int i = 0; i < options.size(); i++) {
+                player.sendMessage(LangUtils.getLang("ticket.option",
+                        Map.of("{num}", String.valueOf(i + 1), "{option}", options.get(i).getLabel())));
+            }
+        } else if (field.isInputType()) {
             if (field.getPlaceholder() != null && !field.getPlaceholder().isEmpty()) {
                 player.sendMessage(LangUtils.getLang("ticket.field_input_placeholder",
                         Map.of("{field}", label, "{placeholder}", field.getPlaceholder())));

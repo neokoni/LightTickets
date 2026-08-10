@@ -100,7 +100,14 @@ public class TicketChatListener implements Listener {
             return;
         }
 
-        if (field.isInputType()) {
+        if (field.isSelectInputType()) {
+            if (field.isRequired() && input.isEmpty()) {
+                player.sendMessage(LangUtils.getLang("ticket.field_required",
+                        Map.of("{field}", field.getLabel())));
+                return;
+            }
+            session.getFormData().put(field.getId(), normalizeSelectInput(field, input));
+        } else if (field.isInputType()) {
             if (field.isRequired() && input.isEmpty()) {
                 player.sendMessage(LangUtils.getLang("ticket.field_required",
                         Map.of("{field}", field.getLabel())));
@@ -187,6 +194,20 @@ public class TicketChatListener implements Listener {
             }
         }
         return null;
+    }
+
+    private String normalizeSelectInput(TemplateField field, String input) {
+        if (!input.isEmpty()) {
+            try {
+                int idx = Integer.parseInt(input);
+                if (idx >= 1 && idx <= field.getOptions().size()) {
+                    return field.getOptions().get(idx - 1).getLabel();
+                }
+            } catch (NumberFormatException ignored) {
+                // Non-numeric values are valid custom input for select_input fields.
+            }
+        }
+        return input;
     }
 
     private String validateMultiSelect(TemplateField field, String input) {
