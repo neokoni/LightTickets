@@ -534,12 +534,12 @@ watch(
                     )!.name
                   }}
                 </span>
-                <span class="text-xs text-slate-400">{{ timeAgo(item.createdAt) }}</span>
                 <span
                   v-if="item.action === AUDIT_ACTION.COMPLETION_HOOK && item.newValue"
                   class="text-slate-600 dark:text-slate-300"
                   >{{ item.newValue }}</span
                 >
+                <span class="text-xs text-slate-400">{{ timeAgo(item.createdAt) }}</span>
               </div>
               <!-- Title change: inline strikethrough old → new -->
               <div
