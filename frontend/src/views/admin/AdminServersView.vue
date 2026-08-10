@@ -57,7 +57,7 @@ async function regenerate(id: string) {
   try {
     const { apiKey } = await apiRegenerateKey(id);
     const idx = servers.value.findIndex((s) => s.id === id);
-    if (idx !== -1) servers.value[idx].apiKey = apiKey;
+    if (idx !== -1) servers.value[idx] = { ...servers.value[idx], apiKey };
     ui.toast(t('admin.servers.keyRegenerated'), ToastType.SUCCESS);
   } catch (e) {
     handleError(e);
@@ -83,7 +83,7 @@ async function saveEdit() {
       description: editForm.value.description.trim() || null,
     });
     const idx = servers.value.findIndex((s) => s.id === updated.id);
-    if (idx !== -1) servers.value[idx] = updated;
+    if (idx !== -1) servers.value[idx] = { ...updated, apiKey: servers.value[idx].apiKey };
     showEditModal.value = false;
     editingServer.value = null;
     ui.toast(t('admin.servers.updated'), ToastType.SUCCESS);
@@ -130,6 +130,7 @@ function maskApiKey(apiKey: string) {
 }
 
 async function copyToClipboard(server: Server) {
+  if (!server.apiKey) return;
   try {
     await navigator.clipboard.writeText(server.apiKey);
     copiedId.value = server.id;
@@ -201,7 +202,11 @@ onMounted(fetchServers);
             </BaseButton>
           </div>
 
-          <div class="admin-server-key" :data-visible="isKeyVisible(server.id)">
+          <div
+            v-if="server.apiKey"
+            class="admin-server-key"
+            :data-visible="isKeyVisible(server.id)"
+          >
             <span
               class="shrink-0 text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400"
               >{{ t('admin.servers.apiKey') }}</span

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 import * as minecraftHookDeliveryService from '../src/services/minecraft-hook-delivery.service.js';
 import { generateAccessToken } from '../src/utils/token.js';
 
@@ -10,8 +10,8 @@ const app = createApp();
 describe('minecraft hook delivery outbox', () => {
   it('creates stable hook IDs and accepts ACK only from the target server', async () => {
     const [server, otherServer] = await Promise.all([
-      prisma().server.create({ data: { name: 'hook-outbox', apiKey: 'hook-outbox-key' } }),
-      prisma().server.create({ data: { name: 'hook-outbox-other', apiKey: 'hook-other-key' } }),
+      prisma().server.create({ data: serverData('hook-outbox', 'hook-outbox-key') }),
+      prisma().server.create({ data: serverData('hook-outbox-other', 'hook-other-key') }),
     ]);
     const user = await prisma().user.create({
       data: { email: 'hook-outbox@test.com', username: 'hookoutbox', passwordHash: 'x' },
@@ -79,7 +79,7 @@ describe('minecraft hook delivery outbox', () => {
 
   it('moves exhausted deliveries to a dead letter and supports manual retry', async () => {
     const server = await prisma().server.create({
-      data: { name: 'hook-dead-letter', apiKey: 'hook-dead-letter-key' },
+      data: serverData('hook-dead-letter', 'hook-dead-letter-key'),
     });
     const user = await prisma().user.create({
       data: { email: 'hook-dead-letter@test.com', username: 'hookdeadletter', passwordHash: 'x' },

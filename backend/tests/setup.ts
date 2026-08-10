@@ -2,6 +2,7 @@ import fs from 'fs';
 import { beforeEach } from 'vitest';
 
 import { DATA_DIR, dataPath } from '../src/paths.js';
+import { hashServerApiKey } from '../src/utils/server-key.js';
 
 // Tests run against an isolated data directory (LT_SERVER_DATA_DIR, set in
 // vitest.config.ts) so a run can never touch the real data/ folder — no more
@@ -38,6 +39,10 @@ const { initPrisma, getPrisma } = await import('../src/db.js');
 
 initPrisma();
 const prisma = () => getPrisma();
+
+export function serverData(name: string, apiKey: string) {
+  return { name, apiKeyHash: hashServerApiKey(apiKey) };
+}
 
 beforeEach(async () => {
   await prisma().refreshSession.deleteMany();

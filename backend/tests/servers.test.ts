@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
+import { hashServerApiKey } from '../src/utils/server-key.js';
+import { migrateLegacyServerApiKeys } from '../src/services/server.service.js';
 
 const app = createApp();
 
@@ -27,13 +29,17 @@ async function createUserAndGetToken(email = 'user@test.com') {
 describe('GET /api/servers', () => {
   it('returns all servers for admin', async () => {
     const token = await createAdminAndGetToken('admin-srv@test.com');
-    await prisma().server.create({ data: { name: 'test-srv', apiKey: 'key123' } });
+    await prisma().server.create({
+      data: { name: 'test-srv', apiKeyHash: hashServerApiKey('key123') },
+    });
 
     const res = await request(app).get('/api/servers').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
     expect(res.body.data).toBeInstanceOf(Array);
     expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.data[0]).not.toHaveProperty('apiKey');
+    expect(res.body.data[0]).not.toHaveProperty('apiKeyHash');
   });
 
   it('rejects non-admin user', async () => {
@@ -57,6 +63,11 @@ describe('POST /api/servers', () => {
     expect(res.status).toBe(201);
     expect(res.body.data.name).toBe('new-server');
     expect(res.body.data.apiKey).toMatch(/^lt_/);
+    expect(res.body.data).not.toHaveProperty('apiKeyHash');
+
+    const stored = await prisma().server.findUniqueOrThrow({ where: { id: res.body.data.id } });
+    expect(stored.apiKeyHash).toBe(hashServerApiKey(res.body.data.apiKey));
+    expect(stored.apiKeyHash).not.toBe(res.body.data.apiKey);
   });
 
   it('rejects duplicate server name', async () => {
@@ -92,6 +103,28 @@ describe('POST /api/servers/:id/regenerate-key', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.apiKey).not.toBe(oldKey);
     expect(res.body.data.apiKey).toMatch(/^lt_/);
+    expect(res.body.data).not.toHaveProperty('apiKeyHash');
+
+    const stored = await prisma().server.findUniqueOrThrow({ where: { id: created.body.data.id } });
+    expect(stored.apiKeyHash).toBe(hashServerApiKey(res.body.data.apiKey));
+    expect(stored.apiKeyHash).not.toBe(hashServerApiKey(oldKey));
+  });
+});
+
+describe('legacy server API keys', () => {
+  it('hashes plaintext records without rehashing migrated records', async () => {
+    const legacyKey = 'legacy-server-key';
+    const server = await prisma().server.create({
+      data: { name: 'legacy-server', apiKeyHash: legacyKey },
+    });
+
+    await migrateLegacyServerApiKeys();
+    const migrated = await prisma().server.findUniqueOrThrow({ where: { id: server.id } });
+    expect(migrated.apiKeyHash).toBe(hashServerApiKey(legacyKey));
+
+    await migrateLegacyServerApiKeys();
+    const unchanged = await prisma().server.findUniqueOrThrow({ where: { id: server.id } });
+    expect(unchanged.apiKeyHash).toBe(migrated.apiKeyHash);
   });
 });
 
@@ -110,7 +143,7 @@ describe('PATCH /api/servers/:id', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.name).toBe('new-server-name');
-    expect(res.body.data.apiKey).toBe(created.body.data.apiKey);
+    expect(res.body.data).not.toHaveProperty('apiKey');
   });
 
   it('rejects duplicate server name on rename', async () => {

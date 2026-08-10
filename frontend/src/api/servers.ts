@@ -6,7 +6,7 @@ export function apiGetServers() {
 }
 
 export function apiCreateServer(data: { name: string; address?: string; description?: string }) {
-  return apiFetch<Server>('/servers', {
+  return apiFetch<Server & { apiKey: string }>('/servers', {
     method: 'POST',
     body: JSON.stringify(data),
   });

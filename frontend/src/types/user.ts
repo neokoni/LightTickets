@@ -58,7 +58,7 @@ export interface EmailChangeRequestResponse {
 export interface Server {
   id: string;
   name: string;
-  apiKey: string;
+  apiKey?: string;
   address?: string;
   description?: string;
   createdAt: string;

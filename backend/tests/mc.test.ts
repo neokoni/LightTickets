@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import bcrypt from 'bcrypt';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import { generateAccessToken } from '../src/utils/token.js';
 
@@ -15,7 +15,9 @@ function createMinecraftUuid(): string {
 }
 
 async function createServer(name: string) {
-  return prisma().server.create({ data: { name, apiKey: `${name}-key` } });
+  const apiKey = `${name}-key`;
+  const server = await prisma().server.create({ data: serverData(name, apiKey) });
+  return { ...server, apiKey };
 }
 
 async function createAuthenticatedPlayer(

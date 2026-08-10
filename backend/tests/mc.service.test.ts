@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 import * as mcService from '../src/services/mc.service.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import type { MinecraftPlayerIdentity } from '../src/middleware/minecraft-player-session.js';
@@ -11,7 +11,7 @@ import { generateLinkCode } from '../src/utils/link-code.js';
 createApp();
 
 async function createServer(name: string) {
-  return prisma().server.create({ data: { name, apiKey: `${name}-key` } });
+  return prisma().server.create({ data: serverData(name, `${name}-key`) });
 }
 
 async function createLinkedUser(input: {

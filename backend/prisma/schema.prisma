@@ -204,7 +204,7 @@ model FederatedAuthRegistration {
 model Server {
   id          String     @id @default(uuid())
   name        String     @unique
-  apiKey      String     @unique @map("api_key")
+  apiKeyHash   String     @unique @map("api_key")
   address     String?
   description String?
   createdAt   DateTime   @default(now()) @map("created_at")

@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
 import * as refreshSessionService from '../src/services/refresh-session.service.js';
@@ -771,8 +771,9 @@ describe('POST /api/auth/password-reset', () => {
 
 describe('POST /api/auth/link-minecraft', () => {
   it('binds a minecraft account using a link code', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'link-srv', apiKey: 'link-srv-key' },
+    const serverKey = 'link-srv-key';
+    await prisma().server.create({
+      data: serverData('link-srv', serverKey),
     });
     const reg = await request(app)
       .post('/api/auth/register')
@@ -780,7 +781,7 @@ describe('POST /api/auth/link-minecraft', () => {
 
     const code = await request(app)
       .post('/api/mc/link-code')
-      .set('X-Server-Key', server.apiKey)
+      .set('X-Server-Key', serverKey)
       .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440030', minecraftName: 'Linker' });
 
     const res = await request(app)
@@ -794,7 +795,7 @@ describe('POST /api/auth/link-minecraft', () => {
 
     const session = await request(app)
       .post('/api/mc/session')
-      .set('X-Server-Key', server.apiKey)
+      .set('X-Server-Key', serverKey)
       .send({
         minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
         playerCredential: code.body.data.playerCredential,
@@ -868,8 +869,9 @@ describe('POST /api/auth/link-minecraft', () => {
 
 describe('DELETE /api/auth/link-minecraft', () => {
   it('unbinds the current user minecraft account', async () => {
-    const server = await prisma().server.create({
-      data: { name: 'unlink-srv', apiKey: 'unlink-srv-key' },
+    const serverKey = 'unlink-srv-key';
+    await prisma().server.create({
+      data: serverData('unlink-srv', serverKey),
     });
     const reg = await request(app)
       .post('/api/auth/register')
@@ -877,7 +879,7 @@ describe('DELETE /api/auth/link-minecraft', () => {
 
     const code = await request(app)
       .post('/api/mc/link-code')
-      .set('X-Server-Key', server.apiKey)
+      .set('X-Server-Key', serverKey)
       .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440031', minecraftName: 'Unlinker' });
 
     await request(app)

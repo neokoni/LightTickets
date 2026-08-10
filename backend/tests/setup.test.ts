@@ -4,7 +4,7 @@ import fs from 'fs';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { dataPath } from '../src/paths.js';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 import createSetupRoutes from '../src/routes/setup.js';
 
 const app = createApp({ enableInitialSetup: true });
@@ -1137,7 +1137,7 @@ describe('POST /api/auth/link-minecraft', () => {
     const token = regRes.body.data.accessToken;
 
     await prisma().server.create({
-      data: { name: 'link-srv', apiKey: 'link-key' },
+      data: serverData('link-srv', 'link-key'),
     });
 
     const codeRes = await request(app)

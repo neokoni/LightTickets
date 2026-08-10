@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { dataPath } from '../src/paths.js';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import * as templateService from '../src/services/template.service.js';
 import * as ticketService from '../src/services/ticket.service.js';
@@ -209,8 +209,9 @@ describe('ticket visibility on Minecraft routes', () => {
       role: 'staff',
       minecraftUuid: staffUuid,
     });
+    const serverKey = 'visibility-mc-key';
     const server = await prisma().server.create({
-      data: { name: 'visibility-mc', apiKey: 'visibility-mc-key' },
+      data: serverData('visibility-mc', serverKey),
     });
     const ticket = await prisma().ticket.create({
       data: {
@@ -233,7 +234,7 @@ describe('ticket visibility on Minecraft routes', () => {
       });
       const session = await request(app)
         .post('/api/mc/session')
-        .set('X-Server-Key', server.apiKey)
+        .set('X-Server-Key', serverKey)
         .send({ minecraftUuid, playerCredential: credential });
       return session.body.data.sessionToken as string;
     }
@@ -244,11 +245,11 @@ describe('ticket visibility on Minecraft routes', () => {
     async function mcGet(url: string, session: string) {
       return request(app)
         .get(url)
-        .set('X-Server-Key', server.apiKey)
+        .set('X-Server-Key', serverKey)
         .set('X-Player-Session', session);
     }
 
-    const publicList = await request(app).get('/api/mc/tickets').set('X-Server-Key', server.apiKey);
+    const publicList = await request(app).get('/api/mc/tickets').set('X-Server-Key', serverKey);
     const authorList = await mcGet(`/api/mc/tickets?minecraftUuid=${authorUuid}`, authorSession);
     const otherList = await mcGet(`/api/mc/tickets?minecraftUuid=${otherUuid}`, otherSession);
     const staffList = await mcGet(`/api/mc/tickets?minecraftUuid=${staffUuid}`, staffSession);

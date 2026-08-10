@@ -29,6 +29,9 @@ async function startFullApp() {
   const { initPrisma } = await import('./db.js');
   initPrisma();
 
+  const { migrateLegacyServerApiKeys } = await import('./services/server.service.js');
+  await migrateLegacyServerApiKeys();
+
   const { initTemplates } = await import('./services/template.service.js');
   await initTemplates();
 

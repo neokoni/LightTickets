@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import bcrypt from 'bcrypt';
 import { CommentSource } from '@prisma/client';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 
 vi.mock('../src/socket/events.js', () => ({
   emitTicketUpdate: vi.fn(),
@@ -37,7 +37,7 @@ describe('comment Minecraft notifications', () => {
 
   it('notifies the ticket author when another user comments', async () => {
     const server = await prisma().server.create({
-      data: { name: 'comment-notify-author', apiKey: 'comment-notify-author-key' },
+      data: serverData('comment-notify-author', 'comment-notify-author-key'),
     });
     const author = await createUser({
       email: 'comment-notify-author@test.com',
@@ -75,7 +75,7 @@ describe('comment Minecraft notifications', () => {
 
   it('notifies assigned staff when the ticket author comments from Minecraft', async () => {
     const server = await prisma().server.create({
-      data: { name: 'comment-notify-assignee', apiKey: 'comment-notify-assignee-key' },
+      data: serverData('comment-notify-assignee', 'comment-notify-assignee-key'),
     });
     const author = await createUser({
       email: 'comment-notify-mc-author@test.com',
@@ -116,7 +116,7 @@ describe('comment Minecraft notifications', () => {
 
   it('falls back to all linked staff when an author Minecraft comment has no assignee', async () => {
     const server = await prisma().server.create({
-      data: { name: 'comment-notify-staff-fallback', apiKey: 'comment-notify-staff-fallback-key' },
+      data: serverData('comment-notify-staff-fallback', 'comment-notify-staff-fallback-key'),
     });
     const author = await createUser({
       email: 'comment-notify-fallback-author@test.com',

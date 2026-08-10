@@ -24,6 +24,7 @@ import { normalizeSiteUrl, resolvePasswordResetOrigin } from '../utils/site-url.
 import { normalizeIpAddress } from '../trusted-proxy.js';
 import * as refreshSessionService from './refresh-session.service.js';
 import { MIN_PASSWORD_LENGTH } from '../constants/auth.js';
+import { hashServerApiKey } from '../utils/server-key.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[]; trustedProxyIps?: string[] };
@@ -566,7 +567,7 @@ export async function completeSetup(input: SetupInput) {
     await prisma.server.create({
       data: {
         name: input.mc.defaultServerName,
-        apiKey,
+        apiKeyHash: hashServerApiKey(apiKey),
       },
     });
   }

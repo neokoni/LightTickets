@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 import * as ticketService from '../src/services/ticket.service.js';
 import * as templateService from '../src/services/template.service.js';
 
@@ -244,7 +244,7 @@ describe('POST /api/tickets', () => {
   it('rejects a normal Web user assigning a Minecraft server', async () => {
     const token = await createUserAndGetToken('server-spoof@test.com');
     const server = await prisma().server.create({
-      data: { name: 'Spoof target', apiKey: 'spoof-target-key' },
+      data: serverData('Spoof target', 'spoof-target-key'),
     });
 
     const res = await createTicket(token, { serverId: server.id });
@@ -267,7 +267,7 @@ describe('POST /api/tickets', () => {
   it('allows staff to assign a server to a Web-created ticket', async () => {
     const staffToken = await createStaffAndGetToken('server-staff@test.com');
     const server = await prisma().server.create({
-      data: { name: 'Staff target', apiKey: 'staff-target-key' },
+      data: serverData('Staff target', 'staff-target-key'),
     });
 
     const res = await createTicket(staffToken, { serverId: server.id });
@@ -417,8 +417,8 @@ describe('GET /api/tickets', () => {
       where: { email: 'server-name-filter@test.com' },
     });
     const [testServer, otherServer] = await Promise.all([
-      prisma().server.create({ data: { name: 'Test', apiKey: 'server-name-test-key' } }),
-      prisma().server.create({ data: { name: 'Other', apiKey: 'server-name-other-key' } }),
+      prisma().server.create({ data: serverData('Test', 'server-name-test-key') }),
+      prisma().server.create({ data: serverData('Other', 'server-name-other-key') }),
     ]);
     const [matchingTicket] = await Promise.all([
       prisma().ticket.create({
@@ -874,7 +874,7 @@ describe('POST /api/tickets/:id/close', () => {
     const authorToken = await createUserAndGetToken('command-hook-author@test.com');
     const staffToken = await createStaffAndGetToken('command-hook-staff@test.com');
     const server = await prisma().server.create({
-      data: { name: 'Command Hook Server', apiKey: 'command-hook-server-key' },
+      data: serverData('Command Hook Server', 'command-hook-server-key'),
     });
     const created = await createTicket(authorToken, {
       template: 'permission_request',
@@ -946,7 +946,7 @@ describe('POST /api/tickets/:id/completion-hooks/:hookId/complete', () => {
     const authorToken = await createUserAndGetToken('hook-author@test.com');
     const staffToken = await createStaffAndGetToken('hook-staff@test.com');
     const server = await prisma().server.create({
-      data: { name: 'Hook Test Server', apiKey: 'hook-test-api-key' },
+      data: serverData('Hook Test Server', 'hook-test-api-key'),
     });
     const created = await createTicket(authorToken, {
       template: selectionTemplateName,
