@@ -15,6 +15,13 @@ describe('normalizeError', () => {
       new Prisma.PrismaClientKnownRequestError('missing', { code: 'P2025', clientVersion: 'test' }),
       404,
     ],
+    [
+      new Prisma.PrismaClientKnownRequestError('related resource missing', {
+        code: 'P2003',
+        clientVersion: 'test',
+      }),
+      404,
+    ],
     [new Prisma.PrismaClientValidationError('invalid', { clientVersion: 'test' }), 400],
   ])('maps Prisma errors to HTTP %i', (error, statusCode) => {
     const normalized = normalizeError(error);

@@ -37,6 +37,7 @@ export class ValidationError extends AppError {
 export function normalizeError(err: unknown): Error {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') return new AppError(409, '资源已存在');
+    if (err.code === 'P2003') return new NotFoundError();
     if (err.code === 'P2025') return new NotFoundError();
   }
   if (err instanceof Prisma.PrismaClientValidationError) {

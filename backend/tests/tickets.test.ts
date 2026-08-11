@@ -1099,6 +1099,23 @@ describe('POST /api/tickets/:id/labels', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('returns 404 when adding a label to a missing ticket', async () => {
+    const adminToken = await createAdminAndGetToken('missing-label-admin@test.com');
+    const staffToken = await createStaffAndGetToken('missing-label-staff@test.com');
+    const label = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ id: 'missing-ticket-label', name: 'Missing ticket label', color: '#ef4444' });
+
+    const res = await request(app)
+      .post('/api/tickets/999999/labels')
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ labelId: label.body.data.id });
+
+    expect(res.status).toBe(404);
+    expect(res.body).toMatchObject({ success: false, statusCode: 404 });
+  });
 });
 
 describe('DELETE /api/tickets/:id/labels/:labelId', () => {
@@ -1123,5 +1140,21 @@ describe('DELETE /api/tickets/:id/labels/:labelId', () => {
       .set('Authorization', `Bearer ${staffToken}`);
 
     expect(res.status).toBe(204);
+  });
+
+  it('returns 404 when removing a label from a missing ticket', async () => {
+    const adminToken = await createAdminAndGetToken('missing-remove-admin@test.com');
+    const staffToken = await createStaffAndGetToken('missing-remove-staff@test.com');
+    const label = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ id: 'missing-remove-label', name: 'Missing remove label', color: '#000000' });
+
+    const res = await request(app)
+      .delete(`/api/tickets/999999/labels/${label.body.data.id}`)
+      .set('Authorization', `Bearer ${staffToken}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body).toMatchObject({ success: false, statusCode: 404 });
   });
 });

@@ -1,6 +1,7 @@
 import { prisma } from '../db.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
+import * as ticketService from './ticket.service.js';
 
 export async function create(id: string, name: string, color: string, description?: string) {
   const existing = await prisma().label.findFirst({
@@ -42,7 +43,13 @@ export async function removeFromTicket(ticketId: number, labelId: string) {
   await prisma().ticketLabel.delete({ where: { ticketId_labelId: { ticketId, labelId } } });
 }
 
-export async function addToTicketWithAudit(ticketId: number, labelId: string, actorId: number) {
+export async function addToTicketWithAudit(
+  ticketId: number,
+  labelId: string,
+  actorId: number,
+  actorRole: string,
+) {
+  await ticketService.assertTicketVisible(ticketId, { userId: actorId, role: actorRole });
   return prisma().$transaction(async (tx) => {
     const ticketLabel = await tx.ticketLabel.create({ data: { ticketId, labelId } });
     const label = await tx.label.findUnique({ where: { id: labelId } });
@@ -64,7 +71,9 @@ export async function removeFromTicketWithAudit(
   ticketId: number,
   labelId: string,
   actorId: number,
+  actorRole: string,
 ) {
+  await ticketService.assertTicketVisible(ticketId, { userId: actorId, role: actorRole });
   await prisma().$transaction(async (tx) => {
     const label = await tx.label.findUnique({ where: { id: labelId } });
     await tx.ticketLabel.delete({ where: { ticketId_labelId: { ticketId, labelId } } });

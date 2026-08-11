@@ -225,6 +225,7 @@ router.post(
       parseId(String(req.params.id)),
       labelId,
       req.user!.userId,
+      req.user!.role,
     );
     res.status(201).end();
   },
@@ -240,6 +241,7 @@ router.delete(
       parseId(String(req.params.id)),
       labelId,
       req.user!.userId,
+      req.user!.role,
     );
     res.status(204).end();
   },
