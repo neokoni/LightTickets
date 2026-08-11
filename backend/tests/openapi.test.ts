@@ -65,6 +65,13 @@ describe('generated OpenAPI contract', () => {
     expect(assigneeItemSchema?.exclusiveMinimum).toBe(true);
   });
 
+  it('does not expose the legacy assigneeId ticket update field', () => {
+    const operation = document.paths['/api/tickets/{id}']?.patch;
+    const requestSchema = operation.requestBody?.content?.['application/json']?.schema;
+
+    expect(requestSchema?.properties).not.toHaveProperty('assigneeId');
+  });
+
   it('describes successful JSON responses with the standard envelope', () => {
     const responseSchema =
       document.paths['/api/admin/storage/test']?.post.responses[200].content?.['application/json']

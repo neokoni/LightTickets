@@ -77,7 +77,6 @@ model User {
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
   authoredTickets     Ticket[]             @relation("TicketAuthor")
-  assignedTickets     Ticket[]             @relation("TicketAssignee")
   ticketAssignments   TicketAssignee[]
   comments            Comment[]
   attachments         Attachment[]
@@ -227,14 +226,12 @@ model Ticket {
   hidden      Boolean          @default(false)
   authorId    Int              @map("author_id")
   serverId    String?          @map("server_id")
-  assigneeId  Int?             @map("assignee_id")
   createdAt   DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   closedAt    DateTime?        @map("closed_at")
   completionHooksInitialized Boolean @default(false) @map("completion_hooks_initialized")
   author      User             @relation("TicketAuthor", fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   server      Server?          @relation(fields: [serverId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  assignee    User?            @relation("TicketAssignee", fields: [assigneeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   labels      TicketLabel[]
   assignees   TicketAssignee[]
   comments    Comment[]

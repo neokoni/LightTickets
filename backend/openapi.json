@@ -1468,15 +1468,11 @@
                       "invalid"
                     ]
                   },
-                  "assigneeId": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "exclusiveMinimum": true
-                  },
                   "hidden": {
                     "type": "boolean"
                   }
-                }
+                },
+                "additionalProperties": false
               }
             }
           }

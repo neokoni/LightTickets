@@ -91,18 +91,19 @@ router.get('/:id/attachments', authMiddleware, async (req: Request, res: Respons
   res.json(list.map((a) => ({ ...a, url: `/api/attachments/${a.id}` })));
 });
 
-export const ticketUpdateSchema = z.object({
-  status: z
-    .enum([
-      TICKET_STATUS.OPEN,
-      TICKET_STATUS.IN_PROGRESS,
-      TICKET_STATUS.CLOSED,
-      TICKET_STATUS.INVALID,
-    ])
-    .optional(),
-  assigneeId: z.number().int().positive().optional(),
-  hidden: z.boolean().optional(),
-});
+export const ticketUpdateSchema = z
+  .object({
+    status: z
+      .enum([
+        TICKET_STATUS.OPEN,
+        TICKET_STATUS.IN_PROGRESS,
+        TICKET_STATUS.CLOSED,
+        TICKET_STATUS.INVALID,
+      ])
+      .optional(),
+    hidden: z.boolean().optional(),
+  })
+  .strict();
 
 router.patch('/:id', authMiddleware, async (req: Request, res: Response) => {
   const data = validate(ticketUpdateSchema, req.body);

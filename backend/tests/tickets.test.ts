@@ -595,33 +595,11 @@ describe('PATCH /api/tickets/:id', () => {
     expect(res.status).toBe(403);
   });
 
-  it('rejects an author assigning a ticket without creating a forged audit', async () => {
-    const authorToken = await createUserAndGetToken('assignee-spoof-author@test.com');
-    await createStaffAndGetToken('assignee-spoof-target@test.com');
+  it('rejects the legacy assigneeId field without changing assignees or audit logs', async () => {
+    const authorToken = await createUserAndGetToken('legacy-assignee-author@test.com');
+    const staffToken = await createStaffAndGetToken('legacy-assignee-actor@test.com');
     const target = await prisma().user.findUniqueOrThrow({
-      where: { email: 'assignee-spoof-target@test.com' },
-    });
-    const created = await createTicket(authorToken);
-    const ticketId = created.body.data.id as number;
-
-    const res = await request(app)
-      .patch(`/api/tickets/${ticketId}`)
-      .set('Authorization', `Bearer ${authorToken}`)
-      .send({ assigneeId: target.id });
-
-    expect(res.status).toBe(403);
-    expect((await prisma().ticket.findUniqueOrThrow({ where: { id: ticketId } })).assigneeId).toBe(
-      null,
-    );
-    expect(await prisma().auditLog.count({ where: { ticketId, action: 'assign' } })).toBe(0);
-  });
-
-  it('rejects a staff assignment to a player without changing the ticket or audit', async () => {
-    const authorToken = await createUserAndGetToken('invalid-assignee-author@test.com');
-    await createUserAndGetToken('invalid-assignee-player@test.com');
-    const staffToken = await createStaffAndGetToken('invalid-assignee-staff@test.com');
-    const player = await prisma().user.findUniqueOrThrow({
-      where: { email: 'invalid-assignee-player@test.com' },
+      where: { email: 'legacy-assignee-actor@test.com' },
     });
     const created = await createTicket(authorToken);
     const ticketId = created.body.data.id as number;
@@ -629,37 +607,11 @@ describe('PATCH /api/tickets/:id', () => {
     const res = await request(app)
       .patch(`/api/tickets/${ticketId}`)
       .set('Authorization', `Bearer ${staffToken}`)
-      .send({ assigneeId: player.id });
+      .send({ assigneeId: target.id });
 
     expect(res.status).toBe(400);
-    expect((await prisma().ticket.findUniqueOrThrow({ where: { id: ticketId } })).assigneeId).toBe(
-      null,
-    );
+    expect(await prisma().ticketAssignee.count({ where: { ticketId } })).toBe(0);
     expect(await prisma().auditLog.count({ where: { ticketId, action: 'assign' } })).toBe(0);
-  });
-
-  it('allows staff to assign another staff or admin user and records the committed change', async () => {
-    const authorToken = await createUserAndGetToken('valid-assignee-author@test.com');
-    const staffToken = await createStaffAndGetToken('valid-assignee-actor@test.com');
-    await createAdminAndGetToken('valid-assignee-target@test.com');
-    const target = await prisma().user.findUniqueOrThrow({
-      where: { email: 'valid-assignee-target@test.com' },
-    });
-    const created = await createTicket(authorToken);
-    const ticketId = created.body.data.id as number;
-
-    const res = await request(app)
-      .patch(`/api/tickets/${ticketId}`)
-      .set('Authorization', `Bearer ${staffToken}`)
-      .send({ assigneeId: target.id });
-
-    expect(res.status).toBe(200);
-    expect(res.body.data.assigneeId).toBe(target.id);
-    const audit = await prisma().auditLog.findFirstOrThrow({
-      where: { ticketId, action: 'assign' },
-    });
-    expect(audit.oldValue).toBe('unassigned');
-    expect(audit.newValue).toBe(String(target.id));
   });
 });
 

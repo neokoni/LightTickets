@@ -375,7 +375,7 @@ export async function update(
   id: number,
   userId: number,
   userRole: string,
-  data: { status?: TicketStatus; assigneeId?: number; hidden?: boolean },
+  data: { status?: TicketStatus; hidden?: boolean },
 ) {
   const ticket = await prisma().ticket.findUnique({
     where: { id },
@@ -405,12 +405,6 @@ export async function update(
       updateData.closedAt = null;
     }
   }
-  let nextAssigneeId: number | undefined;
-  if (data.assigneeId !== undefined) {
-    if (!isStaff) throw new ForbiddenError('只有管理员或管理组可以更改议题负责人');
-    nextAssigneeId = data.assigneeId;
-    updateData.assigneeId = nextAssigneeId;
-  }
   if (data.hidden !== undefined) {
     if (!isStaff) throw new ForbiddenError('只有管理员或管理组可以更改议题可见性');
     updateData.hidden = data.hidden;
@@ -418,7 +412,6 @@ export async function update(
 
   const nextStatus = data.status;
   const statusChanged = nextStatus !== undefined && nextStatus !== ticket.status;
-  const assigneeChanged = nextAssigneeId !== undefined && nextAssigneeId !== ticket.assigneeId;
   const visibilityChanged = data.hidden !== undefined && data.hidden !== ticket.hidden;
   const hookEvent = statusChanged
     ? minecraftHookDeliveryService.resolveTemplateEvent(ticket, nextStatus)
@@ -426,10 +419,6 @@ export async function update(
   if (hookEvent) assertDirectCommandHookPermission(ticket, hookEvent.hooks, isStaff);
 
   const transition = await prisma().$transaction(async (tx) => {
-    if (nextAssigneeId !== undefined) {
-      await assertAssignableUserIds(tx, [nextAssigneeId]);
-    }
-
     if (statusChanged) {
       const claimed = await tx.ticket.updateMany({
         where: { id, status: ticket.status },
@@ -461,16 +450,6 @@ export async function update(
         nextStatus,
         hookEvent!.hooks,
         hookEvent!.variables,
-      );
-    }
-    if (assigneeChanged) {
-      await createAudit(
-        tx,
-        id,
-        userId,
-        AUDIT_ACTION.ASSIGN,
-        ticket.assigneeId != null ? String(ticket.assigneeId) : 'unassigned',
-        String(nextAssigneeId),
       );
     }
     if (visibilityChanged) {
