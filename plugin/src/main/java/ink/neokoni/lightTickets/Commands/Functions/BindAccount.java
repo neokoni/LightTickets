@@ -3,6 +3,7 @@ package ink.neokoni.lightTickets.Commands.Functions;
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
+import ink.neokoni.lightTickets.Utils.AccountRole;
 import ink.neokoni.lightTickets.Utils.ApiClient;
 import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
@@ -35,7 +36,7 @@ public class BindAccount {
         if (cached != null && cached.isBound()) {
             if (cached.getPlayerCredential() == null || cached.getPlayerCredential().isBlank()) {
                 cached.setBound(false);
-                cached.setRole("player");
+                cached.setRole(AccountRole.PLAYER);
                 PlayerData.setPlayerBind(player, cached);
                 player.sendMessage(LangUtils.getLang("errors.rebind_required"));
                 return;
@@ -81,7 +82,7 @@ public class BindAccount {
         bind.setBindCode(code);
         bind.setCodeExpiresAt(expiresAt);
         bind.setBound(false);
-        bind.setRole("player");
+        bind.setRole(AccountRole.PLAYER);
         bind.setPlayerCredential(playerCredential);
         PlayerData.setPlayerBind(player, bind);
         PlayerSessionManager.invalidate(player.getUniqueId());

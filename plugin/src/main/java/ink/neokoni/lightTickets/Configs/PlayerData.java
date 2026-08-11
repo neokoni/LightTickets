@@ -4,6 +4,7 @@ import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.SQL.MariadbAdapter;
 import ink.neokoni.lightTickets.Configs.SQL.SQLAdapter;
 import ink.neokoni.lightTickets.Configs.SQL.SQLiteAdapter;
+import ink.neokoni.lightTickets.Utils.AccountRole;
 import ink.neokoni.lightTickets.Utils.PlayerSessionManager;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -46,7 +47,7 @@ public class PlayerData {
         PlayerBind bind = sqlAdapter.getPlayerBind(player);
         if (bind == null) {
             if (create) {
-                bind = new PlayerBind(player, uuid, player.getName(), null, null, false, "player", null);
+                bind = new PlayerBind(player, uuid, player.getName(), null, null, false, AccountRole.PLAYER, null);
             } else {
                 return null;
             }

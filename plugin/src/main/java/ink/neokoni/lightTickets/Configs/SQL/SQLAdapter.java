@@ -5,6 +5,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.Datas.StorageInfo;
+import ink.neokoni.lightTickets.Utils.AccountRole;
 import org.bukkit.entity.Player;
 
 import java.sql.Connection;
@@ -74,7 +75,7 @@ public class SQLAdapter {
                         resultSet.getString("bind_code"),
                         resultSet.getString("code_expires_at"),
                         resultSet.getBoolean("bound"),
-                        readString(resultSet, "role", "player"),
+                        AccountRole.fromKey(readString(resultSet, "role", "player")),
                         readString(resultSet, "player_credential", null)
                 );
             }
@@ -92,14 +93,14 @@ public class SQLAdapter {
             statement.setString(3, bind.getBindCode());
             statement.setString(4, bind.getCodeExpiresAt());
             statement.setBoolean(5, bind.isBound());
-            statement.setString(6, bind.getRole() == null ? "player" : bind.getRole());
+            statement.setString(6, bind.getRole() == null ? AccountRole.PLAYER.key() : bind.getRole().key());
             statement.setString(7, bind.getPlayerCredential());
 
             statement.setString(8, bind.getMcName());
             statement.setString(9, bind.getBindCode());
             statement.setString(10, bind.getCodeExpiresAt());
             statement.setBoolean(11, bind.isBound());
-            statement.setString(12, bind.getRole() == null ? "player" : bind.getRole());
+            statement.setString(12, bind.getRole() == null ? AccountRole.PLAYER.key() : bind.getRole().key());
             statement.setString(13, bind.getPlayerCredential());
             statement.execute();
         } catch (SQLException e) {

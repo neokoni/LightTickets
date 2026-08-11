@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
+import ink.neokoni.lightTickets.Utils.AccountRole;
 import ink.neokoni.lightTickets.Utils.ApiClient;
 import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
@@ -368,7 +369,7 @@ public class TicketInfo {
             if (parsed != null && parsed.has("role") && !parsed.get("role").isJsonNull()) {
                 PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
                 bind.setBound(true);
-                bind.setRole(parsed.get("role").getAsString());
+                bind.setRole(AccountRole.fromKey(parsed.get("role").getAsString()));
                 PlayerData.setPlayerBind(player, bind);
             }
             return parsed;

@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
+import ink.neokoni.lightTickets.Utils.AccountRole;
 import ink.neokoni.lightTickets.Utils.ApiClient;
 import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.DataRefreshManager;
@@ -176,17 +177,17 @@ public class ChangeStatus {
     }
 
     public static boolean canChangeAnyStatus(Player player) {
-        String role = resolveAccountRole(player);
-        return "staff".equals(role) || "admin".equals(role);
+        AccountRole role = resolveAccountRole(player);
+        return role.isStaff();
     }
 
     private boolean isStatusAdmin(Player player) {
         return canChangeAnyStatus(player);
     }
 
-    public static String resolveAccountRole(Player player) {
+    public static AccountRole resolveAccountRole(Player player) {
         PlayerBind bind = PlayerData.getPlayerBind(player, true, false);
-        String cachedRole = bind == null || bind.getRole() == null ? "player" : bind.getRole();
+        AccountRole cachedRole = bind == null || bind.getRole() == null ? AccountRole.PLAYER : bind.getRole();
 
         try {
             HttpUtils.Resp resp = ApiClient.requestWithStatusForPlayer(player,
@@ -200,10 +201,10 @@ public class ChangeStatus {
                 return cachedRole;
             }
 
-            String role = parsed.get("role").getAsString();
+            AccountRole role = AccountRole.fromKey(parsed.get("role").getAsString());
             PlayerBind updated = bind == null ? PlayerData.getPlayerBind(player, true, true) : bind;
             updated.setBound(true);
-            updated.setRole(role == null || role.isEmpty() ? "player" : role);
+            updated.setRole(role);
             PlayerData.setPlayerBind(player, updated);
             return updated.getRole();
         } catch (RuntimeException e) {

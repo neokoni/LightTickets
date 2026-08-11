@@ -3,6 +3,7 @@ package ink.neokoni.lightTickets.Commands.Functions;
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
+import ink.neokoni.lightTickets.Utils.AccountRole;
 import ink.neokoni.lightTickets.Utils.ApiClient;
 import ink.neokoni.lightTickets.Utils.ApiEndpoint;
 import ink.neokoni.lightTickets.Utils.HttpUtils;
@@ -59,14 +60,16 @@ public class AccountInfo {
         int id = parsed.get("id").getAsInt();
         String username = parsed.has("username") ? parsed.get("username").getAsString() : "";
         String email = parsed.has("email") ? parsed.get("email").getAsString() : "";
-        String role = parsed.has("role") ? parsed.get("role").getAsString() : "";
+        AccountRole role = parsed.has("role") && !parsed.get("role").isJsonNull()
+                ? AccountRole.fromKey(parsed.get("role").getAsString())
+                : AccountRole.PLAYER;
         String mcName = parsed.has("minecraftName") && !parsed.get("minecraftName").isJsonNull()
                 ? parsed.get("minecraftName").getAsString() : "";
         String createdAt = parsed.has("createdAt") ? parsed.get("createdAt").getAsString() : "";
 
         PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
         bind.setBound(true);
-        bind.setRole(role == null || role.isEmpty() ? "player" : role);
+        bind.setRole(role);
         PlayerData.setPlayerBind(player, bind);
 
         player.sendMessage(buildHeaderWithUnlink());
@@ -77,7 +80,7 @@ public class AccountInfo {
         player.sendMessage(LangUtils.getLang("account.email",
                 Map.of("{email}", email)));
         player.sendMessage(LangUtils.getLang("account.role",
-                Map.of("{role}", roleLabel(role))));
+                Map.of("{role}", role.label())));
         player.sendMessage(LangUtils.getLang("account.mc_name",
                 Map.of("{mc_name}", mcName)));
         player.sendMessage(LangUtils.getLang("account.created_at",
@@ -91,15 +94,6 @@ public class AccountInfo {
                 .hoverEvent(HoverEvent.showText(
                         LangUtils.getLangContent("account.unlink_button_hover")));
         return header.append(Component.text(" ")).append(unlink);
-    }
-
-    private String roleLabel(String role) {
-        String key = "account.role_" + role;
-        String label = LangUtils.getRawLang(key);
-        if (label.isEmpty()) {
-            return LangUtils.getRawLang("account.role_player");
-        }
-        return label;
     }
 
     private String formatDate(String iso) {

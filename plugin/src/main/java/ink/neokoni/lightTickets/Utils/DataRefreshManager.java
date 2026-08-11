@@ -7,6 +7,7 @@ import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.Datas.PlayerBind;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.LightTickets;
+import ink.neokoni.lightTickets.Utils.AccountRole;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
@@ -172,18 +173,18 @@ public class DataRefreshManager {
         if (resp == null) return AccountRefreshResult.RETRY;
 
         if (resp.status() == 404) {
-            updateBindStatus(uuid, false, "player");
+            updateBindStatus(uuid, false, AccountRole.PLAYER);
             return AccountRefreshResult.UNBOUND;
         }
         if (resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) {
             return AccountRefreshResult.RETRY;
         }
 
-        String role = "player";
+        AccountRole role = AccountRole.PLAYER;
         JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed == null) return AccountRefreshResult.RETRY;
         if (parsed.has("role") && !parsed.get("role").isJsonNull()) {
-            role = parsed.get("role").getAsString();
+            role = AccountRole.fromKey(parsed.get("role").getAsString());
         }
         updateBindStatus(uuid, true, role);
         return AccountRefreshResult.UPDATED;
@@ -215,13 +216,13 @@ public class DataRefreshManager {
         PlayerData.setTicketList(uuid, cached);
     }
 
-    private static void updateBindStatus(UUID uuid, boolean bound, String role) {
+    private static void updateBindStatus(UUID uuid, boolean bound, AccountRole role) {
         org.bukkit.entity.Player player = Bukkit.getPlayer(uuid);
         if (player == null) return;
 
         PlayerBind existing = PlayerData.getPlayerBind(player, true, true);
         existing.setBound(bound);
-        existing.setRole(role == null || role.isEmpty() ? "player" : role);
+        existing.setRole(role == null ? AccountRole.PLAYER : role);
         PlayerData.setPlayerBind(player, existing);
     }
 

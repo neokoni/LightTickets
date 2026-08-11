@@ -1,5 +1,6 @@
 package ink.neokoni.lightTickets.Configs.Datas;
 
+import ink.neokoni.lightTickets.Utils.AccountRole;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.entity.Player;
@@ -15,11 +16,11 @@ public class PlayerBind {
     private String bindCode;
     private String codeExpiresAt;
     private boolean bound;
-    private String role;
+    private AccountRole role;
     private String playerCredential;
 
     public PlayerBind(Player player, UUID uuid, String mcName, String bindCode, String codeExpiresAt,
-                      boolean bound, String role, String playerCredential) {
+                      boolean bound, AccountRole role, String playerCredential) {
         this.player = player;
         this.uuid = uuid;
         this.mcName = mcName;

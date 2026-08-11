@@ -72,7 +72,7 @@ public final class PlayerSessionManager {
         PlayerBind bind = PlayerData.getPlayerBind(player, true, false);
         if (bind == null || !bind.isBound()) return;
         bind.setBound(false);
-        bind.setRole("player");
+        bind.setRole(AccountRole.PLAYER);
         bind.setPlayerCredential(null);
         PlayerData.setPlayerBind(player, bind);
     }
