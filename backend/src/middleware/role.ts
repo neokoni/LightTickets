@@ -2,20 +2,17 @@ import type { Request, Response, NextFunction } from 'express';
 import { ForbiddenError } from '../utils/errors.js';
 import { ROLE } from '../constants/roles.js';
 
-const ROLE_HIERARCHY: Record<string, number> = {
-  [ROLE.PLAYER]: 0,
-  [ROLE.STAFF]: 1,
-  [ROLE.ADMIN]: 2,
-};
+const VALID_ROLES = new Set<string>([ROLE.PLAYER, ROLE.STAFF, ROLE.ADMIN]);
 
 export function requireRole(...roles: string[]) {
-  return (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.user) {
-      throw new ForbiddenError();
+  for (const r of roles) {
+    if (!VALID_ROLES.has(r)) {
+      throw new Error(`Unknown role in requireRole: ${r}`);
     }
-    const userLevel = ROLE_HIERARCHY[req.user.role] ?? 0;
-    const minLevel = Math.min(...roles.map((r) => ROLE_HIERARCHY[r] ?? 0));
-    if (userLevel < minLevel) {
+  }
+  const allowed = new Set(roles);
+  return (req: Request, _res: Response, next: NextFunction) => {
+    if (!req.user || !allowed.has(req.user.role)) {
       throw new ForbiddenError();
     }
     next();
