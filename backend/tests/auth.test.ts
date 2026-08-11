@@ -182,6 +182,63 @@ describe('POST /api/auth/register', () => {
     await expect(prisma().registrationEmailVerification.count()).resolves.toBe(0);
   });
 
+  it('does not reveal registered or pending email addresses through verification requests', async () => {
+    clearTestOutbox();
+    await configureApp({ mailConfig: JSON.stringify(mailConfig) });
+    await prisma().user.create({
+      data: {
+        email: 'registered@example.com',
+        username: 'registered-user',
+        passwordHash: 'hash',
+      },
+    });
+    const changingUser = await prisma().user.create({
+      data: {
+        email: 'changing@example.com',
+        pendingEmail: 'pending@example.com',
+        username: 'changing-user',
+        passwordHash: 'hash',
+      },
+    });
+    await prisma().emailChangeRequest.create({
+      data: {
+        userId: changingUser.id,
+        newEmail: 'pending@example.com',
+        codeHash: 'code-hash',
+        cancelTokenHash: 'cancel-token-hash',
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+
+    const available = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'available@example.com' });
+    const registered = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'registered@example.com' });
+    const pending = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'pending@example.com' });
+
+    expect(available.status).toBe(200);
+    expect(registered.status).toBe(200);
+    expect(pending.status).toBe(200);
+    expect(registered.body.data).toEqual(available.body.data);
+    expect(pending.body.data).toEqual(available.body.data);
+    expect(getTestOutbox()).toHaveLength(1);
+    expect(getTestOutbox()[0].to).toBe('available@example.com');
+    await expect(
+      prisma().registrationEmailVerification.findUnique({
+        where: { email: 'registered@example.com' },
+      }),
+    ).resolves.toBeNull();
+    await expect(
+      prisma().registrationEmailVerification.findUnique({
+        where: { email: 'pending@example.com' },
+      }),
+    ).resolves.toBeNull();
+  });
+
   it('limits registration verification emails to once per minute per address', async () => {
     clearTestOutbox();
     await configureApp({ mailConfig: JSON.stringify(mailConfig) });

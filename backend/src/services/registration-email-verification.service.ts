@@ -129,6 +129,8 @@ export async function requestRegistrationEmailVerification(email: string): Promi
   }
 
   const normalizedEmail = normalizeEmail(email);
+  const rateLimitConfig = await rateLimitConfigService.getRateLimitConfig();
+  const { cooldownSeconds } = rateLimitConfig.email;
   const existingUser = await prisma().user.findFirst({
     where: {
       OR: [
@@ -140,13 +142,13 @@ export async function requestRegistrationEmailVerification(email: string): Promi
       ],
     },
   });
-  if (existingUser) throw new AppError(409, '该邮箱已被注册');
+  if (existingUser) {
+    return { accepted: true, retryAfterSeconds: cooldownSeconds };
+  }
 
   const code = createCode();
   const codeHash = createCodeHash(normalizedEmail, code);
   const now = new Date();
-  const rateLimitConfig = await rateLimitConfigService.getRateLimitConfig();
-  const { cooldownSeconds } = rateLimitConfig.email;
   await prisma().registrationEmailVerification.deleteMany({
     where: { expiresAt: { lte: now } },
   });
