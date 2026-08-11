@@ -8,6 +8,7 @@ function getBaseUrl(): string {
 }
 
 let accessToken: string | null = null;
+let refreshHandler: (() => Promise<boolean>) | null = null;
 const activeRequestControllers = new Set<AbortController>();
 
 export function setAccessToken(token: string | null) {
@@ -18,6 +19,10 @@ export function clearApiSession() {
   accessToken = null;
   for (const controller of activeRequestControllers) controller.abort();
   activeRequestControllers.clear();
+}
+
+export function setApiRefreshHandler(handler: (() => Promise<boolean>) | null) {
+  refreshHandler = handler;
 }
 
 async function readErrorMessage(res: Response): Promise<string> {
@@ -41,7 +46,11 @@ async function readErrorMessage(res: Response): Promise<string> {
   return '';
 }
 
-export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function apiFetchInternal<T>(
+  path: string,
+  options: RequestInit,
+  retried: boolean,
+): Promise<T> {
   const headers: Record<string, string> = {
     ...((options.headers as Record<string, string>) || {}),
   };
@@ -71,8 +80,16 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
       signal: controller.signal,
     });
 
-    if (res.status === 401 && accessToken) {
+    if (res.status === 401 && accessToken && !retried && path !== '/auth/refresh') {
+      try {
+        if (refreshHandler && (await refreshHandler())) {
+          return apiFetchInternal<T>(path, options, true);
+        }
+      } catch {
+        // The original 401 is reported below after the refresh attempt fails.
+      }
       accessToken = null;
+      if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:session-expired'));
     }
 
     if (!res.ok) {
@@ -98,4 +115,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     activeRequestControllers.delete(controller);
     options.signal?.removeEventListener('abort', abortFromCaller);
   }
+}
+
+export function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  return apiFetchInternal(path, options, false);
 }

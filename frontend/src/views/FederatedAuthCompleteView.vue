@@ -22,7 +22,6 @@ function safeReturnTo(value: unknown): string {
 }
 
 onMounted(async () => {
-  await auth.restore();
   await router.replace(auth.isAuthenticated ? safeReturnTo(route.query.returnTo) : '/login');
 });
 </script>

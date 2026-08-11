@@ -16,7 +16,7 @@ import {
   apiCancelPendingEmailChange,
   apiUpdateEmailNotifications,
 } from '@/api/auth';
-import { clearApiSession, setAccessToken } from '@/api/client';
+import { clearApiSession, setAccessToken, setApiRefreshHandler } from '@/api/client';
 import { useLabelsStore } from '@/stores/labels';
 import { useTemplatesStore } from '@/stores/templates';
 import { useTicketsStore } from '@/stores/tickets';
@@ -24,6 +24,7 @@ import { useTicketsStore } from '@/stores/tickets';
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const loading = ref(true);
+  let restoreInFlight: Promise<void> | null = null;
 
   const isAuthenticated = computed(() => !!user.value);
   const isStaff = computed(() => (user.value ? isStaffRole(user.value.role) : false));
@@ -56,16 +57,29 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function restore() {
-    try {
-      const res = await apiRefresh();
-      user.value = res.user;
-      setAccessToken(res.accessToken);
-    } catch {
-      clearUserSession();
-    } finally {
-      loading.value = false;
-    }
+    if (restoreInFlight) return restoreInFlight;
+
+    restoreInFlight = (async () => {
+      try {
+        const res = await apiRefresh();
+        user.value = res.user;
+        setAccessToken(res.accessToken);
+      } catch {
+        clearUserSession();
+      } finally {
+        loading.value = false;
+      }
+    })().finally(() => {
+      restoreInFlight = null;
+    });
+
+    return restoreInFlight;
   }
+
+  setApiRefreshHandler(async () => {
+    await restore();
+    return user.value !== null;
+  });
 
   async function logout() {
     clearUserSession();
