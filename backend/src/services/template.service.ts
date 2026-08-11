@@ -192,6 +192,16 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
+function assertValidTemplateBody(value: unknown[]): asserts value is TemplateField[] {
+  for (const field of value) {
+    if (!isRecord(field)) throw new ValidationError('body 字段包含无效的模板字段');
+    if (field.type === 'markdown') continue;
+    if (typeof field.id !== 'string' || !field.id.trim()) {
+      throw new ValidationError('body 中非 markdown 字段必须提供 id');
+    }
+  }
+}
+
 function assertValidHookAction(value: unknown): asserts value is CompletionHookAction {
   if (!isRecord(value) || (value.type !== 'command' && value.type !== 'minimessage')) {
     throw new Error('invalid completion hook action');
@@ -295,6 +305,7 @@ function parseTemplateSource(raw: string): TemplateDefinition {
   }
 
   const completionHooks = Array.isArray(def.completion_hooks) ? def.completion_hooks : [];
+  assertValidTemplateBody(def.body);
   assertValidCompletionHooks(completionHooks);
 
   return {
@@ -667,6 +678,7 @@ function writeTemplateFile(
 
   const bodyParsed = parseYamlField(data.body, 'body');
   if (!Array.isArray(bodyParsed)) throw new ValidationError('body 字段必须是 YAML 数组');
+  assertValidTemplateBody(bodyParsed);
 
   const hooksParsed = parseYamlField(data.completionHooks || '[]', 'completionHooks');
   if (!Array.isArray(hooksParsed))

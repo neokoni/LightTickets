@@ -139,6 +139,7 @@ public class Templates {
     private static TemplateField parseField(JsonObject obj) {
         String type = obj.has("type") ? obj.get("type").getAsString() : "markdown";
         String id = obj.has("id") && !obj.get("id").isJsonNull() ? obj.get("id").getAsString() : null;
+        if (!"markdown".equals(type) && (id == null || id.isBlank())) return null;
 
         boolean required = false;
         if (obj.has("validations") && obj.get("validations").isJsonObject()) {
@@ -150,7 +151,8 @@ public class Templates {
                 ? obj.getAsJsonObject("attributes") : new JsonObject();
 
         String label = attrs.has("label") && !attrs.get("label").isJsonNull()
-                ? attrs.get("label").getAsString() : "";
+                ? attrs.get("label").getAsString() : id;
+        if (!"markdown".equals(type) && (label == null || label.isBlank())) label = id;
         String description = attrs.has("description") && !attrs.get("description").isJsonNull()
                 ? attrs.get("description").getAsString() : "";
         String placeholder = attrs.has("placeholder") && !attrs.get("placeholder").isJsonNull()

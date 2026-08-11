@@ -8,7 +8,15 @@ import { dataPath } from '../src/paths.js';
 const app = createApp({ enableInitialSetup: true });
 
 const templatesDir = dataPath('templates');
-const testTemplateNames = ['custom_test', 'dup_tmpl', 'patch_tmpl', 'delete_tmpl', 'labeled_tmpl'];
+const testTemplateNames = [
+  'custom_test',
+  'dup_tmpl',
+  'missing_id_tmpl',
+  'id_fallback_tmpl',
+  'patch_tmpl',
+  'delete_tmpl',
+  'labeled_tmpl',
+];
 
 afterEach(() => {
   for (const name of testTemplateNames) {
@@ -188,6 +196,50 @@ describe('POST /api/admin/templates', () => {
     expect(res.status).toBe(409);
   });
 
+  it('rejects interactive body fields without an id', async () => {
+    const token = await setupAndGetAdmin();
+
+    const res = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'missing_id_tmpl',
+        nameI18n: 'Missing ID',
+        description: 'Invalid interactive field',
+        body: '- type: input\n  attributes:\n    label: Details',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('body 中非 markdown 字段必须提供 id');
+  });
+
+  it('allows markdown fields without an id and interactive fields without a label', async () => {
+    const token = await setupAndGetAdmin();
+
+    const res = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'id_fallback_tmpl',
+        nameI18n: 'ID fallback',
+        description: 'Valid fallback fields',
+        body: [
+          '- type: markdown',
+          '  attributes:',
+          '    value: Intro',
+          '- type: input',
+          '  id: details',
+          '  attributes: {}',
+        ].join('\n'),
+      });
+
+    expect(res.status).toBe(201);
+    expect(JSON.parse(res.body.data.body)).toEqual([
+      { type: 'markdown', attributes: { value: 'Intro' } },
+      { type: 'input', id: 'details', attributes: {} },
+    ]);
+  });
+
   it('adds template labels referenced by their identifiers when a ticket is created', async () => {
     const token = await setupAndGetAdmin();
     const label = await request(app)
@@ -279,6 +331,22 @@ describe('PATCH /api/admin/templates/:id', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ source: 'name: [invalid' });
     expect(invalidRes.status).toBe(400);
+
+    const missingIdRes = await request(app)
+      .patch(`/api/admin/templates/${created.body.data.name}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        source: [
+          'name: Invalid body',
+          'description: Missing interactive field ID',
+          'body:',
+          '  - type: input',
+          '    attributes:',
+          '      label: Details',
+          '',
+        ].join('\n'),
+      });
+    expect(missingIdRes.status).toBe(400);
 
     const unchanged = await request(app)
       .get(`/api/admin/templates/${created.body.data.name}`)
