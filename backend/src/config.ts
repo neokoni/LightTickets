@@ -161,13 +161,22 @@ export function validateS3Config(s3: Partial<S3Config>): void {
 }
 
 export function isDatabaseConfigured(): boolean {
-  if (!fs.existsSync(CONFIG_PATH)) return false;
+  let content: string;
   try {
-    const raw = (yaml.load(fs.readFileSync(CONFIG_PATH, 'utf-8')) as ConfigFile | null) ?? {};
-    return !!raw.database?.provider;
-  } catch {
-    return false;
+    content = fs.readFileSync(CONFIG_PATH, 'utf-8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw error;
   }
+
+  const parsed = yaml.load(content);
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('config.yml 必须是有效的 YAML 对象');
+  }
+
+  const raw = parsed as ConfigFile;
+  if (!raw.database?.provider) throw new Error('config.yml 缺少 database.provider');
+  return true;
 }
 
 function resolveDatabaseUrl(db: DatabaseConfig): string {

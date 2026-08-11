@@ -51,6 +51,33 @@ describe('config', () => {
     expect(config.trustedProxyIps).toBeNull();
   });
 
+  it('enters setup only when config.yml does not exist', async () => {
+    fs.rmSync(configPath, { force: true });
+    const { isDatabaseConfigured } = await import('../src/config.js');
+
+    expect(isDatabaseConfigured()).toBe(false);
+  });
+
+  it('recognizes a valid database configuration', async () => {
+    const { isDatabaseConfigured } = await import('../src/config.js');
+
+    expect(isDatabaseConfigured()).toBe(true);
+  });
+
+  it('throws instead of entering setup when config.yml cannot be parsed', async () => {
+    fs.writeFileSync(configPath, 'server:\n  port: [broken\n', 'utf-8');
+    const { isDatabaseConfigured } = await import('../src/config.js');
+
+    expect(() => isDatabaseConfigured()).toThrow();
+  });
+
+  it('throws instead of entering setup when an existing config has no database provider', async () => {
+    fs.writeFileSync(configPath, 'server:\n  port: 3000\n', 'utf-8');
+    const { isDatabaseConfigured } = await import('../src/config.js');
+
+    expect(() => isDatabaseConfigured()).toThrow('config.yml 缺少 database.provider');
+  });
+
   it('persists the live proxy IP when upgrading a config without trustedProxyIps', async () => {
     const { getConfig, persistDiscoveredTrustedProxyIp } = await import('../src/config.js');
 
