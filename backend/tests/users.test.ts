@@ -102,6 +102,29 @@ describe('GET /api/users', () => {
   });
 });
 
+describe('GET /api/users/assignable', () => {
+  it('allows admin users to access staff routes', async () => {
+    const token = await createAdminAndGetToken('admin-assignable@test.com');
+
+    const res = await request(app)
+      .get('/api/users/assignable')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeInstanceOf(Array);
+  });
+
+  it('rejects player users', async () => {
+    const { token } = await createUserAndGetToken('player-assignable@test.com');
+
+    const res = await request(app)
+      .get('/api/users/assignable')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+  });
+});
+
 describe('PATCH /api/users/me/avatar', () => {
   it('updates own avatar', async () => {
     const { token } = await createUserAndGetToken('avatar@test.com');

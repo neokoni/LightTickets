@@ -1,18 +1,29 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ForbiddenError } from '../utils/errors.js';
-import { ROLE } from '../constants/roles.js';
+import { isAdminRole, isStaffRole, ROLE } from '../constants/roles.js';
 
-const VALID_ROLES = new Set<string>([ROLE.PLAYER, ROLE.STAFF, ROLE.ADMIN]);
+type RoleRequirement = (role: string) => boolean;
+
+const ROLE_REQUIREMENTS: ReadonlyMap<string, RoleRequirement> = new Map([
+  [ROLE.PLAYER, (role) => role === ROLE.PLAYER || isStaffRole(role)],
+  [ROLE.STAFF, isStaffRole],
+  [ROLE.ADMIN, isAdminRole],
+]);
 
 export function requireRole(...roles: string[]) {
-  for (const r of roles) {
-    if (!VALID_ROLES.has(r)) {
-      throw new Error(`Unknown role in requireRole: ${r}`);
-    }
+  if (roles.length === 0) {
+    throw new Error('requireRole requires at least one role');
   }
-  const allowed = new Set(roles);
+  const requirements = roles.map((role) => {
+    const requirement = ROLE_REQUIREMENTS.get(role);
+    if (!requirement) {
+      throw new Error(`Unknown role in requireRole: ${role}`);
+    }
+    return requirement;
+  });
   return (req: Request, _res: Response, next: NextFunction) => {
-    if (!req.user || !allowed.has(req.user.role)) {
+    const userRole = req.user?.role;
+    if (userRole === undefined || requirements.some((requirement) => !requirement(userRole))) {
       throw new ForbiddenError();
     }
     next();
