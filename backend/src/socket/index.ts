@@ -2,6 +2,7 @@ import type { Server as HttpServer } from 'http';
 import type { Socket } from 'socket.io';
 import { Server } from 'socket.io';
 import { prisma } from '../db.js';
+import { getConfig } from '../config.js';
 import { resolveSocketServerKey } from '../utils/socket-auth.js';
 import { hashServerApiKey } from '../utils/server-key.js';
 
@@ -9,8 +10,17 @@ let io: Server;
 let hookRetryTimer: NodeJS.Timeout | undefined;
 
 export function initSocket(httpServer: HttpServer) {
+  const config = getConfig();
   io = new Server(httpServer, {
-    cors: { origin: '*' },
+    cors: {
+      origin: (origin, cb) => {
+        if (!origin || config.corsOrigins.includes(origin)) {
+          cb(null, true);
+        } else {
+          cb(new Error('Not allowed by CORS'));
+        }
+      },
+    },
   });
 
   const mcNamespace = io.of('/mc');
