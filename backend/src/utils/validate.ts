@@ -10,9 +10,15 @@ export function validate<S extends z.ZodType>(schema: S, data: unknown): z.infer
 }
 
 export function parseId(raw: string): number {
-  const id = Number(raw);
-  if (raw.trim() === '' || isNaN(id)) throw new ValidationError('无效的 ID');
-  return id;
+  const decimal = z
+    .string()
+    .regex(/^[1-9]\d*$/)
+    .safeParse(raw);
+  if (!decimal.success) throw new ValidationError('无效的 ID');
+
+  const result = z.coerce.number().int().positive().safe().safeParse(decimal.data);
+  if (!result.success) throw new ValidationError('无效的 ID');
+  return result.data;
 }
 
 export function parsePagination(query: Record<string, unknown>): {

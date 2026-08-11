@@ -85,6 +85,10 @@ describe('parseId', () => {
   it('throws ValidationError for empty string', () => {
     expect(() => parseId('')).toThrow(ValidationError);
   });
+
+  it.each(['1.5', '-1', '0x10', '1e5', 'Infinity', '0', '9007199254740992'])('rejects %s', (id) => {
+    expect(() => parseId(id)).toThrow(ValidationError);
+  });
 });
 
 describe('parsePagination', () => {

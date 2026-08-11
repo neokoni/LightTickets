@@ -1,4 +1,5 @@
 import multer from 'multer';
+import { Prisma } from '@prisma/client';
 
 export class AppError extends Error {
   constructor(
@@ -34,6 +35,13 @@ export class ValidationError extends AppError {
 }
 
 export function normalizeError(err: unknown): Error {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    if (err.code === 'P2002') return new AppError(409, '资源已存在');
+    if (err.code === 'P2025') return new NotFoundError();
+  }
+  if (err instanceof Prisma.PrismaClientValidationError) {
+    return new ValidationError('数据库请求参数无效');
+  }
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return new ValidationError('文件大小超过限制 (10MB)');

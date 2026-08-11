@@ -469,6 +469,14 @@ describe('GET /api/tickets/:id', () => {
     const res = await request(app).get('/api/tickets/99999');
     expect(res.status).toBe(404);
   });
+
+  it.each(['1.5', '-1', '0x10', '1e5', 'Infinity', '0'])('rejects malformed ID %s', async (id) => {
+    const res = await request(app).get(`/api/tickets/${id}`);
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({ success: false, statusCode: 400, message: '无效的 ID' });
+    expect(res.body).not.toHaveProperty('traceId');
+  });
 });
 
 describe('PATCH /api/tickets/:id', () => {
