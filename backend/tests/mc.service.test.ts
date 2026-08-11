@@ -152,7 +152,7 @@ describe('mc.service', () => {
       identity: identity(user, server.id),
     });
 
-    expect(ticket.title).toBe('From service');
+    expect(ticket.title).toBe('[Bug] From service');
     expect(ticket.authorId).toBe(user.id);
     expect(ticket.serverId).toBe(server.id);
   });
