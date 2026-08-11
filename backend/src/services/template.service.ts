@@ -364,7 +364,7 @@ function ensureDataTemplatesInitialized(): void {
       fs.copyFileSync(path.join(defaultTemplatesDir, file), path.join(dataTemplatesDir, file));
     }
     console.log(
-      `[templates] released ${defaultTemplates.length} default templates to data/templates`,
+      `[templates] released ${defaultTemplates.length} default templates to ${dataTemplatesDir}`,
     );
   }
 
