@@ -12,7 +12,6 @@ import ink.neokoni.lightTickets.Utils.LogUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 
 import java.util.Map;
@@ -87,10 +86,10 @@ public class AccountInfo {
 
     private Component buildHeaderWithUnlink() {
         Component header = LangUtils.getLang("account.header");
-        Component unlink = MiniMessage.miniMessage().deserialize(LangUtils.getRawLang("account.unlink_button"))
+        Component unlink = LangUtils.getLangContent("account.unlink_button")
                 .clickEvent(ClickEvent.suggestCommand("/lit unbind"))
                 .hoverEvent(HoverEvent.showText(
-                        MiniMessage.miniMessage().deserialize(LangUtils.getRawLang("account.unlink_button_hover"))));
+                        LangUtils.getLangContent("account.unlink_button_hover")));
         return header.append(Component.text(" ")).append(unlink);
     }
 

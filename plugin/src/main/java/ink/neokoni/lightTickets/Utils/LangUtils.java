@@ -87,6 +87,10 @@ public class LangUtils {
         return Language.getDefaultLang();
     }
 
+    /**
+     * Returns plain text for logs, exceptions, and other non-MiniMessage consumers.
+     * Never pass the returned value to MiniMessage.deserialize; use getLangContent instead.
+     */
     @SafeVarargs
     public static String getRawLang(String key, Map<String, String>... placeholdersSet) {
         String content = Language.getDefaultLang().getString(key);
