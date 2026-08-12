@@ -8,7 +8,7 @@
     "build": "vue-tsc -b && vite build",
     "start": "node server.mjs",
     "preview": "vite preview",
-    "test": "node --test server.test.mjs",
+    "test": "node --experimental-strip-types --test server.test.mjs return-to.test.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,vue}\" \"*.mjs\"",

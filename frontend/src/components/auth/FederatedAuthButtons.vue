@@ -5,6 +5,7 @@ import { apiStartFederatedAuth } from '@/api/federatedauth';
 import { siteConfig } from '@/stores/site';
 import { t } from '@/i18n';
 import { handleError } from '@/utils/error';
+import { safeReturnTo } from '@/utils/returnTo';
 import BaseButton from '@/components/base/BaseButton.vue';
 
 defineProps<{ registrationOnly?: boolean }>();
@@ -14,8 +15,7 @@ const loadingSlug = ref<string | null>(null);
 async function start(slug: string) {
   loadingSlug.value = slug;
   try {
-    const returnTo = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
-    const result = await apiStartFederatedAuth(slug, returnTo);
+    const result = await apiStartFederatedAuth(slug, safeReturnTo(route.query.redirect));
     window.location.assign(result.authorizationUrl);
   } catch (error) {
     handleError(error, t('federatedauth.startFailed'));

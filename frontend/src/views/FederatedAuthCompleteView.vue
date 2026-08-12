@@ -4,22 +4,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { t } from '@/i18n';
 import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
+import { safeReturnTo } from '@/utils/returnTo';
 
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
-
-function safeReturnTo(value: unknown): string {
-  if (typeof value !== 'string' || !value.startsWith('/') || value.includes('\\')) return '/';
-  try {
-    const resolved = new window.URL(value, window.location.origin);
-    return resolved.origin === window.location.origin
-      ? `${resolved.pathname}${resolved.search}${resolved.hash}`
-      : '/';
-  } catch {
-    return '/';
-  }
-}
 
 onMounted(async () => {
   await router.replace(auth.isAuthenticated ? safeReturnTo(route.query.returnTo) : '/login');

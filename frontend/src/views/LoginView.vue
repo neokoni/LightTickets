@@ -9,6 +9,7 @@ import BaseButton from '@/components/base/BaseButton.vue';
 import TurnstileWidget from '@/components/auth/TurnstileWidget.vue';
 import { ApiError } from '@/types/api';
 import FederatedAuthButtons from '@/components/auth/FederatedAuthButtons.vue';
+import { safeReturnTo } from '@/utils/returnTo';
 
 const router = useRouter();
 const route = useRoute();
@@ -27,8 +28,7 @@ async function submit() {
   loading.value = true;
   try {
     await auth.login(emailOrUsername.value, password.value, turnstileToken.value);
-    const redirect = (route.query.redirect as string) || '/';
-    router.push(redirect);
+    router.push(safeReturnTo(route.query.redirect));
   } catch (e) {
     error.value =
       e instanceof ApiError && e.isCloudflareChallenge
