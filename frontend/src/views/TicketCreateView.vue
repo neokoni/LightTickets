@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { apiCreateTicket } from '@/api/tickets';
@@ -50,6 +50,7 @@ const backButtonClass =
   '!px-0 !py-0 border-none text-slate-500 hover:text-slate-700 dark:hover:text-slate-300';
 
 onMounted(fetchTemplates);
+onUnmounted(mdUpload.cleanup);
 
 watch(
   formValues,
