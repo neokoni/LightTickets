@@ -42,6 +42,10 @@ describe('generated OpenAPI contract', () => {
     );
   });
 
+  it('documents label listing as conditionally authenticated', () => {
+    expect(document.paths['/api/labels']?.get.security).toEqual([{ bearerAuth: [] }, {}]);
+  });
+
   it('documents the actual MC ticket request and both authentication headers', () => {
     const operation = document.paths['/api/mc/tickets']?.post;
     const requestSchema = operation.requestBody?.content?.['application/json']?.schema;

@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import * as labelService from '../services/label.service.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, conditionalAuthMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { ROLE } from '../constants/roles.js';
 import { validate } from '../utils/validate.js';
@@ -9,7 +9,7 @@ import { labelCreateSchema, labelIdentifierSchema, labelUpdateSchema } from '../
 
 const router = Router();
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', conditionalAuthMiddleware, async (_req: Request, res: Response) => {
   const labels = await labelService.list();
   res.json(labels);
 });

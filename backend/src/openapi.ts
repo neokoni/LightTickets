@@ -509,7 +509,7 @@ const registerLabelRoutes = () => {
     method: 'get',
     path: '/api/labels',
     summary: '获取标签列表',
-    auth: 'none',
+    auth: 'conditional',
     tags: ['Labels'],
   });
   registerRoute({

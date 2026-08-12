@@ -30,9 +30,36 @@ async function createUserAndGetToken(email = 'user@test.com') {
   return res.body.data.accessToken;
 }
 
+async function configurePrivateSite() {
+  await prisma().setupStatus.create({ data: { isSetup: true, requireLogin: true } });
+  await prisma().appConfig.create({ data: {} });
+}
+
 describe('GET /api/labels', () => {
-  it('returns all labels', async () => {
+  it('allows unauthenticated requests when requireLogin is false', async () => {
+    const res = await request(app).get('/api/labels');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toBeInstanceOf(Array);
+  });
+
+  it('rejects unauthenticated requests when requireLogin is true', async () => {
+    await configurePrivateSite();
+
+    const res = await request(app).get('/api/labels');
+
+    expect(res.status).toBe(401);
+    expect(res.body).toMatchObject({
+      success: false,
+      statusCode: 401,
+      message: '缺少认证令牌或格式不正确',
+    });
+  });
+
+  it('allows authenticated requests when requireLogin is true', async () => {
+    await configurePrivateSite();
     const token = await createUserAndGetToken();
+
     const res = await request(app).get('/api/labels').set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
