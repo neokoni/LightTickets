@@ -8,6 +8,7 @@ errors:
   unknown: "未知错误"
   no_message: "无错误信息"
   rebind_required: "绑定凭据无效，请先在网页解绑后重新执行 /lit bind"
+  session_invalidated: "玩家会话已失效，请重试"
 http:
   request_failed: "HTTP 请求失败: {method} {url} ({message})"
   invalid_uri: "HTTP 地址无效: {url} ({message})"
