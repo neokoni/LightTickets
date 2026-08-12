@@ -67,7 +67,7 @@ export default defineConfig(({ mode }) => {
   const serverTarget = env.LT_SERVER_URL || LT_DEFAULT_SERVER_URL;
 
   return {
-    envPrefix: 'LT_',
+    envPrefix: 'LT_WEB_',
     define: {
       'import.meta.env.LT_BUILD_COMMIT': JSON.stringify(buildCommit),
       'import.meta.env.LT_APP_VERSION': JSON.stringify(appVersion),
