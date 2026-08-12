@@ -157,6 +157,30 @@ describe('PUT /api/admin/storage', () => {
     expect(s3.secretAccessKey).toBe('oldsecret');
   });
 
+  it('preserves the s3 secret when masked config is submitted unchanged', async () => {
+    const existing = await prisma().appConfig.findFirstOrThrow();
+    await prisma().appConfig.update({
+      where: { id: existing.id },
+      data: { storageDriver: 's3', s3Config: JSON.stringify(S3_CONFIG) },
+    });
+    const token = await getAdminToken('storage-masked-secret@test.com');
+
+    const getRes = await request(app)
+      .get('/api/admin/storage')
+      .set('Authorization', `Bearer ${token}`);
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.data.s3.secretAccessKey).toBe('••••••••');
+
+    const putRes = await request(app)
+      .put('/api/admin/storage')
+      .set('Authorization', `Bearer ${token}`)
+      .send(getRes.body.data);
+
+    expect(putRes.status).toBe(200);
+    const config = await prisma().appConfig.findFirstOrThrow();
+    expect(JSON.parse(config.s3Config!).secretAccessKey).toBe(S3_CONFIG.secretAccessKey);
+  });
+
   it('switches back to local', async () => {
     const token = await getAdminToken('storage-back@test.com');
     const res = await request(app)

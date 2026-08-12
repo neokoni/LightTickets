@@ -48,7 +48,9 @@ export async function updateStorageConfig(input: {
     if (input.s3.region !== undefined) newS3.region = input.s3.region;
     if (input.s3.bucket !== undefined) newS3.bucket = input.s3.bucket;
     if (input.s3.accessKeyId) newS3.accessKeyId = input.s3.accessKeyId;
-    if (input.s3.secretAccessKey) newS3.secretAccessKey = input.s3.secretAccessKey;
+    if (input.s3.secretAccessKey && input.s3.secretAccessKey !== SECRET_MASK) {
+      newS3.secretAccessKey = input.s3.secretAccessKey;
+    }
     if (input.s3.forcePathStyle !== undefined) newS3.forcePathStyle = input.s3.forcePathStyle;
     if (input.s3.presignExpiry !== undefined) newS3.presignExpiry = input.s3.presignExpiry;
   }
