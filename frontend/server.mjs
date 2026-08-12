@@ -11,6 +11,19 @@ const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DIST_DIR = path.join(SERVER_DIR, 'dist');
 const DEFAULT_PROXY_TIMEOUT_MS = 30_000;
 const FRONTEND_REQUEST_ORIGIN = 'http://frontend.local';
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "script-src 'self' https://challenges.cloudflare.com",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://challenges.cloudflare.com",
+  'frame-src https://challenges.cloudflare.com',
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join('; ');
 
 const MIME_TYPES = new Map([
   ['.css', 'text/css; charset=utf-8'],
@@ -106,6 +119,7 @@ function normalizeRemoteAddress(address) {
 }
 
 function writeSecurityHeaders(response) {
+  response.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY);
   response.setHeader('Referrer-Policy', 'same-origin');
   response.setHeader('X-Content-Type-Options', 'nosniff');
   response.setHeader('X-Frame-Options', 'SAMEORIGIN');

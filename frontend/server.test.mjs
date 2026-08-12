@@ -81,6 +81,35 @@ async function withTimeout(promise, message) {
   }
 }
 
+test('static responses enforce the production content security policy', async (t) => {
+  const distDir = await mkdtemp(path.join(tmpdir(), 'lighttickets-web-'));
+  await writeFile(path.join(distDir, 'index.html'), '<!doctype html>', 'utf8');
+  t.after(() => rm(distDir, { recursive: true, force: true }));
+
+  const frontend = createFrontendServer({ distDir });
+  const frontendPort = await listen(frontend);
+  t.after(() => close(frontend));
+
+  for (const routePath of ['/', '/tickets/123']) {
+    const response = await requestPath(frontendPort, routePath);
+    assert.equal(response.statusCode, 200);
+    assert.equal(
+      response.headers['content-security-policy'],
+      "default-src 'self'; " +
+        "script-src 'self' https://challenges.cloudflare.com; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data: blob: https:; " +
+        "font-src 'self' data:; " +
+        "connect-src 'self' https://api.iconify.design https://api.simplesvg.com https://api.unisvg.com https://challenges.cloudflare.com; " +
+        'frame-src https://challenges.cloudflare.com; ' +
+        "object-src 'none'; " +
+        "base-uri 'self'; " +
+        "form-action 'self'; " +
+        "frame-ancestors 'self'",
+    );
+  }
+});
+
 test('the API proxy replaces client-supplied forwarding headers with the socket address', async (t) => {
   const distDir = await mkdtemp(path.join(tmpdir(), 'lighttickets-web-'));
   await writeFile(path.join(distDir, 'index.html'), '<!doctype html>', 'utf8');
