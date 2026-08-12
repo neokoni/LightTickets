@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
@@ -6,8 +6,13 @@ import { getConfig } from '../src/config.js';
 import { prisma } from './setup.js';
 import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
 import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
+import * as rateLimitConfigService from '../src/services/rate-limit-config.service.js';
 
 const app = createApp();
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 const mailConfig = {
   enabled: true,
@@ -212,6 +217,29 @@ describe('email notification preferences', () => {
       .post('/api/users/email-notifications/unsubscribe')
       .send({ token: 'invalid' });
     expect(res.status).toBe(400);
+  });
+
+  it('rate limits repeated unsubscribe requests', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VITEST', '');
+    await rateLimitConfigService.updateRateLimitConfig({
+      auth: { windowSeconds: 60, maxRequests: 1 },
+    });
+
+    const first = await request(app)
+      .post('/api/users/email-notifications/unsubscribe')
+      .send({ token: 'invalid' });
+    const second = await request(app)
+      .post('/api/users/email-notifications/unsubscribe')
+      .send({ token: 'invalid' });
+
+    expect(first.status).toBe(400);
+    expect(second.status).toBe(429);
+    expect(second.body).toMatchObject({
+      success: false,
+      statusCode: 429,
+      message: '请求过于频繁，请稍后再试',
+    });
   });
 
   it('rejects an unsubscribe token used as a Bearer token', async () => {

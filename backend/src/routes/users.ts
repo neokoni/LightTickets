@@ -20,11 +20,15 @@ const router = Router();
 export const unsubscribeSchema = z.object({ token: z.string().min(1) });
 export const emailChangeCancelSchema = z.object({ token: z.string().min(1).max(256) }).strict();
 
-router.post('/email-notifications/unsubscribe', async (req: Request, res: Response) => {
-  const data = validate(unsubscribeSchema, req.body);
-  const result = await ticketNotificationService.unsubscribe(data.token);
-  res.json(result);
-});
+router.post(
+  '/email-notifications/unsubscribe',
+  authLimiter,
+  async (req: Request, res: Response) => {
+    const data = validate(unsubscribeSchema, req.body);
+    const result = await ticketNotificationService.unsubscribe(data.token);
+    res.json(result);
+  },
+);
 
 router.post('/email-change/cancel', authLimiter, async (req: Request, res: Response) => {
   const data = validate(emailChangeCancelSchema, req.body);
