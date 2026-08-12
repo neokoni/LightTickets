@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import type { Response } from 'express';
 import * as attachmentService from '../src/services/attachment.service.js';
 import { prisma } from './setup.js';
 import { reinitStorageAdapter } from '../src/services/storage/index.js';
@@ -10,12 +11,27 @@ import { LocalStorageAdapter } from '../src/services/storage/local.adapter.js';
 import { AttachmentStatus } from '@prisma/client';
 import crypto from 'crypto';
 import * as attachmentConfigService from '../src/services/attachment-config.service.js';
+import { S3StorageAdapter } from '../src/services/storage/s3.adapter.js';
+
+const S3_CONFIG = {
+  endpoint: 'http://localhost:9000',
+  region: 'us-east-1',
+  bucket: 'attachments',
+  accessKeyId: 'access-key',
+  secretAccessKey: 'secret-key',
+  forcePathStyle: true,
+  presignExpiry: 300,
+};
 
 describe('attachment.service', () => {
   beforeEach(async () => {
     await prisma().appConfig.deleteMany();
     await prisma().appConfig.create({ data: {} });
     reinitStorageAdapter();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('saves an uploaded file and creates its attachment row', async () => {
@@ -100,6 +116,120 @@ describe('attachment.service', () => {
     expect(fs.existsSync(filePath)).toBe(false);
     const row = await prisma().attachment.findUnique({ where: { id: attachment.id } });
     expect(row).toBeNull();
+  });
+
+  it('serves and deletes a local attachment after the active driver switches to s3', async () => {
+    const user = await prisma().user.create({
+      data: {
+        email: 'attachment-local-history@test.com',
+        passwordHash: 'hash',
+        username: 'attachmentlocalhistory',
+      },
+    });
+    const attachment = await attachmentService.saveUploadedFile({
+      file: {
+        buffer: Buffer.from('local history'),
+        originalname: 'local-history.txt',
+        mimetype: 'text/plain',
+        size: 13,
+      },
+      uploadedBy: user.id,
+    });
+    const config = await prisma().appConfig.findFirstOrThrow();
+    const filePath = path.resolve(resolveUploadDir(config.uploadDir), attachment.path);
+    await prisma().appConfig.update({
+      where: { id: config.id },
+      data: { storageDriver: 's3', s3Config: JSON.stringify(S3_CONFIG) },
+    });
+    reinitStorageAdapter();
+    const localServe = vi
+      .spyOn(LocalStorageAdapter.prototype, 'serve')
+      .mockResolvedValue(undefined);
+    const s3Serve = vi.spyOn(S3StorageAdapter.prototype, 'serve').mockResolvedValue(undefined);
+    const s3Delete = vi.spyOn(S3StorageAdapter.prototype, 'delete').mockResolvedValue(undefined);
+
+    await attachmentService.serve(attachment.id, {} as Response, {
+      userId: user.id,
+      role: 'player',
+    });
+    await attachmentService.deleteAttachment(attachment.id);
+
+    expect(localServe).toHaveBeenCalledOnce();
+    expect(s3Serve).not.toHaveBeenCalled();
+    expect(s3Delete).not.toHaveBeenCalled();
+    expect(fs.existsSync(filePath)).toBe(false);
+    expect(await prisma().attachment.findUnique({ where: { id: attachment.id } })).toBeNull();
+  });
+
+  it('serves and deletes an s3 attachment after the active driver switches to local', async () => {
+    const user = await prisma().user.create({
+      data: {
+        email: 'attachment-s3-history@test.com',
+        passwordHash: 'hash',
+        username: 'attachments3history',
+      },
+    });
+    const config = await prisma().appConfig.findFirstOrThrow();
+    await prisma().appConfig.update({
+      where: { id: config.id },
+      data: { storageDriver: 'local', s3Config: JSON.stringify(S3_CONFIG) },
+    });
+    const attachment = await prisma().attachment.create({
+      data: {
+        filename: 's3-history.txt',
+        path: 's3-history-key',
+        mimeType: 'text/plain',
+        size: 10,
+        storageType: 's3',
+        uploadedBy: user.id,
+      },
+    });
+    reinitStorageAdapter();
+    const localServe = vi
+      .spyOn(LocalStorageAdapter.prototype, 'serve')
+      .mockResolvedValue(undefined);
+    const localDelete = vi
+      .spyOn(LocalStorageAdapter.prototype, 'delete')
+      .mockResolvedValue(undefined);
+    const s3Serve = vi.spyOn(S3StorageAdapter.prototype, 'serve').mockResolvedValue(undefined);
+    const s3Delete = vi.spyOn(S3StorageAdapter.prototype, 'delete').mockResolvedValue(undefined);
+
+    await attachmentService.serve(attachment.id, {} as Response, {
+      userId: user.id,
+      role: 'player',
+    });
+    await attachmentService.deleteAttachment(attachment.id);
+
+    expect(s3Serve).toHaveBeenCalledOnce();
+    expect(s3Delete).toHaveBeenCalledWith('s3-history-key');
+    expect(localServe).not.toHaveBeenCalled();
+    expect(localDelete).not.toHaveBeenCalled();
+    expect(await prisma().attachment.findUnique({ where: { id: attachment.id } })).toBeNull();
+  });
+
+  it('fails closed when an attachment historical storage config is unavailable', async () => {
+    const user = await prisma().user.create({
+      data: {
+        email: 'attachment-missing-storage@test.com',
+        passwordHash: 'hash',
+        username: 'attachmentmissingstorage',
+      },
+    });
+    const attachment = await prisma().attachment.create({
+      data: {
+        filename: 'missing-s3.txt',
+        path: 'missing-s3-key',
+        mimeType: 'text/plain',
+        size: 10,
+        storageType: 's3',
+        uploadedBy: user.id,
+      },
+    });
+
+    await expect(attachmentService.deleteAttachment(attachment.id)).rejects.toThrow(
+      'S3 附件存储配置不可用',
+    );
+    expect(await prisma().attachment.findUnique({ where: { id: attachment.id } })).not.toBeNull();
   });
 
   it('removes the pending row and partial file when storage save fails', async () => {
@@ -358,5 +488,58 @@ describe('attachment.service', () => {
     ).not.toBeNull();
     expect(fs.existsSync(oldPath)).toBe(false);
     expect(fs.existsSync(freshPath)).toBe(true);
+  });
+
+  it('cleans up expired local and s3 orphan attachments with their persisted adapters', async () => {
+    const user = await prisma().user.create({
+      data: {
+        email: 'attachment-mixed-cleanup@test.com',
+        passwordHash: 'hash',
+        username: 'attachmentmixedcleanup',
+      },
+    });
+    const localAttachment = await attachmentService.saveUploadedFile({
+      file: {
+        buffer: Buffer.from('expired local'),
+        originalname: 'expired-local.txt',
+        mimetype: 'text/plain',
+        size: 13,
+      },
+      uploadedBy: user.id,
+    });
+    const now = new Date();
+    const s3Attachment = await prisma().attachment.create({
+      data: {
+        filename: 'expired-s3.txt',
+        path: 'expired-s3-key',
+        mimeType: 'text/plain',
+        size: 10,
+        storageType: 's3',
+        uploadedBy: user.id,
+        expiresAt: new Date(now.getTime() - 1),
+      },
+    });
+    const config = await prisma().appConfig.findFirstOrThrow();
+    await prisma().appConfig.update({
+      where: { id: config.id },
+      data: { s3Config: JSON.stringify(S3_CONFIG) },
+    });
+    await prisma().attachment.update({
+      where: { id: localAttachment.id },
+      data: { expiresAt: new Date(now.getTime() - 1) },
+    });
+    const localPath = path.resolve(resolveUploadDir(config.uploadDir), localAttachment.path);
+    reinitStorageAdapter();
+    const s3Delete = vi.spyOn(S3StorageAdapter.prototype, 'delete').mockResolvedValue(undefined);
+
+    await expect(attachmentService.cleanupExpiredOrphanAttachments(now)).resolves.toBe(2);
+
+    expect(s3Delete).toHaveBeenCalledWith('expired-s3-key');
+    expect(fs.existsSync(localPath)).toBe(false);
+    expect(
+      await prisma().attachment.findMany({
+        where: { id: { in: [localAttachment.id, s3Attachment.id] } },
+      }),
+    ).toHaveLength(0);
   });
 });

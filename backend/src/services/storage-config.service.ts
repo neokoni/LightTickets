@@ -5,6 +5,8 @@ import { validateS3Config, type S3Config, type StorageConfig } from '../config.j
 import { reinitStorageAdapter } from './storage/index.js';
 import { AppError, ValidationError } from '../utils/errors.js';
 import { StorageDriver } from '../constants/storage-driver.js';
+import { resolveUploadDir } from '../paths.js';
+import { Prisma } from '@prisma/client';
 
 export type { StorageConfig };
 
@@ -38,7 +40,7 @@ export async function updateStorageConfig(input: {
   s3?: Partial<S3Config>;
 }): Promise<StorageConfig & { s3?: Partial<S3Config> }> {
   const existing = await ensureAppConfig();
-  const existingS3 = existing.s3Config ? (JSON.parse(existing.s3Config) as S3Config) : {};
+  const existingS3 = existing.s3Config ? (JSON.parse(existing.s3Config) as S3Config) : undefined;
 
   const newS3: Partial<S3Config> = { ...existingS3 };
   if (input.s3) {
@@ -51,8 +53,8 @@ export async function updateStorageConfig(input: {
     if (input.s3.presignExpiry !== undefined) newS3.presignExpiry = input.s3.presignExpiry;
   }
 
-  let s3ConfigJson: string | null = null;
-  if (input.driver === StorageDriver.S3) {
+  let s3ConfigJson = existing.s3Config;
+  if (input.driver === StorageDriver.S3 || input.s3) {
     const parsed: Partial<S3Config> = {
       endpoint: newS3.endpoint,
       region: newS3.region || 'us-east-1',
@@ -70,14 +72,48 @@ export async function updateStorageConfig(input: {
     s3ConfigJson = JSON.stringify(parsed);
   }
 
-  await prisma().appConfig.update({
-    where: { id: existing.id },
-    data: {
-      storageDriver: input.driver,
-      uploadDir: input.uploadDir || existing.uploadDir,
-      s3Config: s3ConfigJson,
+  const nextUploadDir = input.uploadDir || existing.uploadDir;
+  const localLocationChanged =
+    resolveUploadDir(nextUploadDir) !== resolveUploadDir(existing.uploadDir);
+  const parsedS3 = s3ConfigJson ? (JSON.parse(s3ConfigJson) as S3Config) : undefined;
+  const s3LocationChanged =
+    !!existingS3 &&
+    !!parsedS3 &&
+    (parsedS3.endpoint !== existingS3.endpoint ||
+      parsedS3.region !== existingS3.region ||
+      parsedS3.bucket !== existingS3.bucket ||
+      parsedS3.forcePathStyle !== existingS3.forcePathStyle);
+
+  await prisma().$transaction(
+    async (tx) => {
+      if (localLocationChanged) {
+        const localAttachments = await tx.attachment.count({
+          where: { storageType: StorageDriver.LOCAL },
+        });
+        if (localAttachments > 0) {
+          throw new AppError(409, '存在本地附件时不能修改上传目录，请先迁移附件');
+        }
+      }
+      if (s3LocationChanged) {
+        const s3Attachments = await tx.attachment.count({
+          where: { storageType: StorageDriver.S3 },
+        });
+        if (s3Attachments > 0) {
+          throw new AppError(409, '存在 S3 附件时不能修改存储位置，请先迁移附件');
+        }
+      }
+
+      await tx.appConfig.update({
+        where: { id: existing.id },
+        data: {
+          storageDriver: input.driver,
+          uploadDir: nextUploadDir,
+          s3Config: s3ConfigJson,
+        },
+      });
     },
-  });
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 
   reinitStorageAdapter();
   return getStorageConfig();

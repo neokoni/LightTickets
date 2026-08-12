@@ -5,6 +5,15 @@ import { prisma } from './setup.js';
 import { reinitStorageAdapter } from '../src/services/storage/index.js';
 
 const app = createApp();
+const S3_CONFIG = {
+  endpoint: 'http://localhost:9000',
+  region: 'us-east-1',
+  bucket: 'test-bucket',
+  accessKeyId: 'old-key',
+  secretAccessKey: 'old-secret',
+  forcePathStyle: true,
+  presignExpiry: 300,
+};
 
 async function getAdminToken(email = 'storage-admin@test.com') {
   await request(app)
@@ -157,6 +166,126 @@ describe('PUT /api/admin/storage', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.driver).toBe('local');
+  });
+
+  it('preserves s3 config when switching back to local', async () => {
+    const existing = await prisma().appConfig.findFirstOrThrow();
+    await prisma().appConfig.update({
+      where: { id: existing.id },
+      data: { storageDriver: 's3', s3Config: JSON.stringify(S3_CONFIG) },
+    });
+    const token = await getAdminToken('storage-retain-s3@test.com');
+
+    const res = await request(app)
+      .put('/api/admin/storage')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ driver: 'local', uploadDir: 'data/uploads' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.s3.secretAccessKey).toBe('••••••••');
+    const config = await prisma().appConfig.findFirstOrThrow();
+    expect(JSON.parse(config.s3Config!)).toEqual(S3_CONFIG);
+  });
+
+  it('rejects changing the local upload directory while local attachments exist', async () => {
+    const token = await getAdminToken('storage-local-location@test.com');
+    const user = await prisma().user.findUniqueOrThrow({
+      where: { email: 'storage-local-location@test.com' },
+    });
+    await prisma().attachment.create({
+      data: {
+        filename: 'local.txt',
+        path: 'local-key',
+        mimeType: 'text/plain',
+        size: 5,
+        storageType: 'local',
+        uploadedBy: user.id,
+      },
+    });
+
+    const res = await request(app)
+      .put('/api/admin/storage')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ driver: 'local', uploadDir: 'data/other-uploads' });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toContain('不能修改上传目录');
+    expect((await prisma().appConfig.findFirstOrThrow()).uploadDir).toBe('data/uploads');
+  });
+
+  it('rejects changing the s3 location while s3 attachments exist', async () => {
+    const existing = await prisma().appConfig.findFirstOrThrow();
+    await prisma().appConfig.update({
+      where: { id: existing.id },
+      data: { storageDriver: 's3', s3Config: JSON.stringify(S3_CONFIG) },
+    });
+    const token = await getAdminToken('storage-s3-location@test.com');
+    const user = await prisma().user.findUniqueOrThrow({
+      where: { email: 'storage-s3-location@test.com' },
+    });
+    await prisma().attachment.create({
+      data: {
+        filename: 's3.txt',
+        path: 's3-key',
+        mimeType: 'text/plain',
+        size: 5,
+        storageType: 's3',
+        uploadedBy: user.id,
+      },
+    });
+
+    const res = await request(app)
+      .put('/api/admin/storage')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ driver: 's3', s3: { bucket: 'other-bucket' } });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toContain('不能修改存储位置');
+    const config = await prisma().appConfig.findFirstOrThrow();
+    expect(JSON.parse(config.s3Config!).bucket).toBe(S3_CONFIG.bucket);
+  });
+
+  it('allows rotating s3 credentials and presign expiry with existing attachments', async () => {
+    const existing = await prisma().appConfig.findFirstOrThrow();
+    await prisma().appConfig.update({
+      where: { id: existing.id },
+      data: { storageDriver: 's3', s3Config: JSON.stringify(S3_CONFIG) },
+    });
+    const token = await getAdminToken('storage-s3-credentials@test.com');
+    const user = await prisma().user.findUniqueOrThrow({
+      where: { email: 'storage-s3-credentials@test.com' },
+    });
+    await prisma().attachment.create({
+      data: {
+        filename: 's3.txt',
+        path: 's3-key',
+        mimeType: 'text/plain',
+        size: 5,
+        storageType: 's3',
+        uploadedBy: user.id,
+      },
+    });
+
+    const res = await request(app)
+      .put('/api/admin/storage')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        driver: 's3',
+        s3: {
+          accessKeyId: 'new-key',
+          secretAccessKey: 'new-secret',
+          presignExpiry: 600,
+        },
+      });
+
+    expect(res.status).toBe(200);
+    const config = await prisma().appConfig.findFirstOrThrow();
+    expect(JSON.parse(config.s3Config!)).toEqual({
+      ...S3_CONFIG,
+      accessKeyId: 'new-key',
+      secretAccessKey: 'new-secret',
+      presignExpiry: 600,
+    });
   });
 
   it('rejects s3 with missing required fields', async () => {

@@ -191,7 +191,7 @@ export async function deleteById(id: string) {
 
 export async function deleteAttachment(id: string) {
   const attachment = await getById(id);
-  const adapter = await getStorageAdapter();
+  const adapter = await getStorageAdapter(attachment.storageType);
   await adapter.delete(attachment.path);
   await deleteById(id);
 }
@@ -237,7 +237,7 @@ export async function assertAttachmentVisible(id: string, viewer?: ticketService
 export async function serve(id: string, res: Response, viewer?: ticketService.TicketViewer) {
   const attachment = await getVisibleAttachment(id, viewer);
   const uploadType = UPLOAD_TYPE_BY_MIME.get(attachment.mimeType);
-  const adapter = await getStorageAdapter();
+  const adapter = await getStorageAdapter(attachment.storageType);
   await adapter.serve(res, {
     key: attachment.path,
     mimeType: uploadType?.mimeType ?? 'application/octet-stream',
@@ -257,11 +257,10 @@ export async function cleanupExpiredOrphanAttachments(now = new Date()): Promise
         { status: AttachmentStatus.deleting },
       ],
     },
-    select: { id: true, path: true },
+    select: { id: true, path: true, storageType: true },
   });
   if (attachments.length === 0) return 0;
 
-  const adapter = await getStorageAdapter();
   let deleted = 0;
   for (const attachment of attachments) {
     const claimed = await prisma().attachment.updateMany({
@@ -279,6 +278,7 @@ export async function cleanupExpiredOrphanAttachments(now = new Date()): Promise
     if (claimed.count === 0) continue;
 
     try {
+      const adapter = await getStorageAdapter(attachment.storageType);
       await adapter.delete(attachment.path);
       const result = await prisma().attachment.deleteMany({
         where: {
@@ -300,13 +300,9 @@ export async function cleanupTicketAttachments(ticketId: number): Promise<void> 
   const attachments = await prisma().attachment.findMany({
     where: { OR: [{ ticketId }, { comment: { ticketId } }] },
   });
-  const adapter = await getStorageAdapter();
   for (const att of attachments) {
-    try {
-      await adapter.delete(att.path);
-    } catch (err) {
-      console.warn(`[cleanup] Failed to delete file ${att.path}:`, err);
-    }
+    const adapter = await getStorageAdapter(att.storageType);
+    await adapter.delete(att.path);
   }
 }
 
@@ -314,12 +310,8 @@ export async function cleanupCommentAttachments(commentId: string): Promise<void
   const attachments = await prisma().attachment.findMany({
     where: { commentId },
   });
-  const adapter = await getStorageAdapter();
   for (const att of attachments) {
-    try {
-      await adapter.delete(att.path);
-    } catch (err) {
-      console.warn(`[cleanup] Failed to delete file ${att.path}:`, err);
-    }
+    const adapter = await getStorageAdapter(att.storageType);
+    await adapter.delete(att.path);
   }
 }
