@@ -93,6 +93,7 @@ function resolveGeneratedSecurityKey(
 
 function ensureGeneratedSecurityConfig(
   raw: ConfigFile,
+  configPath: string,
 ): Pick<SecurityConfig, 'jwtUnsubscribeSecret' | 'legacyJwtCutoff' | 'externalEncryptionKey'> {
   const configuredUnsubscribeSecret = raw.security?.jwtUnsubscribeSecret;
   const hadUnsubscribeSecret =
@@ -122,9 +123,9 @@ function ensureGeneratedSecurityConfig(
   }
 
   if (unsubscribe.generated || externalEncryption.generated || cutoffGenerated) {
-    fs.writeFileSync(CONFIG_PATH, yaml.dump(raw, { lineWidth: -1 }), { mode: 0o600 });
+    fs.writeFileSync(configPath, yaml.dump(raw, { lineWidth: -1 }), { mode: 0o600 });
   }
-  fs.chmodSync(CONFIG_PATH, 0o600);
+  fs.chmodSync(configPath, 0o600);
   return {
     jwtUnsubscribeSecret: unsubscribe.value,
     legacyJwtCutoff,
@@ -199,12 +200,12 @@ function resolveDatabaseUrl(db: DatabaseConfig): string {
   return args ? `${base}?${args}` : base;
 }
 
-export function loadConfig(): AppConfig {
-  if (!fs.existsSync(CONFIG_PATH)) {
-    throw new Error(`配置文件不存在: ${CONFIG_PATH}`);
+export function loadConfig(configPath: string = CONFIG_PATH): AppConfig {
+  if (!fs.existsSync(configPath)) {
+    throw new Error(`配置文件不存在: ${configPath}`);
   }
 
-  const raw = (yaml.load(fs.readFileSync(CONFIG_PATH, 'utf-8')) as ConfigFile | null) ?? {};
+  const raw = (yaml.load(fs.readFileSync(configPath, 'utf-8')) as ConfigFile | null) ?? {};
 
   const server = raw.server || {};
   const database = raw.database || {};
@@ -222,7 +223,7 @@ export function loadConfig(): AppConfig {
   if (!jwtSecret || !jwtRefreshSecret) {
     throw new Error('config.yml 缺少 security.jwtSecret 或 security.jwtRefreshSecret');
   }
-  const generatedSecurity = ensureGeneratedSecurityConfig(raw);
+  const generatedSecurity = ensureGeneratedSecurityConfig(raw, configPath);
   const jwtSecrets = [jwtSecret, jwtRefreshSecret, generatedSecurity.jwtUnsubscribeSecret];
   if (new Set(jwtSecrets).size !== jwtSecrets.length) {
     throw new Error(
@@ -257,9 +258,13 @@ export function getConfig(): AppConfig {
   return _config;
 }
 
-export function reloadConfig(): AppConfig {
-  _config = loadConfig();
+export function reloadConfig(configPath: string = CONFIG_PATH): AppConfig {
+  _config = loadConfig(configPath);
   return _config;
+}
+
+export function resetConfig(): void {
+  _config = null;
 }
 
 export function persistDiscoveredTrustedProxyIp(address: string): string[] {

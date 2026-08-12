@@ -46,6 +46,14 @@ type SetupConfigFile = {
   };
 };
 
+const SETUP_STATUS_ID = 'setup';
+const APP_CONFIG_ID = 'default';
+let setupLock: Promise<void> = Promise.resolve();
+
+function getSetupConfigPath(): string {
+  return `${CONFIG_PATH}.setup`;
+}
+
 function readYaml(filePath: string): SetupConfigFile {
   const raw = yaml.load(fs.readFileSync(filePath, 'utf-8'));
   return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as SetupConfigFile) : {};
@@ -402,7 +410,8 @@ export async function getAdminSettings(): Promise<AdminSettings> {
   };
 }
 
-export async function completeSetup(input: SetupInput) {
+async function completeSetupLocked(input: SetupInput) {
+  const setupConfigPath = getSetupConfigPath();
   if (isDatabaseConfigured()) {
     try {
       const { getPrisma } = await import('../db.js');
@@ -512,74 +521,135 @@ export async function completeSetup(input: SetupInput) {
       configData.security.externalEncryptionKey = existing.security.externalEncryptionKey;
   }
 
+  if (fs.existsSync(setupConfigPath)) {
+    const pending = readYaml(setupConfigPath);
+    if (pending.security?.jwtSecret) configData.security.jwtSecret = pending.security.jwtSecret;
+    if (pending.security?.jwtRefreshSecret)
+      configData.security.jwtRefreshSecret = pending.security.jwtRefreshSecret;
+    if (pending.security?.jwtUnsubscribeSecret)
+      configData.security.jwtUnsubscribeSecret = pending.security.jwtUnsubscribeSecret;
+    if (pending.security?.legacyJwtCutoff !== undefined)
+      configData.security.legacyJwtCutoff = pending.security.legacyJwtCutoff;
+    if (pending.security?.externalEncryptionKey)
+      configData.security.externalEncryptionKey = pending.security.externalEncryptionKey;
+  }
+
   fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
-  fs.writeFileSync(CONFIG_PATH, yaml.dump(configData, { lineWidth: -1 }), 'utf-8');
+  fs.writeFileSync(setupConfigPath, yaml.dump(configData, { lineWidth: -1 }), {
+    encoding: 'utf-8',
+    mode: 0o600,
+  });
   try {
-    fs.chmodSync(CONFIG_PATH, 0o600);
+    fs.chmodSync(setupConfigPath, 0o600);
   } catch {
     // non-fatal
   }
 
-  const { reloadConfig } = await import('../config.js');
-  reloadConfig();
+  const { reloadConfig, resetConfig } = await import('../config.js');
+  const { disconnectPrisma, initPrisma, getPrisma } = await import('../db.js');
+  let initializedPrisma = false;
 
-  const { runMigrations } = await import('../migrate.js');
-  runMigrations(input.db.provider);
+  try {
+    reloadConfig(setupConfigPath);
 
-  const { initPrisma, getPrisma } = await import('../db.js');
-  initPrisma();
-  const prisma = getPrisma();
-  const normalizedAdminEmail = input.admin.email.trim().toLowerCase();
+    const { runMigrations } = await import('../migrate.js');
+    runMigrations(input.db.provider);
 
-  const existingUser = await prisma.user.findFirst({
-    where: { OR: [{ email: normalizedAdminEmail }, { username: input.admin.username }] },
-  });
-  if (existingUser) {
-    throw new AppError(409, '该邮箱或用户名已被使用');
-  }
+    initPrisma();
+    initializedPrisma = true;
+    const prisma = getPrisma();
+    const normalizedAdminEmail = input.admin.email.trim().toLowerCase();
+    const passwordHash = await bcrypt.hash(input.admin.password, 12);
+    const siteConfig = input.site || {};
 
-  const passwordHash = await bcrypt.hash(input.admin.password, 12);
-  const admin = await prisma.user.create({
-    data: {
-      email: normalizedAdminEmail,
-      passwordHash,
-      username: input.admin.username,
-      role: ROLE.ADMIN,
-    },
-  });
+    const result = await prisma.$transaction(async (tx) => {
+      const userCount = await tx.user.count();
+      if (userCount > 0) {
+        throw new AppError(409, '站点已完成初始化，无法重复设置');
+      }
 
-  const siteConfig = input.site || {};
-  const setupRecord = await prisma.setupStatus.create({
-    data: {
-      isSetup: true,
-      siteName: resolveSiteTitle(siteConfig.siteName),
-      siteUrl,
-      defaultLanguage: i18nService.resolveLanguageId(siteConfig.defaultLanguage),
-    },
-  });
+      await tx.setupStatus.upsert({
+        where: { id: SETUP_STATUS_ID },
+        create: { id: SETUP_STATUS_ID, isSetup: false },
+        update: {},
+      });
+      const claimed = await tx.setupStatus.updateMany({
+        where: { id: SETUP_STATUS_ID, isSetup: false },
+        data: {
+          isSetup: true,
+          siteName: resolveSiteTitle(siteConfig.siteName),
+          siteUrl,
+          defaultLanguage: i18nService.resolveLanguageId(siteConfig.defaultLanguage),
+        },
+      });
+      if (claimed.count !== 1) {
+        throw new AppError(409, '站点已完成初始化，无法重复设置');
+      }
 
-  await prisma.appConfig.create({
-    data: storageConfig,
-  });
+      const admin = await tx.user.create({
+        data: {
+          email: normalizedAdminEmail,
+          passwordHash,
+          username: input.admin.username,
+          role: ROLE.ADMIN,
+        },
+      });
+      const setupRecord = await tx.setupStatus.findUniqueOrThrow({
+        where: { id: SETUP_STATUS_ID },
+      });
+      await tx.appConfig.upsert({
+        where: { id: APP_CONFIG_ID },
+        create: { id: APP_CONFIG_ID, ...storageConfig },
+        update: storageConfig,
+      });
 
-  if (input.mc?.defaultServerName) {
-    const apiKey = `lt_${crypto.randomBytes(24).toString('hex')}`;
-    await prisma.server.create({
-      data: {
-        name: input.mc.defaultServerName,
-        apiKeyHash: hashServerApiKey(apiKey),
-      },
+      if (input.mc?.defaultServerName) {
+        const apiKey = `lt_${crypto.randomBytes(24).toString('hex')}`;
+        await tx.server.create({
+          data: {
+            name: input.mc.defaultServerName,
+            apiKeyHash: hashServerApiKey(apiKey),
+          },
+        });
+      }
+
+      const refreshToken = await refreshSessionService.createRefreshSession(admin.id, tx);
+      const accessToken = generateAccessToken(admin.id, admin.role, admin.tokenEpoch);
+      return { admin, setupRecord, accessToken, refreshToken };
     });
+
+    fs.renameSync(setupConfigPath, CONFIG_PATH);
+    reloadConfig();
+
+    return {
+      setup: result.setupRecord,
+      admin: {
+        id: result.admin.id,
+        email: result.admin.email,
+        username: result.admin.username,
+        role: result.admin.role,
+      },
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    };
+  } catch (error) {
+    if (initializedPrisma) await disconnectPrisma();
+    resetConfig();
+    throw error;
   }
+}
 
-  const { initTemplates } = await import('./template.service.js');
-  await initTemplates();
+export async function completeSetup(input: SetupInput) {
+  const previous = setupLock;
+  let release: () => void = () => undefined;
+  setupLock = new Promise<void>((resolve) => {
+    release = resolve;
+  });
 
-  const refreshToken = await refreshSessionService.createRefreshSession(admin.id, prisma);
-  return {
-    setup: setupRecord,
-    admin: { id: admin.id, email: admin.email, username: admin.username, role: admin.role },
-    accessToken: generateAccessToken(admin.id, admin.role, admin.tokenEpoch),
-    refreshToken,
-  };
+  await previous;
+  try {
+    return await completeSetupLocked(input);
+  } finally {
+    release();
+  }
 }

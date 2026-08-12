@@ -287,6 +287,27 @@ describe('POST /api/setup', () => {
     expect(res.status).toBe(409);
   });
 
+  it('creates only one admin for concurrent setup requests', async () => {
+    const [first, second] = await Promise.all([
+      request(app)
+        .post('/api/setup')
+        .send({
+          db: { provider: 'sqlite' },
+          admin: { email: 'first@example.com', password: 'admin123', username: 'first' },
+        }),
+      request(app)
+        .post('/api/setup')
+        .send({
+          db: { provider: 'sqlite' },
+          admin: { email: 'second@example.com', password: 'admin123', username: 'second' },
+        }),
+    ]);
+
+    expect([first.status, second.status].sort()).toEqual([201, 409]);
+    await expect(prisma().user.count()).resolves.toBe(1);
+    await expect(prisma().setupStatus.count()).resolves.toBe(1);
+  });
+
   it('calls the setup completion callback after setup succeeds', async () => {
     const onSetupComplete = vi.fn();
     const setupApp = express();
