@@ -29,4 +29,18 @@ describe('normalizeError', () => {
     expect(normalized).toBeInstanceOf(AppError);
     expect((normalized as AppError).statusCode).toBe(statusCode);
   });
+
+  it('does not map sqlite trigger failures to not found', () => {
+    const error = new Prisma.PrismaClientKnownRequestError('trigger failed', {
+      code: 'P2003',
+      clientVersion: 'test',
+      meta: {
+        driverAdapterError: {
+          cause: { originalCode: 'SQLITE_CONSTRAINT_TRIGGER' },
+        },
+      },
+    });
+
+    expect(normalizeError(error)).toBe(error);
+  });
 });

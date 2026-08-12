@@ -34,10 +34,18 @@ export class ValidationError extends AppError {
   }
 }
 
+function isSqliteTriggerConstraint(error: Prisma.PrismaClientKnownRequestError): boolean {
+  const driverAdapterError = error.meta?.driverAdapterError;
+  if (!driverAdapterError || typeof driverAdapterError !== 'object') return false;
+  const cause = 'cause' in driverAdapterError ? driverAdapterError.cause : undefined;
+  if (!cause || typeof cause !== 'object') return false;
+  return 'originalCode' in cause && cause.originalCode === 'SQLITE_CONSTRAINT_TRIGGER';
+}
+
 export function normalizeError(err: unknown): Error {
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') return new AppError(409, '资源已存在');
-    if (err.code === 'P2003') return new NotFoundError();
+    if (err.code === 'P2003' && !isSqliteTriggerConstraint(err)) return new NotFoundError();
     if (err.code === 'P2025') return new NotFoundError();
   }
   if (err instanceof Prisma.PrismaClientValidationError) {
