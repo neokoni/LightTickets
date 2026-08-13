@@ -117,9 +117,14 @@ router.post('/link-minecraft', authLimiter, authMiddleware, async (req: Request,
   res.json(result);
 });
 
-router.delete('/link-minecraft', authMiddleware, async (req: Request, res: Response) => {
-  const user = await authService.unlinkMinecraft(req.user!.userId);
-  res.json(user);
-});
+router.delete(
+  '/link-minecraft',
+  authLimiter,
+  authMiddleware,
+  async (req: Request, res: Response) => {
+    const user = await authService.unlinkMinecraft(req.user!.userId);
+    res.json(user);
+  },
+);
 
 export default router;

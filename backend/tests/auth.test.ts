@@ -1023,6 +1023,27 @@ describe('POST /api/auth/link-minecraft', () => {
 });
 
 describe('DELETE /api/auth/link-minecraft', () => {
+  it('applies the shared auth rate limit', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VITEST', '');
+    await rateLimitConfigService.updateRateLimitConfig({
+      auth: { windowSeconds: 240, maxRequests: 2 },
+    });
+
+    const reg = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'unlink-limit@test.com', password: 'Password123!', username: 'unlinklimit' });
+    expect(reg.status).toBe(201);
+
+    const auth = { Authorization: `Bearer ${reg.body.data.accessToken}` };
+    const first = await request(app).delete('/api/auth/link-minecraft').set(auth);
+    const limited = await request(app).delete('/api/auth/link-minecraft').set(auth);
+
+    expect(first.status).toBe(400);
+    expect(limited.status).toBe(429);
+    expect(limited.headers['ratelimit-policy']).toBe('2;w=240');
+  });
+
   it('unbinds the current user minecraft account', async () => {
     const serverKey = 'unlink-srv-key';
     await prisma().server.create({
