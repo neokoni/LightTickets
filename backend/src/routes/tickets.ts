@@ -191,6 +191,21 @@ router.post(
   },
 );
 
+router.post(
+  '/:id/completion-hooks/:hookId/skip',
+  authMiddleware,
+  requireRole(ROLE.STAFF),
+  async (req: Request, res: Response) => {
+    const hook = await ticketService.skipCompletionHook(
+      parseId(String(req.params.id)),
+      validate(completionHookIdSchema, String(req.params.hookId)),
+      req.user!.userId,
+      req.user!.role,
+    );
+    res.json(hook);
+  },
+);
+
 // Assignees
 export const ticketAssigneesSchema = z.object({
   assigneeIds: z

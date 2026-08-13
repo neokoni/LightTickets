@@ -700,6 +700,15 @@ export function completeCompletionHook(
   return completionHookService.complete(ticketId, hookId, userId, userRole, values);
 }
 
+export function skipCompletionHook(
+  ticketId: number,
+  hookId: string,
+  userId: number,
+  userRole: string,
+) {
+  return completionHookService.skip(ticketId, hookId, userId, userRole);
+}
+
 export async function setAssignees(
   id: number,
   userId: number,

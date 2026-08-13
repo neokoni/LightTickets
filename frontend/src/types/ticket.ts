@@ -96,7 +96,7 @@ export interface Ticket {
   hookDeliveries?: HookDelivery[];
 }
 
-export type CompletionHookStatus = 'pending' | 'completed' | 'cancelled';
+export type CompletionHookStatus = 'pending' | 'completed' | 'skipped';
 export type CompletionHookValue = string | string[];
 
 export interface TicketCompletionHook {

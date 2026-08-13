@@ -258,3 +258,39 @@ export async function complete(
 
   return toView(result.completed);
 }
+
+export async function skip(
+  ticketId: number,
+  hookId: string,
+  userId: number,
+  userRole: string,
+): Promise<CompletionHookView> {
+  if (!isStaffRole(userRole)) throw new ForbiddenError('无权跳过完成钩子决策');
+
+  const hook = await prisma().ticketCompletionHook.findFirst({
+    where: { id: hookId, ticketId },
+    select: { id: true, title: true },
+  });
+  if (!hook) throw new NotFoundError('完成钩子不存在');
+
+  const skipped = await prisma().$transaction(async (tx) => {
+    const updated = await tx.ticketCompletionHook.updateMany({
+      where: { id: hookId, ticketId, status: 'pending' },
+      data: { status: 'skipped', completedById: userId, completedAt: new Date() },
+    });
+    if (updated.count !== 1) throw new AppError(409, '完成钩子已处理');
+    await tx.auditLog.create({
+      data: {
+        ticketId,
+        actorId: userId,
+        action: AUDIT_ACTION.COMPLETION_HOOK_SKIPPED,
+        newValue: hook.title,
+      },
+    });
+    return tx.ticketCompletionHook.findUniqueOrThrow({
+      where: { id: hookId },
+      select: hookViewSelect,
+    });
+  });
+  return toView(skipped);
+}

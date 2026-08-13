@@ -23,7 +23,7 @@ enum CommentSource {
 enum CompletionHookStatus {
   pending
   completed
-  cancelled
+  skipped
 }
 
 enum CompletionHookVisibility {

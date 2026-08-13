@@ -3,6 +3,7 @@ export const AUDIT_ACTION = {
   BODY_CHANGE: 'body_change',
   COMPLETION_HOOK: 'completion_hook',
   COMPLETION_HOOK_PENDING: 'completion_hook_pending',
+  COMPLETION_HOOK_SKIPPED: 'completion_hook_skipped',
   TITLE_CHANGE: 'title_change',
   COMMENT_EDIT: 'comment_edit',
   LABEL_ADD: 'label_add',

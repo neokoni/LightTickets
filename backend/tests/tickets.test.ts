@@ -901,7 +901,48 @@ describe('POST /api/tickets/:id/reopen', () => {
   });
 });
 
-describe('POST /api/tickets/:id/completion-hooks/:hookId/complete', () => {
+describe('completion hook decisions', () => {
+  it('allows staff to skip a pending completion hook and records an audit event', async () => {
+    const authorToken = await createUserAndGetToken('hook-skip-api-author@test.com');
+    const staffToken = await createStaffAndGetToken('hook-skip-api-staff@test.com');
+    const created = await createTicket(authorToken, {
+      template: selectionTemplateName,
+      formData: { description: 'Skip pending hook' },
+    });
+    const ticketId = created.body.data.id as number;
+
+    await request(app)
+      .post(`/api/tickets/${ticketId}/close`)
+      .set('Authorization', `Bearer ${authorToken}`);
+    const staffView = await request(app)
+      .get(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${staffToken}`);
+    const hook = staffView.body.data.completionHooks.find(
+      (item: { status: string }) => item.status === 'pending',
+    );
+
+    const playerAttempt = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hook.id}/skip`)
+      .set('Authorization', `Bearer ${authorToken}`);
+    expect(playerAttempt.status).toBe(403);
+
+    const skipped = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hook.id}/skip`)
+      .set('Authorization', `Bearer ${staffToken}`);
+    expect(skipped.status).toBe(200);
+    expect(skipped.body.data).toMatchObject({ id: hook.id, status: 'skipped' });
+
+    const audit = await prisma().auditLog.findFirst({
+      where: { ticketId, action: 'completion_hook_skipped' },
+    });
+    expect(audit).toMatchObject({ actorId: expect.any(Number), newValue: hook.title });
+
+    const duplicate = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hook.id}/skip`)
+      .set('Authorization', `Bearer ${staffToken}`);
+    expect(duplicate.status).toBe(409);
+  });
+
   it('publishes only completed public decisions and records validated completions', async () => {
     const authorToken = await createUserAndGetToken('hook-author@test.com');
     const staffToken = await createStaffAndGetToken('hook-staff@test.com');

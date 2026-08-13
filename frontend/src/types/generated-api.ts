@@ -1247,7 +1247,7 @@ export interface paths {
                   [key: string]: string | string[];
                 } | null;
                 /** @enum {string} */
-                status: 'pending' | 'completed' | 'cancelled';
+                status: 'pending' | 'completed' | 'skipped';
                 /** @enum {string} */
                 visibility: 'public' | 'staff';
                 createdAt: string;
@@ -1257,6 +1257,60 @@ export interface paths {
                   username: string;
                   minecraftName: string | null;
                 } | null;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/tickets/{id}/completion-hooks/{hookId}/skip': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 选择不做完成钩子决策 */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          hookId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                [key: string]: unknown;
               };
             };
           };

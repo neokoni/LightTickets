@@ -8,7 +8,7 @@ import BaseCombobox from '@/components/base/BaseCombobox.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
-import { apiCompleteTicketHook } from '@/api/tickets';
+import { apiCompleteTicketHook, apiSkipTicketHook } from '@/api/tickets';
 import { t } from '@/i18n';
 import { userDisplayName } from '@/utils/user-display';
 import { ToastType, useUiStore } from '@/stores/ui';
@@ -25,6 +25,7 @@ const props = defineProps<{
   ticketId: number;
   hooks: TicketCompletionHook[];
   deliveries?: HookDelivery[];
+  canCancel?: boolean;
 }>();
 
 const emit = defineEmits<{ completed: [] }>();
@@ -123,6 +124,19 @@ async function submit(hook: TicketCompletionHook) {
   }
 }
 
+async function skip(hook: TicketCompletionHook) {
+  submittingId.value = hook.id;
+  try {
+    await apiSkipTicketHook(props.ticketId, hook.id);
+    ui.toast(t('ticket.completionHook.skipped'), ToastType.SUCCESS);
+    emit('completed');
+  } catch (error) {
+    handleError(error);
+  } finally {
+    submittingId.value = null;
+  }
+}
+
 function responseText(value: CompletionHookValue | undefined): string {
   return Array.isArray(value) ? value.join(', ') : value || t('ticket.completionHook.emptyValue');
 }
@@ -137,8 +151,8 @@ function statusColor(status: TicketCompletionHook['status']): string | undefined
       return '#f59e0b';
     case 'completed':
       return '#22c55e';
-    case 'cancelled':
-      return undefined;
+    case 'skipped':
+      return '#4c4c4c';
   }
 }
 
@@ -163,7 +177,7 @@ const displayDeliveryResults = computed(() =>
       v-for="hook in hooks"
       :key="hook.id"
       class="rounded-xl border border-slate-200/80 bg-white/70 px-4 py-4 backdrop-blur sm:px-5 dark:border-slate-800/80 dark:bg-slate-900/70"
-      :class="{ 'opacity-60': hook.status === 'cancelled' }"
+      :class="{ 'opacity-60': hook.status === 'skipped' }"
     >
       <header class="flex items-start justify-between gap-3">
         <h3 class="min-w-0 text-base font-semibold leading-6 text-slate-900 dark:text-slate-100">
@@ -254,6 +268,15 @@ const displayDeliveryResults = computed(() =>
           </div>
         </div>
         <div class="flex justify-end pt-1">
+          <BaseButton
+            v-if="canCancel"
+            size="sm"
+            type="button"
+            :loading="submittingId === hook.id"
+            @click="skip(hook)"
+          >
+            {{ t('ticket.completionHook.skip') }}
+          </BaseButton>
           <BaseButton size="sm" filled type="submit" :loading="submittingId === hook.id">
             {{ t('ticket.completionHook.submit') }}
           </BaseButton>

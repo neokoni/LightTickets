@@ -412,7 +412,7 @@ const registerTicketRoutes = () => {
       title: z.string(),
       fields: z.array(z.record(z.string(), z.unknown())),
       response: z.record(z.string(), z.union([z.string(), z.array(z.string())])).nullable(),
-      status: z.enum(['pending', 'completed', 'cancelled']),
+      status: z.enum(['pending', 'completed', 'skipped']),
       visibility: z.enum(['public', 'staff']),
       createdAt: z.string(),
       completedAt: z.string().nullable(),
@@ -424,6 +424,15 @@ const registerTicketRoutes = () => {
         })
         .nullable(),
     }),
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/tickets/{id}/completion-hooks/{hookId}/skip',
+    summary: '选择不做完成钩子决策',
+    auth: 'staff',
+    tags: ['Tickets'],
+    paramsSchema: z.object({ id: z.string(), hookId: completionHookIdSchema }),
+    responseSchema: z.object({}).passthrough(),
   });
   registerRoute({
     method: 'get',

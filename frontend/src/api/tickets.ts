@@ -75,6 +75,12 @@ export function apiCompleteTicketHook(
   );
 }
 
+export function apiSkipTicketHook(ticketId: number, hookId: string) {
+  return apiFetch<TicketCompletionHook>(`/tickets/${ticketId}/completion-hooks/${hookId}/skip`, {
+    method: 'POST',
+  });
+}
+
 export function apiGetTemplates() {
   return apiFetch<TemplateSummary[]>('/templates');
 }

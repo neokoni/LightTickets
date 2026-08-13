@@ -116,6 +116,7 @@ export function useAuditTimeline(
       comment_edit: t('ticket.timeline.commentEdited'),
       completion_hook: t('ticket.timeline.decisionCompleted'),
       completion_hook_pending: t('ticket.timeline.decisionPending'),
+      completion_hook_skipped: t('ticket.timeline.decisionSkipped'),
       visibility_change:
         item.newValue === 'true'
           ? t('ticket.timeline.visibilityHidden')

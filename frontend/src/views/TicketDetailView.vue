@@ -412,6 +412,7 @@ watch(
           :ticket-id="ticket.id"
           :hooks="ticket.completionHooks ?? []"
           :deliveries="ticket.hookDeliveries"
+          :can-cancel="auth.isStaff"
           @completed="refreshAfterCompletionHook"
         />
 
@@ -540,7 +541,11 @@ watch(
                   }}
                 </span>
                 <span
-                  v-if="item.action === AUDIT_ACTION.COMPLETION_HOOK && item.newValue"
+                  v-if="
+                    (item.action === AUDIT_ACTION.COMPLETION_HOOK ||
+                      item.action === AUDIT_ACTION.COMPLETION_HOOK_SKIPPED) &&
+                    item.newValue
+                  "
                   class="text-slate-600 dark:text-slate-300"
                   >{{ item.newValue }}</span
                 >
