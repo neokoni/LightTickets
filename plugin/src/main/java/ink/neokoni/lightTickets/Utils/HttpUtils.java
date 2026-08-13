@@ -1,5 +1,7 @@
 package ink.neokoni.lightTickets.Utils;
 
+import ink.neokoni.lightTickets.Configs.Config;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -70,9 +72,25 @@ public class HttpUtils {
                     Map.of("{method}", method, "{url}", url, "{message}", LogUtils.exceptionText(e)), e);
         }
         if (response != null) {
+            assertRedirectOrigin(response);
             return new Resp(response.statusCode(), response.body());
         }
         return null;
+    }
+
+    private static void assertRedirectOrigin(HttpResponse<String> response) {
+        if (response == null) return;
+        URI finalUri = response.uri();
+        if (finalUri == null) return;
+        URI expectedOrigin = LightTicketsUri.origin(Config.getConfig().getBaseUrl());
+        if (!finalUri.getScheme().equalsIgnoreCase(expectedOrigin.getScheme())
+                || !finalUri.getHost().equalsIgnoreCase(expectedOrigin.getHost())
+                || finalUri.getPort() != expectedOrigin.getPort()) {
+            throw requestException("http.redirect_blocked",
+                    Map.of("{url}", finalUri.toString(),
+                           "{expected}", expectedOrigin.toString()),
+                    null);
+        }
     }
 
     private static void applyHeaders(HttpRequest.Builder requestBuilder, @Nullable Map<String, String> headers) {
@@ -84,7 +102,7 @@ public class HttpUtils {
     private static void initHttpClient() {
         if (httpClient == null) {
             httpClient = HttpClient.newBuilder()
-                    .followRedirects(HttpClient.Redirect.ALWAYS)
+                    .followRedirects(HttpClient.Redirect.NORMAL)
                     .connectTimeout(Duration.ofSeconds(30))
                     .version(HttpClient.Version.HTTP_1_1)
                     .build();
