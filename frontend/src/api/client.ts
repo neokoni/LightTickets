@@ -80,14 +80,19 @@ async function apiFetchInternal<T>(
       signal: controller.signal,
     });
 
-    if (res.status === 401 && accessToken && !retried && path !== '/auth/refresh') {
-      try {
-        if (refreshHandler && (await refreshHandler())) {
-          return apiFetchInternal<T>(path, options, true);
+    if (res.status === 401 && accessToken && path !== '/auth/refresh') {
+      if (!retried) {
+        try {
+          if (refreshHandler && (await refreshHandler())) {
+            return apiFetchInternal<T>(path, options, true);
+          }
+        } catch {
+          // The original 401 is reported below after the refresh attempt fails.
         }
-      } catch {
-        // The original 401 is reported below after the refresh attempt fails.
       }
+      // Reaching here means either we already retried (and still got a 401) or
+      // the refresh handler failed — either way the session is gone. Clear the
+      // token and notify listeners so the UI can drop the dead session.
       accessToken = null;
       if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:session-expired'));
     }
