@@ -48,27 +48,40 @@ interface CreateAttachmentInput {
 
 async function reservePendingAttachment(input: CreateAttachmentInput, pendingQuotaBytes: number) {
   const now = new Date();
-  return prisma().$transaction(
-    async (tx) => {
-      const pending = await tx.attachment.aggregate({
-        where: {
-          uploadedBy: input.uploadedBy,
-          status: AttachmentStatus.pending,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
-        _sum: { size: true },
-      });
-      const pendingBytes = pending._sum.size ?? 0;
-      if (pendingBytes + input.size > pendingQuotaBytes) {
-        throw new ValidationError('待关联附件已达到配额，请先完成议题或删除未使用的附件');
-      }
+  const run = () =>
+    prisma().$transaction(
+      async (tx) => {
+        const pending = await tx.attachment.aggregate({
+          where: {
+            uploadedBy: input.uploadedBy,
+            status: AttachmentStatus.pending,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+          _sum: { size: true },
+        });
+        const pendingBytes = pending._sum.size ?? 0;
+        if (pendingBytes + input.size > pendingQuotaBytes) {
+          throw new ValidationError('待关联附件已达到配额，请先完成议题或删除未使用的附件');
+        }
 
-      return tx.attachment.create({
-        data: { ...input, status: AttachmentStatus.pending },
-      });
-    },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-  );
+        return tx.attachment.create({
+          data: { ...input, status: AttachmentStatus.pending },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+
+  try {
+    return await run();
+  } catch (error) {
+    // Concurrent inserts under Serializable isolation can surface as a write
+    // conflict (P2034). Retry once so the caller sees a clean quota result
+    // instead of a 500.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
+      return await run();
+    }
+    throw error;
+  }
 }
 
 async function assertCanAttachToExistingObject(input: {
