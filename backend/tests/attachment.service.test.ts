@@ -118,6 +118,69 @@ describe('attachment.service', () => {
     expect(row).toBeNull();
   });
 
+  it('cleans ticket attachments and removes their database rows', async () => {
+    const user = await prisma().user.create({
+      data: {
+        email: 'attachment-ticket-cleanup@test.com',
+        passwordHash: 'hash',
+        username: 'attachmentticketcleanup',
+      },
+    });
+    const ticket = await prisma().ticket.create({
+      data: { title: 'cleanup', body: 'cleanup', authorId: user.id },
+    });
+    const attachment = await attachmentService.saveUploadedFile({
+      file: {
+        buffer: Buffer.from('ticket'),
+        originalname: 'ticket.txt',
+        mimetype: 'text/plain',
+        size: 6,
+      },
+      uploadedBy: user.id,
+      ticketId: ticket.id,
+      userRole: 'player',
+    });
+
+    await attachmentService.cleanupTicketAttachments(ticket.id);
+
+    expect(await prisma().attachment.findUnique({ where: { id: attachment.id } })).toBeNull();
+  });
+
+  it('retains ticket attachments for retry when storage cleanup fails', async () => {
+    const user = await prisma().user.create({
+      data: {
+        email: 'attachment-ticket-failure@test.com',
+        passwordHash: 'hash',
+        username: 'attachmentticketfailure',
+      },
+    });
+    const ticket = await prisma().ticket.create({
+      data: { title: 'cleanup failure', body: 'cleanup failure', authorId: user.id },
+    });
+    const attachment = await prisma().attachment.create({
+      data: {
+        filename: 'failure.txt',
+        path: 'missing-ticket-file',
+        mimeType: 'text/plain',
+        size: 1,
+        storageType: 'local',
+        status: AttachmentStatus.attached,
+        ticketId: ticket.id,
+        uploadedBy: user.id,
+      },
+    });
+    vi.spyOn(LocalStorageAdapter.prototype, 'delete').mockRejectedValueOnce(
+      new Error('storage unavailable'),
+    );
+
+    await expect(attachmentService.cleanupTicketAttachments(ticket.id)).rejects.toMatchObject({
+      statusCode: 503,
+    });
+    await expect(
+      prisma().attachment.findUnique({ where: { id: attachment.id }, select: { status: true } }),
+    ).resolves.toEqual({ status: AttachmentStatus.deleting });
+  });
+
   it('serves and deletes a local attachment after the active driver switches to s3', async () => {
     const user = await prisma().user.create({
       data: {
