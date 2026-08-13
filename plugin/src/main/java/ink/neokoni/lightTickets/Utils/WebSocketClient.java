@@ -135,37 +135,30 @@ public class WebSocketClient {
 
     private static void claimAndScheduleHooks(String deliveryId, UUID playerUuid, JSONArray hooks) {
         List<ClaimedHook> claimedHooks = new ArrayList<>();
-        boolean allSucceeded = true;
+        List<JSONObject> results = new ArrayList<>();
         for (int i = 0; i < hooks.length(); i++) {
             JSONObject hook = hooks.optJSONObject(i);
-            if (hook == null) {
-                allSucceeded = false;
-                continue;
-            }
+            if (hook == null) continue;
             String hookId = hook.optString("hookId", "").trim();
-            if (!hookId.startsWith(deliveryId + ":")) {
-                allSucceeded = false;
-                continue;
-            }
+            if (!hookId.startsWith(deliveryId + ":")) continue;
             try {
                 if (PlayerData.claimHookExecution(hookId)) {
                     claimedHooks.add(new ClaimedHook(hookId, hook));
                 }
             } catch (Throwable e) {
-                allSucceeded = false;
+                results.add(hookResult(hookId, false, LogUtils.exceptionText(e)));
                 LogUtils.warning("websocket.hook_execution_failed",
                         Map.of("{message}", LogUtils.exceptionText(e)));
             }
         }
 
-        boolean claimsSucceeded = allSucceeded;
         try {
             Bukkit.getGlobalRegionScheduler().run(LightTickets.getInstance(), task ->
-                    executeClaimedHooks(deliveryId, playerUuid, claimedHooks, claimsSucceeded));
+                    executeClaimedHooks(deliveryId, playerUuid, claimedHooks, results));
         } catch (Throwable e) {
-            releaseHookClaims(claimedHooks);
             LogUtils.warning("websocket.hook_execution_failed",
                     Map.of("{message}", LogUtils.exceptionText(e)));
+            emitAck(deliveryId, results);
         }
     }
 
@@ -173,36 +166,43 @@ public class WebSocketClient {
             String deliveryId,
             UUID playerUuid,
             List<ClaimedHook> claimedHooks,
-            boolean allSucceeded) {
-        List<ClaimedHook> failedHooks = new ArrayList<>();
+            List<JSONObject> results) {
         for (ClaimedHook claimedHook : claimedHooks) {
             String failure = executeHook(claimedHook.hook(), playerUuid);
             if (failure != null) {
-                failedHooks.add(claimedHook);
-                allSucceeded = false;
                 LogUtils.warning("websocket.hook_execution_failed",
                         Map.of("{message}", failure));
             }
+            results.add(hookResult(claimedHook.hookId(), failure == null, failure));
         }
+        emitAck(deliveryId, results);
+    }
 
-        if (!failedHooks.isEmpty()) {
-            Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(), task ->
-                    releaseHookClaims(failedHooks));
-        }
-        Socket activeSocket = socket;
-        if (allSucceeded && activeSocket != null && activeSocket.connected()) {
-            activeSocket.emit("hook:ack", deliveryId);
+    private static JSONObject hookResult(String hookId, boolean success, String error) {
+        try {
+            JSONObject result = new JSONObject();
+            result.put("hookId", hookId);
+            result.put("success", success);
+            if (error != null) result.put("error", error);
+            return result;
+        } catch (JSONException e) {
+            LogUtils.warning("websocket.hook_execution_failed",
+                    Map.of("{message}", LogUtils.exceptionText(e)));
+            return new JSONObject();
         }
     }
 
-    private static void releaseHookClaims(List<ClaimedHook> claimedHooks) {
-        for (ClaimedHook claimedHook : claimedHooks) {
-            try {
-                PlayerData.releaseHookExecution(claimedHook.hookId());
-            } catch (Throwable e) {
-                LogUtils.warning("websocket.hook_execution_failed",
-                        Map.of("{message}", LogUtils.exceptionText(e)));
-            }
+    private static void emitAck(String deliveryId, List<JSONObject> results) {
+        Socket activeSocket = socket;
+        if (activeSocket == null || !activeSocket.connected()) return;
+        try {
+            JSONObject payload = new JSONObject();
+            payload.put("deliveryId", deliveryId);
+            payload.put("results", new JSONArray(results));
+            activeSocket.emit("hook:ack", payload);
+        } catch (JSONException e) {
+            LogUtils.warning("websocket.hook_execution_failed",
+                    Map.of("{message}", LogUtils.exceptionText(e)));
         }
     }
 

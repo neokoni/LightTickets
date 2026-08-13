@@ -386,6 +386,7 @@ model MinecraftHookDelivery {
   lastAttemptAt  DateTime? @map("last_attempt_at")
   acknowledgedAt DateTime? @map("acknowledged_at")
   failedAt       DateTime? @map("failed_at")
+  result         String?  @map("result")
   createdAt      DateTime  @default(now()) @map("created_at")
   ticket         Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   server         Server    @relation(fields: [serverId], references: [id], onDelete: Cascade, onUpdate: Cascade)

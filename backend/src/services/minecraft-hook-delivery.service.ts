@@ -151,7 +151,11 @@ export async function dispatchPendingForServer(serverId: string): Promise<void> 
   for (const delivery of pending) await dispatch(delivery.id);
 }
 
-export async function acknowledge(serverId: string, deliveryId: string): Promise<boolean> {
+export async function acknowledge(
+  serverId: string,
+  deliveryId: string,
+  results?: Array<{ hookId: string; success: boolean; error?: string }>,
+): Promise<boolean> {
   const result = await prisma().minecraftHookDelivery.updateMany({
     where: {
       id: deliveryId,
@@ -159,7 +163,11 @@ export async function acknowledge(serverId: string, deliveryId: string): Promise
       acknowledgedAt: null,
       status: { in: ['pending', 'delivering'] },
     },
-    data: { status: 'delivered', acknowledgedAt: new Date() },
+    data: {
+      status: 'delivered',
+      acknowledgedAt: new Date(),
+      result: results && results.length > 0 ? JSON.stringify(results) : undefined,
+    },
   });
   return result.count === 1;
 }

@@ -1,0 +1,1 @@
+ALTER TABLE `minecraft_hook_deliveries` ADD COLUMN `result` TEXT NULL;

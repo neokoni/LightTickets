@@ -52,13 +52,30 @@ export function initSocket(httpServer: HttpServer) {
         console.error('[socket] Failed to dispatch pending Minecraft hooks', error);
       });
 
-    socket.on('hook:ack', (deliveryId: unknown) => {
-      if (typeof deliveryId !== 'string' || deliveryId.length > 128) return;
-      void import('../services/minecraft-hook-delivery.service.js')
-        .then((service) => service.acknowledge(serverId, deliveryId))
-        .catch((error: unknown) => {
-          console.error('[socket] Failed to acknowledge Minecraft hook', error);
-        });
+    socket.on('hook:ack', (payload: unknown) => {
+      // Legacy clients send a plain deliveryId string; new clients send
+      // { deliveryId, results: [{ hookId, success, error? }] }.
+      if (typeof payload === 'string' && payload.length <= 128) {
+        void import('../services/minecraft-hook-delivery.service.js')
+          .then((service) => service.acknowledge(serverId, payload))
+          .catch((error: unknown) => {
+            console.error('[socket] Failed to acknowledge Minecraft hook', error);
+          });
+        return;
+      }
+      if (payload && typeof payload === 'object') {
+        const msg = payload as Record<string, unknown>;
+        const deliveryId = typeof msg.deliveryId === 'string' ? msg.deliveryId : '';
+        if (!deliveryId || deliveryId.length > 128) return;
+        const results = Array.isArray(msg.results)
+          ? (msg.results as Array<{ hookId: string; success: boolean; error?: string }>)
+          : undefined;
+        void import('../services/minecraft-hook-delivery.service.js')
+          .then((service) => service.acknowledge(serverId, deliveryId, results))
+          .catch((error: unknown) => {
+            console.error('[socket] Failed to acknowledge Minecraft hook', error);
+          });
+      }
     });
 
     socket.on('disconnect', () => {
