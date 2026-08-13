@@ -143,6 +143,29 @@ describe('POST /api/mc/link-code', () => {
     const old = await prisma().linkCode.findUnique({ where: { code: firstCode } });
     expect(old).toBeNull();
   });
+
+  it('applies the configured auth rate limit', async () => {
+    const server = await createServer('survival-link-limit');
+    // Use a distinct window so the authLimiter bucket key differs from other
+    // auth-rate-limit tests in this file.
+    await rateLimitConfigService.updateRateLimitConfig({
+      auth: { windowSeconds: 180, maxRequests: 1 },
+    });
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VITEST', '');
+
+    const first = await request(app)
+      .post('/api/mc/link-code')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440015', minecraftName: 'Steve' });
+    const limited = await request(app)
+      .post('/api/mc/link-code')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: '550e8400-e29b-41d4-a716-446655440016', minecraftName: 'Alex' });
+
+    expect(first.status).toBe(201);
+    expect(limited.status).toBe(429);
+  });
 });
 
 describe('POST /api/mc/session', () => {

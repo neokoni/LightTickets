@@ -43,7 +43,7 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
   res.status(201).json(result);
 });
 
-router.post('/link-code', async (req: Request, res: Response) => {
+router.post('/link-code', authLimiter, async (req: Request, res: Response) => {
   const data = validate(mcLinkCodeSchema, req.body);
 
   const linkCode = await mcService.createLinkCode({
