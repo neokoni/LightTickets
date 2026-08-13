@@ -1,7 +1,8 @@
 import type { CompletionHookStatus, CompletionHookVisibility, Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
-import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
+import { isStaffRole } from '../constants/roles.js';
+import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../utils/errors.js';
 import * as templateService from './template.service.js';
 import * as minecraftHookDeliveryService from './minecraft-hook-delivery.service.js';
 
@@ -176,8 +177,14 @@ export async function complete(
   ticketId: number,
   hookId: string,
   userId: number,
+  userRole: string,
   values: Record<string, HookValue>,
 ): Promise<CompletionHookView> {
+  // Defense in depth: the route layer already enforces STAFF via requireRole,
+  // but the service method ultimately drives console command dispatch, so it
+  // must not be callable by an unprivileged principal.
+  if (!isStaffRole(userRole)) throw new ForbiddenError('无权操作完成钩子');
+
   const hook = await prisma().ticketCompletionHook.findFirst({
     where: { id: hookId, ticketId },
     include: {
@@ -188,7 +195,10 @@ export async function complete(
       },
     },
   });
-  if (!hook) throw new NotFoundError('完成钩子不存在');
+  if (!hook || hook.ticket.hidden) {
+    // Fail uniformly so hidden tickets can't be enumerated.
+    throw new NotFoundError('完成钩子不存在');
+  }
   if (hook.status !== 'pending') throw new AppError(409, '完成钩子已处理');
 
   const fields = parseJson<templateService.SelectionHookField[]>(hook.fields, '完成钩子字段');

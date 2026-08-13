@@ -184,6 +184,7 @@ router.post(
       parseId(String(req.params.id)),
       validate(completionHookIdSchema, String(req.params.hookId)),
       req.user!.userId,
+      req.user!.role,
       data.values,
     );
     res.json(hook);

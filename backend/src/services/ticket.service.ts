@@ -656,9 +656,10 @@ export function completeCompletionHook(
   ticketId: number,
   hookId: string,
   userId: number,
+  userRole: string,
   values: Record<string, string | string[]>,
 ) {
-  return completionHookService.complete(ticketId, hookId, userId, values);
+  return completionHookService.complete(ticketId, hookId, userId, userRole, values);
 }
 
 export async function setAssignees(
