@@ -7920,6 +7920,25 @@
                         },
                         "additionalProperties": false
                       },
+                      "loginPassword": {
+                        "type": "object",
+                        "properties": {
+                          "windowSeconds": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 86400
+                          },
+                          "maxRequests": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100000
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "additionalProperties": false
+                      },
                       "email": {
                         "type": "object",
                         "properties": {
@@ -8042,6 +8061,30 @@
                               ],
                               "additionalProperties": false
                             },
+                            "loginPassword": {
+                              "type": "object",
+                              "properties": {
+                                "windowSeconds": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 86400
+                                },
+                                "maxRequests": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 100000
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "windowSeconds",
+                                "maxRequests",
+                                "enabled"
+                              ],
+                              "additionalProperties": false
+                            },
                             "email": {
                               "type": "object",
                               "properties": {
@@ -8080,6 +8123,7 @@
                           "required": [
                             "global",
                             "auth",
+                            "loginPassword",
                             "email",
                             "minecraftLink"
                           ],
@@ -8128,6 +8172,30 @@
                               ],
                               "additionalProperties": false
                             },
+                            "loginPassword": {
+                              "type": "object",
+                              "properties": {
+                                "windowSeconds": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 86400
+                                },
+                                "maxRequests": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 100000
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "windowSeconds",
+                                "maxRequests",
+                                "enabled"
+                              ],
+                              "additionalProperties": false
+                            },
                             "email": {
                               "type": "object",
                               "properties": {
@@ -8166,6 +8234,7 @@
                           "required": [
                             "global",
                             "auth",
+                            "loginPassword",
                             "email",
                             "minecraftLink"
                           ],
@@ -8331,6 +8400,30 @@
                               ],
                               "additionalProperties": false
                             },
+                            "loginPassword": {
+                              "type": "object",
+                              "properties": {
+                                "windowSeconds": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 86400
+                                },
+                                "maxRequests": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 100000
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "windowSeconds",
+                                "maxRequests",
+                                "enabled"
+                              ],
+                              "additionalProperties": false
+                            },
                             "email": {
                               "type": "object",
                               "properties": {
@@ -8369,6 +8462,7 @@
                           "required": [
                             "global",
                             "auth",
+                            "loginPassword",
                             "email",
                             "minecraftLink"
                           ],
@@ -8417,6 +8511,30 @@
                               ],
                               "additionalProperties": false
                             },
+                            "loginPassword": {
+                              "type": "object",
+                              "properties": {
+                                "windowSeconds": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 86400
+                                },
+                                "maxRequests": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 100000
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "windowSeconds",
+                                "maxRequests",
+                                "enabled"
+                              ],
+                              "additionalProperties": false
+                            },
                             "email": {
                               "type": "object",
                               "properties": {
@@ -8455,6 +8573,7 @@
                           "required": [
                             "global",
                             "auth",
+                            "loginPassword",
                             "email",
                             "minecraftLink"
                           ],

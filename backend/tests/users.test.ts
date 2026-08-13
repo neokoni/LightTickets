@@ -378,6 +378,23 @@ describe('PATCH /api/users/:id/role', () => {
 });
 
 describe('PATCH /api/users/me/password', () => {
+  it('does not apply the login password quota to current-password verification', async () => {
+    const { token } = await createUserAndGetToken('password-change-unlimited@test.com');
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VITEST', '');
+    await rateLimitConfigService.updateRateLimitConfig({
+      loginPassword: { enabled: true, windowSeconds: 60, maxRequests: 1 },
+    });
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const response = await request(app)
+        .patch('/api/users/me/password')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ currentPassword: 'wrong-password', newPassword: 'NewPassword123!' });
+      expect(response.status).toBe(400);
+    }
+  });
+
   it('revokes old refresh sessions and issues a replacement cookie', async () => {
     const { token, refreshCookie, user } = await createUserAndGetToken('password-change@test.com');
     await prisma().user.update({

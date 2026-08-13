@@ -3,6 +3,10 @@ export interface RequestRateLimitRule {
   maxRequests: number;
 }
 
+export interface ToggleableRequestRateLimitRule extends RequestRateLimitRule {
+  enabled: boolean;
+}
+
 export interface EmailRateLimitRule {
   cooldownSeconds: number;
 }
@@ -15,6 +19,7 @@ export interface MinecraftLinkRateLimitRule {
 export interface RateLimitConfig {
   global: RequestRateLimitRule;
   auth: RequestRateLimitRule;
+  loginPassword: ToggleableRequestRateLimitRule;
   email: EmailRateLimitRule;
   minecraftLink: MinecraftLinkRateLimitRule;
 }
@@ -27,6 +32,11 @@ export const DEFAULT_RATE_LIMIT_CONFIG: RateLimitConfig = {
   auth: {
     windowSeconds: 60,
     maxRequests: 10,
+  },
+  loginPassword: {
+    enabled: true,
+    windowSeconds: 15 * 60,
+    maxRequests: 5,
   },
   email: {
     cooldownSeconds: 60,

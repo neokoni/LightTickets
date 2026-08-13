@@ -11,6 +11,10 @@ export const requestRateLimitRuleSchema = z
   })
   .strict();
 
+export const toggleableRequestRateLimitRuleSchema = requestRateLimitRuleSchema.extend({
+  enabled: z.boolean(),
+});
+
 export const emailRateLimitRuleSchema = z
   .object({
     cooldownSeconds: durationSecondsSchema,
@@ -28,6 +32,7 @@ export const rateLimitConfigSchema = z
   .object({
     global: requestRateLimitRuleSchema,
     auth: requestRateLimitRuleSchema,
+    loginPassword: toggleableRequestRateLimitRuleSchema,
     email: emailRateLimitRuleSchema,
     minecraftLink: minecraftLinkRateLimitRuleSchema,
   })
@@ -37,6 +42,7 @@ export const rateLimitConfigInputSchema = z
   .object({
     global: requestRateLimitRuleSchema.partial().strict().optional(),
     auth: requestRateLimitRuleSchema.partial().strict().optional(),
+    loginPassword: toggleableRequestRateLimitRuleSchema.partial().strict().optional(),
     email: emailRateLimitRuleSchema.partial().strict().optional(),
     minecraftLink: minecraftLinkRateLimitRuleSchema.partial().strict().optional(),
   })

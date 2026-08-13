@@ -908,7 +908,6 @@ export interface paths {
           'application/json': {
             /** @enum {string} */
             status?: 'open' | 'in_progress' | 'closed' | 'invalid';
-            assigneeId?: number;
             hidden?: boolean;
           };
         };
@@ -4891,6 +4890,11 @@ export interface paths {
                     windowSeconds: number;
                     maxRequests: number;
                   };
+                  loginPassword: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                    enabled: boolean;
+                  };
                   email: {
                     cooldownSeconds: number;
                   };
@@ -4907,6 +4911,11 @@ export interface paths {
                   auth: {
                     windowSeconds: number;
                     maxRequests: number;
+                  };
+                  loginPassword: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                    enabled: boolean;
                   };
                   email: {
                     cooldownSeconds: number;
@@ -4992,6 +5001,11 @@ export interface paths {
                 windowSeconds?: number;
                 maxRequests?: number;
               };
+              loginPassword?: {
+                windowSeconds?: number;
+                maxRequests?: number;
+                enabled?: boolean;
+              };
               email?: {
                 cooldownSeconds?: number;
               };
@@ -5032,6 +5046,11 @@ export interface paths {
                     windowSeconds: number;
                     maxRequests: number;
                   };
+                  loginPassword: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                    enabled: boolean;
+                  };
                   email: {
                     cooldownSeconds: number;
                   };
@@ -5048,6 +5067,11 @@ export interface paths {
                   auth: {
                     windowSeconds: number;
                     maxRequests: number;
+                  };
+                  loginPassword: {
+                    windowSeconds: number;
+                    maxRequests: number;
+                    enabled: boolean;
                   };
                   email: {
                     cooldownSeconds: number;

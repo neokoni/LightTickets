@@ -365,6 +365,7 @@ describe('PATCH /api/setup/settings', () => {
     expect(res.body.data.rateLimit).toEqual({
       global: { windowSeconds: 60, maxRequests: 100 },
       auth: { windowSeconds: 60, maxRequests: 10 },
+      loginPassword: { enabled: true, windowSeconds: 900, maxRequests: 5 },
       email: { cooldownSeconds: 60 },
       minecraftLink: { maxAttempts: 5, lockSeconds: 900 },
     });
@@ -481,6 +482,7 @@ describe('PATCH /api/setup/settings', () => {
         rateLimit: {
           global: { windowSeconds: 120, maxRequests: 250 },
           auth: { windowSeconds: 60, maxRequests: 12 },
+          loginPassword: { enabled: false, windowSeconds: 300, maxRequests: 8 },
           email: { cooldownSeconds: 90 },
           minecraftLink: { maxAttempts: 7, lockSeconds: 1800 },
         },
@@ -490,6 +492,7 @@ describe('PATCH /api/setup/settings', () => {
     expect(res.body.data.rateLimit).toEqual({
       global: { windowSeconds: 120, maxRequests: 250 },
       auth: { windowSeconds: 60, maxRequests: 12 },
+      loginPassword: { enabled: false, windowSeconds: 300, maxRequests: 8 },
       email: { cooldownSeconds: 90 },
       minecraftLink: { maxAttempts: 7, lockSeconds: 1800 },
     });
@@ -546,6 +549,11 @@ describe('PATCH /api/setup/settings', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.rateLimit.email.cooldownSeconds).toBe(180);
+    expect(res.body.data.rateLimit.loginPassword).toEqual({
+      enabled: true,
+      windowSeconds: 900,
+      maxRequests: 5,
+    });
   });
 
   it('allows admin to update requireLogin setting', async () => {

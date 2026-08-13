@@ -5,6 +5,7 @@ import { prisma, serverData } from './setup.js';
 import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
 import * as refreshSessionService from '../src/services/refresh-session.service.js';
+import * as rateLimitConfigService from '../src/services/rate-limit-config.service.js';
 import crypto from 'crypto';
 
 const app = createApp();
@@ -64,6 +65,7 @@ async function configureApp(
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe('POST /api/auth/register', () => {
@@ -335,6 +337,42 @@ describe('POST /api/auth/register', () => {
 });
 
 describe('POST /api/auth/login', () => {
+  it('rate limits password verification with the configured per-IP quota', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VITEST', '');
+    await rateLimitConfigService.updateRateLimitConfig({
+      auth: { windowSeconds: 120, maxRequests: 1 },
+      loginPassword: { enabled: true, windowSeconds: 120, maxRequests: 2 },
+    });
+
+    const attempt = () =>
+      request(app)
+        .post('/api/auth/login')
+        .send({ emailOrUsername: 'login-limit-missing', password: 'wrong-password' });
+
+    expect((await attempt()).status).toBe(401);
+    expect((await attempt()).status).toBe(401);
+    const limited = await attempt();
+    expect(limited.status).toBe(429);
+    expect(limited.headers['ratelimit-policy']).toBe('2;w=120');
+  });
+
+  it('does not apply the login password quota when the setting is disabled', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VITEST', '');
+    await rateLimitConfigService.updateRateLimitConfig({
+      auth: { windowSeconds: 60, maxRequests: 1 },
+      loginPassword: { enabled: false, windowSeconds: 60, maxRequests: 1 },
+    });
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({ emailOrUsername: 'login-limit-disabled-missing', password: 'wrong-password' });
+      expect(response.status).toBe(401);
+    }
+  });
+
   it('returns tokens for valid email credentials', async () => {
     await request(app)
       .post('/api/auth/register')
@@ -850,13 +888,10 @@ describe('POST /api/auth/link-minecraft', () => {
     expect(res.body.data.uuid).toBe('550e8400-e29b-41d4-a716-446655440030');
     expect(res.body.data.name).toBe('Linker');
 
-    const session = await request(app)
-      .post('/api/mc/session')
-      .set('X-Server-Key', serverKey)
-      .send({
-        minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
-        playerCredential: code.body.data.playerCredential,
-      });
+    const session = await request(app).post('/api/mc/session').set('X-Server-Key', serverKey).send({
+      minecraftUuid: '550e8400-e29b-41d4-a716-446655440030',
+      playerCredential: code.body.data.playerCredential,
+    });
     expect(session.status).toBe(201);
   });
 
