@@ -169,6 +169,19 @@ describe('PATCH /api/users/me/avatar', () => {
 
     expect(res.status).toBe(400);
   });
+
+  it('rejects non-http(s) URL schemes', async () => {
+    const { token } = await createUserAndGetToken('avatar-scheme@test.com');
+
+    for (const avatarUrl of ['ftp://example.com/a.png', 'ws://example.com']) {
+      const res = await request(app)
+        .patch('/api/users/me/avatar')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ avatarUrl });
+
+      expect(res.status).toBe(400);
+    }
+  });
 });
 
 describe('email notification preferences', () => {

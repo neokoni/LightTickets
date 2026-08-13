@@ -52,7 +52,14 @@ router.get(
 );
 
 export const userAvatarSchema = z.object({
-  avatarUrl: z.string().url().nullable().or(z.literal('')),
+  avatarUrl: z
+    .string()
+    .url()
+    .refine((url) => url.startsWith('http://') || url.startsWith('https://'), {
+      message: '头像 URL 必须以 http:// 或 https:// 开头',
+    })
+    .nullable()
+    .or(z.literal('')),
 });
 
 router.patch('/me/avatar', authMiddleware, async (req: Request, res: Response) => {
