@@ -150,9 +150,12 @@ export async function createPendingForEvent(
   const hooks = templateService.resolveSelectionHooks(definition, event, variables);
   if (hooks.length === 0) return 0;
 
+  // Decision hooks are triggered only once per ticket — on the first close.
+  // Reopen → re-close does not re-trigger them.  The CAS update on
+  // completionHooksTriggered ensures exactly-one execution.
   const claimed = await tx.ticket.updateMany({
-    where: { id: ticket.id, completionHooksInitialized: false },
-    data: { completionHooksInitialized: true },
+    where: { id: ticket.id, completionHooksTriggered: false },
+    data: { completionHooksTriggered: true },
   });
   if (claimed.count === 0) return 0;
 

@@ -1,0 +1,1 @@
+ALTER TABLE `tickets` CHANGE COLUMN `completion_hooks_initialized` `completion_hooks_triggered` TINYINT(1) NOT NULL DEFAULT 0;
