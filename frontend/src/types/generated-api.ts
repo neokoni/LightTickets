@@ -4890,11 +4890,6 @@ export interface paths {
                     windowSeconds: number;
                     maxRequests: number;
                   };
-                  loginPassword: {
-                    windowSeconds: number;
-                    maxRequests: number;
-                    enabled: boolean;
-                  };
                   email: {
                     cooldownSeconds: number;
                   };
@@ -4911,11 +4906,6 @@ export interface paths {
                   auth: {
                     windowSeconds: number;
                     maxRequests: number;
-                  };
-                  loginPassword: {
-                    windowSeconds: number;
-                    maxRequests: number;
-                    enabled: boolean;
                   };
                   email: {
                     cooldownSeconds: number;
@@ -5001,11 +4991,6 @@ export interface paths {
                 windowSeconds?: number;
                 maxRequests?: number;
               };
-              loginPassword?: {
-                windowSeconds?: number;
-                maxRequests?: number;
-                enabled?: boolean;
-              };
               email?: {
                 cooldownSeconds?: number;
               };
@@ -5046,11 +5031,6 @@ export interface paths {
                     windowSeconds: number;
                     maxRequests: number;
                   };
-                  loginPassword: {
-                    windowSeconds: number;
-                    maxRequests: number;
-                    enabled: boolean;
-                  };
                   email: {
                     cooldownSeconds: number;
                   };
@@ -5067,11 +5047,6 @@ export interface paths {
                   auth: {
                     windowSeconds: number;
                     maxRequests: number;
-                  };
-                  loginPassword: {
-                    windowSeconds: number;
-                    maxRequests: number;
-                    enabled: boolean;
                   };
                   email: {
                     cooldownSeconds: number;

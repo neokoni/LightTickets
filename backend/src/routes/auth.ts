@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import * as authService from '../services/auth.service.js';
 import { authMiddleware } from '../middleware/auth.js';
-import { authLimiter, loginPasswordLimiter } from '../middleware/rate-limit.js';
+import { authLimiter } from '../middleware/rate-limit.js';
 import { ForbiddenError, UnauthorizedError } from '../utils/errors.js';
 import { validate } from '../utils/validate.js';
 import * as passwordResetService from '../services/password-reset.service.js';
@@ -64,24 +64,13 @@ router.post('/register/verification-code', authLimiter, async (req: Request, res
   res.json(result);
 });
 
-router.post('/login', async (req: Request, res: Response, next) => {
+router.post('/login', authLimiter, async (req: Request, res: Response) => {
   const data = validate(loginSchema, req.body);
   await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
-
-  loginPasswordLimiter(req, res, async (error?: unknown) => {
-    if (error) {
-      next(error);
-      return;
-    }
-    try {
-      const result = await authService.login(data.emailOrUsername, data.password);
-      const { refreshToken, ...response } = result;
-      setRefreshCookie(res, refreshToken);
-      res.json(response);
-    } catch (loginError) {
-      next(loginError);
-    }
-  });
+  const result = await authService.login(data.emailOrUsername, data.password);
+  const { refreshToken, ...response } = result;
+  setRefreshCookie(res, refreshToken);
+  res.json(response);
 });
 
 router.post('/password-reset/request', authLimiter, async (req: Request, res: Response) => {

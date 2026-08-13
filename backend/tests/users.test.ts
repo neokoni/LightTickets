@@ -378,12 +378,12 @@ describe('PATCH /api/users/:id/role', () => {
 });
 
 describe('PATCH /api/users/me/password', () => {
-  it('does not apply the login password quota to current-password verification', async () => {
+  it('does not consume the auth quota on current-password verification', async () => {
     const { token } = await createUserAndGetToken('password-change-unlimited@test.com');
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('VITEST', '');
     await rateLimitConfigService.updateRateLimitConfig({
-      loginPassword: { enabled: true, windowSeconds: 60, maxRequests: 1 },
+      auth: { windowSeconds: 60, maxRequests: 1 },
     });
 
     for (let attempt = 0; attempt < 3; attempt += 1) {

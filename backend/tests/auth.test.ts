@@ -382,12 +382,11 @@ describe('POST /api/auth/register', () => {
 });
 
 describe('POST /api/auth/login', () => {
-  it('rate limits password verification with the configured per-IP quota', async () => {
+  it('rate limits login with the shared auth quota', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('VITEST', '');
     await rateLimitConfigService.updateRateLimitConfig({
-      auth: { windowSeconds: 120, maxRequests: 1 },
-      loginPassword: { enabled: true, windowSeconds: 120, maxRequests: 2 },
+      auth: { windowSeconds: 120, maxRequests: 2 },
     });
 
     const attempt = () =>
@@ -402,20 +401,29 @@ describe('POST /api/auth/login', () => {
     expect(limited.headers['ratelimit-policy']).toBe('2;w=120');
   });
 
-  it('does not apply the login password quota when the setting is disabled', async () => {
+  it('shares the auth quota between login and other auth endpoints', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('VITEST', '');
     await rateLimitConfigService.updateRateLimitConfig({
-      auth: { windowSeconds: 60, maxRequests: 1 },
-      loginPassword: { enabled: false, windowSeconds: 60, maxRequests: 1 },
+      auth: { windowSeconds: 180, maxRequests: 2 },
     });
 
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const response = await request(app)
+    const register = () =>
+      request(app).post('/api/auth/register').send({
+        email: 'shared-quota@example.com',
+        password: 'Password123!',
+        username: 'sharedquota',
+      });
+    const login = () =>
+      request(app)
         .post('/api/auth/login')
-        .send({ emailOrUsername: 'login-limit-disabled-missing', password: 'wrong-password' });
-      expect(response.status).toBe(401);
-    }
+        .send({ emailOrUsername: 'login-limit-missing', password: 'wrong-password' });
+
+    expect((await register()).status).toBe(201);
+    expect((await login()).status).toBe(401);
+    const limited = await login();
+    expect(limited.status).toBe(429);
+    expect(limited.headers['ratelimit-policy']).toBe('2;w=180');
   });
 
   it('returns tokens for valid email credentials', async () => {

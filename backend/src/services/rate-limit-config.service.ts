@@ -15,13 +15,13 @@ let cacheExpiresAt = 0;
 interface LegacyRateLimitConfigInput extends RateLimitConfigInput {
   registrationEmail?: { cooldownSeconds?: number };
   passwordResetEmail?: { cooldownSeconds?: number };
+  loginPassword?: { enabled?: boolean; windowSeconds?: number; maxRequests?: number };
 }
 
 function cloneConfig(config: RateLimitConfig): RateLimitConfig {
   return {
     global: { ...config.global },
     auth: { ...config.auth },
-    loginPassword: { ...config.loginPassword },
     email: { ...config.email },
     minecraftLink: { ...config.minecraftLink },
   };
@@ -37,21 +37,21 @@ function mergeConfig(current: RateLimitConfig, input: RateLimitConfigInput): Rat
   return {
     global: { ...current.global, ...input.global },
     auth: { ...current.auth, ...input.auth },
-    loginPassword: { ...current.loginPassword, ...input.loginPassword },
     email: { ...current.email, ...input.email },
     minecraftLink: { ...current.minecraftLink, ...input.minecraftLink },
   };
 }
 
 function normalizeStoredConfig(parsed: LegacyRateLimitConfigInput): RateLimitConfigInput {
-  if (parsed.email) return parsed;
+  const { registrationEmail, passwordResetEmail, loginPassword: _loginPassword, ...rest } = parsed;
+  if (rest.email) return rest;
   const legacyCooldowns = [
-    parsed.registrationEmail?.cooldownSeconds,
-    parsed.passwordResetEmail?.cooldownSeconds,
+    registrationEmail?.cooldownSeconds,
+    passwordResetEmail?.cooldownSeconds,
   ].filter((value): value is number => typeof value === 'number');
-  if (legacyCooldowns.length === 0) return parsed;
+  if (legacyCooldowns.length === 0) return rest;
   return {
-    ...parsed,
+    ...rest,
     email: { cooldownSeconds: Math.max(...legacyCooldowns) },
   };
 }

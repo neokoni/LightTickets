@@ -74,7 +74,7 @@ export const fallbackLanguagePack: LanguagePack = {
     'admin.nav.federatedauth': '外部登录',
     'admin.nav.rateLimit': '限流策略',
     'admin.rateLimit.authHelp':
-      '限制注册、刷新令牌和外部登录等其他认证请求，共享同一 IP 额度。登录由独立策略控制。',
+      '限制登录、注册、刷新令牌和外部登录等其他认证请求，共享同一 IP 额度。',
     'admin.rateLimit.authTitle': '认证接口限流',
     'admin.rateLimit.cooldownSeconds': '冷却时间（秒）',
     'admin.rateLimit.description': '配置按 IP 的请求额度和邮件发送冷却时间，修改后立即生效。',
@@ -88,8 +88,6 @@ export const fallbackLanguagePack: LanguagePack = {
     'admin.rateLimit.minecraftLinkLockSeconds': '锁定时间（秒）',
     'admin.rateLimit.minecraftLinkMaxAttempts': '最大失败次数',
     'admin.rateLimit.minecraftLinkTitle': 'Minecraft 绑定保护',
-    'admin.rateLimit.loginPasswordHelp': '限制同一 IP 在统计窗口内尝试登录密码验证的次数。',
-    'admin.rateLimit.loginPasswordTitle': '登录密码保护',
     'admin.rateLimit.saved': '限流策略已保存',
     'admin.rateLimit.title': '限流策略',
     'admin.rateLimit.windowSeconds': '统计窗口（秒）',

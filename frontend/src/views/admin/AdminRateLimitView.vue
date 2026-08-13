@@ -8,7 +8,6 @@ import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
-import BaseToggle from '@/components/base/BaseToggle.vue';
 
 const ui = useUiStore();
 const config = ref<RateLimitConfig | null>(null);
@@ -92,44 +91,6 @@ async function save() {
             min="1"
             max="100000"
             :placeholder="placeholder(defaults?.global.maxRequests)"
-          />
-        </div>
-      </section>
-
-      <section
-        class="space-y-4 px-6 py-5 rounded-xl border border-slate-200/80 dark:border-slate-800/80"
-      >
-        <div class="flex items-center justify-between gap-4">
-          <div>
-            <h3 class="text-sm font-semibold text-slate-900 dark:text-white">
-              {{ t('admin.rateLimit.loginPasswordTitle') }}
-            </h3>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {{ t('admin.rateLimit.loginPasswordHelp') }}
-            </p>
-          </div>
-          <BaseToggle v-model="config.loginPassword.enabled" />
-        </div>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <BaseInput
-            v-model.number="config.loginPassword.windowSeconds"
-            :label="t('admin.rateLimit.windowSeconds')"
-            required
-            type="number"
-            min="1"
-            max="86400"
-            :disabled="!config.loginPassword.enabled"
-            :placeholder="placeholder(defaults?.loginPassword.windowSeconds)"
-          />
-          <BaseInput
-            v-model.number="config.loginPassword.maxRequests"
-            :label="t('admin.rateLimit.maxAttempts')"
-            required
-            type="number"
-            min="1"
-            max="100000"
-            :disabled="!config.loginPassword.enabled"
-            :placeholder="placeholder(defaults?.loginPassword.maxRequests)"
           />
         </div>
       </section>

@@ -3,10 +3,6 @@ import { ipKeyGenerator } from 'express-rate-limit';
 import type { RequestRateLimitRule } from '../constants/rate-limit.js';
 import * as rateLimitConfigService from '../services/rate-limit-config.service.js';
 
-interface SelectedRateLimitRule extends RequestRateLimitRule {
-  enabled?: boolean;
-}
-
 interface RateLimitBucket {
   hits: number;
   resetAt: number;
@@ -21,7 +17,7 @@ function shouldSkipRateLimit(): boolean {
 function createRateLimiter(
   selectRule: (
     config: Awaited<ReturnType<typeof rateLimitConfigService.getRateLimitConfig>>,
-  ) => SelectedRateLimitRule,
+  ) => RequestRateLimitRule,
   keyGenerator: (req: Request) => string = (req) =>
     ipKeyGenerator(req.ip ?? req.socket.remoteAddress ?? 'unknown'),
 ): RequestHandler {
@@ -44,14 +40,10 @@ function createRateLimiter(
 
     try {
       const rule = selectRule(await rateLimitConfigService.getRateLimitConfig());
-      const ruleKey = `${rule.enabled ?? true}:${rule.windowSeconds}:${rule.maxRequests}`;
+      const ruleKey = `${rule.windowSeconds}:${rule.maxRequests}`;
       if (ruleKey !== activeRule) {
         buckets.clear();
         activeRule = ruleKey;
-      }
-      if (rule.enabled === false) {
-        next();
-        return;
       }
 
       const now = Date.now();
@@ -92,4 +84,3 @@ function createRateLimiter(
 
 export const globalLimiter = createRateLimiter((config) => config.global);
 export const authLimiter = createRateLimiter((config) => config.auth);
-export const loginPasswordLimiter = createRateLimiter((config) => config.loginPassword);
