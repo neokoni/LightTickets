@@ -12,9 +12,29 @@ import * as refreshSessionService from './refresh-session.service.js';
 
 const RESET_TOKEN_BYTES = 32;
 const RESET_TOKEN_EXPIRY_MS = 30 * 60 * 1000;
+const MISSING_ACCOUNT_COOLDOWNS = new Map<string, number>();
+const COOLDOWN_CLEANUP_INTERVAL_MS = 60_000;
+
+const cooldownCleanup = setInterval(() => {
+  const now = Date.now();
+  for (const [key, resetAt] of MISSING_ACCOUNT_COOLDOWNS) {
+    if (resetAt <= now) MISSING_ACCOUNT_COOLDOWNS.delete(key);
+  }
+}, COOLDOWN_CLEANUP_INTERVAL_MS);
+cooldownCleanup.unref();
 
 function tokenHash(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function reserveMissingAccountCooldown(identifier: string, cooldownMs: number): void {
+  const key = tokenHash(identifier.toLowerCase());
+  const now = Date.now();
+  const resetAt = MISSING_ACCOUNT_COOLDOWNS.get(key);
+  if (resetAt && resetAt > now) {
+    throw new AppError(429, '密码重置邮件发送过于频繁，请稍后再试');
+  }
+  MISSING_ACCOUNT_COOLDOWNS.set(key, now + cooldownMs);
 }
 
 function t(messages: Record<string, string>, key: string, params: Record<string, string> = {}) {
@@ -123,13 +143,15 @@ export async function requestPasswordReset(emailOrUsername: string): Promise<voi
   }
 
   const identifier = emailOrUsername.trim();
+  const rateLimitConfig = await rateLimitConfigService.getRateLimitConfig();
+  const cooldownMs = rateLimitConfig.email.cooldownSeconds * 1_000;
   const user = await prisma().user.findUnique({
     where: identifier.includes('@') ? { email: identifier } : { username: identifier },
   });
-  if (!user) return;
-
-  const rateLimitConfig = await rateLimitConfigService.getRateLimitConfig();
-  const cooldownMs = rateLimitConfig.email.cooldownSeconds * 1_000;
+  if (!user) {
+    reserveMissingAccountCooldown(identifier, cooldownMs);
+    return;
+  }
 
   const rawToken = crypto.randomBytes(RESET_TOKEN_BYTES).toString('base64url');
   const hash = tokenHash(rawToken);

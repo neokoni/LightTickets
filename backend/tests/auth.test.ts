@@ -834,7 +834,7 @@ describe('POST /api/auth/password-reset', () => {
     expect(getTestOutbox()).toHaveLength(1);
   });
 
-  it('limits reset email sends to one per minute for the same account', async () => {
+  it('returns the same cooldown response for existing and missing accounts', async () => {
     clearTestOutbox();
     await request(app).post('/api/auth/register').send({
       email: 'limited-reset@example.com',
@@ -849,9 +849,18 @@ describe('POST /api/auth/password-reset', () => {
     const second = await request(app)
       .post('/api/auth/password-reset/request')
       .send({ emailOrUsername: 'limited-reset@example.com' });
+    const missing = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'limited-reset-missing' });
+    const missingAgain = await request(app)
+      .post('/api/auth/password-reset/request')
+      .send({ emailOrUsername: 'LIMITED-RESET-MISSING' });
 
     expect(first.status).toBe(200);
+    expect(missing.status).toBe(200);
     expect(second.status).toBe(429);
+    expect(missingAgain.status).toBe(429);
+    expect(second.body).toEqual(missingAgain.body);
     expect(getTestOutbox()).toHaveLength(1);
     await expect(prisma().passwordResetToken.count()).resolves.toBe(1);
   });
@@ -888,6 +897,7 @@ describe('POST /api/auth/password-reset', () => {
     expect(first.status).toBe(200);
     expect(second.status).toBe(429);
     expect(getTestOutbox()).toHaveLength(1);
+    await expect(prisma().passwordResetToken.count()).resolves.toBe(1);
   });
 
   it('rejects reset requests when mail is disabled', async () => {
