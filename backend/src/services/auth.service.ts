@@ -1,6 +1,6 @@
 import { prisma } from '../db.js';
 import bcrypt from 'bcrypt';
-import type { Prisma, User } from '@prisma/client';
+import { Prisma, type User } from '@prisma/client';
 import { AppError, NotFoundError, UnauthorizedError, ValidationError } from '../utils/errors.js';
 import { generateAccessToken } from '../utils/token.js';
 import { USER_PUBLIC_SELECT } from './constants.js';
@@ -17,6 +17,7 @@ async function assertRegistrationFieldsAvailable(
   client: RegistrationConflictClient,
   email: string,
   username: string,
+  concealConflict = false,
 ): Promise<void> {
   const emailConflict = await client.user.findFirst({
     where: {
@@ -30,13 +31,30 @@ async function assertRegistrationFieldsAvailable(
     },
     select: { id: true },
   });
-  if (emailConflict) throw new AppError(409, '该邮箱已被注册或正在等待验证');
+  if (emailConflict) {
+    if (concealConflict) {
+      throw new ValidationError(AUTH_ERROR_MESSAGES.REGISTRATION_CONFLICT_MESSAGE);
+    }
+    throw new AppError(409, '该邮箱已被注册或正在等待验证');
+  }
 
   const usernameConflict = await client.user.findUnique({
     where: { username },
     select: { id: true },
   });
-  if (usernameConflict) throw new AppError(409, '该用户名已被占用');
+  if (usernameConflict) {
+    if (concealConflict) {
+      throw new ValidationError(AUTH_ERROR_MESSAGES.REGISTRATION_CONFLICT_MESSAGE);
+    }
+    throw new AppError(409, '该用户名已被占用');
+  }
+}
+
+function concealRegistrationUniqueConflict(error: unknown): never {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    throw new ValidationError(AUTH_ERROR_MESSAGES.REGISTRATION_CONFLICT_MESSAGE);
+  }
+  throw error;
 }
 
 export async function register(
@@ -46,7 +64,7 @@ export async function register(
   emailVerificationCode?: string,
 ) {
   const normalizedEmail = registrationEmailVerificationService.normalizeEmail(email);
-  await assertRegistrationFieldsAvailable(prisma(), normalizedEmail, username);
+  await assertRegistrationFieldsAvailable(prisma(), normalizedEmail, username, true);
 
   const mailConfig = await mailConfigService.getFullMailConfig();
   const verificationRequired = mailConfigService.canSendPasswordResetMail(mailConfig);
@@ -61,21 +79,23 @@ export async function register(
     : null;
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const result = await prisma().$transaction(async (tx) => {
-    await assertRegistrationFieldsAvailable(tx, normalizedEmail, username);
-    if (verificationCodeHash) {
-      await registrationEmailVerificationService.consumeRegistrationCode(
-        tx,
-        normalizedEmail,
-        verificationCodeHash,
-      );
-    }
-    const user = await tx.user.create({
-      data: { email: normalizedEmail, passwordHash, username },
-    });
-    const refreshToken = await refreshSessionService.createRefreshSession(user.id, tx);
-    return { user, refreshToken };
-  });
+  const result = await prisma()
+    .$transaction(async (tx) => {
+      await assertRegistrationFieldsAvailable(tx, normalizedEmail, username, true);
+      if (verificationCodeHash) {
+        await registrationEmailVerificationService.consumeRegistrationCode(
+          tx,
+          normalizedEmail,
+          verificationCodeHash,
+        );
+      }
+      const user = await tx.user.create({
+        data: { email: normalizedEmail, passwordHash, username },
+      });
+      const refreshToken = await refreshSessionService.createRefreshSession(user.id, tx);
+      return { user, refreshToken };
+    })
+    .catch(concealRegistrationUniqueConflict);
 
   return {
     user: sanitizeUser(result.user),

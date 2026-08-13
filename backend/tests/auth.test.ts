@@ -100,16 +100,61 @@ describe('POST /api/auth/register', () => {
     expect(session.tokenHash).not.toContain(rawToken);
   });
 
-  it('rejects duplicate email', async () => {
+  it('does not reveal whether the email or username is already registered', async () => {
     await request(app)
       .post('/api/auth/register')
       .send({ email: 'dup@example.com', password: 'Password123!', username: 'user1' });
 
-    const res = await request(app)
+    const duplicateEmail = await request(app)
       .post('/api/auth/register')
       .send({ email: 'dup@example.com', password: 'Password123!', username: 'user2' });
+    const duplicateUsername = await request(app)
+      .post('/api/auth/register')
+      .send({ email: 'other@example.com', password: 'Password123!', username: 'user1' });
 
-    expect(res.status).toBe(409);
+    for (const response of [duplicateEmail, duplicateUsername]) {
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({
+        success: false,
+        statusCode: 400,
+        message: '用户名或邮箱已被使用',
+      });
+    }
+  });
+
+  it('uses the same registration response for an email pending verification', async () => {
+    const registration = await request(app).post('/api/auth/register').send({
+      email: 'pending-owner@example.com',
+      password: 'Password123!',
+      username: 'pendingowner',
+    });
+    const userId = registration.body.data.user.id;
+    await prisma().user.update({
+      where: { id: userId },
+      data: { pendingEmail: 'pending-registration@example.com' },
+    });
+    await prisma().emailChangeRequest.create({
+      data: {
+        userId,
+        newEmail: 'pending-registration@example.com',
+        codeHash: 'pending-code-hash',
+        cancelTokenHash: 'pending-cancel-token-hash',
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+
+    const response = await request(app).post('/api/auth/register').send({
+      email: 'pending-registration@example.com',
+      password: 'Password123!',
+      username: 'pendingcandidate',
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toMatchObject({
+      success: false,
+      statusCode: 400,
+      message: '用户名或邮箱已被使用',
+    });
   });
 
   it('requires turnstile token when turnstile is enabled', async () => {
