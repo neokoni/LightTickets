@@ -341,6 +341,7 @@ model LinkCode {
   playerCredentialHash String? @map("player_credential_hash")
   server        Server   @relation(fields: [serverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
+  @@unique([minecraftUuid])
   @@map("link_codes")
 }
 

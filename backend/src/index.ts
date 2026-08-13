@@ -43,6 +43,7 @@ async function startFullApp() {
   const server = createServer(app);
   initSocket(server);
   await scheduleOrphanAttachmentCleanup();
+  await scheduleLinkCodeCleanup();
 
   server.listen(config.port, () => {
     console.log(`LightTickets API running on port ${config.port}`);
@@ -156,5 +157,29 @@ async function scheduleOrphanAttachmentCleanup(): Promise<void> {
 
   void run();
   const timer = setInterval(() => void run(), ORPHAN_ATTACHMENT_CLEANUP_INTERVAL_MS);
+  timer.unref();
+}
+
+async function scheduleLinkCodeCleanup(): Promise<void> {
+  const LINK_CODE_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+  let running = false;
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      const { cleanupExpiredLinkCodes } = await import('./services/mc.service.js');
+      const count = await cleanupExpiredLinkCodes();
+      if (count > 0) {
+        console.log(`[link-code] Cleaned up ${count} expired link codes`);
+      }
+    } catch {
+      console.warn('[link-code] Failed to clean up expired link codes');
+    } finally {
+      running = false;
+    }
+  };
+
+  void run();
+  const timer = setInterval(() => void run(), LINK_CODE_CLEANUP_INTERVAL_MS);
   timer.unref();
 }

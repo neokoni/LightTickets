@@ -42,6 +42,7 @@ public class SQLAdapter {
         hikariConfig.setDriverClassName(getDriverClass());
         hikariConfig.setUsername(databaseInfo.username());
         hikariConfig.setPassword(databaseInfo.password());
+        hikariConfig.setConnectionTimeout(5000);
         return new HikariDataSource(hikariConfig);
     }
 

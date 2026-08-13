@@ -107,6 +107,7 @@ public class TicketList {
 
         for (JsonElement el : tickets) {
             JsonObject t = el.getAsJsonObject();
+            if (!t.has("id")) continue;
             int id = t.get("id").getAsInt();
             String title = t.has("title") ? t.get("title").getAsString() : "";
             String status = t.has("status") ? t.get("status").getAsString() : "";

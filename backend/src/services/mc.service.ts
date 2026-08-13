@@ -23,18 +23,32 @@ export async function createLinkCode(input: {
   const code = generateLinkCode();
   const playerCredential = generateMinecraftSecret();
   const expiresAt = new Date(Date.now() + getConfig().linkCodeExpiry);
-  const linkCode = await prisma().linkCode.create({
-    data: {
-      code,
-      minecraftUuid: input.minecraftUuid,
-      minecraftName: input.minecraftName,
-      serverId: input.serverId,
-      expiresAt,
-      playerCredentialHash: hashMinecraftSecret(playerCredential),
-    },
+  // One active code per Minecraft UUID: replace any previous code so stale
+  // codes can't linger.
+  const linkCode = await prisma().$transaction(async (tx) => {
+    await tx.linkCode.deleteMany({
+      where: { minecraftUuid: input.minecraftUuid },
+    });
+    return tx.linkCode.create({
+      data: {
+        code,
+        minecraftUuid: input.minecraftUuid,
+        minecraftName: input.minecraftName,
+        serverId: input.serverId,
+        expiresAt,
+        playerCredentialHash: hashMinecraftSecret(playerCredential),
+      },
+    });
   });
 
   return { code: linkCode.code, expiresAt: linkCode.expiresAt, playerCredential };
+}
+
+export async function cleanupExpiredLinkCodes(): Promise<number> {
+  const result = await prisma().linkCode.deleteMany({
+    where: { expiresAt: { lte: new Date() } },
+  });
+  return result.count;
 }
 
 export async function issuePlayerSession(input: {

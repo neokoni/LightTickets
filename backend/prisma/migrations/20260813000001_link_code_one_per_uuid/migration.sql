@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "link_codes_minecraft_uuid_key" ON "link_codes"("minecraft_uuid");

@@ -1,0 +1,1 @@
+ALTER TABLE `link_codes` ADD UNIQUE INDEX `link_codes_minecraft_uuid_key` (`minecraft_uuid`);

@@ -58,7 +58,13 @@ public class PlayerData {
 
     public static void setPlayerBind(Player player, @NotNull PlayerBind bind) {
         sqlAdapter.setPlayerBind(player, bind);
-        cachedPlayerBind.put(player.getUniqueId(), bind);
+        cachedPlayerBind.put(
+          player.getUniqueId(),
+          new PlayerBind(
+            bind.getPlayer(), bind.getUuid(), bind.getMcName(),
+            bind.getBindCode(), bind.getCodeExpiresAt(), bind.isBound(),
+            bind.getRole(), bind.getPlayerCredential()
+          ));
     }
 
     public static List<CachedTicket> getTicketList(UUID playerUuid) {

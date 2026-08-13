@@ -17,6 +17,7 @@ public class SQLiteAdapter extends SQLAdapter {
                 .append(ConfigUtils.getFile("PlayerData.db").getAbsoluteFile());
         hikariConfig.setJdbcUrl(baseUrlBuilder.toString());
         hikariConfig.setDriverClassName(getDriverClass());
+        hikariConfig.setConnectionTimeout(5000);
         return new HikariDataSource(hikariConfig);
     }
 

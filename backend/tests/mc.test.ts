@@ -120,6 +120,29 @@ describe('POST /api/mc/link-code', () => {
       expect(res.status).toBe(400);
     }
   });
+
+  it('replaces previous code for the same UUID', async () => {
+    const server = await createServer('survival-replace');
+    const uuid = '550e8400-e29b-41d4-a716-446655440014';
+
+    const first = await request(app)
+      .post('/api/mc/link-code')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: uuid, minecraftName: 'Steve' });
+    expect(first.status).toBe(201);
+    const firstCode = first.body.data.code;
+
+    const second = await request(app)
+      .post('/api/mc/link-code')
+      .set('X-Server-Key', server.apiKey)
+      .send({ minecraftUuid: uuid, minecraftName: 'Steve' });
+    expect(second.status).toBe(201);
+    expect(second.body.data.code).not.toBe(firstCode);
+
+    // Old code should no longer exist
+    const old = await prisma().linkCode.findUnique({ where: { code: firstCode } });
+    expect(old).toBeNull();
+  });
 });
 
 describe('POST /api/mc/session', () => {
