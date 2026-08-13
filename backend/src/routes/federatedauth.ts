@@ -33,8 +33,8 @@ function registrationToken(req: Request): string {
 }
 
 function requestUrl(req: Request): URL {
-  const host = req.get('x-forwarded-host')?.split(',')[0]?.trim() ?? req.get('host') ?? 'localhost';
-  const protocol = req.get('x-forwarded-proto')?.split(',')[0]?.trim() ?? req.protocol;
+  const host = req.hostname || req.get('host') || 'localhost';
+  const protocol = req.protocol || 'http';
   return new URL(req.originalUrl, `${protocol}://${host}`);
 }
 
@@ -72,10 +72,9 @@ router.get('/:slug/callback', authLimiter, async (req: Request, res: Response) =
     clearFederatedAuthFlowCookie(res);
     const config = await setupService.getSiteConfig();
     const fallback = config.siteUrl
-      ? new URL('/login', config.siteUrl)
-      : new URL('/login', requestUrl(req));
-    fallback.searchParams.set('federatedauth', 'failed');
-    res.redirect(303, fallback.href);
+      ? new URL('/login?federatedauth=failed', config.siteUrl).href
+      : '/login?federatedauth=failed';
+    res.redirect(303, fallback);
   }
 });
 
