@@ -87,6 +87,7 @@ export interface Ticket {
   server?: { id: string; name: string };
   _count?: { comments: number };
   completionHooks?: TicketCompletionHook[];
+  hookDeliveries?: HookDelivery[];
 }
 
 export type CompletionHookStatus = 'pending' | 'completed' | 'cancelled';
@@ -103,6 +104,20 @@ export interface TicketCompletionHook {
   createdAt: string;
   completedAt: string | null;
   completedBy: { id: number; username: string; minecraftName?: string | null } | null;
+}
+
+export interface HookResultItem {
+  hookId: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface HookDelivery {
+  id: string;
+  status: string;
+  createdAt: string;
+  results: HookResultItem[];
+  hooks: Array<{ type: string; content: string }>;
 }
 
 export interface TicketAssignee {

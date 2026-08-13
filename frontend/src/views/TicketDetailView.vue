@@ -407,9 +407,10 @@ watch(
         </div>
 
         <TicketCompletionHooks
-          v-if="ticket.completionHooks?.length"
+          v-if="ticket.completionHooks?.length || ticket.hookDeliveries?.length"
           :ticket-id="ticket.id"
-          :hooks="ticket.completionHooks"
+          :hooks="ticket.completionHooks ?? []"
+          :deliveries="ticket.hookDeliveries"
           @completed="refreshAfterCompletionHook"
         />
 

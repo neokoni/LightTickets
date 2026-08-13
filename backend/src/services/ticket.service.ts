@@ -363,7 +363,33 @@ export async function getById(id: number, viewer?: TicketViewer) {
   });
   if (!ticket || !canViewTicket(ticket, viewer)) throw new NotFoundError('议题不存在');
   if (viewer?.role !== undefined && isStaffRole(viewer.role)) {
-    return { ...ticket, completionHooks: await completionHookService.listForTicket(id, true) };
+    const [completionHooks, deliveries] = await Promise.all([
+      completionHookService.listForTicket(id, true),
+      prisma().minecraftHookDelivery.findMany({
+        where: { ticketId: id },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          result: true,
+          hooks: true,
+        },
+      }),
+    ]);
+    return {
+      ...ticket,
+      completionHooks,
+      hookDeliveries: deliveries.map((d) => ({
+        id: d.id,
+        status: d.status,
+        createdAt: d.createdAt,
+        results: d.result
+          ? (JSON.parse(d.result) as Array<{ hookId: string; success: boolean; error?: string }>)
+          : [],
+        hooks: JSON.parse(d.hooks) as Array<{ type: string; content: string }>,
+      })),
+    };
   }
   const publicCompletionHooks = await completionHookService.listForTicket(id, false);
   if (publicCompletionHooks.length > 0)
