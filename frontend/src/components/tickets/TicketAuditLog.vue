@@ -6,6 +6,7 @@ import { timeAgo } from '@/utils/date';
 import type { AuditLog } from '@/types/ticket';
 import { AUDIT_ACTION_META } from '@/types/audit';
 import { t } from '@/i18n';
+import { userDisplayName } from '@/utils/user-display';
 
 const props = defineProps<{
   ticketId: number;
@@ -51,7 +52,7 @@ onMounted(fetchLogs);
           class="flex-1 min-w-0 pb-3 border-l border-slate-200 dark:border-slate-800 pl-3 -ml-px"
         >
           <div class="text-slate-700 dark:text-slate-300">
-            <span class="font-medium">{{ log.actor.username }}</span>
+            <span class="font-medium">{{ userDisplayName(log.actor) }}</span>
             {{ actionLabel(log.action) }}
           </div>
           <div

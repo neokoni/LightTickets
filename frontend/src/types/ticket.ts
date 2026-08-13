@@ -64,7 +64,13 @@ export interface Comment {
   body: string;
   source: CommentSource;
   createdAt: string;
-  author: { id: number; username: string; minecraftName?: string; avatarUrl?: string | null };
+  author: {
+    id: number;
+    username: string;
+    minecraftName?: string;
+    avatarUrl?: string | null;
+    deletedAt?: string | null;
+  };
 }
 
 export interface Ticket {
@@ -82,7 +88,7 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   closedAt?: string;
-  author: { id: number; username: string; minecraftName?: string };
+  author: { id: number; username: string; minecraftName?: string; deletedAt?: string | null };
   labels: TicketLabel[];
   server?: { id: string; name: string };
   _count?: { comments: number };
@@ -103,7 +109,12 @@ export interface TicketCompletionHook {
   visibility: 'public' | 'staff';
   createdAt: string;
   completedAt: string | null;
-  completedBy: { id: number; username: string; minecraftName?: string | null } | null;
+  completedBy: {
+    id: number;
+    username: string;
+    minecraftName?: string | null;
+    deletedAt?: string | null;
+  } | null;
 }
 
 export interface HookResultItem {
@@ -123,7 +134,7 @@ export interface HookDelivery {
 export interface TicketAssignee {
   ticketId: number;
   userId: number;
-  user: { id: number; username: string; avatarUrl?: string | null };
+  user: { id: number; username: string; avatarUrl?: string | null; deletedAt?: string | null };
 }
 
 export interface AuditLog {
@@ -134,7 +145,7 @@ export interface AuditLog {
   oldValue?: string;
   newValue?: string;
   createdAt: string;
-  actor: { id: number; username: string; minecraftName?: string };
+  actor: { id: number; username: string; minecraftName?: string; deletedAt?: string | null };
 }
 
 export interface TemplateField {

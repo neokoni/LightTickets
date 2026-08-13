@@ -32,6 +32,7 @@ export interface User {
   role: Role;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string | null;
 }
 
 export interface AuthResponse {

@@ -32,6 +32,7 @@ import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseSlidingTabs from '@/components/base/BaseSlidingTabs.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
+import { userDisplayName } from '@/utils/user-display';
 
 const router = useRouter();
 const route = useRoute();
@@ -521,7 +522,7 @@ watch(
             class="mt-0.5 flex items-center gap-2.5 text-xs leading-snug text-slate-500 dark:text-slate-400"
           >
             <span>#{{ ticket.id }}</span>
-            <span>{{ ticket.author.username }}</span>
+            <span>{{ userDisplayName(ticket.author) }}</span>
             <span>{{ timeAgo(ticket.createdAt) }}</span>
             <span v-if="ticket._count?.comments" class="flex items-center gap-0.5">
               <Icon icon="lucide:message-square" class="w-3.5 h-3.5" />
@@ -537,7 +538,7 @@ watch(
             :key="a.userId"
             class="w-6 h-6 shrink-0 -ml-2 first:ml-0"
           >
-            <UserAvatar :username="a.user.username" :avatar-url="a.user.avatarUrl" />
+            <UserAvatar :username="userDisplayName(a.user)" :avatar-url="a.user.avatarUrl" />
           </div>
         </div>
       </RouterLink>

@@ -667,5 +667,6 @@ export const fallbackLanguagePack: LanguagePack = {
     'user.email': '邮箱',
     'user.role': '角色',
     'user.username': '用户名',
+    'user.deleted': '已删除的用户',
   },
 };

@@ -608,6 +608,14 @@ describe('DELETE /api/users/:id', () => {
   it('allows admin to delete another user', async () => {
     const adminToken = await createAdminAndGetToken('admin-del@test.com');
     const { user } = await createUserAndGetToken('target-del@test.com');
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Retained after deletion',
+        body: 'Historical content',
+        template: 'default',
+        authorId: user.id,
+      },
+    });
 
     const res = await request(app)
       .delete(`/api/users/${user.id}`)
@@ -616,7 +624,24 @@ describe('DELETE /api/users/:id', () => {
     expect(res.status).toBe(204);
 
     const check = await prisma().user.findUnique({ where: { id: user.id } });
-    expect(check).toBeNull();
+    expect(check).toMatchObject({
+      id: user.id,
+      username: `__deleted_user_${user.id}`,
+      deletedAt: expect.any(Date),
+    });
+
+    const reused = await request(app).post('/api/auth/register').send({
+      email: 'replacement-del@test.com',
+      password: 'Password123!',
+      username: user.username,
+    });
+    expect(reused.status).toBe(201);
+
+    const retained = await request(app)
+      .get(`/api/tickets/${ticket.id}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+    expect(retained.status).toBe(200);
+    expect(retained.body.data.author).toMatchObject({ id: user.id, deletedAt: expect.any(String) });
   });
 
   it('rejects self-deletion', async () => {

@@ -58,12 +58,35 @@ export async function deleteUser(userId: number, currentUserId: number) {
   const user = await prisma().user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('用户不存在');
 
-  await prisma().user.delete({ where: { id: userId } });
+  await prisma().$transaction(async (tx) => {
+    await tx.refreshSession.deleteMany({ where: { userId } });
+    await tx.passwordResetToken.deleteMany({ where: { userId } });
+    await tx.emailChangeRequest.deleteMany({ where: { userId } });
+    await tx.federatedAuthIdentity.deleteMany({ where: { userId } });
+    await tx.federatedAuthFlow.deleteMany({ where: { userId } });
+    await tx.minecraftPlayerCredential.deleteMany({ where: { userId } });
+    await tx.user.update({
+      where: { id: userId },
+      data: {
+        email: `deleted-user-${userId}@invalid.local`,
+        pendingEmail: null,
+        passwordHash: `deleted:${userId}:${Date.now()}`,
+        username: `__deleted_user_${userId}`,
+        minecraftUuid: null,
+        minecraftName: null,
+        avatarUrl: null,
+        receiveEmailNotifications: false,
+        role: ROLE.PLAYER,
+        deletedAt: new Date(),
+        tokenEpoch: { increment: 1 },
+      },
+    });
+  });
 }
 
 export async function updateUsername(userId: number, username: string) {
   const existing = await prisma().user.findFirst({
-    where: { username, id: { not: userId } },
+    where: { username, id: { not: userId }, deletedAt: null },
   });
   if (existing) throw new AppError(409, '该用户名已被占用');
 

@@ -34,6 +34,7 @@ import { useTicketEdit } from '@/composables/useTicketEdit';
 import { useAuditTimeline } from '@/composables/useAuditTimeline';
 import NotFoundView from '@/views/NotFoundView.vue';
 import { ApiError } from '@/types/api';
+import { userDisplayName } from '@/utils/user-display';
 
 const route = useRoute();
 const store = useTicketsStore();
@@ -340,7 +341,7 @@ watch(
         <BaseButton size="sm" @click="cancelEditTitle">{{ t('common.cancel') }}</BaseButton>
       </div>
       <div class="mt-2 flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-        <span>{{ ticket.author.username }}</span>
+        <span>{{ userDisplayName(ticket.author) }}</span>
         <span :title="formatDate(ticket.createdAt)">{{ timeAgo(ticket.createdAt) }}</span>
         <BaseBadge v-for="tl in ticket.labels" :key="tl.labelId" :color="tl.label.color">{{
           tl.label.name
@@ -428,13 +429,16 @@ watch(
               class="group flex gap-3 mb-4 scroll-mt-24"
             >
               <div class="w-8 h-8 shrink-0">
-                <UserAvatar :username="item.author.username" :avatar-url="item.author.avatarUrl" />
+                <UserAvatar
+                  :username="userDisplayName(item.author)"
+                  :avatar-url="item.author.avatarUrl"
+                />
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2 text-sm">
                     <span class="font-medium text-slate-900 dark:text-white">{{
-                      item.author.username
+                      userDisplayName(item.author)
                     }}</span>
                     <span class="text-slate-400 text-xs">{{ timeAgo(item.createdAt) }}</span>
                     <BaseBadge v-if="item.source === CommentSource.MINECRAFT" color="#4ade80">
@@ -507,7 +511,7 @@ watch(
                 <span
                   v-if="item.action !== AUDIT_ACTION.COMPLETION_HOOK_PENDING"
                   class="font-medium text-slate-600 dark:text-slate-300"
-                  >{{ item.actor.username }}</span
+                  >{{ userDisplayName(item.actor) }}</span
                 >
                 <span>{{ eventLabel(item) }}</span>
                 <span
@@ -818,9 +822,11 @@ watch(
           <div v-if="ticket.assignees?.length" class="flex flex-wrap gap-2">
             <div v-for="a in ticket.assignees" :key="a.userId" class="flex items-center gap-2">
               <div class="w-6 h-6 shrink-0">
-                <UserAvatar :username="a.user.username" :avatar-url="a.user.avatarUrl" />
+                <UserAvatar :username="userDisplayName(a.user)" :avatar-url="a.user.avatarUrl" />
               </div>
-              <span class="text-sm text-slate-700 dark:text-slate-300">{{ a.user.username }}</span>
+              <span class="text-sm text-slate-700 dark:text-slate-300">{{
+                userDisplayName(a.user)
+              }}</span>
             </div>
           </div>
           <div v-else class="text-sm text-slate-400 dark:text-slate-500">

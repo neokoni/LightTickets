@@ -13,6 +13,7 @@ import UserAvatar from '@/components/base/UserAvatar.vue';
 import { ROLE, ROLE_META, type User } from '@/types/user';
 import { t } from '@/i18n';
 import type { Role } from '@/types/ticket';
+import { userDisplayName } from '@/utils/user-display';
 
 interface UsersResponse {
   users: User[];
@@ -148,9 +149,11 @@ onMounted(fetchUsers);
           <td class="px-4 py-3">
             <div class="flex items-center gap-2">
               <div class="w-7 h-7 shrink-0">
-                <UserAvatar :username="user.username" :avatar-url="user.avatarUrl" />
+                <UserAvatar :username="userDisplayName(user)" :avatar-url="user.avatarUrl" />
               </div>
-              <span class="font-medium text-slate-900 dark:text-white">{{ user.username }}</span>
+              <span class="font-medium text-slate-900 dark:text-white">{{
+                userDisplayName(user)
+              }}</span>
             </div>
           </td>
           <td class="px-4 py-3 text-slate-600 dark:text-slate-400">{{ user.email }}</td>

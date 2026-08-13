@@ -145,8 +145,11 @@ export async function requestPasswordReset(emailOrUsername: string): Promise<voi
   const identifier = emailOrUsername.trim();
   const rateLimitConfig = await rateLimitConfigService.getRateLimitConfig();
   const cooldownMs = rateLimitConfig.email.cooldownSeconds * 1_000;
-  const user = await prisma().user.findUnique({
-    where: identifier.includes('@') ? { email: identifier } : { username: identifier },
+  const user = await prisma().user.findFirst({
+    where: {
+      ...(identifier.includes('@') ? { email: identifier } : { username: identifier }),
+      deletedAt: null,
+    },
   });
   if (!user) {
     reserveMissingAccountCooldown(identifier, cooldownMs);

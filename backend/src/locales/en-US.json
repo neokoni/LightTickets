@@ -642,6 +642,7 @@
     "unsubscribe.title": "Turn off email notifications",
     "user.email": "Email",
     "user.role": "Role",
-    "user.username": "Username"
+    "user.username": "Username",
+    "user.deleted": "Deleted User"
   }
 }

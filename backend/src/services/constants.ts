@@ -12,12 +12,14 @@ export const USER_PUBLIC_SELECT = {
   role: true,
   createdAt: true,
   updatedAt: true,
+  deletedAt: true,
 } satisfies Prisma.UserSelect;
 
 export const USER_BRIEF_SELECT = {
   id: true,
   username: true,
   minecraftName: true,
+  deletedAt: true,
 } satisfies Prisma.UserSelect;
 
 export const USER_BRIEF_WITH_AVATAR = {
@@ -26,6 +28,7 @@ export const USER_BRIEF_WITH_AVATAR = {
   minecraftName: true,
   minecraftUuid: true,
   avatarUrl: true,
+  deletedAt: true,
 } satisfies Prisma.UserSelect;
 
 export const TICKET_INCLUDE_BASE = {
@@ -35,7 +38,9 @@ export const TICKET_INCLUDE_BASE = {
 
 export const TICKET_INCLUDE_DETAIL = {
   author: { select: USER_BRIEF_SELECT },
-  assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } },
+  assignees: {
+    include: { user: { select: { id: true, username: true, avatarUrl: true, deletedAt: true } } },
+  },
   labels: { include: { label: true } },
   _count: { select: { comments: true } },
 } satisfies Prisma.TicketInclude;

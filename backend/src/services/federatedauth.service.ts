@@ -61,6 +61,7 @@ async function assertRegistrationFieldsAvailable(
 ): Promise<void> {
   const emailConflict = await client.user.findFirst({
     where: {
+      deletedAt: null,
       OR: [
         { email },
         {
@@ -73,8 +74,8 @@ async function assertRegistrationFieldsAvailable(
   });
   if (emailConflict) throw new AppError(409, '该邮箱已被注册或正在等待验证');
 
-  const usernameConflict = await client.user.findUnique({
-    where: { username },
+  const usernameConflict = await client.user.findFirst({
+    where: { username, deletedAt: null },
     select: { id: true },
   });
   if (usernameConflict) throw new AppError(409, '该用户名已被占用');
@@ -457,6 +458,7 @@ export async function finishFederatedAuth(input: {
     include: { user: true },
   });
   if (identity) {
+    if (identity.user.deletedAt) throw new UnauthorizedError('外部登录账户已被删除');
     await prisma().federatedAuthIdentity.update({
       where: { id: identity.id },
       data: {

@@ -28,7 +28,12 @@ export interface CompletionHookView {
   visibility: CompletionHookVisibility;
   createdAt: Date;
   completedAt: Date | null;
-  completedBy: { id: number; username: string; minecraftName: string | null } | null;
+  completedBy: {
+    id: number;
+    username: string;
+    minecraftName: string | null;
+    deletedAt: Date | null;
+  } | null;
 }
 
 function parseJson<T>(value: string, field: string): T {
@@ -104,7 +109,12 @@ function toView(hook: {
   visibility: CompletionHookVisibility;
   createdAt: Date;
   completedAt: Date | null;
-  completedBy: { id: number; username: string; minecraftName: string | null } | null;
+  completedBy: {
+    id: number;
+    username: string;
+    minecraftName: string | null;
+    deletedAt: Date | null;
+  } | null;
 }): CompletionHookView {
   return {
     ...hook,
@@ -125,7 +135,7 @@ const hookViewSelect = {
   visibility: true,
   createdAt: true,
   completedAt: true,
-  completedBy: { select: { id: true, username: true, minecraftName: true } },
+  completedBy: { select: { id: true, username: true, minecraftName: true, deletedAt: true } },
 } satisfies Prisma.TicketCompletionHookSelect;
 
 export async function listForTicket(

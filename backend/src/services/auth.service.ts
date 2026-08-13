@@ -21,6 +21,7 @@ async function assertRegistrationFieldsAvailable(
 ): Promise<void> {
   const emailConflict = await client.user.findFirst({
     where: {
+      deletedAt: null,
       OR: [
         { email },
         {
@@ -38,8 +39,8 @@ async function assertRegistrationFieldsAvailable(
     throw new AppError(409, '该邮箱已被注册或正在等待验证');
   }
 
-  const usernameConflict = await client.user.findUnique({
-    where: { username },
+  const usernameConflict = await client.user.findFirst({
+    where: { username, deletedAt: null },
     select: { id: true },
   });
   if (usernameConflict) {
@@ -161,8 +162,11 @@ export async function registerFromMinecraft(
 
 export async function login(emailOrUsername: string, password: string) {
   const isEmail = emailOrUsername.includes('@');
-  const user = await prisma().user.findUnique({
-    where: isEmail ? { email: emailOrUsername } : { username: emailOrUsername },
+  const user = await prisma().user.findFirst({
+    where: {
+      ...(isEmail ? { email: emailOrUsername } : { username: emailOrUsername }),
+      deletedAt: null,
+    },
   });
   if (!user) throw new UnauthorizedError('邮箱/用户名或密码错误');
 
@@ -181,7 +185,9 @@ export async function refresh(refreshToken: string) {
   const rotated = await refreshSessionService.rotateRefreshSession(refreshToken);
   if (!rotated) throw new UnauthorizedError('刷新令牌无效或已过期');
 
-  const user = await prisma().user.findUnique({ where: { id: rotated.userId } });
+  const user = await prisma().user.findFirst({
+    where: { id: rotated.userId, deletedAt: null },
+  });
   if (!user) throw new UnauthorizedError('刷新令牌无效或已过期');
 
   return {

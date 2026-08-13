@@ -356,7 +356,11 @@ export async function getById(id: number, viewer?: TicketViewer) {
     where: { id },
     include: {
       author: { select: USER_BRIEF_SELECT },
-      assignees: { include: { user: { select: { id: true, username: true, avatarUrl: true } } } },
+      assignees: {
+        include: {
+          user: { select: { id: true, username: true, avatarUrl: true, deletedAt: true } },
+        },
+      },
       labels: { include: { label: true } },
       server: { select: { id: true, name: true } },
     },
@@ -406,7 +410,15 @@ export async function update(
   const ticket = await prisma().ticket.findUnique({
     where: { id },
     include: {
-      author: { select: { id: true, username: true, minecraftName: true, minecraftUuid: true } },
+      author: {
+        select: {
+          id: true,
+          username: true,
+          minecraftName: true,
+          minecraftUuid: true,
+          deletedAt: true,
+        },
+      },
       server: { select: { id: true } },
     },
   });

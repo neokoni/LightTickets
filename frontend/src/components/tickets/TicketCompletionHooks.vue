@@ -10,6 +10,7 @@ import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import { apiCompleteTicketHook } from '@/api/tickets';
 import { t } from '@/i18n';
+import { userDisplayName } from '@/utils/user-display';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { formatDate } from '@/utils/date';
@@ -318,7 +319,7 @@ const displayDeliveryResults = computed(() =>
             <Icon icon="lucide:user" class="h-3.5 w-3.5" />
             {{
               t('ticket.completionHook.completedBy', {
-                name: hook.completedBy.minecraftName || hook.completedBy.username,
+                name: hook.completedBy.minecraftName || userDisplayName(hook.completedBy),
               })
             }}
           </span>

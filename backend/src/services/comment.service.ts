@@ -41,6 +41,7 @@ export async function create(
           minecraftName: true,
           minecraftUuid: true,
           avatarUrl: true,
+          deletedAt: true,
         },
       },
     },
@@ -108,7 +109,9 @@ export async function listByTicket(ticketId: number, viewer?: ticketService.Tick
     where: { ticketId },
     orderBy: { createdAt: 'asc' },
     include: {
-      author: { select: { id: true, username: true, minecraftName: true, avatarUrl: true } },
+      author: {
+        select: { id: true, username: true, minecraftName: true, avatarUrl: true, deletedAt: true },
+      },
     },
   });
 }
@@ -130,7 +133,15 @@ export async function updateBody(id: string, userId: number, body: string, userR
       where: { id },
       data: { body },
       include: {
-        author: { select: { id: true, username: true, minecraftName: true, avatarUrl: true } },
+        author: {
+          select: {
+            id: true,
+            username: true,
+            minecraftName: true,
+            avatarUrl: true,
+            deletedAt: true,
+          },
+        },
       },
     });
 

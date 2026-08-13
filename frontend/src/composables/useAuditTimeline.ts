@@ -7,6 +7,7 @@ import { t } from '@/i18n';
 import type { Comment, AuditLog, TicketStatus } from '@/types/ticket';
 import type { Ticket } from '@/types/ticket';
 import type { AssignableUser } from '@/types/user';
+import { userDisplayName } from '@/utils/user-display';
 
 export function useAuditTimeline(
   ticketId: number | Ref<number>,
@@ -53,9 +54,9 @@ export function useAuditTimeline(
       const ids: number[] = JSON.parse(json);
       return ids.map((id) => {
         const current = ticket.value?.assignees?.find((a) => a.userId === id);
-        if (current) return current.user.username;
+        if (current) return userDisplayName(current.user);
         const loaded = assignableUsers.value.find((a) => a.id === id);
-        return loaded ? loaded.username : `#${id}`;
+        return loaded ? userDisplayName(loaded) : `#${id}`;
       });
     } catch {
       return [];
@@ -83,7 +84,11 @@ export function useAuditTimeline(
       const oldNames = parseUserIds(item.oldValue);
       const newNames = parseUserIds(item.newValue);
       if (newNames.length === 0) return t('ticket.timeline.assigneesCleared');
-      if (newNames.length === 1 && oldNames.length === 0 && newNames[0] === item.actor.username)
+      if (
+        newNames.length === 1 &&
+        oldNames.length === 0 &&
+        newNames[0] === userDisplayName(item.actor)
+      )
         return t('ticket.timeline.assignedSelf');
       const added = newNames.filter((n) => !oldNames.includes(n));
       const removed = oldNames.filter((n) => !newNames.includes(n));
