@@ -171,5 +171,11 @@ export async function deleteComment(id: string, userId: number, userRole: string
   if (!isAuthor && !isStaff) throw new ForbiddenError('无权删除此评论');
 
   await attachmentService.cleanupCommentAttachments(id);
-  await prisma().comment.delete({ where: { id } });
+  await prisma().$transaction(async (tx) => {
+    const remaining = await tx.attachment.count({ where: { commentId: id } });
+    if (remaining > 0) {
+      throw new ForbiddenError('评论附件仍在清理中，请稍后重试');
+    }
+    await tx.comment.delete({ where: { id } });
+  });
 }

@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
+import * as attachmentService from '../src/services/attachment.service.js';
 
 const app = createApp();
 
@@ -122,5 +123,29 @@ describe('PATCH /api/tickets/:id/comments/:commentId/body', () => {
       .send({ body: '' });
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe('DELETE /api/tickets/:id/comments/:commentId', () => {
+  it('keeps the comment when attachment cleanup fails', async () => {
+    const token = await createUserAndGetToken('comment-delete-failure@test.com');
+    const ticket = await createTicket(token);
+    const comment = await request(app)
+      .post(`/api/tickets/${ticket.body.data.id}/comments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ body: 'Retain on cleanup failure' });
+
+    vi.spyOn(attachmentService, 'cleanupCommentAttachments').mockRejectedValue(
+      new Error('storage unavailable'),
+    );
+
+    const res = await request(app)
+      .delete(`/api/tickets/${ticket.body.data.id}/comments/${comment.body.data.id}`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(500);
+    await expect(
+      prisma().comment.findUnique({ where: { id: comment.body.data.id } }),
+    ).resolves.toMatchObject({ body: 'Retain on cleanup failure' });
   });
 });

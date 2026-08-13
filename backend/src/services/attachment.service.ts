@@ -1,5 +1,5 @@
 import { prisma } from '../db.js';
-import { ForbiddenError, NotFoundError, ValidationError } from '../utils/errors.js';
+import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../utils/errors.js';
 import crypto from 'crypto';
 import { getStorageAdapter } from './storage/index.js';
 import type { Response } from 'express';
@@ -320,11 +320,27 @@ export async function cleanupTicketAttachments(ticketId: number): Promise<void> 
 }
 
 export async function cleanupCommentAttachments(commentId: string): Promise<void> {
-  const attachments = await prisma().attachment.findMany({
-    where: { commentId },
+  await prisma().attachment.updateMany({
+    where: { commentId, status: { not: AttachmentStatus.deleting } },
+    data: { status: AttachmentStatus.deleting },
   });
+  const attachments = await prisma().attachment.findMany({
+    where: { commentId, status: AttachmentStatus.deleting },
+  });
+  const failures: string[] = [];
   for (const att of attachments) {
-    const adapter = await getStorageAdapter(att.storageType);
-    await adapter.delete(att.path);
+    try {
+      const adapter = await getStorageAdapter(att.storageType);
+      await adapter.delete(att.path);
+      await prisma().attachment.deleteMany({
+        where: { id: att.id, commentId, status: AttachmentStatus.deleting },
+      });
+    } catch (error) {
+      failures.push(att.id);
+      console.warn(`[attachments] Failed to delete comment attachment ${att.id}`, error);
+    }
+  }
+  if (failures.length > 0) {
+    throw new AppError(503, '评论附件清理失败，请稍后重试');
   }
 }
