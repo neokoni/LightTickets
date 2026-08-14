@@ -267,7 +267,7 @@ const displayDeliveryResults = computed(() =>
             </p>
           </div>
         </div>
-        <div class="flex justify-end pt-1">
+        <div class="flex justify-end gap-3 pt-1">
           <BaseButton
             v-if="canCancel"
             size="sm"
