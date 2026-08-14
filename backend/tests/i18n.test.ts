@@ -37,7 +37,7 @@ describe('GET /api/i18n/languages', () => {
       dataPath('locales/en-US.json'),
       JSON.stringify({
         manifest: { displayName: 'English', nativeName: 'English', direction: 'ltr' },
-        messages: { 'common.save': 'Save' },
+        messages: { common: { save: 'Save' } },
       }),
       'utf-8',
     );
@@ -69,7 +69,7 @@ describe('GET /api/i18n/languages/:id', () => {
       dataPath('locales/test-Lang.json'),
       JSON.stringify({
         manifest: { displayName: 'Test Language' },
-        messages: { 'common.save': 'Save' },
+        messages: { common: { save: 'Save' } },
       }),
       'utf-8',
     );
@@ -88,5 +88,37 @@ describe('GET /api/i18n/languages/:id', () => {
     expect(res.status).toBe(200);
     expect(res.body.data.id).toBe('zh-CN');
     expect(res.body.data.properties.displayName).toBe('简体中文');
+  });
+});
+
+describe('nested locale format', () => {
+  it('flattens nested custom messages including self keys', async () => {
+    fs.mkdirSync(dataPath('locales'), { recursive: true });
+    fs.writeFileSync(
+      dataPath('locales/test-Lang.json'),
+      JSON.stringify({
+        manifest: { displayName: 'Test Language' },
+        messages: {
+          common: { save: 'Save' },
+          hooks: { event: { self: 'Event', closed: 'Closed' } },
+        },
+      }),
+      'utf-8',
+    );
+
+    const res = await request(app).get('/api/i18n/languages/test-Lang');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.messages['common.save']).toBe('Save');
+    expect(res.body.data.messages['hooks.event']).toBe('Event');
+    expect(res.body.data.messages['hooks.event.closed']).toBe('Closed');
+  });
+
+  it('flattens bundled nested messages including self keys', async () => {
+    const res = await request(app).get('/api/i18n/languages/zh-CN');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.messages['admin.templates.hookEvent']).toBe('触发事件');
+    expect(res.body.data.messages['admin.templates.hookEvent.closed']).toBe('议题关闭');
   });
 });

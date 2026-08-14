@@ -58,10 +58,25 @@ function languageIdFromFile(file: string): string {
   return file.replace(/\.json$/, '');
 }
 
-function toStringRecord(value: Record<string, unknown> | undefined): Record<string, string> {
-  const result: Record<string, string> = {};
+// 保留键：节点同时拥有自身文案与子 key 时，自身文案挂在 'self' 下
+// （如 hookEvent: { self: '触发事件', closed: '议题关闭' }）。
+const SELF_KEY = 'self';
+
+function flattenMessages(
+  value: Record<string, unknown> | undefined,
+  prefix = '',
+  result: Record<string, string> = {},
+): Record<string, string> {
   for (const [key, raw] of Object.entries(value ?? {})) {
-    if (typeof raw === 'string') result[key] = raw;
+    if (key === SELF_KEY && prefix) {
+      if (typeof raw === 'string') result[prefix] = raw;
+      continue;
+    }
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (typeof raw === 'string') result[path] = raw;
+    else if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+      flattenMessages(raw as Record<string, unknown>, path, result);
+    }
   }
   return result;
 }
@@ -79,7 +94,7 @@ function readLanguageFile(filePath: string, id: string, source: LanguageSource) 
       nativeName: raw.manifest?.nativeName,
       direction,
     },
-    messages: toStringRecord(raw.messages),
+    messages: flattenMessages(raw.messages),
     source,
   } satisfies LoadedLanguage;
 }
