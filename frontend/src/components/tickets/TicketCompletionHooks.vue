@@ -179,7 +179,7 @@ const displayDeliveryResults = computed(() =>
       class="rounded-xl border border-slate-200/80 bg-white/70 px-4 py-4 backdrop-blur sm:px-5 dark:border-slate-800/80 dark:bg-slate-900/70"
       :class="{ 'opacity-60': hook.status === 'skipped' }"
     >
-      <header class="flex items-start justify-between gap-3">
+      <header class="flex items-center justify-between gap-3">
         <h3 class="min-w-0 text-base font-semibold leading-6 text-slate-900 dark:text-slate-100">
           {{ hook.title }}
         </h3>
