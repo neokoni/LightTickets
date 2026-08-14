@@ -150,6 +150,7 @@ export function useAuditTimeline(
       comment_edit: 'lucide:message-square-pen',
       completion_hook: 'lucide:list-checks',
       completion_hook_pending: 'lucide:hourglass',
+      completion_hook_skipped: 'lucide:circle-x',
       visibility_change: item.newValue === 'true' ? 'lucide:eye-off' : 'lucide:eye',
     };
     return map[item.action] || 'lucide:dot';

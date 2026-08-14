@@ -541,11 +541,7 @@ watch(
                   }}
                 </span>
                 <span
-                  v-if="
-                    (item.action === AUDIT_ACTION.COMPLETION_HOOK ||
-                      item.action === AUDIT_ACTION.COMPLETION_HOOK_SKIPPED) &&
-                    item.newValue
-                  "
+                  v-if="item.action === AUDIT_ACTION.COMPLETION_HOOK && item.newValue"
                   class="text-slate-600 dark:text-slate-300"
                   >{{ item.newValue }}</span
                 >
@@ -621,6 +617,7 @@ watch(
                   item.action !== AUDIT_ACTION.VISIBILITY_CHANGE &&
                   item.action !== AUDIT_ACTION.COMPLETION_HOOK &&
                   item.action !== AUDIT_ACTION.COMPLETION_HOOK_PENDING &&
+                  item.action !== AUDIT_ACTION.COMPLETION_HOOK_SKIPPED &&
                   (item.oldValue || item.newValue)
                 "
                 class="ml-5.5 mt-1 flex items-center gap-1"

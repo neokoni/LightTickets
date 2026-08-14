@@ -4,7 +4,7 @@ import { Icon } from '@iconify/vue';
 import { apiFetch } from '@/api/client';
 import { timeAgo } from '@/utils/date';
 import type { AuditLog } from '@/types/ticket';
-import { AUDIT_ACTION_META } from '@/types/audit';
+import { AUDIT_ACTION_META, AUDIT_ACTION } from '@/types/audit';
 import { t } from '@/i18n';
 import { userDisplayName } from '@/utils/user-display';
 
@@ -56,7 +56,9 @@ onMounted(fetchLogs);
             {{ actionLabel(log.action) }}
           </div>
           <div
-            v-if="log.oldValue || log.newValue"
+            v-if="
+              log.action !== AUDIT_ACTION.COMPLETION_HOOK_SKIPPED && (log.oldValue || log.newValue)
+            "
             class="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
           >
             <span v-if="log.oldValue" class="line-through opacity-60">{{ log.oldValue }}</span>
