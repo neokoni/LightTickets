@@ -866,7 +866,7 @@ watch(
               <label
                 v-for="u in filteredAssignableUsers"
                 :key="u.id"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-200/75 dark:hover:bg-slate-800 transition"
               >
                 <BaseCheckbox
                   :checked="selectedAssigneeIds.includes(u.id)"
@@ -900,7 +900,7 @@ watch(
             <BaseButton size="sm" @click="showAssignPicker = false">{{
               t('common.cancel')
             }}</BaseButton>
-            <BaseButton size="sm" :loading="assigning" @click="saveAssignees">{{
+            <BaseButton size="sm" :filled="true" :loading="assigning" @click="saveAssignees">{{
               t('common.confirm')
             }}</BaseButton>
           </template>
