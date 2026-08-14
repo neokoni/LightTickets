@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "build": "vue-tsc -b && vite build && node scripts/copy-runtime-assets.mjs",
     "start": "node server.mjs",
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test server.test.mjs return-to.test.mjs",

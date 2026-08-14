@@ -1,4 +1,4 @@
-import { createReadStream, statSync } from 'node:fs';
+import { createReadStream, existsSync, statSync } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import http from 'node:http';
 import https from 'node:https';
@@ -8,7 +8,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { LT_DEFAULT_SERVER_URL, LT_DEFAULT_WEB_PORT } from './runtime-config.mjs';
 
 const SERVER_DIR = path.dirname(fileURLToPath(import.meta.url));
-const DEFAULT_DIST_DIR = path.join(SERVER_DIR, 'dist');
+// 部署布局下 server.mjs 与静态资源同级（dist 即应用目录），
+// 开发布局下静态资源位于 dist/ 子目录。
+const DEFAULT_DIST_DIR = existsSync(path.join(SERVER_DIR, 'dist'))
+  ? path.join(SERVER_DIR, 'dist')
+  : SERVER_DIR;
 const DEFAULT_PROXY_TIMEOUT_MS = 30_000;
 const FRONTEND_REQUEST_ORIGIN = 'http://frontend.local';
 const CONTENT_SECURITY_POLICY = [

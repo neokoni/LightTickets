@@ -6,10 +6,9 @@ FROM node:${NODE_VERSION}-bookworm-slim AS build
 
 WORKDIR /app
 
-COPY package.json ./
+COPY . .
 RUN npm install
 
-COPY . .
 ARG LT_WEB_API_URL=/api
 ARG LT_GIT_COMMIT=unknow
 ENV LT_WEB_API_URL=${LT_WEB_API_URL}
@@ -24,8 +23,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-COPY --from=build /app/dist ./dist
-COPY runtime-config.mjs server.mjs ./
+COPY --from=build /app/dist ./
 
 USER node
 
