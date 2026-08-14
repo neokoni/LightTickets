@@ -5,7 +5,7 @@ import { t } from '@/i18n';
 
 const model = defineModel<string>();
 
-type SelectOption = { value: string; label: string; icon?: string };
+type SelectOption = { value: string; label: string; icon?: string; color?: string };
 
 const props = defineProps<{
   label?: string;
@@ -15,6 +15,7 @@ const props = defineProps<{
   disabled?: boolean;
   variant?: 'default' | 'subtle';
   required?: boolean;
+  emptyText?: string;
 }>();
 
 const open = ref(false);
@@ -138,7 +139,13 @@ const dropdownClass = computed(() =>
           <Icon
             v-if="selectedOption?.icon"
             :icon="selectedOption.icon"
+            :color="selectedOption.color"
             class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+          />
+          <span
+            v-else-if="selectedOption?.color"
+            class="h-2.5 w-2.5 shrink-0 rounded-full"
+            :style="{ backgroundColor: selectedOption.color }"
           />
           <span class="truncate">{{ selectedLabel() }}</span>
         </span>
@@ -168,24 +175,35 @@ const dropdownClass = computed(() =>
           :style="dropdownStyle"
         >
           <div class="base-dropdown-list">
-            <button
-              v-for="opt in options"
-              :key="opt.value"
-              type="button"
-              class="base-dropdown-option base-select-option flex min-h-11 w-full cursor-pointer items-center p-3 text-left text-[15px] leading-5"
-              :data-selected="opt.value === model"
-              :class="opt.value === model ? 'font-medium' : 'text-slate-700 dark:text-slate-300'"
-              @click="select(opt.value)"
-            >
-              <span class="flex min-w-0 items-center gap-2">
-                <Icon
-                  v-if="opt.icon"
-                  :icon="opt.icon"
-                  class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
-                />
-                <span class="truncate">{{ opt.label }}</span>
-              </span>
-            </button>
+            <template v-if="options.length">
+              <button
+                v-for="opt in options"
+                :key="opt.value"
+                type="button"
+                class="base-dropdown-option base-select-option flex min-h-11 w-full cursor-pointer items-center p-3 text-left text-[15px] leading-5"
+                :data-selected="opt.value === model"
+                :class="opt.value === model ? 'font-medium' : 'text-slate-700 dark:text-slate-300'"
+                @click="select(opt.value)"
+              >
+                <span class="flex min-w-0 items-center gap-2">
+                  <Icon
+                    v-if="opt.icon"
+                    :icon="opt.icon"
+                    :color="opt.color"
+                    class="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400"
+                  />
+                  <span
+                    v-else-if="opt.color"
+                    class="h-2.5 w-2.5 shrink-0 rounded-full"
+                    :style="{ backgroundColor: opt.color }"
+                  />
+                  <span class="truncate">{{ opt.label }}</span>
+                </span>
+              </button>
+            </template>
+            <div v-else-if="emptyText" class="px-3 py-2 text-xs text-slate-400 dark:text-slate-500">
+              {{ emptyText }}
+            </div>
           </div>
         </div>
       </Transition>
