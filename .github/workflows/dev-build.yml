@@ -1,0 +1,113 @@
+name: Dev Build Artifacts
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Package web.zip
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        env:
+          LT_WEB_API_URL: /api
+          LT_GIT_COMMIT: ${{ github.sha }}
+        run: npm run build
+
+      - name: Package web.zip
+        working-directory: frontend
+        run: |
+          cd dist
+          zip -r ../web.zip .
+
+      - name: Upload web.zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: frontend/web.zip
+          if-no-files-found: error
+
+  server:
+    name: Package server.zip
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Build
+        working-directory: backend
+        run: npm run build
+
+      - name: Package server.zip
+        working-directory: backend
+        run: |
+          mkdir -p release
+          cp -r dist/. release/
+          rm -rf release/data
+          cp package-lock.json release/
+          cd release
+          zip -r ../server.zip .
+
+      - name: Upload server.zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: server
+          path: backend/server.zip
+          if-no-files-found: error
+
+  plugin:
+    name: Package plugin jar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        working-directory: plugin
+        run: ./gradlew shadowJar --no-daemon
+
+      - name: Upload plugin jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: LightTickets-plugin
+          path: plugin/build/libs/*-all.jar
+          if-no-files-found: error
