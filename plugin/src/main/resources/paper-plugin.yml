@@ -21,6 +21,7 @@ permissions:
     description: "LightTickets 管理权限"
     children:
       - lighttickets.reload
+      - lighttickets.status
   lighttickets.player:
     description: "LightTickets 玩家权限"
     children:
@@ -35,6 +36,9 @@ permissions:
       - lighttickets.ticket.status
   lighttickets.reload:
     description: "重载插件"
+    default: op
+  lighttickets.status:
+    description: "查看连接状态"
     default: op
   lighttickets.bind:
     description: "绑定 LightTickets 账号"

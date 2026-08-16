@@ -24,9 +24,12 @@ import java.util.Map;
 import java.util.UUID;
 
 public class WebSocketClient {
+    private static ConnectionState connectionState = ConnectionState.INITIAL;
     private static Socket socket;
 
     public static synchronized void start() {
+        connectionState = ConnectionState.INITIAL;
+
         shutdown();
 
         String serverKey = Config.getConfig().getServerKey();
@@ -57,13 +60,16 @@ public class WebSocketClient {
             LogUtils.warning("websocket.invalid_base_url", Map.of("{message}", LogUtils.exceptionText(e)));
             return;
         }
-
         socket.on(Socket.EVENT_CONNECT, args ->
-                LogUtils.info("websocket.connected"));
+                onStateChange(ConnectionState.CONNECTED,
+                        () -> LogUtils.info("websocket.connected")));
         socket.on(Socket.EVENT_DISCONNECT, args ->
-                LogUtils.info("websocket.disconnected"));
+                onStateChange(ConnectionState.DISCONNECTED,
+                        () -> LogUtils.info("websocket.disconnected")));
         socket.on(Socket.EVENT_CONNECT_ERROR, args ->
-                LogUtils.warning("websocket.connect_failed", Map.of("{message}", firstArgText(args))));
+                onStateChange(ConnectionState.FAILED,
+                        () -> LogUtils.warning("websocket.connect_failed",
+                                Map.of("{message}", firstArgText(args)))));
         socket.on("ticket:status_changed", WebSocketClient::handleStatusChanged);
         socket.on("ticket:comment_created", WebSocketClient::handleCommentCreated);
         socket.on("hook:execute", WebSocketClient::handleHookExecute);
@@ -72,6 +78,21 @@ public class WebSocketClient {
         } catch (Throwable e) {
             LogUtils.warning("websocket.connect_start_failed", Map.of("{message}", LogUtils.exceptionText(e)));
         }
+    }
+
+    private static synchronized void onStateChange(ConnectionState newState, Runnable onChanged) {
+        if (connectionState == newState) return;
+        connectionState = newState;
+        onChanged.run();
+    }
+
+    private enum ConnectionState {
+        INITIAL, CONNECTED, DISCONNECTED, FAILED
+    }
+
+    public static boolean isConnected() {
+        Socket activeSocket = socket;
+        return activeSocket != null && activeSocket.connected();
     }
 
     public static synchronized void shutdown() {

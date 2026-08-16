@@ -1,6 +1,7 @@
 package ink.neokoni.lightTickets.Utils;
 
 public enum ApiEndpoint {
+    HEALTH("GET", "/api/health", false),
     TEMPLATES("GET", "/api/templates", false),
     TEMPLATE_DETAIL("GET", "/api/templates/{name}", false),
     MC_TICKET_DETAIL("GET", "/api/mc/tickets/{id}/detail", true),

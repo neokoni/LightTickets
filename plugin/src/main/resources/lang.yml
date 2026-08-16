@@ -160,5 +160,13 @@ websocket:
   unknown_hook_type: "未知 Hook 类型: {type}"
   missing_player_uuid: "MiniMessage Hook 缺少玩家 UUID"
   player_not_online: "玩家不在线: {uuid}"
+
+status:
+  header: "<color:#ffdbab>LightTickets 状态"
+  websocket: "<white>WebSocket: {status}"
+  http_api: "<white>HTTP API: {status}"
+  online: "<color:#96bfff>在线"
+  offline: "<color:#ff8181>离线"
+  check_error: "<color:#ff8181>HTTP API 检查失败: {message}"
 system:
   reload_success: "<color:#96bfff>插件已重载"

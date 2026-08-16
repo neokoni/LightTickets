@@ -11,6 +11,7 @@ import ink.neokoni.lightTickets.Commands.Functions.BindAccount;
 import ink.neokoni.lightTickets.Commands.Functions.ChangeStatus;
 import ink.neokoni.lightTickets.Commands.Functions.CreateTicket;
 import ink.neokoni.lightTickets.Commands.Functions.Reload;
+import ink.neokoni.lightTickets.Commands.Functions.Status;
 import ink.neokoni.lightTickets.Commands.Functions.TicketInfo;
 import ink.neokoni.lightTickets.Commands.Functions.TicketList;
 import ink.neokoni.lightTickets.Commands.Functions.UnbindAccount;
@@ -206,6 +207,14 @@ public class CommandRegister {
                         || ctx.getSender().hasPermission("lighttickets.admin"))
                 .executes(ctx -> {
                     new Reload(ctx.getSource().getSender());
+                    return Command.SINGLE_SUCCESS;
+                }));
+
+        root.then(Commands.literal("status")
+                .requires(ctx -> ctx.getSender().hasPermission("lighttickets.status")
+                        || ctx.getSender().hasPermission("lighttickets.admin"))
+                .executes(ctx -> {
+                    new Status(ctx.getSource().getSender());
                     return Command.SINGLE_SUCCESS;
                 }));
 
