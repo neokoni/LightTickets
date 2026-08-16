@@ -4300,7 +4300,7 @@
         }
       },
       "get": {
-        "summary": "MC 获取可见议题",
+        "summary": "MC 获取可见议题（平台要求登录时须带玩家 session）",
         "tags": [
           "MC"
         ],
@@ -4308,6 +4308,9 @@
           {
             "apiKey": [],
             "minecraftPlayerSession": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "parameters": [
@@ -4416,6 +4419,9 @@
           {
             "apiKey": [],
             "minecraftPlayerSession": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "parameters": [
@@ -4503,6 +4509,9 @@
           {
             "apiKey": [],
             "minecraftPlayerSession": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "parameters": [
@@ -4599,6 +4608,9 @@
           {
             "apiKey": [],
             "minecraftPlayerSession": []
+          },
+          {
+            "apiKey": []
           }
         ],
         "parameters": [

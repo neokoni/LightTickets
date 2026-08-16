@@ -56,6 +56,13 @@ public class PlayerData {
         return bind;
     }
 
+    public static boolean hasPlayerCredential(Player player) {
+        PlayerBind bind = getPlayerBind(player, true, false);
+        if (bind == null) return false;
+        String credential = bind.getPlayerCredential();
+        return credential != null && !credential.isBlank();
+    }
+
     public static void setPlayerBind(Player player, @NotNull PlayerBind bind) {
         sqlAdapter.setPlayerBind(player, bind);
         cachedPlayerBind.put(

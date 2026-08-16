@@ -243,17 +243,18 @@ describe('ticket visibility on Minecraft routes', () => {
     const staffSession = await createSession(staff.user.id, staffUuid, 'staff');
 
     async function mcGet(url: string, session: string) {
-      return request(app)
-        .get(url)
-        .set('X-Server-Key', serverKey)
-        .set('X-Player-Session', session);
+      return request(app).get(url).set('X-Server-Key', serverKey).set('X-Player-Session', session);
     }
 
-    const publicList = await request(app).get('/api/mc/tickets').set('X-Server-Key', serverKey);
+    const publicList = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', serverKey)
+      .query({ minecraftUuid: '00000000-0000-0000-0000-000000000099' });
     const authorList = await mcGet(`/api/mc/tickets?minecraftUuid=${authorUuid}`, authorSession);
     const otherList = await mcGet(`/api/mc/tickets?minecraftUuid=${otherUuid}`, otherSession);
     const staffList = await mcGet(`/api/mc/tickets?minecraftUuid=${staffUuid}`, staffSession);
-    expect(publicList.status).toBe(401);
+    expect(publicList.status).toBe(200);
+    expect(publicList.body.data.tickets).toHaveLength(0);
     expect(otherList.body.data.tickets).toHaveLength(0);
     expect(authorList.body.data.tickets).toHaveLength(1);
     expect(staffList.body.data.tickets).toHaveLength(1);

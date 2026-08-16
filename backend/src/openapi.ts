@@ -148,7 +148,15 @@ const authResponseSchema = registry.register(
 );
 
 type AuthType =
-  'none' | 'jwt' | 'refresh' | 'conditional' | 'admin' | 'staff' | 'apiKey' | 'minecraftPlayer';
+  | 'none'
+  | 'jwt'
+  | 'refresh'
+  | 'conditional'
+  | 'admin'
+  | 'staff'
+  | 'apiKey'
+  | 'minecraftPlayer'
+  | 'conditionalMinecraftPlayer';
 
 interface RouteDef {
   method: 'get' | 'post' | 'put' | 'patch' | 'delete';
@@ -217,11 +225,20 @@ function registerRoute(def: RouteDef) {
                   [minecraftPlayerSessionSecurityScheme.name]: [],
                 },
               ]
-            : def.auth === 'conditional'
-              ? [{ [jwtSecurityScheme.name]: [] }, {}]
-              : def.auth === 'refresh'
-                ? [{ [refreshCookieSecurityScheme.name]: [] }]
-                : [{ [jwtSecurityScheme.name]: [] }],
+            : def.auth === 'conditionalMinecraftPlayer'
+              ? [
+                  {
+                    [apiKeySecurityScheme.name]: [],
+                    [minecraftPlayerSessionSecurityScheme.name]: [],
+                  },
+                  { [apiKeySecurityScheme.name]: [] },
+                ]
+              : def.auth === 'conditional'
+                ? [{ [jwtSecurityScheme.name]: [] }, {}]
+                : def.auth === 'refresh'
+                  ? [{ [refreshCookieSecurityScheme.name]: [] }]
+                  : [{ [jwtSecurityScheme.name]: [] }],
+
     request: {
       ...(paramsSchema && { params: paramsSchema }),
       ...(def.querySchema && { query: def.querySchema }),
@@ -700,8 +717,8 @@ const registerMcRoutes = () => {
   registerRoute({
     method: 'get',
     path: '/api/mc/tickets',
-    summary: 'MC 获取可见议题',
-    auth: 'minecraftPlayer',
+    summary: 'MC 获取可见议题（平台要求登录时须带玩家 session）',
+    auth: 'conditionalMinecraftPlayer',
     tags: ['MC'],
     querySchema: mcViewerSchema.extend({
       page: z.coerce.number().int().positive().optional(),
@@ -712,14 +729,14 @@ const registerMcRoutes = () => {
     method: 'get',
     path: '/api/mc/tickets/{uuid}',
     summary: 'MC 获取玩家可见议题（兼容路径）',
-    auth: 'minecraftPlayer',
+    auth: 'conditionalMinecraftPlayer',
     tags: ['MC'],
   });
   registerRoute({
     method: 'get',
     path: '/api/mc/tickets/{id}/detail',
     summary: 'MC 获取议题详情',
-    auth: 'minecraftPlayer',
+    auth: 'conditionalMinecraftPlayer',
     tags: ['MC'],
     querySchema: mcViewerSchema,
   });
@@ -727,7 +744,7 @@ const registerMcRoutes = () => {
     method: 'get',
     path: '/api/mc/tickets/{id}/comments',
     summary: 'MC 获取议题评论',
-    auth: 'minecraftPlayer',
+    auth: 'conditionalMinecraftPlayer',
     tags: ['MC'],
     querySchema: mcViewerSchema,
   });

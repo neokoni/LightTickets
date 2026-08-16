@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { prisma } from '../db.js';
+import { getSiteConfig } from '../services/setup.service.js';
 import { UnauthorizedError } from '../utils/errors.js';
 import { hashMinecraftSecret } from '../utils/minecraft-credential.js';
 
@@ -18,15 +19,9 @@ declare global {
   }
 }
 
-export async function minecraftPlayerSessionMiddleware(
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-) {
+async function resolveMinecraftPlayer(req: Request): Promise<MinecraftPlayerIdentity | null> {
   const token = req.headers['x-player-session'];
-  if (typeof token !== 'string' || !req.server) {
-    throw new UnauthorizedError('Missing or invalid X-Player-Session header');
-  }
+  if (typeof token !== 'string' || !req.server) return null;
 
   const session = await prisma().minecraftPlayerSession.findUnique({
     where: { tokenHash: hashMinecraftSecret(token) },
@@ -44,14 +39,47 @@ export async function minecraftPlayerSessionMiddleware(
     !user?.minecraftUuid ||
     user.minecraftUuid !== session.credential.minecraftUuid
   ) {
-    throw new UnauthorizedError('Minecraft player session is invalid or expired');
+    return null;
   }
 
-  req.minecraftPlayer = {
+  return {
     userId: user.id,
     role: user.role,
     minecraftUuid: user.minecraftUuid,
     serverId: session.serverId,
   };
+}
+
+export async function minecraftPlayerSessionMiddleware(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  const identity = await resolveMinecraftPlayer(req);
+  if (!identity) throw new UnauthorizedError('Missing or invalid X-Player-Session header');
+  req.minecraftPlayer = identity;
+  next();
+}
+
+/**
+ * Mirrors conditionalAuthMiddleware for MC viewers: the player session is
+ * optional. It is only enforced when the platform requires login to view
+ * tickets; otherwise requests degrade to the anonymous viewer (public tickets
+ * only), exactly like the web ticket routes.
+ */
+export async function conditionalMinecraftPlayerSessionMiddleware(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) {
+  const identity = await resolveMinecraftPlayer(req);
+  if (identity) {
+    req.minecraftPlayer = identity;
+    next();
+    return;
+  }
+
+  const { requireLogin } = await getSiteConfig();
+  if (requireLogin) throw new UnauthorizedError('Minecraft player session is invalid or expired');
   next();
 }

@@ -56,12 +56,16 @@ public class TicketInfo {
     private void run(Player player, int ticketId, int commentPage) {
         HttpUtils.Resp resp;
         try {
-            resp = ApiClient.requestWithStatusForPlayer(player, ApiEndpoint.MC_TICKET_DETAIL,
+            resp = ApiClient.requestForMcViewer(player, ApiEndpoint.MC_TICKET_DETAIL,
                     Map.of("id", String.valueOf(ticketId)),
-                    Map.of("minecraftUuid", player.getUniqueId().toString()), null);
+                    Map.of("minecraftUuid", player.getUniqueId().toString()));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
+            return;
+        }
+        if (resp != null && resp.status() == 401) {
+            player.sendMessage(LangUtils.getLang("ticket.login_required"));
             return;
         }
         if (resp == null || resp.body() == null || resp.body().isEmpty()) {
@@ -179,10 +183,13 @@ public class TicketInfo {
 
     private JsonArray fetchComments(Player player, int ticketId) {
         try {
-            HttpUtils.Resp resp = ApiClient.requestWithStatusForPlayer(player,
+            HttpUtils.Resp resp = ApiClient.requestForMcViewer(player,
                     ApiEndpoint.MC_TICKET_COMMENTS, Map.of("id", String.valueOf(ticketId)),
-                    Map.of("minecraftUuid", player.getUniqueId().toString()), null);
-            if (resp == null || resp.body() == null || resp.body().isEmpty()) {
+                    Map.of("minecraftUuid", player.getUniqueId().toString()));
+            if (resp == null || resp.status() == 401) {
+                return null;
+            }
+            if (resp.body() == null || resp.body().isEmpty()) {
                 return null;
             }
             if (resp.status() != 200) {

@@ -3,7 +3,10 @@ import { Router } from 'express';
 import { serverAuthMiddleware } from '../middleware/server-auth.js';
 import { authLimiter } from '../middleware/rate-limit.js';
 import { ForbiddenError } from '../utils/errors.js';
-import { minecraftPlayerSessionMiddleware } from '../middleware/minecraft-player-session.js';
+import {
+  conditionalMinecraftPlayerSessionMiddleware,
+  minecraftPlayerSessionMiddleware,
+} from '../middleware/minecraft-player-session.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
 import * as authService from '../services/auth.service.js';
 import * as mcService from '../services/mc.service.js';
@@ -79,25 +82,29 @@ router.post('/tickets', minecraftPlayerSessionMiddleware, async (req: Request, r
 });
 
 async function listMinecraftTickets(req: Request, res: Response, minecraftUuid?: string) {
-  assertSessionUuid(req, minecraftUuid);
+  if (req.minecraftPlayer) assertSessionUuid(req, minecraftUuid);
   const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
   const result = await mcService.listTicketsForMinecraftViewer({
     page,
     pageSize,
-    identity: req.minecraftPlayer!,
+    identity: req.minecraftPlayer ?? null,
   });
   res.json(result);
 }
 
-router.get('/tickets', minecraftPlayerSessionMiddleware, async (req: Request, res: Response) => {
-  const query = validate(mcViewerSchema, req.query);
-  await listMinecraftTickets(req, res, query.minecraftUuid);
-});
+router.get(
+  '/tickets',
+  conditionalMinecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const query = validate(mcViewerSchema, req.query);
+    await listMinecraftTickets(req, res, query.minecraftUuid);
+  },
+);
 
 // Backward-compatible path for plugins from the previous release.
 router.get(
   '/tickets/:uuid',
-  minecraftPlayerSessionMiddleware,
+  conditionalMinecraftPlayerSessionMiddleware,
   async (req: Request, res: Response) => {
     await listMinecraftTickets(req, res, String(req.params.uuid));
   },
@@ -105,13 +112,13 @@ router.get(
 
 router.get(
   '/tickets/:id/detail',
-  minecraftPlayerSessionMiddleware,
+  conditionalMinecraftPlayerSessionMiddleware,
   async (req: Request, res: Response) => {
     const query = validate(mcViewerSchema, req.query);
-    assertSessionUuid(req, query.minecraftUuid);
+    if (req.minecraftPlayer) assertSessionUuid(req, query.minecraftUuid);
     const ticket = await mcService.getTicketForMinecraft(
       parseId(String(req.params.id)),
-      req.minecraftPlayer!,
+      req.minecraftPlayer ?? null,
     );
     res.json(ticket);
   },
@@ -119,13 +126,13 @@ router.get(
 
 router.get(
   '/tickets/:id/comments',
-  minecraftPlayerSessionMiddleware,
+  conditionalMinecraftPlayerSessionMiddleware,
   async (req: Request, res: Response) => {
     const query = validate(mcViewerSchema, req.query);
-    assertSessionUuid(req, query.minecraftUuid);
+    if (req.minecraftPlayer) assertSessionUuid(req, query.minecraftUuid);
     const comments = await mcService.listCommentsForMinecraft(
       parseId(String(req.params.id)),
-      req.minecraftPlayer!,
+      req.minecraftPlayer ?? null,
     );
     res.json(comments);
   },

@@ -3,9 +3,9 @@ package ink.neokoni.lightTickets.Utils;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
+import ink.neokoni.lightTickets.Configs.PlayerData;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.Nullable;
-
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -46,6 +46,29 @@ public class ApiClient {
     public static String postForPlayer(Player player, ApiEndpoint endpoint, String body) {
         HttpUtils.Resp resp = requestWithStatusForPlayer(player, endpoint, null, null, body);
         return resp == null ? null : resp.body();
+    }
+
+    /**
+     * Fetches a Minecraft viewer endpoint for a player. Mirrors the web conditional auth:
+     * players with a usable binding credential are sent with their session (role-aware
+     * visibility); unbound players degrade to an anonymous server-key request. If the
+     * platform requires login the anonymous request receives 401.
+     */
+    public static HttpUtils.Resp requestForMcViewer(Player player, ApiEndpoint endpoint,
+                                                    @Nullable Map<String, String> pathParams,
+                                                    @Nullable Map<String, String> queryParams) {
+        if (!PlayerData.hasPlayerCredential(player)) {
+            return requestWithStatus(endpoint, pathParams, queryParams, null);
+        }
+        try {
+            return requestWithStatusForPlayer(player, endpoint, pathParams, queryParams, null, false);
+        } catch (RuntimeException e) {
+            if (!PlayerData.hasPlayerCredential(player)) {
+                // Binding was revoked during the request; fall back to the anonymous view.
+                return requestWithStatus(endpoint, pathParams, queryParams, null);
+            }
+            throw e;
+        }
     }
 
     public static HttpUtils.Resp requestWithStatus(ApiEndpoint endpoint) {

@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.Utils.ApiClient;
 import ink.neokoni.lightTickets.Utils.ApiEndpoint;
+import ink.neokoni.lightTickets.Utils.HttpUtils;
 import ink.neokoni.lightTickets.Utils.JsonUtils;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
@@ -58,9 +59,9 @@ public class TicketList {
     }
 
     private void fetchFromApi(Player player, int page) {
-        String resp;
+        HttpUtils.Resp resp;
         try {
-            resp = ApiClient.getForPlayer(player, ApiEndpoint.MC_TICKET_LIST,
+            resp = ApiClient.requestForMcViewer(player, ApiEndpoint.MC_TICKET_LIST,
                     null,
                     Map.of("minecraftUuid", player.getUniqueId().toString(),
                            "page", String.valueOf(page), "pageSize", "10"));
@@ -70,21 +71,31 @@ public class TicketList {
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
-        if (resp == null || resp.isEmpty()) {
+        if (resp != null && resp.status() == 401) {
+            if (page == 1 && displayCacheFallback(player)) return;
+            player.sendMessage(LangUtils.getLang("ticket.login_required"));
+            return;
+        }
+        if (resp == null || resp.body() == null || resp.body().isEmpty()) {
             if (page == 1 && displayCacheFallback(player)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
+        if (resp.status() != 200) {
+            if (page == 1 && displayCacheFallback(player)) return;
+            player.sendMessage(LangUtils.getLang("errors.api_failed",
+                    Map.of("{message}", ApiClient.errorMessage(JsonUtils.fromJson(resp.body(), JsonObject.class)))));
+            return;
+        }
 
-        JsonObject parsed = JsonUtils.fromJson(resp, JsonObject.class);
+        JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed == null || !parsed.has("tickets")) {
             if (page == 1 && displayCacheFallback(player)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
         }
-
         JsonArray tickets = parsed.getAsJsonArray("tickets");
         int total = parsed.has("total") ? parsed.get("total").getAsInt() : tickets.size();
         int respPage = parsed.has("page") ? parsed.get("page").getAsInt() : page;

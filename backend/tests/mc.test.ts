@@ -180,8 +180,44 @@ describe('POST /api/mc/session', () => {
     expect(res.status).toBe(401);
   });
 
-  it('requires a player session in addition to the server key', async () => {
+  it('allows anonymous public listing when requireLogin is false', async () => {
+    const server = await createServer('session-optional');
+    const player = await createAuthenticatedPlayer(server, 'sessionoptional');
+    const visible = await prisma().ticket.create({
+      data: {
+        title: 'Public ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.user.id,
+        serverId: server.id,
+      },
+    });
+    const hidden = await prisma().ticket.create({
+      data: {
+        title: 'Hidden ticket',
+        body: 'Body',
+        template: 'bug_report',
+        hidden: true,
+        authorId: player.user.id,
+        serverId: server.id,
+      },
+    });
+
+    const res = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .query({ minecraftUuid: 'unbound-uuid' });
+
+    expect(res.status).toBe(200);
+    const ids = res.body.data.tickets.map((ticket: { id: number }) => ticket.id);
+    expect(ids).toContain(visible.id);
+    expect(ids).not.toContain(hidden.id);
+  });
+
+  it('requires a player session when requireLogin is true', async () => {
     const server = await createServer('session-required');
+    await prisma().appConfig.create({ data: {} });
+    await prisma().setupStatus.create({ data: { isSetup: true, requireLogin: true } });
 
     const res = await request(app)
       .get('/api/mc/tickets')
@@ -286,8 +322,7 @@ describe('Minecraft ticket access', () => {
 
     expect(res.status).toBe(401);
   });
-
-  it('lists visible tickets only from the current server', async () => {
+  it('lists all visible tickets platform-wide like the web', async () => {
     const server = await createServer('mc-list');
     const otherServer = await createServer('mc-list-other');
     const player = await createAuthenticatedPlayer(server, 'mclist');
@@ -327,8 +362,8 @@ describe('Minecraft ticket access', () => {
     expect(res.status).toBe(200);
     const ids = res.body.data.tickets.map((ticket: { id: number }) => ticket.id);
     expect(ids).toContain(local.id);
-    expect(ids).not.toContain(remote.id);
-    expect(ids).not.toContain(web.id);
+    expect(ids).toContain(remote.id);
+    expect(ids).toContain(web.id);
   });
 
   it('requires the compatibility path UUID to match the session', async () => {
@@ -342,8 +377,7 @@ describe('Minecraft ticket access', () => {
 
     expect(res.status).toBe(403);
   });
-
-  it('does not read or modify a ticket belonging to another server', async () => {
+  it('reads and writes cross-server tickets following web permissions', async () => {
     const serverA = await createServer('mc-isolation-a');
     const serverB = await createServer('mc-isolation-b');
     const admin = await createAuthenticatedPlayer(serverA, 'mcisolationadmin', 'admin');
@@ -368,8 +402,68 @@ describe('Minecraft ticket access', () => {
       .set('X-Player-Session', admin.sessionToken)
       .send({ minecraftUuid: admin.minecraftUuid, status: 'invalid' });
 
-    expect(detail.status).toBe(404);
-    expect(update.status).toBe(404);
+    expect(detail.status).toBe(200);
+    expect(update.status).toBe(200);
+    expect(update.body.data.status).toBe('invalid');
+  });
+
+  it('rejects a player changing a ticket they do not own, even on another server', async () => {
+    const serverA = await createServer('mc-foreign-a');
+    const serverB = await createServer('mc-foreign-b');
+    const owner = await createAuthenticatedPlayer(serverB, 'mcforeignowner');
+    const intruder = await createAuthenticatedPlayer(serverA, 'mcforeignintruder');
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Owned ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: owner.user.id,
+        serverId: serverB.id,
+      },
+    });
+
+    const update = await request(app)
+      .post(`/api/mc/tickets/${ticket.id}/status`)
+      .set('X-Server-Key', serverA.apiKey)
+      .set('X-Player-Session', intruder.sessionToken)
+      .send({ minecraftUuid: intruder.minecraftUuid, status: 'closed' });
+
+    expect(update.status).toBe(403);
+  });
+
+  it('serves anonymous detail and comments for public tickets when requireLogin is false', async () => {
+    const server = await createServer('mc-anon-detail');
+    const player = await createAuthenticatedPlayer(server, 'mcanondetail');
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Public ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.user.id,
+        serverId: server.id,
+      },
+    });
+    await prisma().comment.create({
+      data: {
+        ticketId: ticket.id,
+        authorId: player.user.id,
+        body: 'Public comment',
+        source: 'web',
+      },
+    });
+
+    const detail = await request(app)
+      .get(`/api/mc/tickets/${ticket.id}/detail`)
+      .set('X-Server-Key', server.apiKey)
+      .query({ minecraftUuid: 'unbound-uuid' });
+    const comments = await request(app)
+      .get(`/api/mc/tickets/${ticket.id}/comments`)
+      .set('X-Server-Key', server.apiKey)
+      .query({ minecraftUuid: 'unbound-uuid' });
+
+    expect(detail.status).toBe(200);
+    expect(comments.status).toBe(200);
+    expect(comments.body.data).toHaveLength(1);
   });
 
   it('creates comments using the authenticated account', async () => {

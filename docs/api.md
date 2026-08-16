@@ -834,9 +834,12 @@ hash；旧版插件绑定没有此凭据，必须先在 Web 解绑后重新绑�
 - `POST /api/mc/unlink`：固定拒绝；解绑只能由已登录用户调用 Web 端
   `DELETE /api/auth/link-minecraft`
 
-请求中的 `minecraftUuid` 必须与 `X-Player-Session` 绑定的 UUID 一致，否则返回 `403`。玩家可以读取
-当前服务器内的公开议题和自己创建的隐藏议题；`staff` / `admin` 可按其 API 账号权限读取当前服务器内
-的全部议题。只有 server key、没有玩家 session 时返回 `401`，不再回退为匿名公开读取。
+请求中的 `minecraftUuid` 与 `X-Player-Session` 绑定的 UUID 不一致时返回 `403`。议题读取接口（列表、
+详情、评论）与 Web 端一致采用条件鉴权：仅持有 server key 时按匿名访客返回公开议题；平台在管理后台
+启用「要求登录」后，必须携带玩家 session 才能读取。`staff` / `admin` 身份按其 API 账号权限读取
+平台全部议题，普通玩家可见公开议题与自己创建的隐藏议题。议题写入接口（创建/评论/状态变更/关闭/
+重开）要求玩家 session，鉴权与 Web 端一致：普通玩家只能操作自己创建的议题，`staff` / `admin`
+可操作平台全部议题；不再按服务器隔离。
 
 升级时先应用 credential/session 新增表迁移，再同步更新后端与插件。旧插件和没有
 `playerCredential` 的历史绑定会 fail-closed，用户需在 Web 解绑后重新绑定。数据库变更均为新增结构；

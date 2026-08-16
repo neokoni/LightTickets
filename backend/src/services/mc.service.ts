@@ -92,49 +92,37 @@ export async function getLinkedUser(identity: MinecraftPlayerIdentity) {
   return user;
 }
 
-export async function listTicketsForMinecraft(input: {
-  page?: number;
-  pageSize?: number;
-  identity: MinecraftPlayerIdentity;
-}) {
-  return listTicketsForMinecraftViewer(input);
-}
-
 export async function listTicketsForMinecraftViewer(input: {
   page?: number;
   pageSize?: number;
-  identity: MinecraftPlayerIdentity;
+  identity?: MinecraftPlayerIdentity | null;
 }) {
+  const identity = input.identity ?? null;
   return ticketService.list({
     page: input.page,
     pageSize: input.pageSize,
-    serverId: input.identity.serverId,
-    viewer: { userId: input.identity.userId, role: input.identity.role },
+    viewer: identity ? { userId: identity.userId, role: identity.role } : undefined,
   });
 }
 
-async function assertServerTicket(ticketId: number, serverId: string): Promise<void> {
-  const ticket = await prisma().ticket.findFirst({
-    where: { id: ticketId, serverId },
-    select: { id: true },
-  });
-  if (!ticket) throw new NotFoundError('议题不存在');
-}
-
-export async function getTicketForMinecraft(ticketId: number, identity: MinecraftPlayerIdentity) {
-  await assertServerTicket(ticketId, identity.serverId);
-  return ticketService.getById(ticketId, { userId: identity.userId, role: identity.role });
+export async function getTicketForMinecraft(
+  ticketId: number,
+  identity?: MinecraftPlayerIdentity | null,
+) {
+  return ticketService.getById(
+    ticketId,
+    identity ? { userId: identity.userId, role: identity.role } : undefined,
+  );
 }
 
 export async function listCommentsForMinecraft(
   ticketId: number,
-  identity: MinecraftPlayerIdentity,
+  identity?: MinecraftPlayerIdentity | null,
 ) {
-  await assertServerTicket(ticketId, identity.serverId);
-  return commentService.listByTicket(ticketId, {
-    userId: identity.userId,
-    role: identity.role,
-  });
+  return commentService.listByTicket(
+    ticketId,
+    identity ? { userId: identity.userId, role: identity.role } : undefined,
+  );
 }
 
 export async function createTicketFromMinecraft(input: {
@@ -165,8 +153,6 @@ export async function createCommentFromMinecraft(input: {
   body: string;
   identity: MinecraftPlayerIdentity;
 }) {
-  await assertServerTicket(input.ticketId, input.identity.serverId);
-
   return commentService.create(
     input.ticketId,
     input.identity.userId,
@@ -180,7 +166,6 @@ export async function closeTicketFromMinecraft(
   ticketId: number,
   identity: MinecraftPlayerIdentity,
 ) {
-  await assertServerTicket(ticketId, identity.serverId);
   return ticketService.closeTicket(ticketId, identity.userId, identity.role);
 }
 
@@ -188,7 +173,6 @@ export async function reopenTicketFromMinecraft(
   ticketId: number,
   identity: MinecraftPlayerIdentity,
 ) {
-  await assertServerTicket(ticketId, identity.serverId);
   return ticketService.reopenTicket(ticketId, identity.userId, identity.role);
 }
 
@@ -196,7 +180,6 @@ export async function updateTicketStatusFromMinecraft(
   ticketId: number,
   input: { status: TicketStatus; identity: MinecraftPlayerIdentity },
 ) {
-  await assertServerTicket(ticketId, input.identity.serverId);
   return ticketService.update(ticketId, input.identity.userId, input.identity.role, {
     status: input.status,
   });
