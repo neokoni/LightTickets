@@ -18,9 +18,6 @@ public class LightTicketsLoader implements PluginLoader {
         PAPER_PUBLIC.addRepository(new RemoteRepository.Builder(
                 "paper", "default",
                 "https://repo.papermc.io/repository/maven-public/").build());
-        PAPER_PUBLIC.addRepository(new RemoteRepository.Builder(
-                "maven-central", "default",
-                "https://repo.maven.apache.org/maven2/").build());
 
         addPaperRepoDependency("com.google.code.gson:gson:2.13.2");
         addPaperRepoDependency("com.zaxxer:HikariCP:7.0.2");
