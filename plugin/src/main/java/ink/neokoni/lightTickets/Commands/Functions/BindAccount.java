@@ -17,6 +17,8 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.entity.Player;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 
 public class BindAccount {
@@ -97,8 +99,18 @@ public class BindAccount {
                 .clickEvent(ClickEvent.copyToClipboard(code))
                 .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("bind.copy_hint")));
 
-        return LangUtils.getLang("bind.code", Map.of("{expiresAt}", expiresAt),
+        return LangUtils.getLang("bind.code", Map.of("{validity}", formatValidity(expiresAt)),
                 Map.of("{code}", codeComp));
+    }
+
+    private String formatValidity(String expiresAt) {
+        try {
+            long remainingMillis = Instant.parse(expiresAt).toEpochMilli() - System.currentTimeMillis();
+            long minutes = Math.max(1, (long) Math.ceil(remainingMillis / 60_000.0));
+            return LangUtils.getRawLang("bind.validity", Map.of("{minutes}", String.valueOf(minutes)));
+        } catch (DateTimeParseException | NullPointerException e) {
+            return expiresAt == null ? "" : expiresAt;
+        }
     }
 
 }

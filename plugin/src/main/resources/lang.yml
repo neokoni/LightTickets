@@ -33,7 +33,8 @@ logs:
   status_change_failed: "变更议题状态命令执行失败: {player} ({message})"
 bind:
   guide: "<color:#ffdbab>请在网页注册或登录账号后完成绑定, 输入以下绑定码:"
-  code: "<color:#ffffff>绑定码: {code} <gray>( {expiresAt} 内有效)"
+  code: "<color:#ffffff>绑定码: {code} <gray>({validity})"
+  validity: "{minutes}分钟内有效"
   copy_hint: "<gray>点击复制"
   already_code: "<color:#ffdbab>你已生成过绑定码, 请先在网页完成绑定"
   already_bound: "<color:#ffdbab>你已绑定 LightTickets 账号"
