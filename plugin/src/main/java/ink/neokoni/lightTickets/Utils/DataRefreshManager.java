@@ -148,21 +148,42 @@ public class DataRefreshManager {
     }
 
     private static AccountRefreshResult doRefresh(UUID uuid) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null) return AccountRefreshResult.RETRY;
+
+        // Unbound players never trigger HTTP calls or logs; their data is simply not refreshed.
+        if (!hasUsableCredential(player)) return AccountRefreshResult.UNBOUND;
+
         AccountRefreshResult accountResult = AccountRefreshResult.RETRY;
         try {
             accountResult = refreshAccountInfo(uuid);
         } catch (Exception e) {
+            if (!hasUsableCredential(player)) {
+                // The binding was revoked during the request; treat as unbound silently.
+                return AccountRefreshResult.UNBOUND;
+            }
             LogUtils.warning("data_refresh.account_failed",
                     Map.of("{uuid}", uuid.toString(), "{message}", LogUtils.exceptionText(e)));
         }
 
+        if (accountResult == AccountRefreshResult.UNBOUND) return accountResult;
+
         try {
             refreshTicketList(uuid);
         } catch (Exception e) {
-            LogUtils.warning("data_refresh.tickets_failed",
-                    Map.of("{uuid}", uuid.toString(), "{message}", LogUtils.exceptionText(e)));
+            if (hasUsableCredential(player)) {
+                LogUtils.warning("data_refresh.tickets_failed",
+                        Map.of("{uuid}", uuid.toString(), "{message}", LogUtils.exceptionText(e)));
+            }
         }
         return accountResult;
+    }
+
+    private static boolean hasUsableCredential(Player player) {
+        PlayerBind bind = PlayerData.getPlayerBind(player, true, false);
+        if (bind == null) return false;
+        String credential = bind.getPlayerCredential();
+        return credential != null && !credential.isBlank();
     }
 
     private static AccountRefreshResult refreshAccountInfo(UUID uuid) {
