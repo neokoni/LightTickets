@@ -28,7 +28,7 @@ public class Config {
         private String serverKey = "";
         @Comment("插件消息前缀 (MiniMessage)")
         @Getter
-        private String prefix = "<white>[<color:#96bfff>LTickets<white>] ";
+        private String prefix = "<white>[<color:#96bfff>LightTickets<white>] ";
         @Comment("数据存储设置")
         @Getter
         private StorageInfo storage = new StorageInfo(
