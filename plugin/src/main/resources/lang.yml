@@ -95,6 +95,8 @@ ticket:
   err_multi_number: "请输入空格分隔的数字编号"
   list_header: "<color:#ffdbab>议题列表 (第 {page}/{total} 页)"
   list_filtered_header: "<color:#ffdbab>议题列表 - {status} (第 {page}/{total} 页)"
+  search_header: "<color:#ffdbab>搜索结果: <white>{query} <gray>(第 {page}/{total} 页)"
+  search_usage: "<color:#ffdbab>用法: <white>/lit ticket search <查询>"
   list_empty: "<color:#ffdbab>暂无议题"
   login_required: "<color:#ffdbab>平台要求登录后才能查看议题, 请先执行 /lit bind"
   list_display_item: "<color:#96bfff>#{id} <white>{title} {status} <gray>{date}"

@@ -409,6 +409,101 @@ describe('Minecraft ticket access', () => {
     expect(res.status).toBe(400);
   });
 
+  it('searches tickets with the same text, author, type, and source filters as the web', async () => {
+    const server = await createServer('mc-search');
+    const otherServer = await createServer('mc-search-other-server');
+    const player = await createAuthenticatedPlayer(server, 'mcsearch');
+    const otherAuthor = await prisma().user.create({
+      data: {
+        email: 'mcsearch-other@test.com',
+        username: 'differentauthor',
+        passwordHash: await bcrypt.hash('Password123!', 12),
+      },
+    });
+    const createTicket = (data: {
+      title: string;
+      authorId?: number;
+      template?: string;
+      serverId?: string;
+    }) =>
+      prisma().ticket.create({
+        data: {
+          title: data.title,
+          body: 'Search body',
+          template: data.template ?? 'suggestion',
+          authorId: data.authorId ?? player.user.id,
+          serverId: data.serverId,
+        },
+      });
+
+    const target = await createTicket({ title: 'Needle target', serverId: server.id });
+    await createTicket({
+      title: 'Needle wrong author',
+      authorId: otherAuthor.id,
+      serverId: server.id,
+    });
+    await createTicket({
+      title: 'Needle wrong template',
+      template: 'bug_report',
+      serverId: server.id,
+    });
+    await createTicket({ title: 'Needle wrong server', serverId: otherServer.id });
+    await createTicket({ title: 'Different text', serverId: server.id });
+    const webTicket = await createTicket({ title: 'Web source ticket' });
+
+    const textSearch = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .query({ minecraftUuid: player.minecraftUuid, search: 'Needle' });
+    const combinedSearch = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .query({
+        minecraftUuid: player.minecraftUuid,
+        search: 'Needle',
+        authorName: player.user.username,
+        type: 'suggestion',
+        serverName: server.name,
+      });
+    const webSource = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .query({ minecraftUuid: player.minecraftUuid, hasServer: 'false' });
+    const minecraftSource = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .query({ minecraftUuid: player.minecraftUuid, hasServer: 'true' });
+
+    expect(textSearch.status).toBe(200);
+    expect(textSearch.body.data.tickets.map((ticket: { id: number }) => ticket.id)).toContain(
+      target.id,
+    );
+    expect(combinedSearch.status).toBe(200);
+    expect(combinedSearch.body.data.tickets).toHaveLength(1);
+    expect(combinedSearch.body.data.tickets[0].id).toBe(target.id);
+    expect(webSource.body.data.tickets.map((ticket: { id: number }) => ticket.id)).toEqual([
+      webTicket.id,
+    ]);
+    expect(
+      minecraftSource.body.data.tickets.map((ticket: { id: number }) => ticket.id),
+    ).not.toContain(webTicket.id);
+  });
+
+  it('rejects an invalid ticket source filter', async () => {
+    const server = await createServer('mc-search-source-invalid');
+
+    const res = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .query({ minecraftUuid: 'unbound-uuid', hasServer: 'maybe' });
+
+    expect(res.status).toBe(400);
+  });
+
   it('requires the compatibility path UUID to match the session', async () => {
     const server = await createServer('mc-list-path');
     const player = await createAuthenticatedPlayer(server, 'mclistpath');

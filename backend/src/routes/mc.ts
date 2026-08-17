@@ -85,15 +85,12 @@ router.post('/tickets', minecraftPlayerSessionMiddleware, async (req: Request, r
 async function listMinecraftTickets(
   req: Request,
   res: Response,
-  minecraftUuid?: string,
-  statuses?: Parameters<typeof mcService.listTicketsForMinecraftViewer>[0]['statuses'],
+  input: Omit<mcService.MinecraftTicketListInput, 'identity'> & { minecraftUuid?: string },
 ) {
+  const { minecraftUuid, ...filters } = input;
   if (req.minecraftPlayer) assertSessionUuid(req, minecraftUuid);
-  const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
   const result = await mcService.listTicketsForMinecraftViewer({
-    page,
-    pageSize,
-    statuses,
+    ...filters,
     identity: req.minecraftPlayer ?? null,
   });
   res.json(result);
@@ -104,7 +101,7 @@ router.get(
   conditionalMinecraftPlayerSessionMiddleware,
   async (req: Request, res: Response) => {
     const query = validate(mcTicketListQuerySchema, req.query);
-    await listMinecraftTickets(req, res, query.minecraftUuid, query.statuses);
+    await listMinecraftTickets(req, res, query);
   },
 );
 
@@ -113,7 +110,10 @@ router.get(
   '/tickets/:uuid',
   conditionalMinecraftPlayerSessionMiddleware,
   async (req: Request, res: Response) => {
-    await listMinecraftTickets(req, res, String(req.params.uuid));
+    await listMinecraftTickets(req, res, {
+      ...parsePagination(req.query as Record<string, unknown>),
+      minecraftUuid: String(req.params.uuid),
+    });
   },
 );
 

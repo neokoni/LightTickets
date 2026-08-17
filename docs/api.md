@@ -822,8 +822,9 @@ hash；旧版插件绑定没有此凭据，必须先在 Web 解绑后重新绑�
 
 ### MC 议题与评论
 
-- `GET /api/mc/tickets?minecraftUuid=<uuid>`：支持 `page`、`pageSize` 和 `statuses`；
-  `statuses` 可使用单个状态、逗号分隔状态或多值参数
+- `GET /api/mc/tickets?minecraftUuid=<uuid>`：支持 `page`、`pageSize`、`statuses`、`search`、
+  `type`、`authorName`、`serverName` 和 `hasServer`；`statuses` 可使用单个状态、逗号分隔
+  状态或多值参数，其余搜索参数与 Web 端议题列表一致
 - `GET /api/mc/tickets/:uuid`：上一版本兼容路径
 - `GET /api/mc/tickets/:id/detail?minecraftUuid=<uuid>`
 - `GET /api/mc/tickets/:id/comments?minecraftUuid=<uuid>`
@@ -834,6 +835,11 @@ hash；旧版插件绑定没有此凭据，必须先在 Web 解绑后重新绑�
 - `POST /api/mc/tickets/:id/status`
 - `POST /api/mc/unlink`：固定拒绝；解绑只能由已登录用户调用 Web 端
   `DELETE /api/auth/link-minecraft`
+
+插件可使用 `/lit ticket search <查询>` 搜索议题。普通文本搜索标题和正文；过滤语法支持
+`author:<用户名>`、`type:<模板>`、`from:web`、`from:minecraft` 和
+`from:minecraft:<服务器名>`，并可与普通文本组合。包含空格的过滤值使用双引号，例如
+`type:"Bug 反馈"` 或 `from:"minecraft:My Server"`；引号内可用 `\"` 和 `\\` 转义。
 
 请求中的 `minecraftUuid` 与 `X-Player-Session` 绑定的 UUID 不一致时返回 `403`。议题读取接口（列表、
 详情、评论）与 Web 端一致采用条件鉴权：仅持有 server key 时按匿名访客返回公开议题；平台在管理后台

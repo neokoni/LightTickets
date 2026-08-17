@@ -92,17 +92,29 @@ export async function getLinkedUser(identity: MinecraftPlayerIdentity) {
   return user;
 }
 
-export async function listTicketsForMinecraftViewer(input: {
+export interface MinecraftTicketListInput {
   page?: number;
   pageSize?: number;
   statuses?: TicketStatus[];
+  type?: string;
+  authorName?: string;
+  serverName?: string;
+  hasServer?: boolean;
+  search?: string;
   identity?: MinecraftPlayerIdentity | null;
-}) {
+}
+
+export async function listTicketsForMinecraftViewer(input: MinecraftTicketListInput) {
   const identity = input.identity ?? null;
   return ticketService.list({
     page: input.page,
     pageSize: input.pageSize,
     statuses: input.statuses,
+    type: input.type,
+    authorName: input.authorName,
+    serverName: input.serverName,
+    hasServer: input.hasServer,
+    search: input.search,
     viewer: identity ? { userId: identity.userId, role: identity.role } : undefined,
   });
 }

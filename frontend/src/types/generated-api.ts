@@ -2643,6 +2643,11 @@ export interface paths {
           pageSize?: number;
           minecraftUuid: string;
           statuses?: string | string[];
+          type?: string;
+          authorName?: string;
+          serverName?: string;
+          hasServer?: 'true' | 'false';
+          search?: string;
         };
         header?: never;
         path?: never;

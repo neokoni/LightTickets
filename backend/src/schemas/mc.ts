@@ -63,6 +63,14 @@ export const mcTicketListQuerySchema = paginationSchema.extend({
     .transform((value) => (Array.isArray(value) ? value : value.split(',')))
     .pipe(z.array(mcTicketStatusSchema))
     .optional(),
+  type: z.string().optional(),
+  authorName: z.string().optional(),
+  serverName: z.string().min(1).optional(),
+  hasServer: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+  search: z.string().optional(),
 });
 
 export const mcCommentSchema = z.object({

@@ -17,6 +17,7 @@ import ink.neokoni.lightTickets.Commands.Functions.TicketList;
 import ink.neokoni.lightTickets.Commands.Functions.UnbindAccount;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.TicketSearchParser;
 import ink.neokoni.lightTickets.Utils.TicketStatus;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -147,6 +148,41 @@ public class CommandRegister {
                                 return Command.SINGLE_SUCCESS;
                             })));
         }
+
+        var search = Commands.literal("search")
+                .requires(ctx -> ctx.getSender().hasPermission("lighttickets.ticket.list")
+                        || ctx.getSender().hasPermission("lighttickets.player"))
+                .executes(ctx -> {
+                    ctx.getSource().getSender().sendMessage(LangUtils.getLang("ticket.search_usage"));
+                    return Command.SINGLE_SUCCESS;
+                });
+
+        search.then(Commands.argument("query", StringArgumentType.greedyString())
+                .executes(ctx -> {
+                    if (ctx.getSource().getSender() instanceof Player player) {
+                        String query = StringArgumentType.getString(ctx, "query");
+                        var searchFilter = TicketSearchParser.parse(query);
+                        Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
+                                task -> new TicketList(player, 1, searchFilter));
+                    }
+                    return Command.SINGLE_SUCCESS;
+                }));
+
+        search.then(Commands.literal("--page")
+                .then(Commands.argument("searchPage", IntegerArgumentType.integer(1))
+                        .then(Commands.argument("searchQuery", StringArgumentType.greedyString())
+                                .executes(ctx -> {
+                                    if (ctx.getSource().getSender() instanceof Player player) {
+                                        int page = IntegerArgumentType.getInteger(ctx, "searchPage");
+                                        String query = StringArgumentType.getString(ctx, "searchQuery");
+                                        var searchFilter = TicketSearchParser.parse(query);
+                                        Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
+                                                task -> new TicketList(player, page, searchFilter));
+                                    }
+                                    return Command.SINGLE_SUCCESS;
+                                }))));
+
+        ticket.then(search);
 
         var info = Commands.literal("info")
                 .requires(ctx -> ctx.getSender().hasPermission("lighttickets.ticket.info")
