@@ -236,14 +236,11 @@ completion_hooks:
 
   it('sanitizes command placeholder values before interpolation', () => {
     const longValue = 'x'.repeat(2_001);
-    const resolved = resolveHookPlaceholders(
-      'say {ticket_title} {field.body} {field.long}',
-      {
-        ticket_title: 'first\nsecond\rthird',
-        'field.body': 'hello @a @e[limit=1]',
-        'field.long': longValue,
-      },
-    );
+    const resolved = resolveHookPlaceholders('say {ticket_title} {field.body} {field.long}', {
+      ticket_title: 'first\nsecond\rthird',
+      'field.body': 'hello @a @e[limit=1]',
+      'field.long': longValue,
+    });
 
     expect(resolved).toBe(`say first second third hello ＠a ＠e[limit=1] ${'x'.repeat(2_000)}`);
     expect(resolved).not.toMatch(/[\r\n]/);
