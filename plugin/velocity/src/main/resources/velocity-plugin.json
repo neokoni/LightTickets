@@ -1,0 +1,8 @@
+{
+  "id": "lighttickets",
+  "name": "LightTickets",
+  "version": "${version}",
+  "description": "${description}",
+  "authors": ["Neokoni"],
+  "main": "ink.neokoni.lightTickets.velocity.LightTicketsVelocity"
+}

@@ -99,11 +99,18 @@ jobs:
 
       - name: Build
         working-directory: plugin
-        run: ./gradlew shadowJar --no-daemon
+        run: ./gradlew paper:shadowJar velocity:shadowJar --no-daemon
 
-      - name: Upload plugin jar
+      - name: Upload paper plugin jar
         uses: actions/upload-artifact@v4
         with:
-          name: LightTickets-plugin
-          path: plugin/build/libs/*-all.jar
+          name: LightTickets-paper
+          path: plugin/paper/build/libs/*-all.jar
+          if-no-files-found: error
+
+      - name: Upload velocity plugin jar
+        uses: actions/upload-artifact@v4
+        with:
+          name: LightTickets-velocity
+          path: plugin/velocity/build/libs/*-all.jar
           if-no-files-found: error

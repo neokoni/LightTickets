@@ -1,57 +1,27 @@
 plugins {
-    id("java-library")
-    id("xyz.jpenilla.run-paper") version "3.0.2"
-    id("com.gradleup.shadow") version "8.3.10"
-    id("io.freefair.lombok") version "8.7.1"
+    java
+    id("io.freefair.lombok") version "8.7.1" apply false
+    id("com.gradleup.shadow") version "8.3.10" apply false
+    id("xyz.jpenilla.run-paper") version "3.0.2" apply false
 }
 
-repositories {
-    mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/")
+allprojects {
+    group = "ink.neokoni.LightTickets"
+    version = "1.0.0"
+    description = "A LightWeight issue platform support for Minecraft Server"
 }
 
-dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT")
-    compileOnly("com.google.code.gson:gson:2.13.2")
-    compileOnly("com.zaxxer:HikariCP:7.0.2")
-    compileOnly("com.mysql:mysql-connector-j:9.5.0");
-    compileOnly("org.mariadb.jdbc:mariadb-java-client:3.5.6");
-    compileOnly("org.xerial:sqlite-jdbc:3.51.2.0")
-    compileOnly("io.socket:socket.io-client:2.1.0")
+subprojects {
+    apply(plugin = "java")
+    apply(plugin = "io.freefair.lombok")
 
-    implementation("de.exlll:configlib-yaml:4.8.1")
-}
-
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
-}
-
-tasks {
-    runServer {
-        // Configure the Minecraft version for our task.
-        // This is the only required configuration besides applying the plugin.
-        // Your plugin's jar (or shadowJar if present) will be used automatically.
-        minecraftVersion("1.21")
-        jvmArgs("-Xms2G", "-Xmx2G")
+    repositories {
+        mavenCentral()
+        maven("https://repo.papermc.io/repository/maven-public/")
+        maven("https://repo.codemc.io/repository/maven-releases/")
     }
 
-    processResources {
-        val props = mapOf(
-            "version" to version,
-            "description" to project.description,
-            "prefix" to project.name
-        )
-        filesMatching("paper-plugin.yml") {
-            expand(props)
-        }
-    }
-
-    shadowJar {
-        relocate("de.exlll", "ink.neokoni.lightTickets.libs.configlib")
-        minimize()
-    }
-
-    build {
-        dependsOn(shadowJar)
+    java {
+        toolchain.languageVersion = JavaLanguageVersion.of(21)
     }
 }

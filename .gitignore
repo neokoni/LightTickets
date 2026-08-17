@@ -5,12 +5,25 @@ dist/
 *.db-journal
 .env
 uploads/
-plugin/build/
-plugin/.gradle/
-plugin/.idea/
-plugin/.vscode/
-plugin/.DS_Store
-plugin/.gradle/
-plugin/build/
-plugin/run/
 data/
+
+# Gradle 多模块构建产物与缓存
+plugin/.gradle/
+plugin/*/.gradle/
+plugin/build/
+plugin/*/build/
+plugin/out/
+
+# IDE / 编辑器
+plugin/.idea/
+plugin/*/.idea/
+plugin/.vscode/
+plugin/*/.vscode/
+plugin/.DS_Store
+plugin/*/.DS_Store
+
+# 本地测试服务器 (run-paper)
+plugin/run/
+
+# 测试临时目录
+/tmp/velocity-test/
