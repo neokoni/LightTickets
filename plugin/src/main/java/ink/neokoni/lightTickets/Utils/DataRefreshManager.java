@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -23,17 +22,21 @@ import java.util.concurrent.TimeUnit;
 
 public class DataRefreshManager {
     private static final Queue<UUID> refreshQueue = new ConcurrentLinkedQueue<>();
-    private static final Set<UUID> queuedPlayers = ConcurrentHashMap.newKeySet();
-    private static final Set<UUID> inFlightPlayers = ConcurrentHashMap.newKeySet();
-    private static final Set<UUID> activePlayers = ConcurrentHashMap.newKeySet();
-    private static final Map<UUID, Long> lastRefreshTime = new ConcurrentHashMap<>();
-    private static final Map<UUID, Integer> retryAttempts = new ConcurrentHashMap<>();
-    private static final Map<UUID, Long> retryAfter = new ConcurrentHashMap<>();
+    private static final Map<UUID, RefreshState> refreshStates = new ConcurrentHashMap<>();
 
     private enum AccountRefreshResult {
         UPDATED,
         UNBOUND,
         RETRY
+    }
+
+    private static final class RefreshState {
+        private boolean active;
+        private boolean queued;
+        private boolean inFlight;
+        private long lastRefreshTime;
+        private int retryAttempts;
+        private long retryAfter;
     }
 
     public static void start() {
@@ -48,103 +51,150 @@ public class DataRefreshManager {
     }
 
     public static void onPlayerJoin(UUID uuid) {
-        if (activePlayers.add(uuid)) {
-            lastRefreshTime.remove(uuid);
-            retryAttempts.remove(uuid);
-            retryAfter.remove(uuid);
-            enqueue(uuid);
+        RefreshState state = stateFor(uuid);
+        synchronized (state) {
+            if (state.active) return;
+            state.active = true;
+            state.lastRefreshTime = 0L;
+            state.retryAttempts = 0;
+            state.retryAfter = 0L;
+            enqueue(uuid, state);
         }
     }
 
     public static void onPlayerQuit(UUID uuid) {
-        activePlayers.remove(uuid);
-        queuedPlayers.remove(uuid);
-        refreshQueue.remove(uuid);
-        lastRefreshTime.remove(uuid);
-        retryAttempts.remove(uuid);
-        retryAfter.remove(uuid);
+        RefreshState state = refreshStates.get(uuid);
+        if (state == null) return;
+        synchronized (state) {
+            state.active = false;
+            state.queued = false;
+            state.lastRefreshTime = 0L;
+            state.retryAttempts = 0;
+            state.retryAfter = 0L;
+            refreshQueue.remove(uuid);
+            if (!state.inFlight) {
+                refreshStates.remove(uuid, state);
+            }
+        }
     }
 
     public static void requestRefresh(UUID uuid) {
-        if (uuid == null || !activePlayers.contains(uuid)) return;
-        lastRefreshTime.remove(uuid);
-        retryAttempts.remove(uuid);
-        retryAfter.remove(uuid);
-        enqueue(uuid);
+        if (uuid == null) return;
+        RefreshState state = refreshStates.get(uuid);
+        if (state == null) return;
+        synchronized (state) {
+            if (!state.active) return;
+            state.lastRefreshTime = 0L;
+            state.retryAttempts = 0;
+            state.retryAfter = 0L;
+            enqueue(uuid, state);
+        }
     }
 
     public static void refreshNow(UUID uuid) {
         if (uuid == null || Bukkit.getPlayer(uuid) == null) return;
-        if (!inFlightPlayers.add(uuid)) return;
+        RefreshState state = stateFor(uuid);
+        synchronized (state) {
+            if (state.inFlight) return;
+            state.inFlight = true;
+        }
         try {
             AccountRefreshResult result = doRefresh(uuid);
             if (result != AccountRefreshResult.RETRY) {
-                lastRefreshTime.put(uuid, System.currentTimeMillis());
-                retryAttempts.remove(uuid);
-                retryAfter.remove(uuid);
+                synchronized (state) {
+                    state.lastRefreshTime = System.currentTimeMillis();
+                    state.retryAttempts = 0;
+                    state.retryAfter = 0L;
+                }
             } else {
-                scheduleRetry(uuid);
+                scheduleRetry(state);
             }
         } finally {
-            inFlightPlayers.remove(uuid);
-            enqueue(uuid);
+            completeRefresh(uuid, state);
         }
     }
 
     public static void shutdown() {
         refreshQueue.clear();
-        queuedPlayers.clear();
-        inFlightPlayers.clear();
-        activePlayers.clear();
-        lastRefreshTime.clear();
-        retryAttempts.clear();
-        retryAfter.clear();
+        refreshStates.clear();
     }
 
     private static void processOne() {
         UUID uuid = refreshQueue.poll();
         if (uuid == null) return;
-        queuedPlayers.remove(uuid);
+        RefreshState state = refreshStates.get(uuid);
+        if (state == null) return;
 
-        if (!activePlayers.contains(uuid) || Bukkit.getPlayer(uuid) == null) {
-            activePlayers.remove(uuid);
-            return;
+        synchronized (state) {
+            state.queued = false;
+            if (!state.active || Bukkit.getPlayer(uuid) == null) {
+                state.active = false;
+                if (!state.inFlight) {
+                    refreshStates.remove(uuid, state);
+                }
+                return;
+            }
+            if (state.inFlight) return;
+            state.inFlight = true;
         }
-        if (!inFlightPlayers.add(uuid)) return;
 
         try {
             long now = System.currentTimeMillis();
-            Long blockedUntil = retryAfter.get(uuid);
-            if (blockedUntil != null && now < blockedUntil) return;
-
-            Long last = lastRefreshTime.get(uuid);
-            long intervalMs = Config.getConfig().getPlayerRefreshInterval() * 1_000L;
-            if (last != null && (now - last) < intervalMs) return;
-
+            boolean blocked;
+            boolean notDue;
+            synchronized (state) {
+                blocked = state.retryAfter != 0L && now < state.retryAfter;
+                notDue = !blocked && state.lastRefreshTime != 0L
+                        && (now - state.lastRefreshTime)
+                        < Config.getConfig().getPlayerRefreshInterval() * 1_000L;
+            }
+            if (blocked || notDue) {
+                return;
+            }
             AccountRefreshResult result = doRefresh(uuid);
             if (result == AccountRefreshResult.RETRY) {
-                scheduleRetry(uuid);
+                scheduleRetry(state);
             } else {
-                lastRefreshTime.put(uuid, now);
-                retryAttempts.remove(uuid);
-                retryAfter.remove(uuid);
+                synchronized (state) {
+                    state.lastRefreshTime = now;
+                    state.retryAttempts = 0;
+                    state.retryAfter = 0L;
+                }
             }
         } finally {
-            inFlightPlayers.remove(uuid);
-            enqueue(uuid);
+            completeRefresh(uuid, state);
         }
     }
 
-    private static void enqueue(UUID uuid) {
-        if (activePlayers.contains(uuid) && queuedPlayers.add(uuid)) {
+    private static RefreshState stateFor(UUID uuid) {
+        return refreshStates.computeIfAbsent(uuid, key -> new RefreshState());
+    }
+
+    private static void enqueue(UUID uuid, RefreshState state) {
+        if (refreshStates.get(uuid) == state && state.active && !state.queued) {
+            state.queued = true;
             refreshQueue.add(uuid);
         }
     }
 
-    private static void scheduleRetry(UUID uuid) {
-        int attempt = Math.min(retryAttempts.merge(uuid, 1, Integer::sum), 6);
-        long delay = Math.min(60_000L, 1_000L << attempt);
-        retryAfter.put(uuid, System.currentTimeMillis() + delay);
+    private static void completeRefresh(UUID uuid, RefreshState state) {
+        synchronized (state) {
+            state.inFlight = false;
+            if (refreshStates.get(uuid) == state && state.active) {
+                enqueue(uuid, state);
+            } else if (refreshStates.get(uuid) == state) {
+                refreshStates.remove(uuid, state);
+            }
+        }
+    }
+
+    private static void scheduleRetry(RefreshState state) {
+        synchronized (state) {
+            int attempt = Math.min(state.retryAttempts + 1, 6);
+            state.retryAttempts = attempt;
+            long delay = Math.min(60_000L, 1_000L << attempt);
+            state.retryAfter = System.currentTimeMillis() + delay;
+        }
     }
 
     private static AccountRefreshResult doRefresh(UUID uuid) {
@@ -246,5 +296,4 @@ public class DataRefreshManager {
         existing.setRole(role == null ? AccountRole.PLAYER : role);
         PlayerData.setPlayerBind(player, existing);
     }
-
 }
