@@ -35,6 +35,7 @@ import {
   mcRegisterSchema,
   mcStatusSchema,
   mcTicketActionSchema,
+  mcTicketListQuerySchema,
   mcTicketSchema,
   mcUnlinkSchema,
   mcViewerSchema,
@@ -720,10 +721,7 @@ const registerMcRoutes = () => {
     summary: 'MC 获取可见议题（平台要求登录时须带玩家 session）',
     auth: 'conditionalMinecraftPlayer',
     tags: ['MC'],
-    querySchema: mcViewerSchema.extend({
-      page: z.coerce.number().int().positive().optional(),
-      pageSize: z.coerce.number().int().positive().optional(),
-    }),
+    querySchema: mcTicketListQuerySchema,
   });
   registerRoute({
     method: 'get',

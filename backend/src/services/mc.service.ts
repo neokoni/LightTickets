@@ -95,12 +95,14 @@ export async function getLinkedUser(identity: MinecraftPlayerIdentity) {
 export async function listTicketsForMinecraftViewer(input: {
   page?: number;
   pageSize?: number;
+  statuses?: TicketStatus[];
   identity?: MinecraftPlayerIdentity | null;
 }) {
   const identity = input.identity ?? null;
   return ticketService.list({
     page: input.page,
     pageSize: input.pageSize,
+    statuses: input.statuses,
     viewer: identity ? { userId: identity.userId, role: identity.role } : undefined,
   });
 }

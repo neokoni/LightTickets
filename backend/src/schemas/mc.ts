@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { TICKET_STATUS } from '../constants/ticket-status.js';
+import { paginationSchema } from '../utils/validate.js';
 
 export const minecraftUuidSchema = z.string().uuid();
 export const minecraftNameSchema = z.string().regex(/^[a-zA-Z0-9_]{3,16}$/);
@@ -48,6 +49,22 @@ export const mcViewerSchema = z.object({
   minecraftUuid: z.string().min(1),
 });
 
+export const mcTicketStatusSchema = z.enum([
+  TICKET_STATUS.OPEN,
+  TICKET_STATUS.IN_PROGRESS,
+  TICKET_STATUS.CLOSED,
+  TICKET_STATUS.INVALID,
+]);
+
+export const mcTicketListQuerySchema = paginationSchema.extend({
+  minecraftUuid: z.string().min(1),
+  statuses: z
+    .union([z.string(), z.array(z.string())])
+    .transform((value) => (Array.isArray(value) ? value : value.split(',')))
+    .pipe(z.array(mcTicketStatusSchema))
+    .optional(),
+});
+
 export const mcCommentSchema = z.object({
   minecraftUuid: z.string().min(1),
   ticketId: z.coerce.number().int().positive(),
@@ -60,12 +77,7 @@ export const mcTicketActionSchema = z.object({
 
 export const mcStatusSchema = z.object({
   minecraftUuid: z.string(),
-  status: z.enum([
-    TICKET_STATUS.OPEN,
-    TICKET_STATUS.IN_PROGRESS,
-    TICKET_STATUS.CLOSED,
-    TICKET_STATUS.INVALID,
-  ]),
+  status: mcTicketStatusSchema,
 });
 
 export const mcUnlinkSchema = z.object({

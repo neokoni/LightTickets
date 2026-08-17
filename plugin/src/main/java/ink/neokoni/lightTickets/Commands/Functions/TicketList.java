@@ -16,13 +16,18 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import org.bukkit.entity.Player;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public class TicketList {
     public TicketList(Player player, int page) {
+        this(player, page, null);
+    }
+
+    public TicketList(Player player, int page, TicketStatus statusFilter) {
         try {
-            run(player, page);
+            run(player, page, statusFilter);
         } catch (Throwable t) {
             LogUtils.severe("logs.ticket_list_failed",
                     Map.of("{player}", player.getName(), "{message}", LogUtils.exceptionText(t)));
@@ -31,13 +36,19 @@ public class TicketList {
         }
     }
 
-    private void run(Player player, int page) {
+    private void run(Player player, int page, TicketStatus statusFilter) {
         if (page < 1) page = 1;
 
-        fetchFromApi(player, page);
+        fetchFromApi(player, page, statusFilter);
     }
 
-    private void displayFromCache(Player player, List<PlayerData.CachedTicket> tickets) {
+    private void displayFromCache(Player player, List<PlayerData.CachedTicket> tickets,
+                                  TicketStatus statusFilter) {
+        if (statusFilter != null) {
+            tickets = tickets.stream()
+                    .filter(ticket -> statusFilter.key().equals(ticket.status()))
+                    .toList();
+        }
         int pageSize = 10;
         int total = tickets.size();
         int totalPages = (int) Math.ceil((double) total / pageSize);
@@ -48,42 +59,45 @@ public class TicketList {
             return;
         }
 
-        player.sendMessage(LangUtils.getLang("ticket.list_header",
-                Map.of("{page}", "1", "{total}", String.valueOf(totalPages))));
+        sendHeader(player, 1, totalPages, statusFilter);
 
         for (PlayerData.CachedTicket t : tickets) {
             player.sendMessage(buildTicketLine(t.id(), t.title(), t.status(), t.createdAt()));
         }
 
-        sendPagination(player, 1, totalPages);
+        sendPagination(player, 1, totalPages, statusFilter);
     }
 
-    private void fetchFromApi(Player player, int page) {
+    private void fetchFromApi(Player player, int page, TicketStatus statusFilter) {
+        Map<String, String> queryParams = new LinkedHashMap<>();
+        queryParams.put("minecraftUuid", player.getUniqueId().toString());
+        queryParams.put("page", String.valueOf(page));
+        queryParams.put("pageSize", "10");
+        if (statusFilter != null) queryParams.put("statuses", statusFilter.key());
+
         HttpUtils.Resp resp;
         try {
             resp = ApiClient.requestForMcViewer(player, ApiEndpoint.MC_TICKET_LIST,
-                    null,
-                    Map.of("minecraftUuid", player.getUniqueId().toString(),
-                           "page", String.valueOf(page), "pageSize", "10"));
+                    null, queryParams);
         } catch (RuntimeException e) {
-            if (page == 1 && displayCacheFallback(player)) return;
+            if (page == 1 && displayCacheFallback(player, statusFilter)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
             return;
         }
         if (resp != null && resp.status() == 401) {
-            if (page == 1 && displayCacheFallback(player)) return;
+            if (page == 1 && displayCacheFallback(player, statusFilter)) return;
             player.sendMessage(LangUtils.getLang("ticket.login_required"));
             return;
         }
         if (resp == null || resp.body() == null || resp.body().isEmpty()) {
-            if (page == 1 && displayCacheFallback(player)) return;
+            if (page == 1 && displayCacheFallback(player, statusFilter)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", LangUtils.getRawLang("errors.empty_response"))));
             return;
         }
         if (resp.status() != 200) {
-            if (page == 1 && displayCacheFallback(player)) return;
+            if (page == 1 && displayCacheFallback(player, statusFilter)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", ApiClient.errorMessage(JsonUtils.fromJson(resp.body(), JsonObject.class)))));
             return;
@@ -91,7 +105,7 @@ public class TicketList {
 
         JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (parsed == null || !parsed.has("tickets")) {
-            if (page == 1 && displayCacheFallback(player)) return;
+            if (page == 1 && displayCacheFallback(player, statusFilter)) return;
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
@@ -104,7 +118,7 @@ public class TicketList {
         if (totalPages < 1) totalPages = 1;
 
         if (tickets.size() == 0) {
-            if (respPage == 1) {
+            if (respPage == 1 && statusFilter == null) {
                 PlayerData.setTicketList(player.getUniqueId(), List.of());
             }
             player.sendMessage(LangUtils.getLang("ticket.list_empty"));
@@ -113,8 +127,7 @@ public class TicketList {
 
         List<PlayerData.CachedTicket> cacheSnapshot = new java.util.ArrayList<>();
 
-        player.sendMessage(LangUtils.getLang("ticket.list_header",
-                Map.of("{page}", String.valueOf(respPage), "{total}", String.valueOf(totalPages))));
+        sendHeader(player, respPage, totalPages, statusFilter);
 
         for (JsonElement el : tickets) {
             JsonObject t = el.getAsJsonObject();
@@ -128,18 +141,30 @@ public class TicketList {
             player.sendMessage(buildTicketLine(id, title, status, createdAt));
         }
 
-        if (respPage == 1) {
+        if (respPage == 1 && statusFilter == null) {
             PlayerData.setTicketList(player.getUniqueId(), cacheSnapshot);
         }
 
-        sendPagination(player, respPage, totalPages);
+        sendPagination(player, respPage, totalPages, statusFilter);
     }
 
-    private boolean displayCacheFallback(Player player) {
+    private boolean displayCacheFallback(Player player, TicketStatus statusFilter) {
         List<PlayerData.CachedTicket> cached = PlayerData.getTicketList(player.getUniqueId());
         if (cached.isEmpty()) return false;
-        displayFromCache(player, cached);
+        displayFromCache(player, cached, statusFilter);
         return true;
+    }
+
+    private void sendHeader(Player player, int page, int totalPages, TicketStatus statusFilter) {
+        if (statusFilter == null) {
+            player.sendMessage(LangUtils.getLang("ticket.list_header",
+                    Map.of("{page}", String.valueOf(page), "{total}", String.valueOf(totalPages))));
+            return;
+        }
+        player.sendMessage(LangUtils.getLang("ticket.list_filtered_header",
+                Map.of("{status}", statusFilter.label(),
+                       "{page}", String.valueOf(page),
+                       "{total}", String.valueOf(totalPages))));
     }
 
     private Component buildTicketLine(int id, String title, String status, String createdAt) {
@@ -158,12 +183,16 @@ public class TicketList {
                 .hoverEvent(HoverEvent.showText(hover));
     }
 
-    private void sendPagination(Player player, int currentPage, int totalPages) {
+    private void sendPagination(Player player, int currentPage, int totalPages,
+                                TicketStatus statusFilter) {
+        String listCommand = statusFilter == null
+                ? "/lit ticket list "
+                : "/lit ticket list:" + statusFilter.key() + " ";
         Component prefixComp = LangUtils.prefixComponent();
         Component line = Component.empty();
         if (currentPage > 1) {
             line = line.append(prefixComp.append(LangUtils.getLangContent("ticket.list_prev"))
-                    .clickEvent(ClickEvent.runCommand("/lit ticket list " + (currentPage - 1)))
+                    .clickEvent(ClickEvent.runCommand(listCommand + (currentPage - 1)))
                     .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.list_prev_hover"))));
         }
         line = line.append(Component.text(" "))
@@ -172,7 +201,7 @@ public class TicketList {
                 .append(Component.text(" "));
         if (currentPage < totalPages) {
             line = line.append(prefixComp.append(LangUtils.getLangContent("ticket.list_next"))
-                    .clickEvent(ClickEvent.runCommand("/lit ticket list " + (currentPage + 1)))
+                    .clickEvent(ClickEvent.runCommand(listCommand + (currentPage + 1)))
                     .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("ticket.list_next_hover"))));
         }
         player.sendMessage(line);

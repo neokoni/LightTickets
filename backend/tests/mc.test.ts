@@ -366,6 +366,49 @@ describe('Minecraft ticket access', () => {
     expect(ids).toContain(web.id);
   });
 
+  it('filters visible tickets by each requested status', async () => {
+    const server = await createServer('mc-list-status');
+    const player = await createAuthenticatedPlayer(server, 'mcliststatus');
+    const statuses = ['open', 'in_progress', 'closed', 'invalid'] as const;
+    const tickets = await Promise.all(
+      statuses.map((status) =>
+        prisma().ticket.create({
+          data: {
+            title: `${status} ticket`,
+            body: 'Body',
+            template: 'bug_report',
+            status,
+            authorId: player.user.id,
+            serverId: server.id,
+          },
+        }),
+      ),
+    );
+
+    for (const [index, status] of statuses.entries()) {
+      const res = await request(app)
+        .get('/api/mc/tickets')
+        .set('X-Server-Key', server.apiKey)
+        .set('X-Player-Session', player.sessionToken)
+        .query({ minecraftUuid: player.minecraftUuid, statuses: status });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.tickets).toHaveLength(1);
+      expect(res.body.data.tickets[0]).toMatchObject({ id: tickets[index].id, status });
+    }
+  });
+
+  it('rejects an invalid ticket status filter', async () => {
+    const server = await createServer('mc-list-status-invalid');
+
+    const res = await request(app)
+      .get('/api/mc/tickets')
+      .set('X-Server-Key', server.apiKey)
+      .query({ minecraftUuid: 'unbound-uuid', statuses: 'pending' });
+
+    expect(res.status).toBe(400);
+  });
+
   it('requires the compatibility path UUID to match the session', async () => {
     const server = await createServer('mc-list-path');
     const player = await createAuthenticatedPlayer(server, 'mclistpath');

@@ -17,6 +17,7 @@ import {
   mcRegisterSchema,
   mcStatusSchema,
   mcTicketActionSchema,
+  mcTicketListQuerySchema,
   mcTicketSchema,
   mcUnlinkSchema,
   mcViewerSchema,
@@ -81,12 +82,18 @@ router.post('/tickets', minecraftPlayerSessionMiddleware, async (req: Request, r
   res.status(201).json(ticket);
 });
 
-async function listMinecraftTickets(req: Request, res: Response, minecraftUuid?: string) {
+async function listMinecraftTickets(
+  req: Request,
+  res: Response,
+  minecraftUuid?: string,
+  statuses?: Parameters<typeof mcService.listTicketsForMinecraftViewer>[0]['statuses'],
+) {
   if (req.minecraftPlayer) assertSessionUuid(req, minecraftUuid);
   const { page, pageSize } = parsePagination(req.query as Record<string, unknown>);
   const result = await mcService.listTicketsForMinecraftViewer({
     page,
     pageSize,
+    statuses,
     identity: req.minecraftPlayer ?? null,
   });
   res.json(result);
@@ -96,8 +103,8 @@ router.get(
   '/tickets',
   conditionalMinecraftPlayerSessionMiddleware,
   async (req: Request, res: Response) => {
-    const query = validate(mcViewerSchema, req.query);
-    await listMinecraftTickets(req, res, query.minecraftUuid);
+    const query = validate(mcTicketListQuerySchema, req.query);
+    await listMinecraftTickets(req, res, query.minecraftUuid, query.statuses);
   },
 );
 

@@ -2635,13 +2635,14 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** MC 获取可见议题 */
+    /** MC 获取可见议题（平台要求登录时须带玩家 session） */
     get: {
       parameters: {
         query: {
-          minecraftUuid: string;
           page?: number;
           pageSize?: number;
+          minecraftUuid: string;
+          statuses?: string | string[];
         };
         header?: never;
         path?: never;

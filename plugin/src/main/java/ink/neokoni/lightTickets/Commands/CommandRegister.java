@@ -17,6 +17,7 @@ import ink.neokoni.lightTickets.Commands.Functions.TicketList;
 import ink.neokoni.lightTickets.Commands.Functions.UnbindAccount;
 import ink.neokoni.lightTickets.LightTickets;
 import ink.neokoni.lightTickets.Utils.LangUtils;
+import ink.neokoni.lightTickets.Utils.TicketStatus;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -124,6 +125,28 @@ public class CommandRegister {
                             }
                             return Command.SINGLE_SUCCESS;
                         })));
+
+        for (TicketStatus statusFilter : TicketStatus.selectableByStaff()) {
+            ticket.then(Commands.literal("list:" + statusFilter.key())
+                    .requires(ctx -> ctx.getSender().hasPermission("lighttickets.ticket.list")
+                            || ctx.getSender().hasPermission("lighttickets.player"))
+                    .executes(ctx -> {
+                        if (ctx.getSource().getSender() instanceof Player player) {
+                            Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
+                                    task -> new TicketList(player, 1, statusFilter));
+                        }
+                        return Command.SINGLE_SUCCESS;
+                    })
+                    .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                            .executes(ctx -> {
+                                if (ctx.getSource().getSender() instanceof Player player) {
+                                    int page = IntegerArgumentType.getInteger(ctx, "page");
+                                    Bukkit.getAsyncScheduler().runNow(LightTickets.getInstance(),
+                                            task -> new TicketList(player, page, statusFilter));
+                                }
+                                return Command.SINGLE_SUCCESS;
+                            })));
+        }
 
         var info = Commands.literal("info")
                 .requires(ctx -> ctx.getSender().hasPermission("lighttickets.ticket.info")

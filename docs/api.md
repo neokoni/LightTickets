@@ -822,7 +822,8 @@ hash；旧版插件绑定没有此凭据，必须先在 Web 解绑后重新绑�
 
 ### MC 议题与评论
 
-- `GET /api/mc/tickets?minecraftUuid=<uuid>`
+- `GET /api/mc/tickets?minecraftUuid=<uuid>`：支持 `page`、`pageSize` 和 `statuses`；
+  `statuses` 可使用单个状态、逗号分隔状态或多值参数
 - `GET /api/mc/tickets/:uuid`：上一版本兼容路径
 - `GET /api/mc/tickets/:id/detail?minecraftUuid=<uuid>`
 - `GET /api/mc/tickets/:id/comments?minecraftUuid=<uuid>`
