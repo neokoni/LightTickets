@@ -41,7 +41,7 @@ initPrisma();
 const prisma = () => getPrisma();
 
 export function serverData(name: string, apiKey: string) {
-  return { name, apiKeyHash: hashServerApiKey(apiKey) };
+  return { name, legacyApiKeyHash: hashServerApiKey(apiKey) };
 }
 
 beforeEach(async () => {
@@ -65,6 +65,8 @@ beforeEach(async () => {
   await prisma().passwordResetToken.deleteMany();
   await prisma().registrationEmailVerification.deleteMany();
   await prisma().ticket.deleteMany();
+  await prisma().serverApiKeyBinding.deleteMany();
+  await prisma().serverApiKey.deleteMany();
   await prisma().label.deleteMany();
   await prisma().user.deleteMany();
   await prisma().server.deleteMany();

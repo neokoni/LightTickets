@@ -1,10 +1,10 @@
 import type { Server as HttpServer } from 'http';
 import type { Socket } from 'socket.io';
 import { Server } from 'socket.io';
-import { prisma } from '../db.js';
 import { getConfig } from '../config.js';
+import { SERVER_API_KEY_TYPE } from '../constants/server-api-key.js';
 import { resolveSocketServerKey } from '../utils/socket-auth.js';
-import { hashServerApiKey } from '../utils/server-key.js';
+import * as serverService from '../services/server.service.js';
 
 let io: Server;
 let hookRetryTimer: NodeJS.Timeout | undefined;
@@ -29,25 +29,31 @@ export function initSocket(httpServer: HttpServer) {
     const apiKey = resolveSocketServerKey(socket.handshake);
     if (!apiKey) return next(new Error('Missing server key'));
 
-    const server = await prisma().server.findUnique({
-      where: { apiKeyHash: hashServerApiKey(apiKey) },
-    });
-    if (!server) return next(new Error('Invalid server key'));
-
-    socket.data.serverId = server.id;
-    socket.data.serverName = server.name;
-    next();
+    try {
+      const authenticatedKey = await serverService.authenticateApiKey(apiKey);
+      if (authenticatedKey.servers.length === 0) return next(new Error('API Key has no servers'));
+      socket.data.serverIds = authenticatedKey.servers.map((server) => server.id);
+      // Logs identify the API key itself; the bound servers are an implementation detail.
+      socket.data.apiKeyLabel =
+        authenticatedKey.title ??
+        `${authenticatedKey.type === SERVER_API_KEY_TYPE.VELOCITY ? 'Velocity' : 'Paper/Folia'} API Key ${authenticatedKey.apiKeyId.slice(0, 8)}`;
+      next();
+    } catch {
+      next(new Error('Invalid server key'));
+    }
   });
 
   mcNamespace.on('connection', (socket: Socket) => {
-    const serverId = String(socket.data.serverId);
-    socket.join(`server:${serverId}`);
-    console.log(
-      `[socket] Minecraft server connected: ${socket.data.serverName} (${socket.data.serverId})`,
-    );
+    const serverIds: string[] = Array.isArray(socket.data.serverIds)
+      ? socket.data.serverIds.map(String)
+      : [];
+    for (const serverId of serverIds) socket.join(`server:${serverId}`);
+    console.log(`[socket] Minecraft API key connected: ${socket.data.apiKeyLabel}`);
 
     void import('../services/minecraft-hook-delivery.service.js')
-      .then((service) => service.dispatchPendingForServer(serverId))
+      .then((service) =>
+        Promise.all(serverIds.map((serverId) => service.dispatchPendingForServer(serverId))),
+      )
       .catch((error: unknown) => {
         console.error('[socket] Failed to dispatch pending Minecraft hooks', error);
       });
@@ -57,7 +63,9 @@ export function initSocket(httpServer: HttpServer) {
       // { deliveryId, results: [{ hookId, success, error? }] }.
       if (typeof payload === 'string' && payload.length <= 128) {
         void import('../services/minecraft-hook-delivery.service.js')
-          .then((service) => service.acknowledge(serverId, payload))
+          .then((service) =>
+            Promise.all(serverIds.map((serverId) => service.acknowledge(serverId, payload))),
+          )
           .catch((error: unknown) => {
             console.error('[socket] Failed to acknowledge Minecraft hook', error);
           });
@@ -71,7 +79,11 @@ export function initSocket(httpServer: HttpServer) {
           ? (msg.results as Array<{ hookId: string; success: boolean; error?: string }>)
           : undefined;
         void import('../services/minecraft-hook-delivery.service.js')
-          .then((service) => service.acknowledge(serverId, deliveryId, results))
+          .then((service) =>
+            Promise.all(
+              serverIds.map((serverId) => service.acknowledge(serverId, deliveryId, results)),
+            ),
+          )
           .catch((error: unknown) => {
             console.error('[socket] Failed to acknowledge Minecraft hook', error);
           });
@@ -79,16 +91,16 @@ export function initSocket(httpServer: HttpServer) {
     });
 
     socket.on('disconnect', () => {
-      console.log(
-        `[socket] Minecraft server disconnected: ${socket.data.serverName} (${socket.data.serverId})`,
-      );
+      console.log(`[socket] Minecraft API key disconnected: ${socket.data.apiKeyLabel}`);
     });
   });
 
   if (hookRetryTimer) clearInterval(hookRetryTimer);
   hookRetryTimer = setInterval(() => {
     const connectedServerIds = new Set(
-      Array.from(mcNamespace.sockets.values(), (socket) => String(socket.data.serverId)),
+      Array.from(mcNamespace.sockets.values()).flatMap((socket) =>
+        Array.isArray(socket.data.serverIds) ? socket.data.serverIds.map(String) : [],
+      ),
     );
     for (const serverId of connectedServerIds) {
       void import('../services/minecraft-hook-delivery.service.js')

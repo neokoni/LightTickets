@@ -35,6 +35,13 @@ public final class VelocityPlayer implements LightPlayer {
     }
 
     @Override
+    public String getServerId() {
+        return player.getCurrentServer()
+                .map(connection -> connection.getServerInfo().getName())
+                .orElse(null);
+    }
+
+    @Override
     public String getWorldName() {
         PlayerContext ctx = PlayerContextListener.get(player.getUniqueId());
         if (!ctx.world().isEmpty()) {

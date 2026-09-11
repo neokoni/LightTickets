@@ -4,18 +4,21 @@ import { paginationSchema } from '../utils/validate.js';
 
 export const minecraftUuidSchema = z.string().uuid();
 export const minecraftNameSchema = z.string().regex(/^[a-zA-Z0-9_]{3,16}$/);
+export const mcServerContextSchema = z.object({
+  serverId: z.string().min(1).max(64).optional(),
+});
 
-export const mcLinkCodeSchema = z.object({
+export const mcLinkCodeSchema = mcServerContextSchema.extend({
   minecraftUuid: minecraftUuidSchema,
   minecraftName: minecraftNameSchema,
 });
 
-export const mcPlayerSessionSchema = z.object({
+export const mcPlayerSessionSchema = mcServerContextSchema.extend({
   minecraftUuid: z.string().min(1),
   playerCredential: z.string().min(32).max(128),
 });
 
-export const mcRegisterSchema = z.object({
+export const mcRegisterSchema = mcServerContextSchema.extend({
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
   username: z.string().min(2).max(32),
@@ -27,7 +30,7 @@ export const mcRegisterSchema = z.object({
   minecraftName: minecraftNameSchema,
 });
 
-export const mcTicketSchema = z.object({
+export const mcTicketSchema = mcServerContextSchema.extend({
   minecraftUuid: z.string(),
   title: z.string().min(1).max(200),
   body: z.string().min(1),
@@ -45,7 +48,7 @@ export const mcTicketSchema = z.object({
     .optional(),
 });
 
-export const mcViewerSchema = z.object({
+export const mcViewerSchema = mcServerContextSchema.extend({
   minecraftUuid: z.string().min(1),
 });
 
@@ -73,21 +76,25 @@ export const mcTicketListQuerySchema = paginationSchema.extend({
   search: z.string().optional(),
 });
 
-export const mcCommentSchema = z.object({
+export const mcTicketListBodySchema = mcTicketListQuerySchema.extend({
+  serverId: z.string().min(1).max(64).optional(),
+});
+
+export const mcCommentSchema = mcServerContextSchema.extend({
   minecraftUuid: z.string().min(1),
   ticketId: z.coerce.number().int().positive(),
   body: z.string().min(1),
 });
 
-export const mcTicketActionSchema = z.object({
+export const mcTicketActionSchema = mcServerContextSchema.extend({
   minecraftUuid: z.string().min(1),
 });
 
-export const mcStatusSchema = z.object({
+export const mcStatusSchema = mcServerContextSchema.extend({
   minecraftUuid: z.string(),
   status: mcTicketStatusSchema,
 });
 
-export const mcUnlinkSchema = z.object({
+export const mcUnlinkSchema = mcServerContextSchema.extend({
   minecraftUuid: z.string().min(1),
 });

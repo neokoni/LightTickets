@@ -53,7 +53,7 @@ public class BindAccount {
 
         HttpUtils.Resp resp;
         try {
-            resp = ApiClient.requestWithStatus(ApiEndpoint.MC_LINK_CODE, JsonUtils.toJson(body));
+            resp = ApiClient.requestWithStatus(player, ApiEndpoint.MC_LINK_CODE, JsonUtils.toJson(body));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));

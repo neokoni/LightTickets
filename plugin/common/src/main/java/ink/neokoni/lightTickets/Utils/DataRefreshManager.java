@@ -238,7 +238,7 @@ public class DataRefreshManager {
         LightPlayer player = LightPlatformProvider.get().getPlayer(uuid);
         if (player == null) return AccountRefreshResult.RETRY;
         HttpUtils.Resp resp = ApiClient.requestWithStatusForPlayer(player, ApiEndpoint.MC_USER,
-                Map.of("uuid", uuid.toString()), null, null, false);
+                Map.of("minecraftUuid", uuid.toString()), null, null, false);
         if (resp == null) return AccountRefreshResult.RETRY;
 
         if (resp.status() == 404) {

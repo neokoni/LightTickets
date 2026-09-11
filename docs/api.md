@@ -6,7 +6,8 @@
 - 内容类型：`application/json`
 - Web 端认证：`Authorization: Bearer <accessToken>`
 - Refresh Token：由后端通过 `HttpOnly` Cookie `lt_refresh_token` 下发；响应体中的 `refreshToken` 仅为灰度兼容字段，前端不得存入 `localStorage`。
-- MC 插件服务器认证：`X-Server-Key: <server.apiKey>`，仅用于 `/api/mc/*`。
+- MC 插件认证：`X-Server-Key: <apiKey>`，仅用于 `/api/mc/*`。Paper/Folia key 唯一绑定一台
+  服务器；Velocity key 可绑定多台服务器，并在 JSON 请求体通过 `serverId` 指定本次请求来源。
 - MC 玩家接口还必须携带 `X-Player-Session`。插件使用绑定时签发的
   `playerCredential` 调用 `POST /api/mc/session` 换取 5 分钟 session；后端从绑定的 API
   账户读取实时角色与权限，不信任请求中的 UUID 或插件本地角色。
@@ -125,7 +126,7 @@ PKCE；OIDC 额外校验 nonce 和 ID Token。
     "defaultLanguage": "zh-CN"
   },
   "mc": {
-    "defaultServerName": "主服务器"
+    "defaultServerName": "main"
   },
   "storage": {
     "driver": "local"
@@ -546,11 +547,32 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 
 - `GET /`
 - `POST /`
-- `POST /:id/regenerate-key`
 - `PATCH /:id`
 - `DELETE /:id`
+- `GET /api-keys`
+- `POST /api-keys`
+- `PATCH /api-keys/:id`
+- `POST /api-keys/:id/regenerate`
+- `DELETE /api-keys/:id`
 
-服务器 `apiKey` 用于 MC 插件访问 `/api/mc/*`。
+服务器与 API key 是独立资源。服务器创建字段为必填 `serverId`、可选 `identifyId` 与可选 `alias`；
+三者均可修改。`serverId` 是平台唯一标识，必须唯一，只能包含字母、数字、点、下划线和短横线。
+`identifyId` 用于与 Velocity 插件上报的服务器名匹配，可为中文等任意可见字符（不含控制字符），
+必须唯一；留空时回退为 `serverId`。`alias` 仅用于界面展示。
+
+API key 类型为 `paper_folia` 或 `velocity`。创建与更新 key 的请求体均为：
+
+```json
+{
+  "title": "主服 Velocity",
+  "type": "velocity",
+  "serverIds": ["服务器记录 UUID 1", "服务器记录 UUID 2"]
+}
+```
+
+`title` 可选，用于管理后台与连接日志中标识该 key；未设置时日志回退为类型加 key ID 前缀。
+`paper_folia` 必须且只能选择一台服务器；`velocity` 必须至少选择一台，可多选。明文 key 只在创建或
+重新生成时返回，列表接口不会返回 key 或 hash。仍被 key 绑定的服务器不能删除。
 
 ## 用户
 
@@ -744,11 +766,28 @@ S3 配置：
 `/api`。HTTP 请求使用 `/api/mc/*`；Socket.IO transport 使用 `/socket.io`，namespace 使用 `/mc`。
 Docker 部署只需公开 Web 容器，Web 容器会把这两类流量转发到内部后端。
 
-所有 `/api/mc/*` 接口必须带服务器凭据：
+所有 `/api/mc/*` 接口必须带 API key：
 
 ```http
-X-Server-Key: <server.apiKey>
+X-Server-Key: <apiKey>
 ```
+
+Paper/Folia key 直接采用其唯一绑定的服务器信息。Velocity key 的 JSON 请求体必须额外带插件提供的
+`serverId`，后端仅在该 ID 与服务器管理中设置的 ID 相同、且该服务器已被当前 key 选中时接受请求：
+
+```json
+{
+  "serverId": "survival"
+}
+```
+
+Velocity 插件从 Velocity 自身的服务器注册信息读取该 ID，也就是玩家当前连接的后端服务器名称，
+因此服务器管理中的识别 ID（未设置时回退为服务器 ID）必须与 Velocity 注册的服务器名称一致。
+玩家尚未连接到任何后端服务器时，插件不会发出请求；Paper/Folia 插件不发送 `serverId`。
+
+需要查询数据的 Velocity 插件使用 body 版本端点：`POST /api/mc/tickets/search`、
+`POST /api/mc/tickets/:id/detail`、`POST /api/mc/tickets/:id/comments/list` 和
+`POST /api/mc/user`。原 GET 端点保留给 Paper/Folia 与旧版插件兼容。
 
 `register`、`link-code`、`session` 和 `unlink` 以外的玩家接口还必须带：
 
@@ -758,7 +797,7 @@ X-Player-Session: <short-lived session token>
 
 玩家 session 绑定 API 账号、Minecraft UUID 和签发它的服务器。后端按 API 账号当前的
 `player` / `staff` / `admin` 角色执行权限检查，并将所有议题查询与操作限制在当前
-`X-Server-Key` 对应的服务器。
+解析后的服务器。Velocity 的服务器来自请求体 `serverId`，Paper/Folia 来自 key 的唯一绑定。
 
 ### 插件注册账号
 

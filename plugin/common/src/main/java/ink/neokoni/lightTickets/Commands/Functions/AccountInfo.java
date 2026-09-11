@@ -33,7 +33,7 @@ public class AccountInfo {
         HttpUtils.Resp resp;
         try {
             resp = ApiClient.requestWithStatusForPlayer(player, ApiEndpoint.MC_USER,
-                    Map.of("uuid", player.getUniqueId().toString()), null, null);
+                    Map.of("minecraftUuid", player.getUniqueId().toString()), null, null);
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));

@@ -24,6 +24,11 @@ public final class PaperPlayer implements LightPlayer {
     }
 
     @Override
+    public String getServerId() {
+        return null;
+    }
+
+    @Override
     public String getWorldName() {
         return player.getWorld().getName();
     }

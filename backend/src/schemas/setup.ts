@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { serverIdentifierSchema } from './server.js';
 import { DatabaseProvider } from '../constants/database-provider.js';
 import { StorageDriver } from '../constants/storage-driver.js';
 import { mailConfigInputSchema } from './mail.js';
@@ -46,7 +47,7 @@ export const setupSchema = z
         defaultLanguage: z.string().optional(),
       })
       .optional(),
-    mc: z.object({ defaultServerName: z.string().optional() }).optional(),
+    mc: z.object({ defaultServerName: serverIdentifierSchema.optional() }).optional(),
     storage: z
       .object({
         driver: z.enum([StorageDriver.LOCAL, StorageDriver.S3]),

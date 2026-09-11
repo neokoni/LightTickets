@@ -807,7 +807,9 @@ watch(
           </div>
           <div v-if="ticket.server" class="flex justify-between">
             <span class="text-slate-500 dark:text-slate-400">{{ t('ticket.detail.server') }}</span>
-            <span class="text-slate-700 dark:text-slate-300">{{ ticket.server.name }}</span>
+            <span class="text-slate-700 dark:text-slate-300">{{
+              ticket.server.alias || ticket.server.name
+            }}</span>
           </div>
         </div>
 

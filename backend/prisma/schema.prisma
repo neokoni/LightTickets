@@ -60,6 +60,11 @@ enum FederatedAuthSecretMode {
   bcrypt
 }
 
+enum ServerApiKeyType {
+  paper_folia
+  velocity
+}
+
 model User {
   id                  Int                  @id @default(autoincrement())
   email               String               @unique
@@ -202,18 +207,43 @@ model FederatedAuthRegistration {
 }
 
 model Server {
-  id          String     @id @default(uuid())
-  name        String     @unique
-  apiKeyHash   String     @unique @map("api_key")
-  address     String?
-  description String?
-  createdAt   DateTime   @default(now()) @map("created_at")
+  id               String     @id @default(uuid())
+  name             String     @unique
+  identifyId       String?    @unique @map("identify_id")
+  alias            String?
+  legacyApiKeyHash String?    @unique @map("api_key")
+  address          String?
+  description      String?
+  createdAt        DateTime   @default(now()) @map("created_at")
   tickets     Ticket[]
   linkCodes   LinkCode[]
   minecraftPlayerSessions MinecraftPlayerSession[]
   minecraftHookDeliveries MinecraftHookDelivery[]
+  apiKeyBindings ServerApiKeyBinding[]
 
   @@map("servers")
+}
+
+model ServerApiKey {
+  id        String              @id @default(uuid())
+  keyHash   String              @unique @map("key_hash")
+  title     String?
+  type      ServerApiKeyType
+  createdAt DateTime            @default(now()) @map("created_at")
+  bindings  ServerApiKeyBinding[]
+
+  @@map("server_api_keys")
+}
+
+model ServerApiKeyBinding {
+  apiKeyId String       @map("api_key_id")
+  serverId String       @map("server_id")
+  apiKey   ServerApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  server   Server       @relation(fields: [serverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([apiKeyId, serverId])
+  @@index([serverId])
+  @@map("server_api_key_bindings")
 }
 
 model Ticket {

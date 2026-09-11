@@ -10,6 +10,8 @@ import java.util.logging.Logger;
 
 public interface LightPlatform {
 
+    PlatformType getType();
+
     Logger getLogger();
 
     Path getDataPath();

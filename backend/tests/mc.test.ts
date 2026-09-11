@@ -4,6 +4,7 @@ import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma, serverData } from './setup.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
+import { hashServerApiKey } from '../src/utils/server-key.js';
 import { generateAccessToken } from '../src/utils/token.js';
 import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 import * as rateLimitConfigService from '../src/services/rate-limit-config.service.js';
@@ -994,5 +995,96 @@ describe('POST /api/mc/register', () => {
       .send(registration('mcregdisabled'));
 
     expect(res.status).toBe(403);
+  });
+});
+
+describe('Velocity JSON body endpoints', () => {
+  // Velocity keys authorize several servers, so read endpoints accept the query
+  // parameters (including serverId) in the JSON body.
+  async function createVelocityKey(serverIds: string[]): Promise<string> {
+    const plainKey = `lt_velocity_${serverIds.length}_${serverIds.join('_')}`;
+    await prisma().serverApiKey.create({
+      data: {
+        keyHash: hashServerApiKey(plainKey),
+        type: 'velocity',
+        bindings: { create: serverIds.map((serverId) => ({ serverId })) },
+      },
+    });
+    return plainKey;
+  }
+
+  it('serves detail, comments, and account through the body', async () => {
+    const server = await createServer('velocity-body-a');
+    const otherServer = await createServer('velocity-body-b');
+    const player = await createAuthenticatedPlayer(server, 'velocitybody');
+    const apiKey = await createVelocityKey([server.id, otherServer.id]);
+    const ticket = await prisma().ticket.create({
+      data: {
+        title: 'Velocity ticket',
+        body: 'Body',
+        template: 'bug_report',
+        authorId: player.user.id,
+        serverId: server.id,
+      },
+    });
+    const comment = await prisma().comment.create({
+      data: {
+        ticketId: ticket.id,
+        authorId: player.user.id,
+        body: 'Velocity comment',
+        source: 'web',
+      },
+    });
+
+    const detail = await request(app)
+      .post(`/api/mc/tickets/${ticket.id}/detail`)
+      .set('X-Server-Key', apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .send({ minecraftUuid: player.minecraftUuid, serverId: server.name });
+    const comments = await request(app)
+      .post(`/api/mc/tickets/${ticket.id}/comments/list`)
+      .set('X-Server-Key', apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .send({ minecraftUuid: player.minecraftUuid, serverId: server.name });
+    const account = await request(app)
+      .post('/api/mc/user')
+      .set('X-Server-Key', apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .send({ minecraftUuid: player.minecraftUuid, serverId: server.name });
+
+    expect(detail.status).toBe(200);
+    expect(detail.body.data.id).toBe(ticket.id);
+    expect(comments.status).toBe(200);
+    expect(comments.body.data.map((item: { id: number }) => item.id)).toEqual([comment.id]);
+    expect(account.status).toBe(200);
+    expect(account.body.data.username).toBe(player.user.username);
+  });
+
+  it('rejects a session issued for another server of the same key', async () => {
+    const server = await createServer('velocity-session-a');
+    const otherServer = await createServer('velocity-session-b');
+    const player = await createAuthenticatedPlayer(server, 'velocitysession');
+    const apiKey = await createVelocityKey([server.id, otherServer.id]);
+
+    const res = await request(app)
+      .post('/api/mc/user')
+      .set('X-Server-Key', apiKey)
+      .set('X-Player-Session', player.sessionToken)
+      .send({ minecraftUuid: player.minecraftUuid, serverId: otherServer.name });
+
+    expect(res.status).toBe(401);
+  });
+
+  it('rejects a body serverId outside the key bindings', async () => {
+    const server = await createServer('velocity-unbound-a');
+    const otherServer = await createServer('velocity-unbound-b');
+    const apiKey = await createVelocityKey([server.id]);
+
+    const res = await request(app)
+      .post('/api/mc/tickets/search')
+      .set('X-Server-Key', apiKey)
+      .send({ minecraftUuid: 'unbound-uuid', serverId: otherServer.name });
+
+    expect(res.status).toBe(401);
   });
 });

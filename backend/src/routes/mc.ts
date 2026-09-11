@@ -18,6 +18,7 @@ import {
   mcStatusSchema,
   mcTicketActionSchema,
   mcTicketListQuerySchema,
+  mcTicketListBodySchema,
   mcTicketSchema,
   mcUnlinkSchema,
   mcViewerSchema,
@@ -105,6 +106,15 @@ router.get(
   },
 );
 
+router.post(
+  '/tickets/search',
+  conditionalMinecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const body = validate(mcTicketListBodySchema, req.body);
+    await listMinecraftTickets(req, res, body);
+  },
+);
+
 // Backward-compatible path for plugins from the previous release.
 router.get(
   '/tickets/:uuid',
@@ -131,6 +141,21 @@ router.get(
   },
 );
 
+router.post(
+  '/tickets/:id/detail',
+  conditionalMinecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const body = validate(mcViewerSchema, req.body);
+    if (req.minecraftPlayer) assertSessionUuid(req, body.minecraftUuid);
+    res.json(
+      await mcService.getTicketForMinecraft(
+        parseId(String(req.params.id)),
+        req.minecraftPlayer ?? null,
+      ),
+    );
+  },
+);
+
 router.get(
   '/tickets/:id/comments',
   conditionalMinecraftPlayerSessionMiddleware,
@@ -145,10 +170,31 @@ router.get(
   },
 );
 
+router.post(
+  '/tickets/:id/comments/list',
+  conditionalMinecraftPlayerSessionMiddleware,
+  async (req: Request, res: Response) => {
+    const body = validate(mcViewerSchema, req.body);
+    if (req.minecraftPlayer) assertSessionUuid(req, body.minecraftUuid);
+    res.json(
+      await mcService.listCommentsForMinecraft(
+        parseId(String(req.params.id)),
+        req.minecraftPlayer ?? null,
+      ),
+    );
+  },
+);
+
 router.get('/user/:uuid', minecraftPlayerSessionMiddleware, async (req: Request, res: Response) => {
   assertSessionUuid(req, String(req.params.uuid));
   const user = await mcService.getLinkedUser(req.minecraftPlayer!);
   res.json(user);
+});
+
+router.post('/user', minecraftPlayerSessionMiddleware, async (req: Request, res: Response) => {
+  const body = validate(mcViewerSchema, req.body);
+  assertSessionUuid(req, body.minecraftUuid);
+  res.json(await mcService.getLinkedUser(req.minecraftPlayer!));
 });
 
 router.post('/comments', minecraftPlayerSessionMiddleware, async (req: Request, res: Response) => {

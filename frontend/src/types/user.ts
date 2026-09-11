@@ -58,11 +58,29 @@ export interface EmailChangeRequestResponse {
 
 export interface Server {
   id: string;
+  serverId: string;
+  identifyId?: string | null;
+  alias?: string | null;
   name: string;
-  apiKey?: string;
-  address?: string;
-  description?: string;
+  address?: string | null;
+  description?: string | null;
   createdAt: string;
+}
+
+export const ServerApiKeyType = {
+  PAPER_FOLIA: 'paper_folia',
+  VELOCITY: 'velocity',
+} as const;
+
+export type ServerApiKeyType = (typeof ServerApiKeyType)[keyof typeof ServerApiKeyType];
+
+export interface ServerApiKey {
+  id: string;
+  title?: string | null;
+  type: ServerApiKeyType;
+  servers: Server[];
+  createdAt: string;
+  apiKey?: string;
 }
 
 export interface AssignableUser {

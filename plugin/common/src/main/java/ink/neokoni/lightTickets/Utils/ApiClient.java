@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import ink.neokoni.lightTickets.Configs.Config;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.platform.LightPlayer;
+import ink.neokoni.lightTickets.platform.LightPlatformProvider;
+import ink.neokoni.lightTickets.platform.PlatformType;
 import org.jetbrains.annotations.Nullable;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -58,14 +60,14 @@ public class ApiClient {
                                                     @Nullable Map<String, String> pathParams,
                                                     @Nullable Map<String, String> queryParams) {
         if (!PlayerData.hasPlayerCredential(player)) {
-            return requestWithStatus(endpoint, pathParams, queryParams, null);
+            return requestWithStatus(player, endpoint, pathParams, queryParams, null);
         }
         try {
             return requestWithStatusForPlayer(player, endpoint, pathParams, queryParams, null, false);
         } catch (RuntimeException e) {
             if (!PlayerData.hasPlayerCredential(player)) {
                 // Binding was revoked during the request; fall back to the anonymous view.
-                return requestWithStatus(endpoint, pathParams, queryParams, null);
+                return requestWithStatus(player, endpoint, pathParams, queryParams, null);
             }
             throw e;
         }
@@ -88,15 +90,18 @@ public class ApiClient {
                                                    @Nullable Map<String, String> pathParams,
                                                    @Nullable Map<String, String> queryParams,
                                                    @Nullable String body) {
-        HttpUtils.Resp resp = HttpUtils.requestWithStatus(
-                endpoint.method(),
-                url(endpoint, pathParams, queryParams),
-                body,
-                headers(endpoint));
-        if (resp == null || resp.body() == null || resp.body().isEmpty()) {
-            return resp;
-        }
-        return new HttpUtils.Resp(resp.status(), unwrapEnvelope(resp.body()));
+        return requestWithStatus(null, endpoint, pathParams, queryParams, body);
+    }
+
+    public static HttpUtils.Resp requestWithStatus(LightPlayer player, ApiEndpoint endpoint, String body) {
+        return requestWithStatus(player, endpoint, null, null, body);
+    }
+
+    public static HttpUtils.Resp requestWithStatus(LightPlayer player, ApiEndpoint endpoint,
+                                                   @Nullable Map<String, String> pathParams,
+                                                   @Nullable Map<String, String> queryParams,
+                                                   @Nullable String body) {
+        return unwrap(send(endpoint, player, pathParams, queryParams, body, null));
     }
 
     public static HttpUtils.Resp requestWithStatusForPlayer(LightPlayer player, ApiEndpoint endpoint,
@@ -112,11 +117,11 @@ public class ApiClient {
                                                              @Nullable String body,
                                                              boolean markBindingUnavailable) {
         String sessionToken = PlayerSessionManager.getSessionToken(player);
-        HttpUtils.Resp resp = request(endpoint, pathParams, queryParams, body, sessionToken);
+        HttpUtils.Resp resp = send(endpoint, player, pathParams, queryParams, body, sessionToken);
         if (resp != null && resp.status() == 401) {
             PlayerSessionManager.invalidate(player.getUniqueId());
             sessionToken = PlayerSessionManager.getSessionToken(player);
-            resp = request(endpoint, pathParams, queryParams, body, sessionToken);
+            resp = send(endpoint, player, pathParams, queryParams, body, sessionToken);
             if (markBindingUnavailable && resp != null && resp.status() == 401) {
                 PlayerSessionManager.markBindingUnavailable(player);
             }
@@ -152,16 +157,78 @@ public class ApiClient {
         return headers;
     }
 
-    private static HttpUtils.Resp request(ApiEndpoint endpoint,
-                                          @Nullable Map<String, String> pathParams,
-                                          @Nullable Map<String, String> queryParams,
-                                          @Nullable String body,
-                                          @Nullable String playerSession) {
+    private static HttpUtils.Resp send(ApiEndpoint endpoint,
+                                       @Nullable LightPlayer player,
+                                       @Nullable Map<String, String> pathParams,
+                                       @Nullable Map<String, String> queryParams,
+                                       @Nullable String body,
+                                       @Nullable String playerSession) {
+        Prepared prepared = prepare(endpoint, player, pathParams, queryParams, body);
         return HttpUtils.requestWithStatus(
-                endpoint.method(),
-                url(endpoint, pathParams, queryParams),
-                body,
-                headers(endpoint, playerSession));
+                prepared.endpoint().method(),
+                url(prepared.endpoint(), pathParams, prepared.queryParams()),
+                prepared.body(),
+                headers(prepared.endpoint(), playerSession));
+    }
+
+    private static Prepared prepare(ApiEndpoint endpoint,
+                                    @Nullable LightPlayer player,
+                                    @Nullable Map<String, String> pathParams,
+                                    @Nullable Map<String, String> queryParams,
+                                    @Nullable String body) {
+        if (!endpoint.serverAuthenticated()
+                || LightPlatformProvider.get().getType() != PlatformType.VELOCITY) {
+            return new Prepared(endpoint, queryParams, body);
+        }
+
+        String serverId = player == null ? null : player.getServerId();
+        if (serverId == null || serverId.isBlank()) {
+            throw new RuntimeException(LangUtils.getRawLang("errors.server_id_unavailable"));
+        }
+
+        ApiEndpoint bodyVariant = endpoint.bodyVariant();
+        if (bodyVariant == null) {
+            return new Prepared(endpoint, queryParams,
+                    body == null || body.isBlank() ? body : withServerId(body, serverId));
+        }
+
+        JsonObject payload = body == null || body.isBlank()
+                ? new JsonObject()
+                : JsonUtils.fromJson(body, JsonObject.class);
+        if (payload == null) {
+            payload = new JsonObject();
+        }
+        if (queryParams != null) {
+            for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+                if (entry.getValue() != null) {
+                    payload.addProperty(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        if (pathParams != null) {
+            for (Map.Entry<String, String> entry : pathParams.entrySet()) {
+                if (entry.getValue() != null
+                        && !bodyVariant.path().contains("{" + entry.getKey() + "}")) {
+                    payload.addProperty(entry.getKey(), entry.getValue());
+                }
+            }
+        }
+        return new Prepared(bodyVariant, null, withServerId(payload.toString(), serverId));
+    }
+
+    private static String withServerId(String body, String serverId) {
+        JsonObject payload = body == null || body.isBlank()
+                ? new JsonObject()
+                : JsonUtils.fromJson(body, JsonObject.class);
+        if (payload == null) {
+            payload = new JsonObject();
+        }
+        payload.addProperty("serverId", serverId);
+        return payload.toString();
+    }
+
+    private record Prepared(ApiEndpoint endpoint, @Nullable Map<String, String> queryParams,
+                            @Nullable String body) {
     }
 
     private static HttpUtils.Resp unwrap(HttpUtils.Resp resp) {

@@ -20,6 +20,7 @@ const props = defineProps<{
   noResultsText: string;
   allSelectedText: string;
   removeTitle?: string;
+  selectedIcon?: string;
   required?: boolean;
 }>();
 
@@ -134,18 +135,30 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onClickOutside))
       </Transition>
     </div>
 
-    <div v-if="selectedOptions.length" class="flex flex-wrap gap-1.5">
+    <div v-if="selectedOptions.length" class="flex flex-wrap gap-2 pt-0.5">
       <BaseButton
         v-for="option in selectedOptions"
         :key="option.value"
         type="button"
-        class="!gap-1 !rounded-full !border-0 !px-2 !py-1 !text-xs !font-medium"
-        :style="option.color ? { backgroundColor: option.color + '20', color: option.color } : {}"
+        :class="[
+          selectedIcon
+            ? 'group !gap-2 !rounded-lg !border-slate-200 !bg-slate-100/80 !px-2.5 !py-1.5 !text-sm !font-medium !text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200/70 transition-all hover:!border-slate-300 hover:!bg-slate-200/80 dark:!border-slate-700 dark:!bg-slate-800/80 dark:!text-slate-200 dark:ring-slate-700/70 dark:hover:!border-slate-600 dark:hover:!bg-slate-700/80'
+            : '!gap-1 !rounded-full !border-0 !px-2 !py-1 !text-xs !font-medium',
+        ]"
+        :style="option.color ? { backgroundColor: option.color + '18', color: option.color } : {}"
         :title="removeTitle"
         @click="remove(option.value)"
       >
-        {{ option.label }}
-        <Icon icon="lucide:x" class="h-3 w-3" />
+        <Icon v-if="selectedIcon" :icon="selectedIcon" class="h-3.5 w-3.5 shrink-0 opacity-70" />
+        <span class="max-w-64 truncate">{{ option.label }}</span>
+        <span
+          v-if="selectedIcon"
+          class="-mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-slate-950/5 transition-colors group-hover:bg-slate-950/10 dark:bg-white/5 dark:group-hover:bg-white/10"
+          aria-hidden="true"
+        >
+          <Icon icon="lucide:x" class="h-3.5 w-3.5" />
+        </span>
+        <Icon v-else icon="lucide:x" class="h-3 w-3" />
       </BaseButton>
     </div>
   </div>

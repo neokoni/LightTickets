@@ -9,6 +9,7 @@ errors:
   no_message: "无错误信息"
   rebind_required: "绑定凭据无效，请先在网页解绑后重新执行 /lit bind"
   session_invalidated: "玩家会话已失效，请重试"
+  server_id_unavailable: "<color:#ff8181>无法确定当前服务器 ID, 请稍后重试"
 http:
   request_failed: "HTTP 请求失败: {method} {url} ({message})"
   invalid_uri: "HTTP 地址无效: {url} ({message})"

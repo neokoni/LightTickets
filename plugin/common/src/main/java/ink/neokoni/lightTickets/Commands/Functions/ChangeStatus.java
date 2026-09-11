@@ -168,7 +168,7 @@ public class ChangeStatus {
     private JsonObject fetchAccount(LightPlayer player) {
         try {
             HttpUtils.Resp resp = ApiClient.requestWithStatusForPlayer(player,
-                    ApiEndpoint.MC_USER, Map.of("uuid", player.getUniqueId().toString()), null, null);
+                    ApiEndpoint.MC_USER, Map.of("minecraftUuid", player.getUniqueId().toString()), null, null);
             if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) return null;
             return JsonUtils.fromJson(resp.body(), JsonObject.class);
         } catch (RuntimeException e) {
@@ -191,7 +191,7 @@ public class ChangeStatus {
 
         try {
             HttpUtils.Resp resp = ApiClient.requestWithStatusForPlayer(player,
-                    ApiEndpoint.MC_USER, Map.of("uuid", player.getUniqueId().toString()), null, null);
+                    ApiEndpoint.MC_USER, Map.of("minecraftUuid", player.getUniqueId().toString()), null, null);
             if (resp == null || resp.status() != 200 || resp.body() == null || resp.body().isEmpty()) {
                 return cachedRole;
             }

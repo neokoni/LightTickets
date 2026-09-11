@@ -328,7 +328,9 @@ export async function list(input: ListTicketsInput) {
   if (input.authorId) where.authorId = input.authorId;
   if (input.authorName) where.author = { username: { contains: input.authorName } };
   if (input.serverId) where.serverId = input.serverId;
-  if (input.serverName) where.server = { name: input.serverName };
+  if (input.serverName) {
+    where.server = { OR: [{ name: input.serverName }, { alias: input.serverName }] };
+  }
   if (input.hasServer !== undefined) where.serverId = input.hasServer ? { not: null } : null;
   if (input.labelId) where.labels = { some: { labelId: input.labelId } };
   if (input.search) {
@@ -362,7 +364,7 @@ export async function getById(id: number, viewer?: TicketViewer) {
         },
       },
       labels: { include: { label: true } },
-      server: { select: { id: true, name: true } },
+      server: { select: { id: true, name: true, alias: true } },
     },
   });
   if (!ticket || !canViewTicket(ticket, viewer)) throw new NotFoundError('议题不存在');
@@ -472,7 +474,7 @@ export async function update(
       include: {
         author: { select: USER_BRIEF_SELECT },
         labels: { include: { label: true } },
-        server: { select: { id: true, name: true } },
+        server: { select: { id: true, name: true, alias: true } },
       },
     });
 
@@ -537,7 +539,7 @@ export async function updateBody(id: number, userId: number, userRole: string, b
       include: {
         author: { select: USER_BRIEF_SELECT },
         labels: { include: { label: true } },
-        server: { select: { id: true, name: true } },
+        server: { select: { id: true, name: true, alias: true } },
       },
     });
 
@@ -564,7 +566,7 @@ export async function updateTitle(id: number, userId: number, userRole: string, 
       include: {
         author: { select: USER_BRIEF_SELECT },
         labels: { include: { label: true } },
-        server: { select: { id: true, name: true } },
+        server: { select: { id: true, name: true, alias: true } },
       },
     });
   }
@@ -576,7 +578,7 @@ export async function updateTitle(id: number, userId: number, userRole: string, 
       include: {
         author: { select: USER_BRIEF_SELECT },
         labels: { include: { label: true } },
-        server: { select: { id: true, name: true } },
+        server: { select: { id: true, name: true, alias: true } },
       },
     });
 

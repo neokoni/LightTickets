@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -25,13 +26,15 @@ public final class PlayerSessionManager {
 
     public static String getSessionToken(LightPlayer player) {
         UUID uuid = player.getUniqueId();
+        String serverId = player.getServerId();
         SessionState state;
         CompletableFuture<PlayerSession> refresh;
         boolean refreshOwner = false;
         synchronized (sessionStateLock) {
             state = sessionStates.computeIfAbsent(uuid, ignored -> new SessionState());
             PlayerSession cached = state.session;
-            if (isUsable(cached)) {
+            // A proxy player may switch backend servers; sessions are scoped to the issuing server.
+            if (isUsable(cached) && Objects.equals(cached.serverId(), serverId)) {
                 return cached.token();
             }
             if (state.refresh == null) {
@@ -94,7 +97,7 @@ public final class PlayerSessionManager {
         body.addProperty("minecraftUuid", uuid.toString());
         body.addProperty("playerCredential", credential);
         HttpUtils.Resp response = ApiClient.requestWithStatus(
-                ApiEndpoint.MC_PLAYER_SESSION, JsonUtils.toJson(body));
+                player, ApiEndpoint.MC_PLAYER_SESSION, JsonUtils.toJson(body));
         if (response == null || response.body() == null || response.body().isEmpty()) {
             throw new RuntimeException(LangUtils.getRawLang("errors.empty_response"));
         }
@@ -114,7 +117,7 @@ public final class PlayerSessionManager {
         }
         String token = parsed.get("sessionToken").getAsString();
         long expiresAt = parseExpiry(parsed.get("expiresAt").getAsString());
-        return new PlayerSession(token, expiresAt);
+        return new PlayerSession(token, expiresAt, player.getServerId());
     }
 
     public static void invalidate(UUID uuid) {
@@ -193,6 +196,6 @@ public final class PlayerSessionManager {
         private CompletableFuture<PlayerSession> refresh;
     }
 
-    private record PlayerSession(String token, long expiresAtMillis) {
+    private record PlayerSession(String token, long expiresAtMillis, String serverId) {
     }
 }

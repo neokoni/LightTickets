@@ -20,6 +20,11 @@ public final class PaperPlatform implements LightPlatform {
     }
 
     @Override
+    public PlatformType getType() {
+        return PlatformType.PAPER_FOLIA;
+    }
+
+    @Override
     public Logger getLogger() {
         return plugin.getLogger();
     }

@@ -1,12 +1,13 @@
 import type { Request, Response, NextFunction } from 'express';
-import { prisma } from '../db.js';
 import { UnauthorizedError } from '../utils/errors.js';
-import { hashServerApiKey } from '../utils/server-key.js';
+import type { AuthenticatedServerApiKey } from '../services/server.service.js';
+import * as serverService from '../services/server.service.js';
 
 declare global {
   namespace Express {
     interface Request {
       server?: { id: string; name: string };
+      serverApiKey?: AuthenticatedServerApiKey;
     }
   }
 }
@@ -17,13 +18,13 @@ export async function serverAuthMiddleware(req: Request, _res: Response, next: N
     throw new UnauthorizedError('Missing X-Server-Key header');
   }
 
-  const server = await prisma().server.findUnique({
-    where: { apiKeyHash: hashServerApiKey(apiKey) },
-  });
-  if (!server) {
-    throw new UnauthorizedError('Invalid server key');
-  }
-
+  const authenticatedKey = await serverService.authenticateApiKey(apiKey);
+  const pluginServerId =
+    req.body && typeof req.body === 'object' && typeof req.body.serverId === 'string'
+      ? req.body.serverId
+      : undefined;
+  const server = serverService.resolveAuthenticatedServer(authenticatedKey, pluginServerId);
+  req.serverApiKey = authenticatedKey;
   req.server = { id: server.id, name: server.name };
   next();
 }

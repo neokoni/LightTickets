@@ -24,6 +24,7 @@ describe('USER_PUBLIC_SELECT', () => {
       [
         'avatarUrl',
         'createdAt',
+        'deletedAt',
         'email',
         'id',
         'minecraftName',
@@ -50,12 +51,13 @@ describe('TICKET_INCLUDE_BASE', () => {
     expect(TICKET_INCLUDE_BASE).toHaveProperty('labels');
   });
 
-  it('author select has id/username/minecraftName', () => {
+  it('author select has id/username/minecraftName/deletedAt', () => {
     const author = TICKET_INCLUDE_BASE.author as { select: Record<string, boolean> };
     expect(author.select).toEqual({
       id: true,
       username: true,
       minecraftName: true,
+      deletedAt: true,
     });
   });
 });
@@ -75,23 +77,25 @@ describe('TICKET_INCLUDE_DETAIL', () => {
 });
 
 describe('USER_BRIEF_SELECT', () => {
-  it('contains id/username/minecraftName', () => {
+  it('contains id/username/minecraftName/deletedAt', () => {
     expect(USER_BRIEF_SELECT).toEqual({
       id: true,
       username: true,
       minecraftName: true,
+      deletedAt: true,
     });
   });
 });
 
 describe('USER_BRIEF_WITH_AVATAR', () => {
-  it('contains id/username/minecraftName/minecraftUuid/avatarUrl', () => {
+  it('contains id/username/minecraftName/minecraftUuid/avatarUrl/deletedAt', () => {
     expect(USER_BRIEF_WITH_AVATAR).toEqual({
       id: true,
       username: true,
       minecraftName: true,
       minecraftUuid: true,
       avatarUrl: true,
+      deletedAt: true,
     });
   });
 

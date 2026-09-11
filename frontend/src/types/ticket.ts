@@ -90,7 +90,7 @@ export interface Ticket {
   closedAt?: string;
   author: { id: number; username: string; minecraftName?: string; deletedAt?: string | null };
   labels: TicketLabel[];
-  server?: { id: string; name: string };
+  server?: { id: string; name: string; alias?: string | null };
   _count?: { comments: number };
   completionHooks?: TicketCompletionHook[];
   hookDeliveries?: HookDelivery[];

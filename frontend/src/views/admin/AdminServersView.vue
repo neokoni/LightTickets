@@ -1,143 +1,218 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Icon } from '@iconify/vue';
 import {
-  apiGetServers,
   apiCreateServer,
-  apiRegenerateKey,
-  apiUpdateServer,
+  apiCreateServerApiKey,
   apiDeleteServer,
+  apiDeleteServerApiKey,
+  apiGetServerApiKeys,
+  apiGetServers,
+  apiRegenerateServerApiKey,
+  apiUpdateServer,
+  apiUpdateServerApiKey,
 } from '@/api/servers';
-import { ToastType, useUiStore } from '@/stores/ui';
-import { handleError } from '@/utils/error';
-import { useConfirm } from '@/composables/useConfirm';
-import { t } from '@/i18n';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
 import BaseModal from '@/components/base/BaseModal.vue';
-import type { Server } from '@/types/user';
+import BaseMultiSelect from '@/components/base/BaseMultiSelect.vue';
+import BaseSelect from '@/components/base/BaseSelect.vue';
+import { useConfirm } from '@/composables/useConfirm';
+import { t } from '@/i18n';
+import { ToastType, useUiStore } from '@/stores/ui';
+import { ServerApiKeyType, type Server, type ServerApiKey } from '@/types/user';
+import { handleError } from '@/utils/error';
 
 const ui = useUiStore();
 const { confirm } = useConfirm();
 const servers = ref<Server[]>([]);
-const showModal = ref(false);
-const form = ref({ name: '', address: '', description: '' });
-const showEditModal = ref(false);
-const editingServer = ref<Server | null>(null);
-const editForm = ref({ name: '', address: '', description: '' });
-const visibleKeyIds = ref<Set<string>>(new Set());
+const apiKeys = ref<ServerApiKey[]>([]);
 const loading = ref(false);
+const showServerModal = ref(false);
+const showKeyModal = ref(false);
+const editingServer = ref<Server | null>(null);
+const editingKey = ref<ServerApiKey | null>(null);
+const serverForm = ref({ serverId: '', identifyId: '', alias: '' });
+const keyForm = ref<{ title: string; type: ServerApiKeyType; serverIds: string[] }>({
+  title: '',
+  type: ServerApiKeyType.PAPER_FOLIA,
+  serverIds: [],
+});
+const visibleKeyIds = ref(new Set<string>());
+const copiedId = ref<string | null>(null);
 
-async function fetchServers() {
+const serverOptions = computed(() =>
+  servers.value.map((server) => ({
+    value: server.id,
+    label: server.alias ? `${server.alias} (${server.serverId})` : server.serverId,
+  })),
+);
+const keyTypeOptions = computed(() => [
+  { value: ServerApiKeyType.PAPER_FOLIA, label: t('admin.servers.paperFolia') },
+  { value: ServerApiKeyType.VELOCITY, label: t('admin.servers.velocity') },
+]);
+const paperServerId = computed({
+  get: () => keyForm.value.serverIds[0] ?? '',
+  set: (value: string) => {
+    keyForm.value.serverIds = value ? [value] : [];
+  },
+});
+const iconButtonClass =
+  '!px-1.5 !py-1.5 border-none text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
+const dangerIconButtonClass = '!px-1.5 !py-1.5 border-none text-slate-400 hover:text-red-500';
+
+async function fetchAll() {
   loading.value = true;
   try {
-    servers.value = await apiGetServers();
-  } catch (e) {
-    handleError(e, t('common.loadFailed'));
+    [servers.value, apiKeys.value] = await Promise.all([apiGetServers(), apiGetServerApiKeys()]);
+  } catch (error) {
+    handleError(error, t('common.loadFailed'));
   } finally {
     loading.value = false;
   }
 }
 
-async function create() {
-  try {
-    const server = await apiCreateServer(form.value);
-    servers.value.push(server);
-    showModal.value = false;
-    form.value = { name: '', address: '', description: '' };
-    ui.toast(t('admin.servers.created'), ToastType.SUCCESS);
-  } catch (e) {
-    handleError(e, t('common.createFailed'));
-  }
+function openCreateServer() {
+  editingServer.value = null;
+  serverForm.value = { serverId: '', identifyId: '', alias: '' };
+  showServerModal.value = true;
 }
 
-async function regenerate(id: string) {
-  if (!(await confirm(t('admin.servers.regenerateKeyConfirm')))) return;
-  try {
-    const { apiKey } = await apiRegenerateKey(id);
-    const idx = servers.value.findIndex((s) => s.id === id);
-    if (idx !== -1) servers.value[idx] = { ...servers.value[idx], apiKey };
-    ui.toast(t('admin.servers.keyRegenerated'), ToastType.SUCCESS);
-  } catch (e) {
-    handleError(e);
-  }
-}
-
-function startEdit(server: Server) {
+function openEditServer(server: Server) {
   editingServer.value = server;
-  editForm.value = {
-    name: server.name,
-    address: server.address || '',
-    description: server.description || '',
+  serverForm.value = {
+    serverId: server.serverId,
+    identifyId: server.identifyId ?? '',
+    alias: server.alias ?? '',
   };
-  showEditModal.value = true;
+  showServerModal.value = true;
 }
 
-async function saveEdit() {
-  if (!editingServer.value) return;
+async function saveServer() {
+  const data = {
+    serverId: serverForm.value.serverId.trim(),
+    identifyId: serverForm.value.identifyId.trim() || undefined,
+    alias: serverForm.value.alias.trim() || undefined,
+  };
   try {
-    const updated = await apiUpdateServer(editingServer.value.id, {
-      name: editForm.value.name.trim(),
-      address: editForm.value.address.trim() || null,
-      description: editForm.value.description.trim() || null,
-    });
-    const idx = servers.value.findIndex((s) => s.id === updated.id);
-    if (idx !== -1) servers.value[idx] = { ...updated, apiKey: servers.value[idx].apiKey };
-    showEditModal.value = false;
-    editingServer.value = null;
-    ui.toast(t('admin.servers.updated'), ToastType.SUCCESS);
-  } catch (e) {
-    handleError(e, t('common.saveFailed'));
+    if (editingServer.value) {
+      const updated = await apiUpdateServer(editingServer.value.id, {
+        serverId: data.serverId,
+        identifyId: data.identifyId ?? null,
+        alias: data.alias ?? null,
+      });
+      servers.value = servers.value.map((server) => (server.id === updated.id ? updated : server));
+      ui.toast(t('admin.servers.updated'), ToastType.SUCCESS);
+    } else {
+      servers.value.push(await apiCreateServer(data));
+      ui.toast(t('admin.servers.created'), ToastType.SUCCESS);
+    }
+    showServerModal.value = false;
+  } catch (error) {
+    handleError(error, t('common.saveFailed'));
   }
 }
 
-async function remove(id: string) {
+async function removeServer(server: Server) {
   if (!(await confirm(t('admin.servers.deleteConfirm')))) return;
   try {
-    await apiDeleteServer(id);
-    servers.value = servers.value.filter((s) => s.id !== id);
-    const nextVisible = new Set(visibleKeyIds.value);
-    nextVisible.delete(id);
-    visibleKeyIds.value = nextVisible;
+    await apiDeleteServer(server.id);
+    servers.value = servers.value.filter((candidate) => candidate.id !== server.id);
     ui.toast(t('admin.servers.deleted'), ToastType.SUCCESS);
-  } catch (e) {
-    handleError(e, t('common.deleteFailed'));
+  } catch (error) {
+    handleError(error);
   }
 }
 
-const copiedId = ref<string | null>(null);
-const iconButtonClass =
-  '!px-1.5 !py-1.5 border-none text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
-const dangerIconButtonClass = '!px-1.5 !py-1.5 border-none text-slate-400 hover:text-red-500';
+function openCreateKey() {
+  editingKey.value = null;
+  keyForm.value = { title: '', type: ServerApiKeyType.PAPER_FOLIA, serverIds: [] };
+  showKeyModal.value = true;
+}
 
-function isKeyVisible(id: string) {
-  return visibleKeyIds.value.has(id);
+function openEditKey(key: ServerApiKey) {
+  editingKey.value = key;
+  keyForm.value = {
+    title: key.title ?? '',
+    type: key.type,
+    serverIds: key.servers.map((server) => server.id),
+  };
+  showKeyModal.value = true;
+}
+
+function onKeyTypeChanged() {
+  if (keyForm.value.type === ServerApiKeyType.PAPER_FOLIA) {
+    keyForm.value.serverIds = keyForm.value.serverIds.slice(0, 1);
+  }
+}
+
+async function saveKey() {
+  const payload = {
+    title: keyForm.value.title.trim() || null,
+    type: keyForm.value.type,
+    serverIds: keyForm.value.serverIds,
+  };
+  try {
+    if (editingKey.value) {
+      const updated = await apiUpdateServerApiKey(editingKey.value.id, payload);
+      apiKeys.value = apiKeys.value.map((key) =>
+        key.id === updated.id ? { ...updated, apiKey: key.apiKey } : key,
+      );
+      ui.toast(t('admin.servers.keyUpdated'), ToastType.SUCCESS);
+    } else {
+      const created = await apiCreateServerApiKey(payload);
+      apiKeys.value.push(created);
+      visibleKeyIds.value = new Set([...visibleKeyIds.value, created.id]);
+      ui.toast(t('admin.servers.keyCreated'), ToastType.SUCCESS);
+    }
+    showKeyModal.value = false;
+  } catch (error) {
+    handleError(error, t('common.saveFailed'));
+  }
+}
+
+async function regenerateKey(key: ServerApiKey) {
+  if (!(await confirm(t('admin.servers.regenerateKeyConfirm')))) return;
+  try {
+    const { apiKey } = await apiRegenerateServerApiKey(key.id);
+    key.apiKey = apiKey;
+    visibleKeyIds.value = new Set([...visibleKeyIds.value, key.id]);
+    ui.toast(t('admin.servers.keyRegenerated'), ToastType.SUCCESS);
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+async function removeKey(key: ServerApiKey) {
+  if (!(await confirm(t('admin.servers.deleteKeyConfirm')))) return;
+  try {
+    await apiDeleteServerApiKey(key.id);
+    apiKeys.value = apiKeys.value.filter((candidate) => candidate.id !== key.id);
+    ui.toast(t('admin.servers.keyDeleted'), ToastType.SUCCESS);
+  } catch (error) {
+    handleError(error);
+  }
 }
 
 function toggleKeyVisibility(id: string) {
-  const nextVisible = new Set(visibleKeyIds.value);
-  if (nextVisible.has(id)) {
-    nextVisible.delete(id);
-  } else {
-    nextVisible.add(id);
-  }
-  visibleKeyIds.value = nextVisible;
+  const next = new Set(visibleKeyIds.value);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
+  visibleKeyIds.value = next;
 }
 
 function maskApiKey(apiKey: string) {
   return '•'.repeat(Math.min(Math.max(apiKey.length, 16), 32));
 }
 
-async function copyToClipboard(server: Server) {
-  if (!server.apiKey) return;
+async function copyKey(key: ServerApiKey) {
+  if (!key.apiKey) return;
   try {
-    await navigator.clipboard.writeText(server.apiKey);
-    copiedId.value = server.id;
+    await navigator.clipboard.writeText(key.apiKey);
+    copiedId.value = key.id;
     setTimeout(() => {
-      if (copiedId.value === server.id) {
-        copiedId.value = null;
-      }
+      if (copiedId.value === key.id) copiedId.value = null;
     }, 2000);
     ui.toast(t('admin.servers.keyCopied'), ToastType.SUCCESS);
   } catch {
@@ -145,155 +220,185 @@ async function copyToClipboard(server: Server) {
   }
 }
 
-onMounted(fetchServers);
+onMounted(fetchAll);
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-        {{ t('admin.servers.title') }}
-      </h2>
-      <BaseButton size="sm" icon="lucide:plus" @click="showModal = true">{{
-        t('admin.servers.add')
-      }}</BaseButton>
-    </div>
-
-    <div class="admin-settings-list">
+  <div class="space-y-8">
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+            {{ t('admin.servers.title') }}
+          </h2>
+          <p class="mt-1 text-sm text-slate-500">{{ t('admin.servers.serverHelp') }}</p>
+        </div>
+        <BaseButton size="sm" icon="lucide:plus" @click="openCreateServer">
+          {{ t('admin.servers.add') }}
+        </BaseButton>
+      </div>
       <BaseLoadingState v-if="loading" />
-      <template v-else>
-        <div
-          v-for="server in servers"
-          :key="server.id"
-          class="admin-settings-list-row admin-server-row"
-        >
+      <div v-else class="admin-settings-list">
+        <div v-for="server in servers" :key="server.id" class="admin-settings-list-row">
           <div class="min-w-0">
-            <h3 class="font-medium text-slate-900 dark:text-white">{{ server.name }}</h3>
-            <div
-              v-if="server.address || server.description"
-              class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500"
-            >
-              <span v-if="server.address">{{ server.address }}</span>
-              <span v-if="server.description">{{ server.description }}</span>
-            </div>
+            <h3 class="font-medium text-slate-900 dark:text-white">
+              {{ server.alias || server.serverId }}
+            </h3>
+            <p class="text-xs text-slate-500">
+              <code>{{ server.serverId }}</code>
+              <template v-if="server.identifyId">
+                · {{ t('admin.servers.identifyId') }} <code>{{ server.identifyId }}</code>
+              </template>
+            </p>
           </div>
-
-          <div class="admin-server-actions">
-            <BaseButton
-              :class="iconButtonClass"
-              :title="t('admin.servers.rename')"
-              @click="startEdit(server)"
-            >
-              <Icon icon="lucide:pencil" class="w-4 h-4" />
+          <div class="flex gap-1">
+            <BaseButton :class="iconButtonClass" @click="openEditServer(server)">
+              <Icon icon="lucide:pencil" class="h-4 w-4" />
             </BaseButton>
-            <BaseButton
-              :class="iconButtonClass"
-              :title="t('admin.servers.regenerateKey')"
-              @click="regenerate(server.id)"
-            >
-              <Icon icon="lucide:refresh-cw" class="w-4 h-4" />
-            </BaseButton>
-            <BaseButton
-              :class="dangerIconButtonClass"
-              :title="t('common.delete')"
-              @click="remove(server.id)"
-            >
-              <Icon icon="lucide:trash-2" class="w-4 h-4" />
-            </BaseButton>
-          </div>
-
-          <div
-            v-if="server.apiKey"
-            class="admin-server-key"
-            :data-visible="isKeyVisible(server.id)"
-          >
-            <span
-              class="shrink-0 text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400"
-              >{{ t('admin.servers.apiKey') }}</span
-            >
-            <code
-              :class="[
-                'min-w-0 flex-1 font-mono text-xs text-slate-600 dark:text-slate-300',
-                isKeyVisible(server.id) ? 'break-all whitespace-normal' : 'truncate',
-              ]"
-            >
-              {{ isKeyVisible(server.id) ? server.apiKey : maskApiKey(server.apiKey) }}
-            </code>
-            <BaseButton
-              :class="iconButtonClass"
-              :title="
-                isKeyVisible(server.id) ? t('admin.servers.hideKey') : t('admin.servers.showKey')
-              "
-              @click="toggleKeyVisibility(server.id)"
-            >
-              <Icon
-                :icon="isKeyVisible(server.id) ? 'lucide:eye-off' : 'lucide:eye'"
-                class="w-4 h-4"
-              />
-            </BaseButton>
-            <BaseButton
-              :class="[
-                iconButtonClass,
-                copiedId === server.id ? 'text-green-500 dark:text-green-400' : '',
-              ]"
-              :title="t('admin.servers.copyKey')"
-              @click="copyToClipboard(server)"
-            >
-              <Icon
-                :icon="copiedId === server.id ? 'lucide:check' : 'lucide:clipboard'"
-                class="w-4 h-4"
-              />
+            <BaseButton :class="dangerIconButtonClass" @click="removeServer(server)">
+              <Icon icon="lucide:trash-2" class="h-4 w-4" />
             </BaseButton>
           </div>
         </div>
         <div v-if="!servers.length" class="admin-settings-list-empty">
           {{ t('admin.servers.empty') }}
         </div>
-      </template>
-    </div>
+      </div>
+    </section>
 
-    <BaseModal v-model="showModal" :title="t('admin.servers.add')">
-      <form class="space-y-4" @submit.prevent="create">
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
+            {{ t('admin.servers.apiKeysTitle') }}
+          </h2>
+          <p class="mt-1 text-sm text-slate-500">{{ t('admin.servers.apiKeysHelp') }}</p>
+        </div>
+        <BaseButton
+          size="sm"
+          icon="lucide:key-round"
+          :disabled="!servers.length"
+          @click="openCreateKey"
+        >
+          {{ t('admin.servers.addKey') }}
+        </BaseButton>
+      </div>
+      <div class="admin-settings-list">
+        <div v-for="key in apiKeys" :key="key.id" class="admin-settings-list-row !items-start">
+          <div class="min-w-0 space-y-1">
+            <h3 class="font-medium text-slate-900 dark:text-white">
+              {{
+                key.title ||
+                (key.type === ServerApiKeyType.PAPER_FOLIA
+                  ? t('admin.servers.paperFolia')
+                  : t('admin.servers.velocity'))
+              }}
+            </h3>
+            <p class="text-xs text-slate-500">
+              {{ key.servers.map((server) => server.alias || server.serverId).join(', ') }}
+            </p>
+            <div v-if="key.apiKey" class="flex min-w-0 items-center gap-2 pt-2">
+              <code class="max-w-lg break-all text-xs text-slate-600 dark:text-slate-300">
+                {{ visibleKeyIds.has(key.id) ? key.apiKey : maskApiKey(key.apiKey) }}
+              </code>
+              <BaseButton :class="iconButtonClass" @click="toggleKeyVisibility(key.id)">
+                <Icon
+                  :icon="visibleKeyIds.has(key.id) ? 'lucide:eye-off' : 'lucide:eye'"
+                  class="h-4 w-4"
+                />
+              </BaseButton>
+              <BaseButton :class="iconButtonClass" @click="copyKey(key)">
+                <Icon
+                  :icon="copiedId === key.id ? 'lucide:check' : 'lucide:clipboard'"
+                  class="h-4 w-4"
+                />
+              </BaseButton>
+            </div>
+          </div>
+          <div class="flex gap-1">
+            <BaseButton :class="iconButtonClass" @click="openEditKey(key)">
+              <Icon icon="lucide:pencil" class="h-4 w-4" />
+            </BaseButton>
+            <BaseButton :class="iconButtonClass" @click="regenerateKey(key)">
+              <Icon icon="lucide:refresh-cw" class="h-4 w-4" />
+            </BaseButton>
+            <BaseButton :class="dangerIconButtonClass" @click="removeKey(key)">
+              <Icon icon="lucide:trash-2" class="h-4 w-4" />
+            </BaseButton>
+          </div>
+        </div>
+        <div v-if="!apiKeys.length" class="admin-settings-list-empty">
+          {{ t('admin.servers.keysEmpty') }}
+        </div>
+      </div>
+    </section>
+
+    <BaseModal
+      v-model="showServerModal"
+      :title="editingServer ? t('admin.servers.editTitle') : t('admin.servers.add')"
+    >
+      <form class="space-y-4" @submit.prevent="saveServer">
         <BaseInput
-          v-model="form.name"
-          :label="t('common.name')"
+          v-model="serverForm.serverId"
+          :label="t('admin.servers.serverId')"
           required
-          :placeholder="t('admin.servers.namePlaceholder')"
+          placeholder="survival"
         />
         <BaseInput
-          v-model="form.address"
-          :label="t('common.addressOptional')"
-          placeholder="play.example.com"
+          v-model="serverForm.identifyId"
+          :label="t('admin.servers.identifyId')"
+          :placeholder="t('admin.servers.identifyIdPlaceholder')"
         />
-        <BaseInput v-model="form.description" :label="t('common.descriptionOptional')" />
+        <BaseInput v-model="serverForm.alias" :label="t('admin.servers.alias')" />
         <div class="flex justify-end gap-2">
-          <BaseButton type="button" @click="showModal = false">{{ t('common.cancel') }}</BaseButton>
-          <BaseButton filled type="submit" :disabled="!form.name.trim()">{{
-            t('common.create')
+          <BaseButton type="button" @click="showServerModal = false">{{
+            t('common.cancel')
+          }}</BaseButton>
+          <BaseButton filled type="submit" :disabled="!serverForm.serverId.trim()">{{
+            t('common.save')
           }}</BaseButton>
         </div>
       </form>
     </BaseModal>
 
-    <BaseModal v-model="showEditModal" :title="t('admin.servers.editTitle')">
-      <form class="space-y-4" @submit.prevent="saveEdit">
-        <BaseInput
-          v-model="editForm.name"
-          :label="t('common.name')"
+    <BaseModal
+      v-model="showKeyModal"
+      :title="editingKey ? t('admin.servers.editKey') : t('admin.servers.addKey')"
+    >
+      <form class="space-y-4" @submit.prevent="saveKey">
+        <BaseInput v-model="keyForm.title" :label="t('admin.servers.keyTitle')" />
+        <BaseSelect
+          v-model="keyForm.type"
+          :label="t('admin.servers.keyType')"
+          :options="keyTypeOptions"
           required
-          :placeholder="t('admin.servers.namePlaceholder')"
+          @update:model-value="onKeyTypeChanged"
         />
-        <BaseInput
-          v-model="editForm.address"
-          :label="t('common.addressOptional')"
-          placeholder="play.example.com"
+        <BaseSelect
+          v-if="keyForm.type === ServerApiKeyType.PAPER_FOLIA"
+          v-model="paperServerId"
+          :label="t('admin.servers.boundServer')"
+          :options="serverOptions"
+          required
         />
-        <BaseInput v-model="editForm.description" :label="t('common.descriptionOptional')" />
+        <BaseMultiSelect
+          v-else
+          v-model="keyForm.serverIds"
+          :label="t('admin.servers.allowedServers')"
+          :options="serverOptions"
+          :placeholder="t('admin.servers.selectServers')"
+          :empty-text="t('admin.servers.empty')"
+          :no-results-text="t('common.noResults')"
+          :all-selected-text="t('admin.servers.allServersSelected')"
+          :remove-title="t('admin.servers.removeServerSelection')"
+          selected-icon="lucide:server"
+          required
+        />
         <div class="flex justify-end gap-2">
-          <BaseButton type="button" @click="showEditModal = false">{{
+          <BaseButton type="button" @click="showKeyModal = false">{{
             t('common.cancel')
           }}</BaseButton>
-          <BaseButton filled type="submit" :disabled="!editForm.name.trim()">{{
+          <BaseButton filled type="submit" :disabled="!keyForm.serverIds.length">{{
             t('common.save')
           }}</BaseButton>
         </div>

@@ -35,6 +35,7 @@ import {
   mcRegisterSchema,
   mcStatusSchema,
   mcTicketActionSchema,
+  mcTicketListBodySchema,
   mcTicketListQuerySchema,
   mcTicketSchema,
   mcUnlinkSchema,
@@ -55,7 +56,12 @@ import {
   ticketUpdateSchema,
 } from './routes/tickets.js';
 import { commentBodyUpdateSchema, commentCreateSchema } from './routes/comments.js';
-import { serverCreateSchema, serverUpdateSchema } from './routes/servers.js';
+import {
+  serverApiKeyCreateSchema,
+  serverApiKeyUpdateSchema,
+  serverCreateSchema,
+  serverUpdateSchema,
+} from './routes/servers.js';
 import {
   emailChangeCancelSchema,
   unsubscribeSchema,
@@ -71,6 +77,11 @@ import { adminTemplateCreateSchema, adminTemplateUpdateSchema } from './routes/a
 import { attachmentTargetFields } from './routes/attachments.js';
 import { attachmentConfigSchema } from './schemas/attachment.js';
 import { deliveryIdSchema } from './routes/admin-minecraft-hook-deliveries.js';
+import {
+  publicServerApiKeySchema,
+  publicServerSchema,
+  revealedServerApiKeySchema,
+} from './schemas/server.js';
 
 extendZodWithOpenApi(z);
 
@@ -630,6 +641,7 @@ const registerServerRoutes = () => {
     summary: '获取服务器列表',
     auth: 'admin',
     tags: ['Servers'],
+    responseSchema: z.array(publicServerSchema),
   });
   registerRoute({
     method: 'post',
@@ -638,14 +650,51 @@ const registerServerRoutes = () => {
     auth: 'admin',
     tags: ['Servers'],
     bodySchema: serverCreateSchema,
+    responseSchema: publicServerSchema,
     successStatus: '201',
   });
   registerRoute({
-    method: 'post',
-    path: '/api/servers/{id}/regenerate-key',
-    summary: '重新生成 API Key',
+    path: '/api/servers/api-keys',
+    summary: '获取服务器 API Key 列表',
+    method: 'get',
     auth: 'admin',
     tags: ['Servers'],
+    responseSchema: z.array(publicServerApiKeySchema),
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/servers/api-keys',
+    summary: '创建服务器 API Key',
+    auth: 'admin',
+    tags: ['Servers'],
+    bodySchema: serverApiKeyCreateSchema,
+    responseSchema: publicServerApiKeySchema.extend({ apiKey: z.string() }),
+    successStatus: '201',
+  });
+  registerRoute({
+    method: 'patch',
+    path: '/api/servers/api-keys/{id}',
+    summary: '更新服务器 API Key 标题、类型与服务器绑定',
+    auth: 'admin',
+    tags: ['Servers'],
+    bodySchema: serverApiKeyUpdateSchema,
+    responseSchema: publicServerApiKeySchema,
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/servers/api-keys/{id}/regenerate',
+    summary: '重新生成服务器 API Key',
+    auth: 'admin',
+    tags: ['Servers'],
+    responseSchema: revealedServerApiKeySchema,
+  });
+  registerRoute({
+    method: 'delete',
+    path: '/api/servers/api-keys/{id}',
+    summary: '删除服务器 API Key',
+    auth: 'admin',
+    tags: ['Servers'],
+    successStatus: '204',
   });
   registerRoute({
     method: 'patch',
@@ -654,6 +703,7 @@ const registerServerRoutes = () => {
     auth: 'admin',
     tags: ['Servers'],
     bodySchema: serverUpdateSchema,
+    responseSchema: publicServerSchema,
   });
   registerRoute({
     method: 'delete',
@@ -724,6 +774,14 @@ const registerMcRoutes = () => {
     querySchema: mcTicketListQuerySchema,
   });
   registerRoute({
+    method: 'post',
+    path: '/api/mc/tickets/search',
+    summary: 'MC 获取可见议题（Velocity 使用请求体传递 serverId，匹配服务器识别 ID）',
+    auth: 'conditionalMinecraftPlayer',
+    tags: ['MC'],
+    bodySchema: mcTicketListBodySchema,
+  });
+  registerRoute({
     method: 'get',
     path: '/api/mc/tickets/{uuid}',
     summary: 'MC 获取玩家可见议题（兼容路径）',
@@ -739,6 +797,14 @@ const registerMcRoutes = () => {
     querySchema: mcViewerSchema,
   });
   registerRoute({
+    method: 'post',
+    path: '/api/mc/tickets/{id}/detail',
+    summary: 'MC 获取议题详情（Velocity 请求体）',
+    auth: 'conditionalMinecraftPlayer',
+    tags: ['MC'],
+    bodySchema: mcViewerSchema,
+  });
+  registerRoute({
     method: 'get',
     path: '/api/mc/tickets/{id}/comments',
     summary: 'MC 获取议题评论',
@@ -747,11 +813,27 @@ const registerMcRoutes = () => {
     querySchema: mcViewerSchema,
   });
   registerRoute({
+    method: 'post',
+    path: '/api/mc/tickets/{id}/comments/list',
+    summary: 'MC 获取议题评论（Velocity 请求体）',
+    auth: 'conditionalMinecraftPlayer',
+    tags: ['MC'],
+    bodySchema: mcViewerSchema,
+  });
+  registerRoute({
     method: 'get',
     path: '/api/mc/user/{uuid}',
     summary: 'MC 查询用户信息',
     auth: 'minecraftPlayer',
     tags: ['MC'],
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/mc/user',
+    summary: 'MC 查询用户信息（Velocity 请求体）',
+    auth: 'minecraftPlayer',
+    tags: ['MC'],
+    bodySchema: mcViewerSchema,
   });
   registerRoute({
     method: 'post',

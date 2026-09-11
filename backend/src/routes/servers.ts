@@ -1,33 +1,27 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
-import { z } from 'zod';
 import * as serverService from '../services/server.service.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requireRole } from '../middleware/role.js';
 import { ROLE } from '../constants/roles.js';
 import { validate } from '../utils/validate.js';
+import {
+  serverApiKeyCreateSchema,
+  serverApiKeyUpdateSchema,
+  serverCreateSchema,
+  serverUpdateSchema,
+} from '../schemas/server.js';
 
 const router = Router();
 
 router.use(authMiddleware, requireRole(ROLE.ADMIN));
 
-export const serverCreateSchema = z.object({
-  name: z.string().min(1).max(50),
-  address: z.string().optional(),
-  description: z.string().optional(),
-});
-
-export const serverUpdateSchema = z
-  .object({
-    name: z.string().min(1).max(50).optional(),
-    address: z.string().nullable().optional(),
-    description: z.string().nullable().optional(),
-  })
-  .refine(
-    (data) =>
-      data.name !== undefined || data.address !== undefined || data.description !== undefined,
-    '至少需要提供一个更新字段',
-  );
+export {
+  serverApiKeyCreateSchema,
+  serverApiKeyUpdateSchema,
+  serverCreateSchema,
+  serverUpdateSchema,
+};
 
 router.get('/', async (_req: Request, res: Response) => {
   const servers = await serverService.list();
@@ -37,13 +31,31 @@ router.get('/', async (_req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   const data = validate(serverCreateSchema, req.body);
 
-  const server = await serverService.create(data.name, data.address, data.description);
+  const server = await serverService.create(data);
   res.status(201).json(server);
 });
 
-router.post('/:id/regenerate-key', async (req: Request, res: Response) => {
-  const server = await serverService.regenerateKey(String(req.params.id));
-  res.json(server);
+router.get('/api-keys', async (_req: Request, res: Response) => {
+  res.json(await serverService.listApiKeys());
+});
+
+router.post('/api-keys', async (req: Request, res: Response) => {
+  const data = validate(serverApiKeyCreateSchema, req.body);
+  res.status(201).json(await serverService.createApiKey(data));
+});
+
+router.patch('/api-keys/:id', async (req: Request, res: Response) => {
+  const data = validate(serverApiKeyUpdateSchema, req.body);
+  res.json(await serverService.updateApiKey(String(req.params.id), data));
+});
+
+router.post('/api-keys/:id/regenerate', async (req: Request, res: Response) => {
+  res.json(await serverService.regenerateApiKey(String(req.params.id)));
+});
+
+router.delete('/api-keys/:id', async (req: Request, res: Response) => {
+  await serverService.removeApiKey(String(req.params.id));
+  res.status(204).end();
 });
 
 router.patch('/:id', async (req: Request, res: Response) => {

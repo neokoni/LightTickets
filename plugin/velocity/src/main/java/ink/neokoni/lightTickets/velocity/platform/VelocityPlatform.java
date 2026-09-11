@@ -3,6 +3,7 @@ package ink.neokoni.lightTickets.velocity.platform;
 import com.velocitypowered.api.proxy.ProxyServer;
 import ink.neokoni.lightTickets.platform.LightPlatform;
 import ink.neokoni.lightTickets.platform.LightPlayer;
+import ink.neokoni.lightTickets.platform.PlatformType;
 import ink.neokoni.lightTickets.velocity.LightTicketsVelocity;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,6 +34,11 @@ public final class VelocityPlatform implements LightPlatform {
     public VelocityPlatform(LightTicketsVelocity plugin) {
         this.plugin = plugin;
         this.server = plugin.getServer();
+    }
+
+    @Override
+    public PlatformType getType() {
+        return PlatformType.VELOCITY;
     }
 
     @Override

@@ -2204,15 +2204,18 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: {
+                /** Format: uuid */
+                id: string;
+                serverId: string;
+                identifyId: string | null;
+                alias: string | null;
+                name: string;
+                address: string | null;
+                description: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
             };
           };
         };
@@ -2239,7 +2242,9 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
-            name: string;
+            serverId: string;
+            identifyId?: string;
+            alias?: string;
             address?: string;
             description?: string;
           };
@@ -2255,15 +2260,18 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: {
+                /** Format: uuid */
+                id: string;
+                serverId: string;
+                identifyId: string | null;
+                alias: string | null;
+                name: string;
+                address: string | null;
+                description: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              };
             };
           };
         };
@@ -2284,7 +2292,139 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/servers/{id}/regenerate-key': {
+  '/api/servers/api-keys': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 获取服务器 API Key 列表 */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** Format: uuid */
+                id: string;
+                title: string | null;
+                /** @enum {string} */
+                type: 'paper_folia' | 'velocity';
+                servers: {
+                  /** Format: uuid */
+                  id: string;
+                  serverId: string;
+                  identifyId: string | null;
+                  alias: string | null;
+                  name: string;
+                  address: string | null;
+                  description: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /** 创建服务器 API Key */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            title?: string | null;
+            /** @enum {string} */
+            type: 'paper_folia' | 'velocity';
+            serverIds: string[];
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** Format: uuid */
+                id: string;
+                title: string | null;
+                /** @enum {string} */
+                type: 'paper_folia' | 'velocity';
+                servers: {
+                  /** Format: uuid */
+                  id: string;
+                  serverId: string;
+                  identifyId: string | null;
+                  alias: string | null;
+                  name: string;
+                  address: string | null;
+                  description: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                apiKey: string;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/servers/api-keys/{id}': {
     parameters: {
       query?: never;
       header?: never;
@@ -2293,7 +2433,116 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** 重新生成 API Key */
+    post?: never;
+    /** 删除服务器 API Key */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    /** 更新服务器 API Key 标题、类型与服务器绑定 */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            title?: string | null;
+            /** @enum {string} */
+            type: 'paper_folia' | 'velocity';
+            serverIds: string[];
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** Format: uuid */
+                id: string;
+                title: string | null;
+                /** @enum {string} */
+                type: 'paper_folia' | 'velocity';
+                servers: {
+                  /** Format: uuid */
+                  id: string;
+                  serverId: string;
+                  identifyId: string | null;
+                  alias: string | null;
+                  name: string;
+                  address: string | null;
+                  description: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/servers/api-keys/{id}/regenerate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** 重新生成服务器 API Key */
     post: {
       parameters: {
         query?: never;
@@ -2314,15 +2563,9 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: {
+                apiKey: string;
+              };
             };
           };
         };
@@ -2398,7 +2641,9 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
-            name?: string;
+            serverId?: string;
+            identifyId?: string | null;
+            alias?: string | null;
             address?: string | null;
             description?: string | null;
           };
@@ -2414,15 +2659,18 @@ export interface paths {
             'application/json': {
               /** @enum {boolean} */
               success: true;
-              data:
-                | {
-                    [key: string]: unknown;
-                  }
-                | unknown[]
-                | string
-                | number
-                | boolean
-                | unknown;
+              data: {
+                /** Format: uuid */
+                id: string;
+                serverId: string;
+                identifyId: string | null;
+                alias: string | null;
+                name: string;
+                address: string | null;
+                description: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              };
             };
           };
         };
@@ -2459,6 +2707,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             /** Format: email */
             email: string;
             password: string;
@@ -2526,6 +2775,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             /** Format: uuid */
             minecraftUuid: string;
             minecraftName: string;
@@ -2588,6 +2838,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             minecraftUuid: string;
             playerCredential: string;
           };
@@ -2699,6 +2950,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             minecraftUuid: string;
             title: string;
             body: string;
@@ -2720,6 +2972,81 @@ export interface paths {
       responses: {
         /** @description Success */
         201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/mc/tickets/search': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** MC 获取可见议题（Velocity 使用请求体传递 serverId，匹配服务器识别 ID） */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @default 1 */
+            page?: number;
+            /** @default 20 */
+            pageSize?: number;
+            minecraftUuid: string;
+            statuses?: string | string[];
+            type?: string;
+            authorName?: string;
+            serverName?: string;
+            /** @enum {string} */
+            hasServer?: 'true' | 'false';
+            search?: string;
+            serverId?: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
           headers: {
             [name: string]: unknown;
           };
@@ -2826,6 +3153,119 @@ export interface paths {
     get: {
       parameters: {
         query: {
+          serverId?: string;
+          minecraftUuid: string;
+        };
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /** MC 获取议题详情（Velocity 请求体） */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            serverId?: string;
+            minecraftUuid: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/mc/tickets/{id}/comments': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** MC 获取议题评论 */
+    get: {
+      parameters: {
+        query: {
+          serverId?: string;
           minecraftUuid: string;
         };
         header?: never;
@@ -2876,26 +3316,33 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/mc/tickets/{id}/comments': {
+  '/api/mc/tickets/{id}/comments/list': {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    /** MC 获取议题评论 */
-    get: {
+    get?: never;
+    put?: never;
+    /** MC 获取议题评论（Velocity 请求体） */
+    post: {
       parameters: {
-        query: {
-          minecraftUuid: string;
-        };
+        query?: never;
         header?: never;
         path: {
           id: string;
         };
         cookie?: never;
       };
-      requestBody?: never;
+      requestBody: {
+        content: {
+          'application/json': {
+            serverId?: string;
+            minecraftUuid: string;
+          };
+        };
+      };
       responses: {
         /** @description Success */
         200: {
@@ -2929,8 +3376,6 @@ export interface paths {
         };
       };
     };
-    put?: never;
-    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -2996,6 +3441,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/mc/user': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** MC 查询用户信息（Velocity 请求体） */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            serverId?: string;
+            minecraftUuid: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Success */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data:
+                | {
+                    [key: string]: unknown;
+                  }
+                | unknown[]
+                | string
+                | number
+                | boolean
+                | unknown;
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/mc/comments': {
     parameters: {
       query?: never;
@@ -3016,6 +3525,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             minecraftUuid: string;
             ticketId: number;
             body: string;
@@ -3083,6 +3593,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             minecraftUuid: string;
           };
         };
@@ -3148,6 +3659,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             minecraftUuid: string;
           };
         };
@@ -3213,6 +3725,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             minecraftUuid: string;
             /** @enum {string} */
             status: 'open' | 'in_progress' | 'closed' | 'invalid';
@@ -3278,6 +3791,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            serverId?: string;
             minecraftUuid: string;
           };
         };

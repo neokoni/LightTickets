@@ -24,7 +24,6 @@ import { normalizeSiteUrl, resolvePasswordResetOrigin } from '../utils/site-url.
 import { normalizeIpAddress } from '../trusted-proxy.js';
 import * as refreshSessionService from './refresh-session.service.js';
 import { MIN_PASSWORD_LENGTH } from '../constants/auth.js';
-import { hashServerApiKey } from '../utils/server-key.js';
 
 type SetupConfigFile = {
   server?: { port?: number; corsOrigins?: string[]; trustedProxyIps?: string[] };
@@ -604,12 +603,8 @@ async function completeSetupLocked(input: SetupInput) {
       });
 
       if (input.mc?.defaultServerName) {
-        const apiKey = `lt_${crypto.randomBytes(24).toString('hex')}`;
         await tx.server.create({
-          data: {
-            name: input.mc.defaultServerName,
-            apiKeyHash: hashServerApiKey(apiKey),
-          },
+          data: { name: input.mc.defaultServerName },
         });
       }
 
