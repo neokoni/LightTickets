@@ -2,6 +2,7 @@ import { prisma } from '../db.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
 import { AUDIT_ACTION } from '../constants/audit-actions.js';
 import * as ticketService from './ticket.service.js';
+import * as auditService from './audit.service.js';
 
 export async function create(id: string, name: string, color: string, description?: string) {
   const existing = await prisma().label.findFirst({
@@ -54,14 +55,16 @@ export async function addToTicketWithAudit(
     const ticketLabel = await tx.ticketLabel.create({ data: { ticketId, labelId } });
     const label = await tx.label.findUnique({ where: { id: labelId } });
     if (label) {
-      await tx.auditLog.create({
-        data: {
+      await auditService.queue(
+        {
           ticketId,
           actorId,
           action: AUDIT_ACTION.LABEL_ADD,
+          targetKey: `label:${labelId}`,
           newValue: JSON.stringify({ name: label.name, color: label.color }),
         },
-      });
+        tx,
+      );
     }
     return ticketLabel;
   });
@@ -78,14 +81,16 @@ export async function removeFromTicketWithAudit(
     const label = await tx.label.findUnique({ where: { id: labelId } });
     await tx.ticketLabel.delete({ where: { ticketId_labelId: { ticketId, labelId } } });
     if (label) {
-      await tx.auditLog.create({
-        data: {
+      await auditService.queue(
+        {
           ticketId,
           actorId,
           action: AUDIT_ACTION.LABEL_REMOVE,
+          targetKey: `label:${labelId}`,
           oldValue: JSON.stringify({ name: label.name, color: label.color }),
         },
-      });
+        tx,
+      );
     }
   });
 }

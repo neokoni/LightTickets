@@ -145,12 +145,15 @@ export async function updateBody(id: string, userId: number, body: string, userR
       },
     });
 
-    await auditService.create(
-      comment.ticketId,
-      userId,
-      AUDIT_ACTION.COMMENT_EDIT,
-      current.body,
-      body,
+    await auditService.queue(
+      {
+        ticketId: comment.ticketId,
+        actorId: userId,
+        action: AUDIT_ACTION.COMMENT_EDIT,
+        targetKey: `comment:${id}`,
+        oldValue: current.body,
+        newValue: body,
+      },
       tx,
     );
 

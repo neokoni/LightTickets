@@ -44,6 +44,7 @@ async function startFullApp() {
   initSocket(server);
   await scheduleOrphanAttachmentCleanup();
   await scheduleLinkCodeCleanup();
+  await scheduleAuditSettlement();
 
   server.listen(config.port, () => {
     console.log(`LightTickets API running on port ${config.port}`);
@@ -128,6 +129,7 @@ async function startFullAppAfterSetup(setupServer: Server): Promise<void> {
   const server = createServer(app);
   initSocket(server);
   await scheduleOrphanAttachmentCleanup();
+  await scheduleAuditSettlement();
 
   setupServer.close(() => {
     server.listen(config.port, () => {
@@ -181,5 +183,28 @@ async function scheduleLinkCodeCleanup(): Promise<void> {
 
   void run();
   const timer = setInterval(() => void run(), LINK_CODE_CLEANUP_INTERVAL_MS);
+  timer.unref();
+}
+
+async function scheduleAuditSettlement(): Promise<void> {
+  const [{ settlePending }, { AUDIT_SETTLE_INTERVAL_MS }] = await Promise.all([
+    import('./services/audit.service.js'),
+    import('./constants/audit.js'),
+  ]);
+  let running = false;
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await settlePending();
+    } catch {
+      console.warn('[audit] Failed to settle pending audit logs');
+    } finally {
+      running = false;
+    }
+  };
+
+  void run();
+  const timer = setInterval(() => void run(), AUDIT_SETTLE_INTERVAL_MS);
   timer.unref();
 }

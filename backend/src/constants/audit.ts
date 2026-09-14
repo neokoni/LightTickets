@@ -1,0 +1,2 @@
+export const AUDIT_SETTLE_DELAY_MS = 15 * 1000;
+export const AUDIT_SETTLE_INTERVAL_MS = 1000;

@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
 import * as attachmentService from '../src/services/attachment.service.js';
+import * as auditService from '../src/services/audit.service.js';
 
 const app = createApp();
 
@@ -41,6 +42,7 @@ describe('PATCH /api/tickets/:id/comments/:commentId/body', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.body).toBe('Edited comment');
+    await auditService.settlePending(new Date(Date.now() + 16_000));
     await expect(
       prisma().auditLog.findFirst({
         where: { ticketId: ticket.body.data.id, action: 'comment_edit' },
@@ -59,7 +61,7 @@ describe('PATCH /api/tickets/:id/comments/:commentId/body', () => {
 
     await prisma().$executeRawUnsafe(`
       CREATE TRIGGER fail_comment_edit_audit
-      BEFORE INSERT ON audit_logs
+      BEFORE INSERT ON audit_log_pending
       WHEN NEW.action = 'comment_edit'
       BEGIN
         SELECT RAISE(ABORT, 'forced audit failure');

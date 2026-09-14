@@ -8,6 +8,7 @@ import { prisma, serverData } from './setup.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import * as templateService from '../src/services/template.service.js';
 import * as ticketService from '../src/services/ticket.service.js';
+import * as auditService from '../src/services/audit.service.js';
 
 const app = createApp();
 const optionalTemplateName = 'visibility_optional';
@@ -173,6 +174,8 @@ describe('ticket visibility on web routes', () => {
       .send({ hidden: false });
     expect(adminChange.status).toBe(200);
     expect(adminChange.body.data.hidden).toBe(false);
+
+    await auditService.settlePending(new Date(Date.now() + 16_000));
 
     const audit = await request(app).get(`/api/tickets/${ticketId}/audit`);
     expect(audit.status).toBe(200);

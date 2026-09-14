@@ -4,6 +4,7 @@ import { createApp } from '../src/app.js';
 import { prisma, serverData } from './setup.js';
 import * as ticketService from '../src/services/ticket.service.js';
 import * as templateService from '../src/services/template.service.js';
+import * as auditService from '../src/services/audit.service.js';
 
 const app = createApp();
 const selectionTemplateName = 'selection_hook_test';
@@ -664,6 +665,7 @@ describe('PUT /api/tickets/:id/assignees', () => {
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ assigneeIds: [valid.id] });
     expect(initial.status).toBe(200);
+    await auditService.settlePending(new Date(Date.now() + 16_000));
 
     for (const invalidId of [player.id, 2_000_000_000]) {
       const res = await request(app)
@@ -733,6 +735,7 @@ describe('PUT /api/tickets/:id/assignees', () => {
       .set('Authorization', `Bearer ${actorToken}`)
       .send({ assigneeIds: [admin.id, staff.id] });
     expect(reordered.status).toBe(200);
+    await auditService.settlePending(new Date(Date.now() + 16_000));
     expect(await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } })).toBe(
       1,
     );
@@ -743,6 +746,7 @@ describe('PUT /api/tickets/:id/assignees', () => {
       .send({ assigneeIds: [] });
     expect(cleared.status).toBe(200);
     expect(cleared.body.data.assignees).toEqual([]);
+    await auditService.settlePending(new Date(Date.now() + 16_000));
     expect(await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } })).toBe(
       2,
     );
@@ -931,6 +935,7 @@ describe('completion hook decisions', () => {
       .set('Authorization', `Bearer ${staffToken}`);
     expect(skipped.status).toBe(200);
     expect(skipped.body.data).toMatchObject({ id: hook.id, status: 'skipped' });
+    await auditService.settlePending(new Date(Date.now() + 16_000));
 
     const audit = await prisma().auditLog.findFirst({
       where: { ticketId, action: 'completion_hook_skipped' },
@@ -983,6 +988,7 @@ describe('completion hook decisions', () => {
     });
     expect(hiddenHook).toMatchObject({ status: 'pending', visibility: 'staff' });
     const hookId = publicHook.id as string;
+    await auditService.settlePending(new Date(Date.now() + 16_000));
 
     const pendingAudit = await prisma().auditLog.findFirst({
       where: { ticketId, action: 'completion_hook_pending' },
@@ -1047,6 +1053,8 @@ describe('completion hook decisions', () => {
       .send({ values: { rewards: ['Coins'], note: 'Again' } });
     expect(duplicate.status).toBe(409);
 
+    await auditService.settlePending(new Date(Date.now() + 16_000));
+
     const audits = await prisma().auditLog.findMany({
       where: { ticketId, action: 'completion_hook' },
     });
@@ -1102,6 +1110,8 @@ describe('completion hook decisions', () => {
       staffView.body.data.completionHooks.map((hook: { status: string }) => hook.status),
     ).toEqual(expect.arrayContaining(['completed', 'pending']));
 
+    await auditService.settlePending(new Date(Date.now() + 16_000));
+
     const pendingAudits = await prisma().auditLog.count({
       where: { ticketId, action: 'completion_hook_pending' },
     });
@@ -1127,6 +1137,38 @@ describe('POST /api/tickets/:id/labels', () => {
       .send({ labelId: label.body.data.id });
 
     expect(res.status).toBe(201);
+  });
+
+  it('defers label audit until the window settles', async () => {
+    const token = await createUserAndGetToken('label-audit-author@test.com');
+    const adminToken = await createAdminAndGetToken('label-audit-admin@test.com');
+    const staffToken = await createStaffAndGetToken('label-audit-staff@test.com');
+    const created = await createTicket(token);
+    const label = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ id: 'deferred-label', name: 'Deferred label', color: '#ef4444' });
+
+    await request(app)
+      .post(`/api/tickets/${created.body.data.id}/labels`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ labelId: label.body.data.id });
+
+    expect(
+      await prisma().auditLog.count({
+        where: { ticketId: created.body.data.id, action: 'label_add' },
+      }),
+    ).toBe(0);
+    expect(
+      await prisma().auditLogPending.count({ where: { ticketId: created.body.data.id } }),
+    ).toBe(1);
+
+    await auditService.settlePending(new Date(Date.now() + 16_000));
+    expect(
+      await prisma().auditLog.count({
+        where: { ticketId: created.body.data.id, action: 'label_add' },
+      }),
+    ).toBe(1);
   });
 
   it('rejects non-staff adding label', async () => {
@@ -1181,6 +1223,31 @@ describe('DELETE /api/tickets/:id/labels/:labelId', () => {
       .set('Authorization', `Bearer ${staffToken}`);
 
     expect(res.status).toBe(204);
+  });
+
+  it('cancels a pending label audit when the label is removed', async () => {
+    const token = await createUserAndGetToken('label-cancel-author@test.com');
+    const adminToken = await createAdminAndGetToken('label-cancel-admin@test.com');
+    const staffToken = await createStaffAndGetToken('label-cancel-staff@test.com');
+    const created = await createTicket(token);
+    const label = await request(app)
+      .post('/api/labels')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ id: 'cancel-label', name: 'Cancel label', color: '#000000' });
+
+    await request(app)
+      .post(`/api/tickets/${created.body.data.id}/labels`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ labelId: label.body.data.id });
+    await request(app)
+      .delete(`/api/tickets/${created.body.data.id}/labels/${label.body.data.id}`)
+      .set('Authorization', `Bearer ${staffToken}`);
+
+    await auditService.settlePending(new Date(Date.now() + 16_000));
+    expect(await prisma().auditLog.count({ where: { ticketId: created.body.data.id } })).toBe(0);
+    expect(
+      await prisma().auditLogPending.count({ where: { ticketId: created.body.data.id } }),
+    ).toBe(0);
   });
 
   it('returns 404 when removing a label from a missing ticket', async () => {

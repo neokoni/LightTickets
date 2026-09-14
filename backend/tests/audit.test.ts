@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
+import * as auditService from '../src/services/audit.service.js';
 
 const app = createApp();
 
@@ -36,6 +37,8 @@ describe('GET /api/tickets/:ticketId/audit', () => {
     await request(app)
       .post(`/api/tickets/${ticket.body.data.id}/close`)
       .set('Authorization', `Bearer ${token}`);
+
+    await auditService.settlePending(new Date(Date.now() + 16_000));
 
     const res = await request(app)
       .get(`/api/tickets/${ticket.body.data.id}/audit`)

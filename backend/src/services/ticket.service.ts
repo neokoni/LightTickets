@@ -10,6 +10,7 @@ import { TEMPLATE_HIDDEN_MODE } from '../constants/ticket-visibility.js';
 import * as ticketNotificationService from './ticket-notification.service.js';
 import * as completionHookService from './completion-hook.service.js';
 import * as minecraftHookDeliveryService from './minecraft-hook-delivery.service.js';
+import * as auditService from './audit.service.js';
 import { emitTicketUpdate, emitToAllServers } from '../socket/events.js';
 
 type PrismaTx = Omit<
@@ -84,10 +85,20 @@ function createAudit(
   action: (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION],
   oldValue?: string,
   newValue?: string,
+  targetKey = `${action}:${ticketId}`,
 ) {
-  return tx.auditLog.create({
-    data: { ticketId, actorId, action, oldValue, newValue },
-  });
+  return auditService.queue(
+    {
+      ticketId,
+      actorId,
+      action,
+      oldValue,
+      newValue,
+      targetKey,
+      immediate: action === AUDIT_ACTION.STATUS_CHANGE,
+    },
+    tx,
+  );
 }
 
 function normalizeAssigneeIds(assigneeIds: number[]): number[] {

@@ -5,6 +5,7 @@ import { isStaffRole } from '../constants/roles.js';
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../utils/errors.js';
 import * as templateService from './template.service.js';
 import * as minecraftHookDeliveryService from './minecraft-hook-delivery.service.js';
+import * as auditService from './audit.service.js';
 
 type HookValue = string | string[];
 
@@ -232,14 +233,16 @@ export async function complete(
       },
     });
     if (result.count !== 1) throw new AppError(409, '完成钩子已处理');
-    await tx.auditLog.create({
-      data: {
+    await auditService.queue(
+      {
         ticketId,
         actorId: userId,
         action: AUDIT_ACTION.COMPLETION_HOOK,
+        targetKey: `completion-hook:${hookId}`,
         newValue: hook.title,
       },
-    });
+      tx,
+    );
     const completed = await tx.ticketCompletionHook.findUniqueOrThrow({
       where: { id: hook.id },
       select: hookViewSelect,
@@ -279,14 +282,16 @@ export async function skip(
       data: { status: 'skipped', completedById: userId, completedAt: new Date() },
     });
     if (updated.count !== 1) throw new AppError(409, '完成钩子已处理');
-    await tx.auditLog.create({
-      data: {
+    await auditService.queue(
+      {
         ticketId,
         actorId: userId,
         action: AUDIT_ACTION.COMPLETION_HOOK_SKIPPED,
+        targetKey: `completion-hook:${hookId}`,
         newValue: hook.title,
       },
-    });
+      tx,
+    );
     return tx.ticketCompletionHook.findUniqueOrThrow({
       where: { id: hookId },
       select: hookViewSelect,
