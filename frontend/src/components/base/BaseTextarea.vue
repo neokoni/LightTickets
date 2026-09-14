@@ -2,6 +2,7 @@
 import { ref, useAttrs } from 'vue';
 import { Icon } from '@iconify/vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
+import BaseSlidingTabs from '@/components/base/BaseSlidingTabs.vue';
 import { t } from '@/i18n';
 import { UPLOAD_TYPES, type FileSelectPayload } from '@/types/upload';
 
@@ -61,15 +62,19 @@ function onFileSelect(e: Event) {
     <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
       {{ label }}<span v-if="required" class="base-field-required" aria-hidden="true">*</span>
     </label>
-    <div v-if="previewable" class="flex border-b border-slate-200 dark:border-slate-700">
+    <BaseSlidingTabs
+      v-if="previewable"
+      :active-key="mode"
+      class="flex border-b border-slate-200 text-slate-900 dark:border-slate-700 dark:text-white"
+    >
       <button
         type="button"
         class="px-3 py-1.5 text-sm font-medium transition"
-        :class="
-          mode === 'write'
-            ? 'text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white -mb-px'
-            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-        "
+        data-sliding-tab="write"
+        :class="{
+          'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300':
+            mode !== 'write',
+        }"
         @click="mode = 'write'"
       >
         {{ t('common.edit') }}
@@ -77,16 +82,16 @@ function onFileSelect(e: Event) {
       <button
         type="button"
         class="px-3 py-1.5 text-sm font-medium transition"
-        :class="
-          mode === 'preview'
-            ? 'text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white -mb-px'
-            : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-        "
+        data-sliding-tab="preview"
+        :class="{
+          'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300':
+            mode !== 'preview',
+        }"
         @click="mode = 'preview'"
       >
         {{ t('common.preview') }}
       </button>
-    </div>
+    </BaseSlidingTabs>
     <div v-if="!previewable || mode === 'write'" class="-m-0.5 p-0.5">
       <textarea
         ref="textareaRef"
