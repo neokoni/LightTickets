@@ -4,6 +4,7 @@ import { createApp } from '../src/app.js';
 import { prisma } from './setup.js';
 import * as attachmentService from '../src/services/attachment.service.js';
 import * as auditService from '../src/services/audit.service.js';
+import { AUDIT_SETTLE_DELAY_MS } from '../src/constants/audit.js';
 
 const app = createApp();
 
@@ -42,7 +43,7 @@ describe('PATCH /api/tickets/:id/comments/:commentId/body', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.data.body).toBe('Edited comment');
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
     await expect(
       prisma().auditLog.findFirst({
         where: { ticketId: ticket.body.data.id, action: 'comment_edit' },

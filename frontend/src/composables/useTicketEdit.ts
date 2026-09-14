@@ -2,6 +2,7 @@ import { ref, computed, nextTick, watch, type Ref, type ComponentPublicInstance 
 import { useTicketsStore } from '@/stores/tickets';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { useMarkdownUpload } from '@/composables/useMarkdownUpload';
+import type { FileSelectPayload } from '@/types/upload';
 import { handleError } from '@/utils/error';
 import { t } from '@/i18n';
 import { diffLines } from 'diff';
@@ -112,7 +113,7 @@ export function useTicketEdit(
     bodyUpload.handlePaste(e, textarea, editBodyValue);
   }
 
-  function onBodyFileSelect(payload: { files: File[]; textarea: HTMLTextAreaElement }) {
+  function onBodyFileSelect(payload: FileSelectPayload) {
     bodyUpload.handleFiles(payload.files, payload.textarea, editBodyValue);
   }
 

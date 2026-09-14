@@ -9,6 +9,7 @@ import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import * as templateService from '../src/services/template.service.js';
 import * as ticketService from '../src/services/ticket.service.js';
 import * as auditService from '../src/services/audit.service.js';
+import { AUDIT_SETTLE_DELAY_MS } from '../src/constants/audit.js';
 
 const app = createApp();
 const optionalTemplateName = 'visibility_optional';
@@ -175,7 +176,7 @@ describe('ticket visibility on web routes', () => {
     expect(adminChange.status).toBe(200);
     expect(adminChange.body.data.hidden).toBe(false);
 
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
 
     const audit = await request(app).get(`/api/tickets/${ticketId}/audit`);
     expect(audit.status).toBe(200);

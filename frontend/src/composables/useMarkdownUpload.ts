@@ -1,8 +1,6 @@
 import { ref } from 'vue';
 import { apiUploadAttachment } from '@/api/attachments';
-
-const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-const UPLOAD_TYPES = [...IMAGE_TYPES, 'application/pdf', 'text/plain'];
+import { IMAGE_TYPES, UPLOAD_TYPES } from '@/types/upload';
 
 export interface PendingFile {
   objectUrl: string;

@@ -5,6 +5,7 @@ import { prisma, serverData } from './setup.js';
 import * as ticketService from '../src/services/ticket.service.js';
 import * as templateService from '../src/services/template.service.js';
 import * as auditService from '../src/services/audit.service.js';
+import { AUDIT_SETTLE_DELAY_MS } from '../src/constants/audit.js';
 
 const app = createApp();
 const selectionTemplateName = 'selection_hook_test';
@@ -665,7 +666,7 @@ describe('PUT /api/tickets/:id/assignees', () => {
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ assigneeIds: [valid.id] });
     expect(initial.status).toBe(200);
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
 
     for (const invalidId of [player.id, 2_000_000_000]) {
       const res = await request(app)
@@ -735,7 +736,7 @@ describe('PUT /api/tickets/:id/assignees', () => {
       .set('Authorization', `Bearer ${actorToken}`)
       .send({ assigneeIds: [admin.id, staff.id] });
     expect(reordered.status).toBe(200);
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
     expect(await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } })).toBe(
       1,
     );
@@ -746,7 +747,7 @@ describe('PUT /api/tickets/:id/assignees', () => {
       .send({ assigneeIds: [] });
     expect(cleared.status).toBe(200);
     expect(cleared.body.data.assignees).toEqual([]);
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
     expect(await prisma().auditLog.count({ where: { ticketId, action: 'assignees_change' } })).toBe(
       2,
     );
@@ -935,7 +936,7 @@ describe('completion hook decisions', () => {
       .set('Authorization', `Bearer ${staffToken}`);
     expect(skipped.status).toBe(200);
     expect(skipped.body.data).toMatchObject({ id: hook.id, status: 'skipped' });
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
 
     const audit = await prisma().auditLog.findFirst({
       where: { ticketId, action: 'completion_hook_skipped' },
@@ -988,7 +989,7 @@ describe('completion hook decisions', () => {
     });
     expect(hiddenHook).toMatchObject({ status: 'pending', visibility: 'staff' });
     const hookId = publicHook.id as string;
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
 
     const pendingAudit = await prisma().auditLog.findFirst({
       where: { ticketId, action: 'completion_hook_pending' },
@@ -1053,7 +1054,7 @@ describe('completion hook decisions', () => {
       .send({ values: { rewards: ['Coins'], note: 'Again' } });
     expect(duplicate.status).toBe(409);
 
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
 
     const audits = await prisma().auditLog.findMany({
       where: { ticketId, action: 'completion_hook' },
@@ -1110,7 +1111,7 @@ describe('completion hook decisions', () => {
       staffView.body.data.completionHooks.map((hook: { status: string }) => hook.status),
     ).toEqual(expect.arrayContaining(['completed', 'pending']));
 
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
 
     const pendingAudits = await prisma().auditLog.count({
       where: { ticketId, action: 'completion_hook_pending' },
@@ -1163,7 +1164,7 @@ describe('POST /api/tickets/:id/labels', () => {
       await prisma().auditLogPending.count({ where: { ticketId: created.body.data.id } }),
     ).toBe(1);
 
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
     expect(
       await prisma().auditLog.count({
         where: { ticketId: created.body.data.id, action: 'label_add' },
@@ -1243,7 +1244,7 @@ describe('DELETE /api/tickets/:id/labels/:labelId', () => {
       .delete(`/api/tickets/${created.body.data.id}/labels/${label.body.data.id}`)
       .set('Authorization', `Bearer ${staffToken}`);
 
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
     expect(await prisma().auditLog.count({ where: { ticketId: created.body.data.id } })).toBe(0);
     expect(
       await prisma().auditLogPending.count({ where: { ticketId: created.body.data.id } }),

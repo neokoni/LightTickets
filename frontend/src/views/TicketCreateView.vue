@@ -14,6 +14,7 @@ import BaseCombobox from '@/components/base/BaseCombobox.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import { t } from '@/i18n';
+import type { FileSelectPayload } from '@/types/upload';
 
 const router = useRouter();
 const ui = useUiStore();
@@ -98,10 +99,7 @@ function onTextareaFilePaste(e: ClipboardEvent, fieldId: string) {
   mdUpload.handlePaste(e, textarea, modelValue);
 }
 
-function onTextareaFileSelect(
-  payload: { files: File[]; textarea: HTMLTextAreaElement },
-  fieldId: string,
-) {
+function onTextareaFileSelect(payload: FileSelectPayload, fieldId: string) {
   const modelValue = {
     get value() {
       return formValues.value[fieldId] || '';

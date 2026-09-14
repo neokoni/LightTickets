@@ -3,6 +3,7 @@ import { ref, useAttrs } from 'vue';
 import { Icon } from '@iconify/vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import { t } from '@/i18n';
+import { UPLOAD_TYPES, type FileSelectPayload } from '@/types/upload';
 
 const model = defineModel<string>();
 const attrs = useAttrs();
@@ -23,7 +24,7 @@ defineProps<{
 const emit = defineEmits<{
   'file-drop': [e: DragEvent];
   'file-paste': [e: ClipboardEvent];
-  'file-select': [{ files: File[]; textarea: HTMLTextAreaElement }];
+  'file-select': [payload: FileSelectPayload];
 }>();
 
 const mode = ref<'write' | 'preview'>('write');
@@ -123,7 +124,7 @@ function onFileSelect(e: Event) {
         class="sr-only"
         tabindex="-1"
         aria-hidden="true"
-        accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain"
+        :accept="UPLOAD_TYPES.join(',')"
         multiple
         @change="onFileSelect"
       />

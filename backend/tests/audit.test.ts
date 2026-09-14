@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import * as auditService from '../src/services/audit.service.js';
+import { AUDIT_SETTLE_DELAY_MS } from '../src/constants/audit.js';
+import { prisma } from './setup.js';
 
 const app = createApp();
 
@@ -38,7 +40,11 @@ describe('GET /api/tickets/:ticketId/audit', () => {
       .post(`/api/tickets/${ticket.body.data.id}/close`)
       .set('Authorization', `Bearer ${token}`);
 
-    await auditService.settlePending(new Date(Date.now() + 16_000));
+    const pendingTitleChange = await prisma().auditLogPending.findFirst({
+      where: { ticketId: ticket.body.data.id, action: 'title_change' },
+    });
+    expect(pendingTitleChange).not.toBeNull();
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
 
     const res = await request(app)
       .get(`/api/tickets/${ticket.body.data.id}/audit`)
@@ -51,6 +57,10 @@ describe('GET /api/tickets/:ticketId/audit', () => {
     const actions = (res.body.data as { action: string }[]).map((log) => log.action);
     expect(actions).toContain('title_change');
     expect(actions).toContain('status_change');
+    const titleAudit = (res.body.data as { action: string; createdAt: string }[]).find(
+      (log) => log.action === 'title_change',
+    );
+    expect(titleAudit?.createdAt).toBe(pendingTitleChange?.createdAt.toISOString());
   });
 
   it('returns empty array for ticket with no audit events', async () => {

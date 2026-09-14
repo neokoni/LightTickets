@@ -1,5 +1,6 @@
 import { ref, watch, nextTick, unref, type ComponentPublicInstance, type Ref } from 'vue';
 import { useMarkdownUpload } from '@/composables/useMarkdownUpload';
+import type { FileSelectPayload } from '@/types/upload';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { renderTicketRefs } from '@/utils/ticketRef';
 import { handleError } from '@/utils/error';
@@ -168,7 +169,7 @@ export function useTicketComments(
     mdUpload.handlePaste(e, textarea, newComment);
   }
 
-  function onCommentFileSelect(payload: { files: File[]; textarea: HTMLTextAreaElement }) {
+  function onCommentFileSelect(payload: FileSelectPayload) {
     mdUpload.handleFiles(payload.files, payload.textarea, newComment);
   }
 
@@ -182,7 +183,7 @@ export function useTicketComments(
     if (textarea) editCommentUpload.handlePaste(e, textarea, editCommentValue);
   }
 
-  function onEditCommentFileSelect(payload: { files: File[]; textarea: HTMLTextAreaElement }) {
+  function onEditCommentFileSelect(payload: FileSelectPayload) {
     editCommentUpload.handleFiles(payload.files, payload.textarea, editCommentValue);
   }
 
