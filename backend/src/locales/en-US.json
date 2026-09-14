@@ -347,6 +347,7 @@
       "actions": "Actions",
       "addFailed": "Add failed",
       "addressOptional": "Address",
+      "attachmentUploadHint": "Paste, drop, or click to add files",
       "cancel": "Cancel",
       "clear": "Clear",
       "color": "Color",

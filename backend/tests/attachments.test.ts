@@ -83,6 +83,27 @@ describe('POST /api/attachments/upload', () => {
     expect(fs.existsSync(filePath)).toBe(true);
   });
 
+  it('attaches a valid image to an existing comment', async () => {
+    const token = await createUserAndGetToken('upload-comment@test.com');
+    const ticket = await createTicket(token);
+    const comment = await request(app)
+      .post(`/api/tickets/${ticket.body.data.id}/comments`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ body: 'comment with attachment' });
+
+    const res = await request(app)
+      .post('/api/attachments/upload')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('file', PNG_1x1, 'comment.png')
+      .field('commentId', comment.body.data.id);
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.commentId).toBe(comment.body.data.id);
+    expect(res.body.data.ticketId).toBeNull();
+    expect(res.body.data.status).toBe('attached');
+    expect(res.body.data.expiresAt).toBeNull();
+  });
+
   it('rejects disallowed MIME type with 400', async () => {
     const token = await createUserAndGetToken('upload-bad-mime@test.com');
 

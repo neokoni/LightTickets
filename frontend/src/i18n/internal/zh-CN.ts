@@ -356,6 +356,7 @@ const nestedMessages: Record<string, unknown> = {
     actions: '操作',
     addFailed: '添加失败',
     addressOptional: '地址',
+    attachmentUploadHint: '粘贴、拖拽或点击添加附件',
     cancel: '取消',
     clear: '清除',
     color: '颜色',

@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { ref, useAttrs } from 'vue';
+import { Icon } from '@iconify/vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import { t } from '@/i18n';
 
 const model = defineModel<string>();
 const attrs = useAttrs();
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const isDragging = ref(false);
 
 defineProps<{
   label?: string;
@@ -19,20 +23,35 @@ defineProps<{
 const emit = defineEmits<{
   'file-drop': [e: DragEvent];
   'file-paste': [e: ClipboardEvent];
+  'file-select': [{ files: File[]; textarea: HTMLTextAreaElement }];
 }>();
 
 const mode = ref<'write' | 'preview'>('write');
 
 function onDragover(e: DragEvent) {
   e.preventDefault();
+  isDragging.value = true;
+}
+
+function onDragleave() {
+  isDragging.value = false;
 }
 
 function onDrop(e: DragEvent) {
+  isDragging.value = false;
   emit('file-drop', e);
 }
 
 function onPaste(e: ClipboardEvent) {
   emit('file-paste', e);
+}
+
+function onFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement;
+  if (input.files?.length && textareaRef.value) {
+    emit('file-select', { files: Array.from(input.files), textarea: textareaRef.value });
+  }
+  input.value = '';
 }
 </script>
 
@@ -69,14 +88,20 @@ function onPaste(e: ClipboardEvent) {
     </div>
     <div v-if="!previewable || mode === 'write'" class="-m-0.5 p-0.5">
       <textarea
+        ref="textareaRef"
         v-model="model"
         v-bind="attrs"
         :placeholder="placeholder"
         :rows="rows || 4"
         :required="required"
         class="w-full px-3 py-2 text-sm !rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-slate-900/25 focus:border-slate-500 dark:focus:ring-slate-100/25 dark:focus:border-slate-500 resize-y transition"
-        :class="{ 'border-red-400 dark:border-red-500': error }"
+        :class="[
+          { 'border-red-400 dark:border-red-500': error },
+          isDragging &&
+            '!border-slate-500 dark:!border-slate-400 ring-2 ring-slate-900/15 dark:ring-slate-100/15',
+        ]"
         @dragover="uploadable ? onDragover($event) : undefined"
+        @dragleave="uploadable ? onDragleave() : undefined"
         @drop="uploadable ? onDrop($event) : undefined"
         @paste="uploadable ? onPaste($event) : undefined"
       />
@@ -91,6 +116,26 @@ function onPaste(e: ClipboardEvent) {
         {{ t('common.noPreviewContent') }}
       </p>
     </div>
+    <template v-if="uploadable && (!previewable || mode === 'write')">
+      <input
+        ref="fileInputRef"
+        type="file"
+        class="sr-only"
+        tabindex="-1"
+        aria-hidden="true"
+        accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain"
+        multiple
+        @change="onFileSelect"
+      />
+      <button
+        type="button"
+        class="inline-flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition"
+        @click="fileInputRef?.click()"
+      >
+        <Icon icon="lucide:paperclip" class="h-3.5 w-3.5" aria-hidden="true" />
+        {{ t('common.attachmentUploadHint') }}
+      </button>
+    </template>
     <p v-if="error" class="text-xs text-red-500">{{ error }}</p>
   </div>
 </template>

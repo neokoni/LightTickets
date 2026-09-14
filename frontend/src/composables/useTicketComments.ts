@@ -17,6 +17,7 @@ export function useTicketComments(
   const newComment = ref('');
   const submitting = ref(false);
   const mdUpload = useMarkdownUpload();
+  const editCommentUpload = useMarkdownUpload();
 
   const editingCommentId = ref<string | null>(null);
   const editCommentValue = ref('');
@@ -42,7 +43,8 @@ export function useTicketComments(
     const id = unref(ticketId);
     let body = newComment.value;
     if (mdUpload.pendingFiles.value.size > 0) {
-      body = await mdUpload.uploadAndReplace(body, id);
+      body = await mdUpload.uploadAndReplace(body, { ticketId: id });
+      newComment.value = body;
     }
     const comment = await apiCreateComment(id, body);
     commentRawBodies.value[comment.id] = comment.body;
@@ -70,17 +72,19 @@ export function useTicketComments(
   function cancelEditComment() {
     editingCommentId.value = null;
     editCommentValue.value = '';
+    editCommentUpload.cleanup();
   }
 
   async function saveEditComment(commentId: string) {
     if (!editCommentValue.value.trim()) return;
     savingComment.value = true;
     try {
-      const updated = await apiUpdateCommentBody(
-        unref(ticketId),
-        commentId,
-        editCommentValue.value,
-      );
+      let body = editCommentValue.value;
+      if (editCommentUpload.pendingFiles.value.size > 0) {
+        body = await editCommentUpload.uploadAndReplace(body, { commentId });
+        editCommentValue.value = body;
+      }
+      const updated = await apiUpdateCommentBody(unref(ticketId), commentId, body);
       const idx = comments.value.findIndex((c) => c.id === commentId);
       if (idx !== -1) {
         comments.value[idx] = { ...updated, body: renderTicketRefs(updated.body) };
@@ -143,6 +147,7 @@ export function useTicketComments(
     newComment.value = '';
     editingCommentId.value = null;
     editCommentValue.value = '';
+    editCommentUpload.cleanup();
     commentRawBodies.value = {};
     mdUpload.cleanup();
   }
@@ -163,8 +168,29 @@ export function useTicketComments(
     mdUpload.handlePaste(e, textarea, newComment);
   }
 
+  function onCommentFileSelect(payload: { files: File[]; textarea: HTMLTextAreaElement }) {
+    mdUpload.handleFiles(payload.files, payload.textarea, newComment);
+  }
+
+  function onEditCommentFileDrop(e: DragEvent) {
+    const textarea = e.target instanceof HTMLTextAreaElement ? e.target : null;
+    if (textarea) editCommentUpload.handleDrop(e, textarea, editCommentValue);
+  }
+
+  function onEditCommentFilePaste(e: ClipboardEvent) {
+    const textarea = e.target instanceof HTMLTextAreaElement ? e.target : null;
+    if (textarea) editCommentUpload.handlePaste(e, textarea, editCommentValue);
+  }
+
+  function onEditCommentFileSelect(payload: { files: File[]; textarea: HTMLTextAreaElement }) {
+    editCommentUpload.handleFiles(payload.files, payload.textarea, editCommentValue);
+  }
+
   watch(newComment, (val) => {
     mdUpload.syncPending(val);
+  });
+  watch(editCommentValue, (val) => {
+    editCommentUpload.syncPending(val);
   });
 
   return {
@@ -172,6 +198,7 @@ export function useTicketComments(
     newComment,
     submitting,
     mdUpload,
+    editCommentUpload,
     editingCommentId,
     editCommentValue,
     savingComment,
@@ -188,5 +215,9 @@ export function useTicketComments(
     scrollToComment,
     onCommentFileDrop,
     onCommentFilePaste,
+    onCommentFileSelect,
+    onEditCommentFileDrop,
+    onEditCommentFilePaste,
+    onEditCommentFileSelect,
   };
 }

@@ -2,6 +2,7 @@ import { ref } from 'vue';
 import { apiUploadAttachment } from '@/api/attachments';
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const UPLOAD_TYPES = [...IMAGE_TYPES, 'application/pdf', 'text/plain'];
 
 export interface PendingFile {
   objectUrl: string;
@@ -12,8 +13,8 @@ export function useMarkdownUpload() {
   const pendingFiles = ref<Map<string, File>>(new Map());
   const isDragging = ref(false);
 
-  function filterImageFiles(files: FileList | File[]): File[] {
-    return Array.from(files).filter((f) => IMAGE_TYPES.includes(f.type));
+  function filterUploadFiles(files: FileList | File[]): File[] {
+    return Array.from(files).filter((f) => UPLOAD_TYPES.includes(f.type));
   }
 
   function insertAtCursor(
@@ -33,21 +34,27 @@ export function useMarkdownUpload() {
     }, 0);
   }
 
+  function addFiles(
+    files: FileList | File[],
+    textarea: HTMLTextAreaElement,
+    modelValue: { value: string },
+  ) {
+    const uploadFiles = filterUploadFiles(files);
+    if (uploadFiles.length === 0) return;
+    const parts: string[] = [];
+    for (const file of uploadFiles) {
+      const url = URL.createObjectURL(file);
+      pendingFiles.value.set(url, file);
+      const label = file.name.replace(/[\\[\]]/g, '\\$&');
+      parts.push(IMAGE_TYPES.includes(file.type) ? `![](${url})` : `[${label}](${url})`);
+    }
+    insertAtCursor(textarea, parts.join('\n'), modelValue);
+  }
+
   function handleDrop(e: DragEvent, textarea: HTMLTextAreaElement, modelValue: { value: string }) {
     e.preventDefault();
     isDragging.value = false;
-    if (!e.dataTransfer?.files) return;
-
-    const images = filterImageFiles(e.dataTransfer.files);
-    if (images.length === 0) return;
-
-    const parts: string[] = [];
-    for (const file of images) {
-      const url = URL.createObjectURL(file);
-      pendingFiles.value.set(url, file);
-      parts.push(`![](${url})`);
-    }
-    insertAtCursor(textarea, parts.join('\n'), modelValue);
+    if (e.dataTransfer?.files) addFiles(e.dataTransfer.files, textarea, modelValue);
   }
 
   function handlePaste(
@@ -57,17 +64,11 @@ export function useMarkdownUpload() {
   ) {
     if (!e.clipboardData?.files?.length) return;
 
-    const images = filterImageFiles(e.clipboardData.files);
-    if (images.length === 0) return;
+    const files = filterUploadFiles(e.clipboardData.files);
+    if (files.length === 0) return;
 
     e.preventDefault();
-    const parts: string[] = [];
-    for (const file of images) {
-      const url = URL.createObjectURL(file);
-      pendingFiles.value.set(url, file);
-      parts.push(`![](${url})`);
-    }
-    insertAtCursor(textarea, parts.join('\n'), modelValue);
+    addFiles(files, textarea, modelValue);
   }
 
   function removePending(objectUrl: string) {
@@ -77,14 +78,14 @@ export function useMarkdownUpload() {
 
   async function uploadAndReplace(
     text: string,
-    ticketId?: number,
+    target?: { ticketId?: number; commentId?: string },
     onUploaded?: (attachmentId: string) => void,
   ): Promise<string> {
     let result = text;
     const entries = Array.from(pendingFiles.value.entries());
 
     const uploads = entries.map(async ([objectUrl, file]) => {
-      const attachment = await apiUploadAttachment(file, ticketId ? { ticketId } : undefined);
+      const attachment = await apiUploadAttachment(file, target);
       onUploaded?.(attachment.id);
       result = result.replaceAll(objectUrl, `/api/attachments/${attachment.id}`);
       URL.revokeObjectURL(objectUrl);
@@ -114,6 +115,7 @@ export function useMarkdownUpload() {
   return {
     pendingFiles,
     isDragging,
+    handleFiles: addFiles,
     handleDrop,
     handlePaste,
     removePending,

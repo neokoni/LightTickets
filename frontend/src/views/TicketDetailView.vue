@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, computed, nextTick, type ComponentPublicInstance } from 'vue';
+import {
+  ref,
+  watch,
+  onMounted,
+  onUnmounted,
+  computed,
+  nextTick,
+  type ComponentPublicInstance,
+} from 'vue';
 import { useRoute } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { useTicketsStore } from '@/stores/tickets';
@@ -120,6 +128,11 @@ const {
   scrollToComment,
   onCommentFileDrop,
   onCommentFilePaste,
+  onCommentFileSelect,
+  editCommentUpload,
+  onEditCommentFileDrop,
+  onEditCommentFilePaste,
+  onEditCommentFileSelect,
 } = commentsComposable;
 
 const {
@@ -158,6 +171,7 @@ const {
   toggleDiff,
   onBodyFileDrop,
   onBodyFilePaste,
+  onBodyFileSelect,
 } = useTicketEdit(ticket, () => fetchAuditLogs(), titleInputRef, bodyTextareaRef);
 
 const statusOptions = computed<{ key: TicketStatus; label: string; icon: string; color: string }[]>(
@@ -276,6 +290,11 @@ onMounted(() => {
   if (!labels.loaded) labels.fetchList().catch(() => {});
 });
 
+onUnmounted(() => {
+  resetComments();
+  resetEditing();
+});
+
 usePolling(async () => {
   if (!Number.isFinite(ticketId.value) || notFound.value) return;
   await Promise.all([store.fetchDetail(ticketId.value), fetchComments(), fetchAuditLogs()]);
@@ -380,6 +399,7 @@ watch(
               previewable
               @file-drop="onBodyFileDrop"
               @file-paste="onBodyFilePaste"
+              @file-select="onBodyFileSelect"
             />
             <div v-if="bodyUpload.pendingFiles.value.size > 0" class="flex flex-wrap gap-2">
               <div
@@ -481,7 +501,37 @@ watch(
                   <MarkdownRenderer :content="item.body" />
                 </div>
                 <div v-else class="mt-2 space-y-2">
-                  <BaseTextarea v-model="editCommentValue" :rows="4" uploadable previewable />
+                  <BaseTextarea
+                    v-model="editCommentValue"
+                    :rows="4"
+                    uploadable
+                    previewable
+                    @file-drop="onEditCommentFileDrop"
+                    @file-paste="onEditCommentFilePaste"
+                    @file-select="onEditCommentFileSelect"
+                  />
+                  <div
+                    v-if="editCommentUpload.pendingFiles.value.size > 0"
+                    class="flex flex-wrap gap-2"
+                  >
+                    <div
+                      v-for="[url, file] in editCommentUpload.pendingFiles.value"
+                      :key="url"
+                      class="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                    >
+                      <Icon icon="lucide:paperclip" class="w-3 h-3 text-slate-400" />
+                      <span class="text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{{
+                        file.name
+                      }}</span>
+                      <BaseButton
+                        type="button"
+                        :class="tinyIconButtonClass"
+                        @click="editCommentUpload.removePending(url)"
+                      >
+                        <Icon icon="lucide:x" class="w-3 h-3" />
+                      </BaseButton>
+                    </div>
+                  </div>
                   <div class="flex justify-end gap-2">
                     <BaseButton
                       size="sm"
@@ -646,6 +696,7 @@ watch(
               previewable
               @file-drop="onCommentFileDrop"
               @file-paste="onCommentFilePaste"
+              @file-select="onCommentFileSelect"
             />
             <div v-if="mdUpload.pendingFiles.value.size > 0" class="flex flex-wrap gap-2">
               <div

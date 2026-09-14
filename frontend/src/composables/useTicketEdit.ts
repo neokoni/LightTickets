@@ -63,7 +63,8 @@ export function useTicketEdit(
     try {
       let body = editBodyValue.value;
       if (bodyUpload.pendingFiles.value.size > 0) {
-        body = await bodyUpload.uploadAndReplace(body, ticket.value.id);
+        body = await bodyUpload.uploadAndReplace(body, { ticketId: ticket.value.id });
+        editBodyValue.value = body;
       }
       await store.updateBody(ticket.value.id, body);
       editingBody.value = false;
@@ -111,6 +112,10 @@ export function useTicketEdit(
     bodyUpload.handlePaste(e, textarea, editBodyValue);
   }
 
+  function onBodyFileSelect(payload: { files: File[]; textarea: HTMLTextAreaElement }) {
+    bodyUpload.handleFiles(payload.files, payload.textarea, editBodyValue);
+  }
+
   watch(editBodyValue, (val) => {
     bodyUpload.syncPending(val);
   });
@@ -133,5 +138,6 @@ export function useTicketEdit(
     toggleDiff,
     onBodyFileDrop,
     onBodyFilePaste,
+    onBodyFileSelect,
   };
 }

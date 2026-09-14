@@ -98,6 +98,21 @@ function onTextareaFilePaste(e: ClipboardEvent, fieldId: string) {
   mdUpload.handlePaste(e, textarea, modelValue);
 }
 
+function onTextareaFileSelect(
+  payload: { files: File[]; textarea: HTMLTextAreaElement },
+  fieldId: string,
+) {
+  const modelValue = {
+    get value() {
+      return formValues.value[fieldId] || '';
+    },
+    set value(v: string) {
+      setFieldValue(fieldId, v);
+    },
+  };
+  mdUpload.handleFiles(payload.files, payload.textarea, modelValue);
+}
+
 async function submit() {
   if (!selectedTemplateName.value || !title.value.trim()) return;
   error.value = '';
@@ -112,6 +127,7 @@ async function submit() {
         (attachmentId) => attachmentIds.push(attachmentId),
       );
       submittedFormData = JSON.parse(replaced) as Record<string, string>;
+      formValues.value = submittedFormData;
     }
 
     const ticket = await apiCreateTicket({
@@ -222,6 +238,7 @@ async function submit() {
           @update:model-value="setFieldValue(field.id || '', $event || '')"
           @file-drop="onTextareaFileDrop($event, field.id || '')"
           @file-paste="onTextareaFilePaste($event, field.id || '')"
+          @file-select="onTextareaFileSelect($event, field.id || '')"
         />
 
         <!-- checkboxes -->
