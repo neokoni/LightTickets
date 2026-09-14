@@ -211,6 +211,17 @@ watch(
   text-underline-offset: 2px;
 }
 
+.markdown-body :deep(h1),
+.markdown-body :deep(h2) {
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid rgb(203 213 225 / 0.85);
+}
+
+.dark .markdown-body :deep(h1),
+.dark .markdown-body :deep(h2) {
+  border-bottom-color: rgb(71 85 105 / 0.85);
+}
+
 .markdown-body-compact :deep(p) {
   margin-top: 0.25rem;
   margin-bottom: 0.25rem;
