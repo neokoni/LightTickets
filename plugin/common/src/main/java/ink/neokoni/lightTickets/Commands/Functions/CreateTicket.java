@@ -270,6 +270,14 @@ public class CreateTicket {
                 if (field.getId() == null) continue;
                 String label = field.getLabel() != null ? field.getLabel() : field.getId();
                 String value = formData.getOrDefault(field.getId(), "");
+                if (field.isSelectType() && !value.isEmpty()) {
+                    String selectedValue = value;
+                    value = field.getOptions().stream()
+                            .filter(option -> option.getValue().equals(selectedValue))
+                            .map(TemplateOption::getLabel)
+                            .findFirst()
+                            .orElse(selectedValue);
+                }
                 if (sb.length() > 0) sb.append("\n\n---\n\n");
                 if ("textarea".equals(field.getType())) {
                     sb.append("**").append(label).append(":**\n\n").append(value);

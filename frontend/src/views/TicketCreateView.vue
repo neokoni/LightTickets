@@ -14,6 +14,7 @@ import BaseCombobox from '@/components/base/BaseCombobox.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import { t } from '@/i18n';
+import { parseTemplateOption } from '@/utils/template-options';
 import type { FileSelectPayload } from '@/types/upload';
 
 const router = useRouter();
@@ -282,8 +283,7 @@ async function submit() {
           :model-value="formValues[field.id || ''] || ''"
           :options="
             (field.attributes.options || []).map((opt) => ({
-              value: typeof opt === 'string' ? opt : opt.label,
-              label: typeof opt === 'string' ? opt : opt.label,
+              ...parseTemplateOption(opt),
             }))
           "
           @update:model-value="setFieldValue(field.id || '', $event || '')"

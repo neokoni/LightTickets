@@ -92,8 +92,16 @@ function validateResponse(
     const text = value ?? '';
     if (text.length > 2000) throw new ValidationError(`${field.attributes.label} 内容过长`);
     if (required && !text.trim()) throw new ValidationError(`${field.attributes.label} 为必填项`);
-    if (field.type === 'dropdown' && text && !optionLabels(field).includes(text)) {
-      throw new ValidationError(`${field.attributes.label} 包含无效选项`);
+    if (field.type === 'dropdown' && text) {
+      const normalizedValue = templateService.normalizeDropdownValue(
+        field.attributes.options,
+        text,
+      );
+      if (normalizedValue === undefined) {
+        throw new ValidationError(`${field.attributes.label} 包含无效选项`);
+      }
+      normalized[field.id] = normalizedValue;
+      continue;
     }
     normalized[field.id] = text;
   }

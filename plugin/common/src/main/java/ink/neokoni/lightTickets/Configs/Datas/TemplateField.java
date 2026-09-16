@@ -30,7 +30,7 @@ public class TemplateField {
         this.options = options == null ? new java.util.ArrayList<>() : options.stream()
                 .map(option -> option instanceof TemplateOption templateOption
                         ? templateOption
-                        : new TemplateOption(String.valueOf(option), false))
+                        : new TemplateOption(String.valueOf(option), false, "dropdown".equals(type)))
                 .toList();
     }
 

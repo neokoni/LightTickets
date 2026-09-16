@@ -787,7 +787,7 @@ export interface paths {
           'application/json': {
             title: string;
             template: string;
-            /** @description Fields declared by the selected template; unknown and invalid values are rejected */
+            /** @description Fields declared by the selected template. Dropdowns submit their actual value; a legacy full label|value option is accepted and normalized. */
             formData: {
               [key: string]: string;
             };
@@ -1218,6 +1218,7 @@ export interface paths {
       requestBody: {
         content: {
           'application/json': {
+            /** @description Values declared by the completion hook. Dropdowns submit their actual value; a legacy full label|value option is accepted and normalized. */
             values: {
               [key: string]: string | string[];
             };
@@ -2955,6 +2956,7 @@ export interface paths {
             title: string;
             body: string;
             template: string;
+            /** @description Fields declared by the selected template. Dropdowns submit their actual value; a legacy full label|value option is accepted and normalized. */
             formData?: {
               [key: string]: string;
             };

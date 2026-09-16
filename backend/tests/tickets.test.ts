@@ -55,6 +55,14 @@ beforeAll(async () => {
               options: ['Approved', 'Rejected'],
             },
           },
+          {
+            type: 'dropdown',
+            id: 'outcome',
+            attributes: {
+              label: 'Outcome',
+              options: ['Approved|outcome.approved', 'Rejected'],
+            },
+          },
         ],
         actions: [
           {
@@ -77,7 +85,10 @@ beforeAll(async () => {
             type: 'dropdown',
             id: 'internal_result',
             validations: { required: true },
-            attributes: { label: 'Internal result', options: ['Accepted', 'Rejected'] },
+            attributes: {
+              label: 'Internal result',
+              options: ['Accepted|internal.accepted', 'Rejected'],
+            },
           },
         ],
         actions: [
@@ -1016,6 +1027,7 @@ describe('completion hook decisions', () => {
           rewards: ['Coins', 'Items'],
           note: 'Granted',
           resolution: 'Needs follow-up',
+          outcome: 'Approved|outcome.approved',
         },
       });
     expect(completed.status).toBe(200);
@@ -1026,6 +1038,7 @@ describe('completion hook decisions', () => {
         rewards: ['Coins', 'Items'],
         note: 'Granted',
         resolution: 'Needs follow-up',
+        outcome: 'outcome.approved',
       },
     });
     expect(completed.body.data.completedBy.username).toBe('hook-staff');
@@ -1039,11 +1052,18 @@ describe('completion hook decisions', () => {
       visibility: 'public',
     });
 
-    const hiddenCompleted = await request(app)
+    const invalidDisplayValue = await request(app)
       .post(`/api/tickets/${ticketId}/completion-hooks/${hiddenHook.id}/complete`)
       .set('Authorization', `Bearer ${staffToken}`)
       .send({ values: { internal_result: 'Accepted' } });
+    expect(invalidDisplayValue.status).toBe(400);
+
+    const hiddenCompleted = await request(app)
+      .post(`/api/tickets/${ticketId}/completion-hooks/${hiddenHook.id}/complete`)
+      .set('Authorization', `Bearer ${staffToken}`)
+      .send({ values: { internal_result: 'internal.accepted' } });
     expect(hiddenCompleted.status).toBe(200);
+    expect(hiddenCompleted.body.data.response.internal_result).toBe('internal.accepted');
 
     const publicAfterHiddenCompletion = await request(app).get(`/api/tickets/${ticketId}`);
     expect(publicAfterHiddenCompletion.body.data.completionHooks).toHaveLength(1);

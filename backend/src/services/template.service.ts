@@ -18,8 +18,41 @@ export interface TemplateField {
     description?: string;
     placeholder?: string;
     value?: string;
-    options?: string[] | { label: string; required?: boolean }[];
+    options?: TemplateOption[];
   };
+}
+
+export type TemplateOption = string | { label: string; required?: boolean };
+
+export interface ParsedTemplateOption {
+  label: string;
+  value: string;
+}
+
+function templateOptionRawLabel(option: unknown): string {
+  if (typeof option === 'string') return option;
+  return String((isRecord(option) ? option.label : undefined) ?? '');
+}
+
+export function parseTemplateOption(option: unknown): ParsedTemplateOption {
+  const rawLabel = templateOptionRawLabel(option);
+  const separator = rawLabel.indexOf('|');
+  return {
+    label: separator >= 0 ? rawLabel.slice(0, separator) : rawLabel,
+    value: separator >= 0 ? rawLabel.slice(separator + 1) : rawLabel,
+  };
+}
+
+export function normalizeDropdownValue(
+  options: TemplateOption[] | undefined,
+  submitted: string,
+): string | undefined {
+  const candidates = options ?? [];
+  if (candidates.some((option) => parseTemplateOption(option).value === submitted)) {
+    return submitted;
+  }
+  const exact = candidates.find((option) => templateOptionRawLabel(option) === submitted);
+  return exact ? parseTemplateOption(exact).value : undefined;
 }
 
 export interface CompletionHook {
@@ -43,7 +76,7 @@ export interface SelectionHookField {
     label: string;
     description?: string;
     placeholder?: string;
-    options?: string[] | { label: string; required?: boolean }[];
+    options?: TemplateOption[];
   };
 }
 
@@ -192,12 +225,66 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
-function assertValidTemplateBody(value: unknown[]): asserts value is TemplateField[] {
+function isValidTemplateOption(value: unknown): value is TemplateOption {
+  return (
+    (typeof value === 'string' && value.length > 0) ||
+    (isRecord(value) && typeof value.label === 'string' && value.label.length > 0)
+  );
+}
+
+function hasValidChoiceOptions(
+  type: unknown,
+  options: unknown,
+  validateOptions = true,
+): options is TemplateOption[] {
+  if (!validateOptions) return true;
+
+  const optionsRequired = type !== 'select_input';
+  if (options === undefined) return !optionsRequired;
+  if (!Array.isArray(options)) return false;
+  if (options.length === 0) return !optionsRequired;
+  if (!options.every(isValidTemplateOption)) {
+    return false;
+  }
+  if (type !== 'dropdown') return true;
+
+  const parsed = options.map(parseTemplateOption);
+  const rawLabels = options.map(templateOptionRawLabel);
+  return (
+    parsed.every((option) => option.label.length > 0 && option.value.length > 0) &&
+    new Set(parsed.map((option) => option.label)).size === parsed.length &&
+    new Set(parsed.map((option) => option.value)).size === parsed.length &&
+    new Set(rawLabels).size === rawLabels.length &&
+    parsed.every((option, index) =>
+      rawLabels.every((rawLabel, rawIndex) => index === rawIndex || option.value !== rawLabel),
+    )
+  );
+}
+
+function assertValidTemplateBody(
+  value: unknown[],
+  validateOptions = false,
+): asserts value is TemplateField[] {
   for (const field of value) {
     if (!isRecord(field)) throw new ValidationError('body 字段包含无效的模板字段');
+    if (
+      !['markdown', 'input', 'textarea', 'checkboxes', 'dropdown', 'select_input'].includes(
+        String(field.type),
+      )
+    ) {
+      throw new ValidationError('body 字段包含无效的模板字段');
+    }
+    const attributes = isRecord(field.attributes) ? field.attributes : {};
+    field.attributes = attributes;
     if (field.type === 'markdown') continue;
     if (typeof field.id !== 'string' || !field.id.trim()) {
       throw new ValidationError('body 中非 markdown 字段必须提供 id');
+    }
+    if (
+      (field.type === 'checkboxes' || field.type === 'dropdown' || field.type === 'select_input') &&
+      !hasValidChoiceOptions(field.type, attributes.options, validateOptions)
+    ) {
+      throw new ValidationError('body 中选择字段必须提供有效且无歧义的 options');
     }
   }
 }
@@ -217,7 +304,10 @@ function assertValidHookAction(value: unknown): asserts value is CompletionHookA
   if (!hasMessage && !hasMessages) throw new Error('minimessage action requires messages');
 }
 
-function assertValidSelectionField(value: unknown): asserts value is SelectionHookField {
+function assertValidSelectionField(
+  value: unknown,
+  validateOptions = true,
+): asserts value is SelectionHookField {
   if (
     !isRecord(value) ||
     !['input', 'textarea', 'checkboxes', 'dropdown', 'select_input'].includes(String(value.type)) ||
@@ -230,22 +320,13 @@ function assertValidSelectionField(value: unknown): asserts value is SelectionHo
     throw new Error('invalid selection hook field');
   }
   if (value.type === 'checkboxes' || value.type === 'dropdown' || value.type === 'select_input') {
-    const options = value.attributes.options;
-    if (
-      !Array.isArray(options) ||
-      options.length === 0 ||
-      !options.every(
-        (option) =>
-          (typeof option === 'string' && option.length > 0) ||
-          (isRecord(option) && typeof option.label === 'string' && option.label.length > 0),
-      )
-    ) {
+    if (!hasValidChoiceOptions(value.type, value.attributes.options, validateOptions)) {
       throw new Error('selection hook choice field requires options');
     }
   }
 }
 
-function assertValidCompletionHooks(value: CompletionHook[]): void {
+function assertValidCompletionHooks(value: CompletionHook[], validateOptions = true): void {
   for (const hook of value) {
     // Existing command/minimessage hooks historically accepted loose YAML. Keep
     // that compatibility and apply strict validation only to the new type.
@@ -274,7 +355,7 @@ function assertValidCompletionHooks(value: CompletionHook[]): void {
     ) {
       throw new Error('selection hook requires title, fields, and actions');
     }
-    hook.fields.forEach(assertValidSelectionField);
+    hook.fields.forEach((field) => assertValidSelectionField(field, validateOptions));
     if (new Set(hook.fields.map((field) => field.id)).size !== hook.fields.length) {
       throw new Error('selection hook field ids must be unique');
     }
@@ -305,8 +386,8 @@ function parseTemplateSource(raw: string): TemplateDefinition {
   }
 
   const completionHooks = Array.isArray(def.completion_hooks) ? def.completion_hooks : [];
-  assertValidTemplateBody(def.body);
-  assertValidCompletionHooks(completionHooks);
+  assertValidTemplateBody(def.body, false);
+  assertValidCompletionHooks(completionHooks, false);
 
   return {
     name: def.name,
@@ -323,8 +404,14 @@ function parseTemplateSource(raw: string): TemplateDefinition {
 function writeTemplateSource(name: string, source: string): void {
   assertValidTemplateName(name);
   try {
-    parseTemplateSource(source);
-  } catch {
+    const definition = parseTemplateSource(source);
+    assertValidTemplateBody(definition.body, true);
+    assertValidCompletionHooks(definition.completion_hooks, true);
+  } catch (error) {
+    if (error instanceof ValidationError) throw error;
+    if (error instanceof Error && error.name !== 'YAMLException') {
+      throw new ValidationError(error.message);
+    }
     throw new ValidationError('模板原文不是有效的 YAML 模板');
   }
   fs.mkdirSync(dataTemplatesDir, { recursive: true });
@@ -428,10 +515,19 @@ export function getAdminDefinition(name: string): TemplateDefinition | undefined
   return cache.get(name)?.definition;
 }
 
-function fieldOptionLabels(field: TemplateField): string[] {
+function checkboxOptionLabels(field: TemplateField): string[] {
   return (field.attributes.options ?? []).map((option) =>
     typeof option === 'string' ? option : option.label,
   );
+}
+
+function fieldOptionDisplayLabel(field: TemplateField, value: string): string {
+  if (!value) return value;
+  const options = field.attributes.options ?? [];
+  const option =
+    options.find((candidate) => parseTemplateOption(candidate).value === value) ??
+    options.find((candidate) => templateOptionRawLabel(candidate) === value);
+  return option ? parseTemplateOption(option).label : value;
 }
 
 export function validateAndNormalizeFormData(
@@ -462,7 +558,7 @@ export function validateAndNormalizeFormData(
             .filter(Boolean),
         ),
       );
-      const allowed = fieldOptionLabels(field);
+      const allowed = checkboxOptionLabels(field);
       if (selected.some((value) => !allowed.includes(value))) {
         throw new ValidationError(`${label} 包含无效选项`);
       }
@@ -478,8 +574,11 @@ export function validateAndNormalizeFormData(
     }
 
     if (required && !raw.trim()) throw new ValidationError(`${label} 为必填项`);
-    if (field.type === 'dropdown' && raw && !fieldOptionLabels(field).includes(raw)) {
-      throw new ValidationError(`${label} 包含无效选项`);
+    if (field.type === 'dropdown' && raw) {
+      const value = normalizeDropdownValue(field.attributes.options, raw);
+      if (value === undefined) throw new ValidationError(`${label} 包含无效选项`);
+      normalized[field.id] = value;
+      continue;
     }
     normalized[field.id] = raw;
   }
@@ -502,7 +601,9 @@ export function renderBody(def: TemplateDefinition, formData: Record<string, str
       const label = field.attributes.label || field.id;
       const value = formData[field.id] || '';
       if (field.type === 'input' || field.type === 'dropdown' || field.type === 'select_input') {
-        parts.push(`**${label}:** ${value}`);
+        parts.push(
+          `**${label}:** ${field.type === 'dropdown' ? fieldOptionDisplayLabel(field, value) : value}`,
+        );
       } else if (field.type === 'textarea') {
         parts.push(`**${label}:**\n\n${value}`);
       }
@@ -678,13 +779,13 @@ function writeTemplateFile(
 
   const bodyParsed = parseYamlField(data.body, 'body');
   if (!Array.isArray(bodyParsed)) throw new ValidationError('body 字段必须是 YAML 数组');
-  assertValidTemplateBody(bodyParsed);
+  assertValidTemplateBody(bodyParsed, true);
 
   const hooksParsed = parseYamlField(data.completionHooks || '[]', 'completionHooks');
   if (!Array.isArray(hooksParsed))
     throw new ValidationError('completionHooks 字段必须是 YAML 数组');
   try {
-    assertValidCompletionHooks(hooksParsed as CompletionHook[]);
+    assertValidCompletionHooks(hooksParsed as CompletionHook[], true);
   } catch {
     throw new ValidationError('completionHooks 字段包含无效的钩子配置');
   }

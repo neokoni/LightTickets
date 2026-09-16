@@ -106,17 +106,39 @@ completion_hooks: []        # 可选，状态变更时触发的钩子
       - "紧急 - 服务器崩溃/数据丢失"
 ```
 
+下拉选项支持可选的 `|` 分隔符：左侧为界面显示文本，右侧为提交值及
+`completion_hooks` 中 `{field.<id>}` 取得的实际值。例如
+`"Bot权|bukkit.command.bot"` 显示为 `Bot权`，提交值为
+`bukkit.command.bot`；没有分隔符时，显示文本和提交值均为原文。仅第一个 `|`
+作为分隔符，两侧内容不会自动去除空格。对 dropdown 而言，显示文本和提交值均不能为空，
+显示文本及提交值必须唯一，且一个选项的提交值不能等于另一个选项的原始文本。
+
+### select_input — 选择或输入
+
+```yaml
+- type: select_input
+  id: platform
+  attributes:
+    label: "服务端类型"
+    placeholder: "选择预设或输入其他类型"
+    options:
+      - "Paper"
+      - "Fabric"
+```
+
+`select_input` 的预设选项与自定义输入均按原文提交，不解析 `|` 分隔符。
+
 ## 字段属性一览
 
 | 属性 | 适用类型 | 说明 |
 |------|---------|------|
-| `id` | input / textarea / checkboxes / dropdown | 字段标识符，用于 `formData` 存储和 `{field.<id>}` 占位符 |
-| `validations.required` | input / textarea / checkboxes / dropdown | 是否必填（前端校验） |
-| `attributes.label` | input / textarea / checkboxes / dropdown | 字段标签 |
-| `attributes.description` | input / textarea / dropdown | 字段说明文字 |
-| `attributes.placeholder` | input / textarea | 输入框占位提示 |
+| `id` | input / textarea / checkboxes / dropdown / select_input | 字段标识符，用于 `formData` 存储和 `{field.<id>}` 占位符 |
+| `validations.required` | input / textarea / checkboxes / dropdown / select_input | 是否必填（前端校验） |
+| `attributes.label` | input / textarea / checkboxes / dropdown / select_input | 字段标签 |
+| `attributes.description` | input / textarea / dropdown / select_input | 字段说明文字 |
+| `attributes.placeholder` | input / textarea / select_input | 输入框占位提示 |
 | `attributes.value` | markdown | 静态 Markdown 内容 |
-| `attributes.options` | checkboxes / dropdown | 选项列表 |
+| `attributes.options` | checkboxes / dropdown / select_input | 选项列表 |
 
 ## completion_hooks — 状态变更钩子
 
@@ -305,7 +327,8 @@ completion_hooks:
 | `input` | `**标签:** 值` |
 | `textarea` | `**标签:**` 后换行两行再输出值 |
 | `checkboxes` | 每个选中项输出 `- [x] 选项文本` |
-| `dropdown` | `**标签:** 选中值` |
+| `dropdown` | `**标签:** 显示文本` |
+| `select_input` | `**标签:** 预设值或自定义输入` |
 
 各字段之间以 `---` 分隔。若所有字段均为空则输出 `No content provided`。
 

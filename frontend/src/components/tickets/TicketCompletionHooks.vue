@@ -14,6 +14,7 @@ import { userDisplayName } from '@/utils/user-display';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { formatDate } from '@/utils/date';
+import { parseTemplateOption } from '@/utils/template-options';
 import type {
   CompletionHookValue,
   HookDelivery,
@@ -67,10 +68,13 @@ function textValuesFor(hook: TicketCompletionHook): Record<string, string> {
   return textResponses[hook.id];
 }
 
-function optionsFor(field: TemplateField): string[] {
-  return (field.attributes.options ?? []).map((option) =>
-    typeof option === 'string' ? option : option.label,
-  );
+function optionsFor(field: TemplateField): Array<{ label: string; value: string }> {
+  return (field.attributes.options ?? []).map((option) => {
+    const rawLabel = typeof option === 'string' ? option : option.label;
+    return field.type === 'dropdown'
+      ? parseTemplateOption(option)
+      : { label: rawLabel, value: rawLabel };
+  });
 }
 
 function selectedValues(hook: TicketCompletionHook, field: TemplateField): string[] {
@@ -137,8 +141,12 @@ async function skip(hook: TicketCompletionHook) {
   }
 }
 
-function responseText(value: CompletionHookValue | undefined): string {
-  return Array.isArray(value) ? value.join(', ') : value || t('ticket.completionHook.emptyValue');
+function responseText(field: TemplateField, value: CompletionHookValue | undefined): string {
+  const text = Array.isArray(value)
+    ? value.join(', ')
+    : value || t('ticket.completionHook.emptyValue');
+  if (field.type !== 'dropdown' || !value || Array.isArray(value)) return text;
+  return optionsFor(field).find((option) => option.value === value)?.label || text;
 }
 
 function statusLabel(status: TicketCompletionHook['status']): string {
@@ -219,7 +227,7 @@ const displayDeliveryResults = computed(() =>
               v-model="textValuesFor(hook)[field.id]"
               :label="fieldLabel(field)"
               :required="field.validations?.required === true"
-              :options="optionsFor(field).map((option) => ({ value: option, label: option }))"
+              :options="optionsFor(field)"
               :placeholder="t('common.selectPlaceholder')"
               :error="errors[hook.id]?.[field.id]"
             />
@@ -228,7 +236,7 @@ const displayDeliveryResults = computed(() =>
               v-model="textValuesFor(hook)[field.id]"
               :label="fieldLabel(field)"
               :required="field.validations?.required === true"
-              :options="optionsFor(field).map((option) => ({ value: option, label: option }))"
+              :options="optionsFor(field)"
               :placeholder="field.attributes.placeholder || t('common.selectOrInputPlaceholder')"
               :error="errors[hook.id]?.[field.id]"
             />
@@ -245,14 +253,14 @@ const displayDeliveryResults = computed(() =>
               <div class="grid gap-x-5 gap-y-2 sm:grid-cols-2">
                 <label
                   v-for="option in optionsFor(field)"
-                  :key="option"
+                  :key="option.value"
                   class="flex cursor-pointer items-center gap-2.5 text-sm leading-5 text-slate-700 dark:text-slate-300"
                 >
                   <BaseCheckbox
-                    :checked="selectedValues(hook, field).includes(option)"
-                    @update:checked="toggleOption(hook, field, option, $event)"
+                    :checked="selectedValues(hook, field).includes(option.value)"
+                    @update:checked="toggleOption(hook, field, option.value, $event)"
                   />
-                  {{ option }}
+                  {{ option.label }}
                 </label>
               </div>
               <p v-if="errors[hook.id]?.[field.id]" class="text-xs text-red-500">
@@ -295,7 +303,7 @@ const displayDeliveryResults = computed(() =>
               {{ fieldLabel(field) }}
             </dt>
             <dd class="min-w-0 break-words text-sm leading-5 text-slate-700 dark:text-slate-200">
-              {{ responseText(field.id ? hook.response[field.id] : undefined) }}
+              {{ responseText(field, field.id ? hook.response[field.id] : undefined) }}
             </dd>
           </div>
         </dl>

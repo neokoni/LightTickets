@@ -105,7 +105,7 @@ public final class TicketInputProcessor {
                 session.getFormData().put(field.getId(), "");
             } else {
                 int idx = Integer.parseInt(input) - 1;
-                session.getFormData().put(field.getId(), field.getOptions().get(idx).getLabel());
+                session.getFormData().put(field.getId(), field.getOptions().get(idx).getValue());
             }
         } else if (field.isMultiSelectType()) {
             String error = validateMultiSelect(field, input);

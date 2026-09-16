@@ -18,7 +18,9 @@ export const ticketCreateSchema = z.object({
   template: z.string().min(1),
   formData: z
     .record(z.string(), z.string())
-    .describe('Fields declared by the selected template; unknown and invalid values are rejected'),
+    .describe(
+      'Fields declared by the selected template. Dropdowns submit their actual value; a legacy full label|value option is accepted and normalized.',
+    ),
   serverId: z
     .string()
     .optional()
@@ -137,10 +139,11 @@ export const ticketTitleUpdateSchema = z.object({
 });
 
 export const ticketCompleteHookSchema = z.object({
-  values: z.record(
-    z.string(),
-    z.union([z.string().max(2000), z.array(z.string().max(2000)).max(100)]),
-  ),
+  values: z
+    .record(z.string(), z.union([z.string().max(2000), z.array(z.string().max(2000)).max(100)]))
+    .describe(
+      'Values declared by the completion hook. Dropdowns submit their actual value; a legacy full label|value option is accepted and normalized.',
+    ),
 });
 export const completionHookIdSchema = z.uuid();
 

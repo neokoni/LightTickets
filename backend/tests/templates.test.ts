@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { createApp } from '../src/app.js';
 import { dataPath } from '../src/paths.js';
+import * as templateService from '../src/services/template.service.js';
 
 const app = createApp({ enableInitialSetup: true });
 
@@ -16,6 +17,15 @@ const testTemplateNames = [
   'patch_tmpl',
   'delete_tmpl',
   'labeled_tmpl',
+  'invalid_dropdown_tmpl',
+  'invalid_selection_hook_tmpl_1',
+  'invalid_selection_hook_tmpl_2',
+  'invalid_selection_hook_tmpl_3',
+  'invalid_selection_hook_tmpl_4',
+  'invalid_selection_hook_tmpl_5',
+  'invalid_selection_hook_tmpl_6',
+  'invalid_selection_source_tmpl',
+  'legacy_invalid_options_tmpl',
 ];
 
 afterEach(() => {
@@ -104,6 +114,47 @@ describe('GET /api/admin/templates', () => {
       .set('Authorization', `Bearer ${userToken}`);
 
     expect(res.status).toBe(403);
+  });
+
+  it('loads legacy choice options without making the template unrepairable', async () => {
+    await setupAndGetAdmin();
+    const name = 'legacy_invalid_options_tmpl';
+    const filePath = path.join(templatesDir, `${name}.yml`);
+    const source = [
+      'name: Legacy invalid options',
+      'description: Historical choice options',
+      'body:',
+      '  - type: dropdown',
+      '    id: permission',
+      '    attributes:',
+      '      label: Permission',
+      '      options: ["v", "v"]',
+      'completion_hooks:',
+      '  - event: closed',
+      '    type: selection',
+      '    title: Pick',
+      '    fields:',
+      '      - type: dropdown',
+      '        id: choice',
+      '        attributes:',
+      '          label: Choice',
+      '          options: ["|x", 1]',
+      '    actions:',
+      '      - type: command',
+      '        commands: ["say done"]',
+      '',
+    ].join('\n');
+
+    fs.writeFileSync(filePath, source, 'utf-8');
+    try {
+      await templateService.initTemplates();
+      const template = await templateService.adminGet(name);
+      expect(template.name).toBe(name);
+      expect(template.source).toContain('options: ["v", "v"]');
+    } finally {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      await templateService.initTemplates();
+    }
   });
 });
 
@@ -238,6 +289,122 @@ describe('POST /api/admin/templates', () => {
       { type: 'markdown', attributes: { value: 'Intro' } },
       { type: 'input', id: 'details', attributes: {} },
     ]);
+  });
+
+  it.each([
+    ['a non-string option', '[1]'],
+    ['an empty submitted value', '["Visible|"]'],
+    ['an empty display label', '["|value"]'],
+    ['duplicate submitted values', '["First|same", "Second|same"]'],
+    ['a submitted value colliding with another raw option', '["A|B", "C|A|B"]'],
+  ])('rejects dropdowns with %s', async (_case, options) => {
+    const token = await setupAndGetAdmin();
+    const res = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'invalid_dropdown_tmpl',
+        nameI18n: 'Invalid dropdown',
+        description: 'Invalid dropdown options',
+        body: [
+          '- type: dropdown',
+          '  id: permission',
+          '  attributes:',
+          '    label: Permission',
+          `    options: ${options}`,
+        ].join('\n'),
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('body 中选择字段必须提供有效且无歧义的 options');
+  });
+
+  it('rejects invalid options in selection hooks', async () => {
+    const token = await setupAndGetAdmin();
+    const cases: Array<{ name: string; type: string; options?: unknown[] }> = [
+      { name: 'invalid_selection_hook_tmpl_1', type: 'dropdown' },
+      { name: 'invalid_selection_hook_tmpl_2', type: 'dropdown', options: [] },
+      { name: 'invalid_selection_hook_tmpl_3', type: 'dropdown', options: [1] },
+      {
+        name: 'invalid_selection_hook_tmpl_4',
+        type: 'dropdown',
+        options: ['Visible|'],
+      },
+      {
+        name: 'invalid_selection_hook_tmpl_5',
+        type: 'dropdown',
+        options: ['A|B', 'C|A|B'],
+      },
+      { name: 'invalid_selection_hook_tmpl_6', type: 'checkboxes', options: [] },
+    ];
+
+    for (const testCase of cases) {
+      const field: Record<string, unknown> = {
+        type: testCase.type,
+        id: 'choice',
+        attributes: { label: 'Choice' },
+      };
+      if (testCase.options !== undefined) {
+        (field.attributes as Record<string, unknown>).options = testCase.options;
+      }
+      const res = await request(app)
+        .post('/api/admin/templates')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          name: testCase.name,
+          nameI18n: 'Invalid selection hook',
+          description: 'Invalid selection hook options',
+          body: '- type: input\n  id: fallback\n  attributes:\n    label: Fallback',
+          completionHooks: JSON.stringify([
+            {
+              event: 'closed',
+              type: 'selection',
+              title: 'Pick',
+              fields: [field],
+              actions: [{ type: 'command', commands: ['say done'] }],
+            },
+          ]),
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe('completionHooks 字段包含无效的钩子配置');
+    }
+  });
+
+  it('rejects invalid options in selection hook source', async () => {
+    const token = await setupAndGetAdmin();
+    const source = [
+      'name: Invalid selection source',
+      'description: Invalid selection hook options',
+      'body: []',
+      'completion_hooks:',
+      '  - event: closed',
+      '    type: selection',
+      '    title: Pick',
+      '    fields:',
+      '      - type: dropdown',
+      '        id: choice',
+      '        attributes:',
+      '          label: Choice',
+      '          options: ["A|B", "C|A|B"]',
+      '    actions:',
+      '      - type: command',
+      '        commands: ["say done"]',
+      '',
+    ].join('\n');
+
+    const res = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'invalid_selection_source_tmpl',
+        nameI18n: 'Invalid selection source',
+        description: 'Invalid selection hook options',
+        body: '[]',
+        source,
+      });
+
+    expect(res.status).toBe(400);
   });
 
   it('adds template labels referenced by their identifiers when a ticket is created', async () => {

@@ -162,14 +162,15 @@ public class Templates {
         if (attrs.has("options") && attrs.get("options").isJsonArray()) {
             for (JsonElement opt : attrs.getAsJsonArray("options")) {
                 if (opt.isJsonPrimitive()) {
-                    options.add(new TemplateOption(opt.getAsString(), false));
+                    options.add(new TemplateOption(opt.getAsString(), false, "dropdown".equals(type)));
                 } else if (opt.isJsonObject()) {
                     JsonObject optObj = opt.getAsJsonObject();
                     if (optObj.has("label") && !optObj.get("label").isJsonNull()) {
                         boolean optionRequired = optObj.has("required")
                                 && !optObj.get("required").isJsonNull()
                                 && optObj.get("required").getAsBoolean();
-                        options.add(new TemplateOption(optObj.get("label").getAsString(), optionRequired));
+                        options.add(new TemplateOption(optObj.get("label").getAsString(), optionRequired,
+                                "dropdown".equals(type)));
                     }
                 }
             }

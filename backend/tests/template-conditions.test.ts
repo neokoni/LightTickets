@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 import {
   evaluateTemplateCondition,
   createHookVariables,
+  normalizeDropdownValue,
+  parseTemplateOption,
   resolveHookActions,
   resolveHookPlaceholders,
   resolveHooks,
@@ -14,7 +16,7 @@ import {
   type TemplateDefinition,
 } from '../src/services/template.service.js';
 
-describe('template if syntax', () => {
+describe('template form data and conditions', () => {
   it('normalizes only declared fields and validates template options', () => {
     const def = yaml.load(`
 name: Validation Test
@@ -94,6 +96,111 @@ completion_hooks: []
     });
     expect(renderBody(def, { platform: 'Custom server' })).toBe('**Platform:** Custom server');
     expect(() => validateAndNormalizeFormData(def, { platform: '' })).toThrow('Platform 为必填项');
+  });
+
+  it('uses the right side of a dropdown option as its submitted value', () => {
+    expect(parseTemplateOption('Bot权|bukkit.command.bot')).toEqual({
+      label: 'Bot权',
+      value: 'bukkit.command.bot',
+    });
+    expect(parseTemplateOption('Plain')).toEqual({
+      label: 'Plain',
+      value: 'Plain',
+    });
+    expect(parseTemplateOption('a|b|c')).toEqual({ label: 'a', value: 'b|c' });
+    expect(parseTemplateOption('|x')).toEqual({ label: '', value: 'x' });
+    expect(parseTemplateOption('x|')).toEqual({ label: 'x', value: '' });
+    expect(parseTemplateOption({ label: 'Object|object.value', required: true })).toEqual({
+      label: 'Object',
+      value: 'object.value',
+    });
+    expect(parseTemplateOption(1)).toEqual({ label: '', value: '' });
+    const def = yaml.load(`
+name: Dropdown Values Test
+description: Dropdown value test
+labels: []
+body:
+  - type: dropdown
+    id: permission
+    validations: { required: true }
+    attributes:
+      label: Permission
+      options: ["Bot权|bukkit.command.bot", "Plain"]
+completion_hooks: []
+`) as TemplateDefinition;
+
+    expect(validateAndNormalizeFormData(def, { permission: 'bukkit.command.bot' })).toEqual({
+      permission: 'bukkit.command.bot',
+    });
+    expect(validateAndNormalizeFormData(def, { permission: 'Bot权|bukkit.command.bot' })).toEqual({
+      permission: 'bukkit.command.bot',
+    });
+    expect(() => validateAndNormalizeFormData(def, { permission: 'Bot权' })).toThrow(
+      'Permission 包含无效选项',
+    );
+    expect(renderBody(def, { permission: 'bukkit.command.bot' })).toBe('**Permission:** Bot权');
+    expect(validateAndNormalizeFormData(def, { permission: 'Plain' })).toEqual({
+      permission: 'Plain',
+    });
+    expect(normalizeDropdownValue(def.body[0].attributes.options, 'missing')).toBeUndefined();
+    expect(
+      validateAndNormalizeFormData(
+        {
+          ...def,
+          body: [
+            {
+              ...def.body[0],
+              attributes: { ...def.body[0].attributes, options: ['A|B', 'C|A|B'] },
+            },
+          ],
+        },
+        { permission: 'A|B' },
+      ),
+    ).toEqual({ permission: 'A|B' });
+    expect(
+      renderBody(
+        {
+          ...def,
+          body: [
+            {
+              ...def.body[0],
+              attributes: { ...def.body[0].attributes, options: ['Empty|'] },
+            },
+          ],
+        },
+        { permission: '' },
+      ),
+    ).toBe('**Permission:** ');
+    expect(
+      createHookVariables({
+        id: 7,
+        title: 'Permission request',
+        formData: JSON.stringify({ permission: 'bukkit.command.bot' }),
+      })['field.permission'],
+    ).toBe('bukkit.command.bot');
+
+    const hooks = resolveHooks(
+      {
+        ...def,
+        completion_hooks: [
+          {
+            event: 'closed',
+            type: 'command',
+            if: '{field.permission}==bukkit.command.bot',
+            commands: ['lp user {player_name} permission set {field.permission}'],
+          },
+        ],
+      },
+      'closed',
+      createHookVariables({
+        id: 7,
+        title: 'Permission request',
+        formData: JSON.stringify({ permission: 'bukkit.command.bot' }),
+      }),
+    );
+    expect(hooks).toEqual([
+      { type: 'command', content: 'lp user {player_name} permission set {field.permission}' },
+    ]);
   });
 
   it('evaluates supported comparison operators', () => {

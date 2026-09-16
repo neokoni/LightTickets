@@ -35,7 +35,12 @@ export const mcTicketSchema = mcServerContextSchema.extend({
   title: z.string().min(1).max(200),
   body: z.string().min(1),
   template: z.string().min(1),
-  formData: z.record(z.string(), z.string()).optional(),
+  formData: z
+    .record(z.string(), z.string())
+    .optional()
+    .describe(
+      'Fields declared by the selected template. Dropdowns submit their actual value; a legacy full label|value option is accepted and normalized.',
+    ),
   hidden: z.boolean().optional(),
   context: z
     .object({
