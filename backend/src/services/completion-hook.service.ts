@@ -4,6 +4,7 @@ import { AUDIT_ACTION } from '../constants/audit-actions.js';
 import { isStaffRole } from '../constants/roles.js';
 import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../utils/errors.js';
 import * as templateService from './template.service.js';
+import * as playerGroupService from './player-group.service.js';
 import * as minecraftHookDeliveryService from './minecraft-hook-delivery.service.js';
 import * as auditService from './audit.service.js';
 
@@ -51,10 +52,10 @@ function optionLabels(field: templateService.SelectionHookField): string[] {
   );
 }
 
-function validateResponse(
+async function validateResponse(
   fields: templateService.SelectionHookField[],
   values: Record<string, HookValue>,
-): Record<string, HookValue> {
+): Promise<Record<string, HookValue>> {
   const knownIds = new Set(fields.map((field) => field.id));
   if (Object.keys(values).some((id) => !knownIds.has(id))) {
     throw new ValidationError('提交内容包含未知字段');
@@ -91,6 +92,36 @@ function validateResponse(
     }
     const text = value ?? '';
     if (text.length > 2000) throw new ValidationError(`${field.attributes.label} 内容过长`);
+    if (field.type === 'player_select') {
+      const groups = field.attributes.groups ?? [];
+      if (!(await playerGroupService.groupsExist(groups))) {
+        throw new ValidationError(`${field.attributes.label} 配置的 group 不存在`);
+      }
+      const selected = Array.from(
+        new Set(
+          text
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+        ),
+      );
+      if (required && selected.length === 0) {
+        throw new ValidationError(`${field.attributes.label} 为必填项`);
+      }
+      if (
+        (
+          await playerGroupService.findInvalidValues(
+            groups,
+            selected,
+            field.attributes.input_any === true,
+          )
+        ).length > 0
+      ) {
+        throw new ValidationError(`${field.attributes.label} 包含无效玩家名`);
+      }
+      normalized[field.id] = selected.join(',');
+      continue;
+    }
     if (required && !text.trim()) throw new ValidationError(`${field.attributes.label} 为必填项`);
     if (field.type === 'dropdown' && text) {
       const normalizedValue = templateService.normalizeDropdownValue(
@@ -106,6 +137,18 @@ function validateResponse(
     normalized[field.id] = text;
   }
   return normalized;
+}
+
+export async function pendingUsesPlayerGroup(groupId: string): Promise<boolean> {
+  const hooks = await prisma().ticketCompletionHook.findMany({
+    where: { status: 'pending' },
+    select: { fields: true },
+  });
+  return hooks.some((hook) =>
+    parseJson<templateService.SelectionHookField[]>(hook.fields, '完成钩子字段').some(
+      (field) => field.type === 'player_select' && field.attributes.groups?.includes(groupId),
+    ),
+  );
 }
 
 function toView(hook: {
@@ -221,7 +264,7 @@ export async function complete(
   if (hook.status !== 'pending') throw new AppError(409, '完成钩子已处理');
 
   const fields = parseJson<templateService.SelectionHookField[]>(hook.fields, '完成钩子字段');
-  const normalized = validateResponse(fields, values);
+  const normalized = await validateResponse(fields, values);
   const completedAt = new Date();
   const variables = templateService.createHookVariables(hook.ticket);
   for (const [id, value] of Object.entries(normalized)) {

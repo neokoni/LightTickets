@@ -501,6 +501,30 @@ model AppConfig {
   @@map("app_config")
 }
 
+model PlayerGroup {
+  id        String            @id
+  name      String?
+  note      String?
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @updatedAt @map("updated_at")
+  items     PlayerGroupItem[]
+
+  @@map("player_groups")
+}
+
+model PlayerGroupItem {
+  id        String      @id @default(uuid())
+  groupId   String      @map("group_id")
+  value     String
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  group     PlayerGroup @relation(fields: [groupId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([groupId, value])
+  @@index([value])
+  @@map("player_group_items")
+}
+
 model AuditLog {
   id        String   @id @default(uuid())
   ticketId  Int      @map("ticket_id")

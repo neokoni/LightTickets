@@ -15,6 +15,8 @@ export interface EditableTemplateField {
   placeholder: string;
   value: string;
   options: EditableTemplateOption[];
+  groups: string[];
+  inputAny: boolean;
   advancedOpen: boolean;
 }
 

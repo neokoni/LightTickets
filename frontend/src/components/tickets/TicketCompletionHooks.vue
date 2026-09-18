@@ -8,6 +8,7 @@ import BaseCombobox from '@/components/base/BaseCombobox.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
+import BasePlayerSelect from '@/components/base/BasePlayerSelect.vue';
 import { apiCompleteTicketHook, apiSkipTicketHook } from '@/api/tickets';
 import { t } from '@/i18n';
 import { userDisplayName } from '@/utils/user-display';
@@ -66,6 +67,20 @@ function ensureResponses(hook: TicketCompletionHook): void {
 function textValuesFor(hook: TicketCompletionHook): Record<string, string> {
   ensureResponses(hook);
   return textResponses[hook.id];
+}
+
+function playerValuesFor(hook: TicketCompletionHook, field: TemplateField): string[] {
+  ensureResponses(hook);
+  if (!field.id) return [];
+  return textValuesFor(hook)
+    [field.id].split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function setPlayerValues(hook: TicketCompletionHook, field: TemplateField, values: string[]) {
+  if (!field.id) return;
+  textValuesFor(hook)[field.id] = values.join(',');
 }
 
 function optionsFor(field: TemplateField): Array<{ label: string; value: string }> {
@@ -203,7 +218,13 @@ const displayDeliveryResults = computed(() =>
             v-for="field in hook.fields"
             :key="field.id"
             class="min-w-0 space-y-1.5"
-            :class="field.type === 'textarea' || field.type === 'checkboxes' ? 'md:col-span-2' : ''"
+            :class="
+              field.type === 'textarea' ||
+              field.type === 'checkboxes' ||
+              field.type === 'player_select'
+                ? 'md:col-span-2'
+                : ''
+            "
           >
             <BaseInput
               v-if="field.type === 'input' && field.id"
@@ -239,6 +260,19 @@ const displayDeliveryResults = computed(() =>
               :options="optionsFor(field)"
               :placeholder="field.attributes.placeholder || t('common.selectOrInputPlaceholder')"
               :error="errors[hook.id]?.[field.id]"
+            />
+            <BasePlayerSelect
+              v-else-if="field.type === 'player_select' && field.id"
+              :label="fieldLabel(field)"
+              :required="field.validations?.required === true"
+              :placeholder="
+                field.attributes.placeholder || t('ticket.create.playerSelectPlaceholder')
+              "
+              :groups="field.attributes.groups || []"
+              :input-any="field.attributes.input_any === true"
+              :error="errors[hook.id]?.[field.id]"
+              :model-value="playerValuesFor(hook, field)"
+              @update:model-value="setPlayerValues(hook, field, $event)"
             />
             <fieldset v-else-if="field.type === 'checkboxes' && field.id" class="space-y-2">
               <legend class="text-sm font-medium leading-5 text-slate-700 dark:text-slate-300">

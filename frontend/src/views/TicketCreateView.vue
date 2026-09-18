@@ -11,6 +11,7 @@ import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
 import BaseCheckbox from '@/components/base/BaseCheckbox.vue';
 import BaseCombobox from '@/components/base/BaseCombobox.vue';
+import BasePlayerSelect from '@/components/base/BasePlayerSelect.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
 import { t } from '@/i18n';
@@ -110,6 +111,17 @@ function onTextareaFileSelect(payload: FileSelectPayload, fieldId: string) {
     },
   };
   mdUpload.handleFiles(payload.files, payload.textarea, modelValue);
+}
+
+function playerValues(fieldId: string): string[] {
+  return (formValues.value[fieldId] || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function setPlayerValues(fieldId: string, values: string[]) {
+  setFieldValue(fieldId, values.join(','));
 }
 
 async function submit() {
@@ -303,6 +315,17 @@ async function submit() {
             }))
           "
           @update:model-value="setFieldValue(field.id || '', $event || '')"
+        />
+
+        <BasePlayerSelect
+          v-else-if="field.type === 'player_select'"
+          :label="field.attributes.label"
+          :required="field.validations?.required === true"
+          :placeholder="field.attributes.placeholder || t('ticket.create.playerSelectPlaceholder')"
+          :groups="field.attributes.groups || []"
+          :input-any="field.attributes.input_any === true"
+          :model-value="playerValues(field.id || '')"
+          @update:model-value="setPlayerValues(field.id || '', $event)"
         />
       </div>
 

@@ -4,13 +4,22 @@ import yaml from 'js-yaml';
 import { NotFoundError, AppError, ValidationError } from '../utils/errors.js';
 import { dataPath } from '../paths.js';
 import { TEMPLATE_HIDDEN_MODE, type TemplateHiddenMode } from '../constants/ticket-visibility.js';
+import * as playerGroupService from './player-group.service.js';
 
 const defaultTemplatesDir = path.resolve('templates');
 const dataTemplatesDir = dataPath('templates');
 const templatesInitializedMarker = dataPath('.templates_initialized');
+let templateMutationTail = Promise.resolve();
 
 export interface TemplateField {
-  type: 'markdown' | 'input' | 'textarea' | 'checkboxes' | 'dropdown' | 'select_input';
+  type:
+    | 'markdown'
+    | 'input'
+    | 'textarea'
+    | 'checkboxes'
+    | 'dropdown'
+    | 'select_input'
+    | 'player_select';
   id?: string;
   validations?: { required?: boolean };
   attributes: {
@@ -19,6 +28,8 @@ export interface TemplateField {
     placeholder?: string;
     value?: string;
     options?: TemplateOption[];
+    groups?: string[];
+    input_any?: boolean;
   };
 }
 
@@ -69,7 +80,7 @@ export interface CompletionHook {
 }
 
 export interface SelectionHookField {
-  type: 'input' | 'textarea' | 'checkboxes' | 'dropdown' | 'select_input';
+  type: 'input' | 'textarea' | 'checkboxes' | 'dropdown' | 'select_input' | 'player_select';
   id: string;
   validations?: { required?: boolean };
   attributes: {
@@ -77,6 +88,8 @@ export interface SelectionHookField {
     description?: string;
     placeholder?: string;
     options?: TemplateOption[];
+    groups?: string[];
+    input_any?: boolean;
   };
 }
 
@@ -140,6 +153,20 @@ interface CachedTemplate {
   definition: TemplateDefinition;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export async function withTemplateMutationLock<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = templateMutationTail;
+  let release!: () => void;
+  templateMutationTail = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+  }
 }
 
 const cache = new Map<string, CachedTemplate>();
@@ -239,7 +266,7 @@ function hasValidChoiceOptions(
 ): options is TemplateOption[] {
   if (!validateOptions) return true;
 
-  const optionsRequired = type !== 'select_input';
+  const optionsRequired = type !== 'select_input' && type !== 'player_select';
   if (options === undefined) return !optionsRequired;
   if (!Array.isArray(options)) return false;
   if (options.length === 0) return !optionsRequired;
@@ -261,6 +288,22 @@ function hasValidChoiceOptions(
   );
 }
 
+function assertPlayerSelectAttributes(attributes: Record<string, unknown>): void {
+  if (
+    !Array.isArray(attributes.groups) ||
+    attributes.groups.length === 0 ||
+    !attributes.groups.every(
+      (group) => typeof group === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(group),
+    ) ||
+    new Set(attributes.groups).size !== attributes.groups.length
+  ) {
+    throw new ValidationError('player_select 必须提供至少一个有效且不重复的 groups');
+  }
+  if (attributes.input_any !== undefined && typeof attributes.input_any !== 'boolean') {
+    throw new ValidationError('player_select 的 input_any 必须是布尔值');
+  }
+}
+
 function assertValidTemplateBody(
   value: unknown[],
   validateOptions = false,
@@ -268,9 +311,15 @@ function assertValidTemplateBody(
   for (const field of value) {
     if (!isRecord(field)) throw new ValidationError('body 字段包含无效的模板字段');
     if (
-      !['markdown', 'input', 'textarea', 'checkboxes', 'dropdown', 'select_input'].includes(
-        String(field.type),
-      )
+      ![
+        'markdown',
+        'input',
+        'textarea',
+        'checkboxes',
+        'dropdown',
+        'select_input',
+        'player_select',
+      ].includes(String(field.type))
     ) {
       throw new ValidationError('body 字段包含无效的模板字段');
     }
@@ -286,6 +335,7 @@ function assertValidTemplateBody(
     ) {
       throw new ValidationError('body 中选择字段必须提供有效且无歧义的 options');
     }
+    if (field.type === 'player_select') assertPlayerSelectAttributes(attributes);
   }
 }
 
@@ -310,7 +360,9 @@ function assertValidSelectionField(
 ): asserts value is SelectionHookField {
   if (
     !isRecord(value) ||
-    !['input', 'textarea', 'checkboxes', 'dropdown', 'select_input'].includes(String(value.type)) ||
+    !['input', 'textarea', 'checkboxes', 'dropdown', 'select_input', 'player_select'].includes(
+      String(value.type),
+    ) ||
     typeof value.id !== 'string' ||
     !/^[a-zA-Z0-9_-]+$/.test(value.id) ||
     !isRecord(value.attributes) ||
@@ -324,6 +376,7 @@ function assertValidSelectionField(
       throw new Error('selection hook choice field requires options');
     }
   }
+  if (value.type === 'player_select') assertPlayerSelectAttributes(value.attributes);
 }
 
 function assertValidCompletionHooks(value: CompletionHook[], validateOptions = true): void {
@@ -401,12 +454,12 @@ function parseTemplateSource(raw: string): TemplateDefinition {
   };
 }
 
-function writeTemplateSource(name: string, source: string): void {
-  assertValidTemplateName(name);
+function parseTemplateSourceForWrite(source: string): TemplateDefinition {
   try {
     const definition = parseTemplateSource(source);
     assertValidTemplateBody(definition.body, true);
     assertValidCompletionHooks(definition.completion_hooks, true);
+    return definition;
   } catch (error) {
     if (error instanceof ValidationError) throw error;
     if (error instanceof Error && error.name !== 'YAMLException') {
@@ -414,8 +467,26 @@ function writeTemplateSource(name: string, source: string): void {
     }
     throw new ValidationError('模板原文不是有效的 YAML 模板');
   }
-  fs.mkdirSync(dataTemplatesDir, { recursive: true });
-  fs.writeFileSync(templatePath(name), source, 'utf-8');
+}
+
+async function assertTemplatePlayerGroups(definition: TemplateDefinition): Promise<void> {
+  const groupSets = [
+    ...definition.body
+      .filter((field) => field.type === 'player_select')
+      .map((field) => field.attributes.groups ?? []),
+    ...definition.completion_hooks
+      .filter((hook) => hook?.type === 'selection')
+      .flatMap((hook) =>
+        (hook.fields ?? [])
+          .filter((field) => field.type === 'player_select')
+          .map((field) => field.attributes.groups ?? []),
+      ),
+  ];
+  for (const groupIds of groupSets) {
+    if (!(await playerGroupService.groupsExist(groupIds))) {
+      throw new ValidationError('player_select 引用的 group 不存在');
+    }
+  }
 }
 
 function loadTemplateFile(filePath: string, nameKey: string): CachedTemplate {
@@ -515,6 +586,22 @@ export function getAdminDefinition(name: string): TemplateDefinition | undefined
   return cache.get(name)?.definition;
 }
 
+export function usesPlayerGroup(groupId: string): boolean {
+  return Array.from(cache.values()).some((entry) => {
+    const bodyUsesGroup = entry.definition.body.some(
+      (field) => field.type === 'player_select' && field.attributes.groups?.includes(groupId),
+    );
+    const hookUsesGroup = entry.definition.completion_hooks.some(
+      (hook) =>
+        hook?.type === 'selection' &&
+        (hook.fields ?? []).some(
+          (field) => field.type === 'player_select' && field.attributes.groups?.includes(groupId),
+        ),
+    );
+    return bodyUsesGroup || hookUsesGroup;
+  });
+}
+
 function checkboxOptionLabels(field: TemplateField): string[] {
   return (field.attributes.options ?? []).map((option) =>
     typeof option === 'string' ? option : option.label,
@@ -573,6 +660,20 @@ export function validateAndNormalizeFormData(
       continue;
     }
 
+    if (field.type === 'player_select') {
+      const selected = Array.from(
+        new Set(
+          raw
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean),
+        ),
+      );
+      if (required && selected.length === 0) throw new ValidationError(`${label} 为必填项`);
+      normalized[field.id] = selected.join(',');
+      continue;
+    }
+
     if (required && !raw.trim()) throw new ValidationError(`${label} 为必填项`);
     if (field.type === 'dropdown' && raw) {
       const value = normalizeDropdownValue(field.attributes.options, raw);
@@ -581,6 +682,34 @@ export function validateAndNormalizeFormData(
       continue;
     }
     normalized[field.id] = raw;
+  }
+  return normalized;
+}
+
+export async function validateAndNormalizeFormDataAsync(
+  def: TemplateDefinition,
+  formData: Record<string, string>,
+): Promise<Record<string, string>> {
+  const normalized = validateAndNormalizeFormData(def, formData);
+  for (const field of def.body) {
+    if (field.type !== 'player_select' || !field.id) continue;
+    const values = normalized[field.id] ? normalized[field.id].split(',').filter(Boolean) : [];
+    const groups = field.attributes.groups ?? [];
+    if (!(await playerGroupService.groupsExist(groups))) {
+      throw new ValidationError(`${field.attributes.label || field.id} 配置的 group 不存在`);
+    }
+    if (values.length === 0) continue;
+    if (
+      (
+        await playerGroupService.findInvalidValues(
+          groups,
+          values,
+          field.attributes.input_any === true,
+        )
+      ).length > 0
+    ) {
+      throw new ValidationError(`${field.attributes.label || field.id} 包含无效玩家名`);
+    }
   }
   return normalized;
 }
@@ -600,9 +729,24 @@ export function renderBody(def: TemplateDefinition, formData: Record<string, str
       if (!field.id) continue;
       const label = field.attributes.label || field.id;
       const value = formData[field.id] || '';
-      if (field.type === 'input' || field.type === 'dropdown' || field.type === 'select_input') {
+      if (
+        field.type === 'input' ||
+        field.type === 'dropdown' ||
+        field.type === 'select_input' ||
+        field.type === 'player_select'
+      ) {
         parts.push(
-          `**${label}:** ${field.type === 'dropdown' ? fieldOptionDisplayLabel(field, value) : value}`,
+          `**${label}:** ${
+            field.type === 'dropdown'
+              ? fieldOptionDisplayLabel(field, value)
+              : field.type === 'player_select'
+                ? value
+                    .split(',')
+                    .map((item) => item.trim())
+                    .filter(Boolean)
+                    .join(', ')
+                : value
+          }`,
         );
       } else if (field.type === 'textarea') {
         parts.push(`**${label}:**\n\n${value}`);
@@ -762,21 +906,16 @@ function parseLabels(labels: string): string[] {
   }
 }
 
-function writeTemplateFile(
-  name: string,
-  data: {
-    nameI18n: string;
-    description: string;
-    titlePrefix?: string | null;
-    labels?: string;
-    body: string;
-    completionHooks?: string;
-    enabled?: boolean;
-    hidden?: TemplateHiddenMode;
-  },
-): void {
-  assertValidTemplateName(name);
-
+function buildTemplateDefinition(data: {
+  nameI18n: string;
+  description: string;
+  titlePrefix?: string | null;
+  labels?: string;
+  body: string;
+  completionHooks?: string;
+  enabled?: boolean;
+  hidden?: TemplateHiddenMode;
+}): TemplateDefinition {
   const bodyParsed = parseYamlField(data.body, 'body');
   if (!Array.isArray(bodyParsed)) throw new ValidationError('body 字段必须是 YAML 数组');
   assertValidTemplateBody(bodyParsed, true);
@@ -802,13 +941,10 @@ function writeTemplateFile(
   };
   const titlePrefix = data.titlePrefix?.trim();
   if (titlePrefix) template.title_prefix = titlePrefix;
-
-  fs.mkdirSync(dataTemplatesDir, { recursive: true });
-  const content = yaml.dump(template, { lineWidth: -1, noRefs: true });
-  fs.writeFileSync(templatePath(name), content, 'utf-8');
+  return template;
 }
 
-export async function adminCreate(data: {
+async function adminCreateUnlocked(data: {
   name: string;
   nameI18n: string;
   description: string;
@@ -824,13 +960,39 @@ export async function adminCreate(data: {
   if (cache.has(data.name) || fs.existsSync(templatePath(data.name)))
     throw new AppError(409, '模板 key 已存在');
 
-  if (data.source !== undefined) writeTemplateSource(data.name, data.source);
-  else writeTemplateFile(data.name, data);
+  const definition =
+    data.source !== undefined
+      ? parseTemplateSourceForWrite(data.source)
+      : buildTemplateDefinition(data);
+  await assertTemplatePlayerGroups(definition);
+  if (cache.has(data.name) || fs.existsSync(templatePath(data.name)))
+    throw new AppError(409, '模板 key 已存在');
+  fs.mkdirSync(dataTemplatesDir, { recursive: true });
+  const content =
+    data.source !== undefined
+      ? data.source
+      : yaml.dump(definition, { lineWidth: -1, noRefs: true });
+  fs.writeFileSync(templatePath(data.name), content, 'utf-8');
   await initTemplates();
   return adminGet(data.name);
 }
 
-export async function adminUpdate(
+export function adminCreate(data: {
+  name: string;
+  nameI18n: string;
+  description: string;
+  titlePrefix?: string;
+  labels?: string;
+  body: string;
+  completionHooks?: string;
+  source?: string;
+  enabled?: boolean;
+  hidden?: TemplateHiddenMode;
+}): Promise<AdminTemplate> {
+  return withTemplateMutationLock(() => adminCreateUnlocked(data));
+}
+
+async function adminUpdateUnlocked(
   name: string,
   data: {
     nameI18n?: string;
@@ -846,33 +1008,60 @@ export async function adminUpdate(
 ): Promise<AdminTemplate> {
   const existing = cache.get(name);
   if (!existing) throw new NotFoundError('模板不存在');
-
-  if (data.source !== undefined) {
-    writeTemplateSource(name, data.source);
-    await initTemplates();
-    return adminGet(name);
-  }
-
+  assertValidTemplateName(name);
   const current = toAdminTemplate(existing);
 
-  writeTemplateFile(name, {
-    nameI18n: data.nameI18n ?? current.nameI18n,
-    description: data.description ?? current.description,
-    titlePrefix: data.titlePrefix !== undefined ? data.titlePrefix : current.titlePrefix,
-    labels: data.labels ?? current.labels,
-    body: data.body ?? current.body,
-    completionHooks: data.completionHooks ?? current.completionHooks,
-    enabled: data.enabled ?? current.enabled,
-    hidden: data.hidden ?? current.hidden,
-  });
+  const definition =
+    data.source !== undefined
+      ? parseTemplateSourceForWrite(data.source)
+      : buildTemplateDefinition({
+          nameI18n: data.nameI18n ?? current.nameI18n,
+          description: data.description ?? current.description,
+          titlePrefix: data.titlePrefix !== undefined ? data.titlePrefix : current.titlePrefix,
+          labels: data.labels ?? current.labels,
+          body: data.body ?? current.body,
+          completionHooks: data.completionHooks ?? current.completionHooks,
+          enabled: data.enabled ?? current.enabled,
+          hidden: data.hidden ?? current.hidden,
+        });
+  await assertTemplatePlayerGroups(definition);
+  if (!cache.has(name) || !fs.existsSync(existing.filePath)) throw new NotFoundError('模板不存在');
+  if (fs.readFileSync(existing.filePath, 'utf-8') !== current.source)
+    throw new AppError(409, '模板已被其他请求修改，请重新加载');
+  fs.writeFileSync(
+    existing.filePath,
+    data.source ?? yaml.dump(definition, { lineWidth: -1, noRefs: true }),
+    'utf-8',
+  );
 
   await initTemplates();
   return adminGet(name);
 }
 
-export async function adminDelete(name: string): Promise<void> {
+export function adminUpdate(
+  name: string,
+  data: {
+    nameI18n?: string;
+    description?: string;
+    titlePrefix?: string;
+    labels?: string;
+    body?: string;
+    completionHooks?: string;
+    source?: string;
+    enabled?: boolean;
+    hidden?: TemplateHiddenMode;
+  },
+): Promise<AdminTemplate> {
+  return withTemplateMutationLock(() => adminUpdateUnlocked(name, data));
+}
+
+async function adminDeleteUnlocked(name: string): Promise<void> {
   const existing = cache.get(name);
   if (!existing) throw new NotFoundError('模板不存在');
   fs.rmSync(existing.filePath, { force: true });
   await initTemplates();
+}
+
+export function adminDelete(name: string): Promise<void> {
+  return withTemplateMutationLock(() => adminDeleteUnlocked(name));
 }

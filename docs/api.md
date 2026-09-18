@@ -717,6 +717,12 @@ HTTP 200 返回业务级 `success: false`。
 `GET /:name` 返回 `source` 字段，其中包含模板文件的完整 YAML 原文。`PATCH /:name`
 可单独提交 `{ "source": "..." }` 直接更新原文；后端会在写入前解析并校验模板结构。
 
+### 玩家组
+
+玩家搜索接口为 `GET /api/player-groups/search?groupIds=group-a,group-b&q=部分名称`，需要登录，返回去重后的玩家名数组。管理员接口挂载于 `/api/admin/player-groups`，支持 group 创建、名称/备注修改、删除，以及 item 的批量添加、重命名和删除。`GET /api/admin/player-groups/:id?page=1&pageSize=20&q=名称` 按页返回玩家，避免预加载整个 group。group ID 创建后不可修改；被模板 `player_select` 或待处理完成钩子引用的 group 不能删除。
+
+Minecraft 插件上传玩家名使用 `POST /api/mc/player-group/items`（`X-Server-Key`），请求体为 `{ "groupId": "...", "value": "PlayerName" }`；插件可按配置向多个 group 重复提交。
+
 ### 存储配置
 
 挂载路径：`/api/admin/storage`，需要 `admin`。

@@ -12,6 +12,7 @@ const navItems = [
   { to: '/admin/labels', labelKey: 'admin.nav.labels', icon: 'lucide:tag' },
   { to: '/admin/servers', labelKey: 'admin.nav.servers', icon: 'lucide:server' },
   { to: '/admin/templates', labelKey: 'admin.nav.templates', icon: 'lucide:layout-template' },
+  { to: '/admin/player-groups', labelKey: 'admin.nav.playerGroups', icon: 'lucide:users-round' },
   { to: '/admin/users', labelKey: 'admin.nav.users', icon: 'lucide:users' },
   { to: '/admin/settings', labelKey: 'admin.nav.settings', icon: 'lucide:settings' },
   { to: '/admin/mail', labelKey: 'admin.nav.mail', icon: 'lucide:mail' },

@@ -3,6 +3,8 @@ package ink.neokoni.lightTickets.Listeners;
 import ink.neokoni.lightTickets.Configs.PlayerData;
 import ink.neokoni.lightTickets.Commands.Functions.TicketInfo;
 import ink.neokoni.lightTickets.Utils.DataRefreshManager;
+import ink.neokoni.lightTickets.Utils.PlayerGroupUploader;
+import ink.neokoni.lightTickets.platform.PaperPlayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -14,6 +16,7 @@ public class PlayerJoinLeaveListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onJoin(PlayerJoinEvent event) {
         DataRefreshManager.onPlayerJoin(event.getPlayer().getUniqueId());
+        PlayerGroupUploader.upload(new PaperPlayer(event.getPlayer()));
     }
 
     @EventHandler

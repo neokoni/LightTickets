@@ -8,6 +8,9 @@ import ink.neokoni.lightTickets.Configs.Datas.TicketSession;
 import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.platform.LightPlayer;
 
+import java.util.HashSet;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -87,6 +90,21 @@ public final class TicketInputProcessor {
                 return;
             }
             session.getFormData().put(field.getId(), normalizeSelectInput(field, input));
+        } else if (field.isPlayerSelectType()) {
+            List<String> players = Arrays.stream(input.split(","))
+                    .map(String::trim)
+                    .filter(value -> !value.isEmpty())
+                    .distinct()
+                    .toList();
+            if (field.isRequired() && players.isEmpty()) {
+                player.sendMessage(LangUtils.getLang("ticket.field_required", Map.of("{field}", field.getLabel())));
+                return;
+            }
+            if (players.stream().anyMatch(value -> !value.matches("[A-Za-z0-9_]{3,16}"))) {
+                player.sendMessage(LangUtils.getLang("ticket.invalid_player_name"));
+                return;
+            }
+            session.getFormData().put(field.getId(), String.join(",", players));
         } else if (field.isInputType()) {
             if (field.isRequired() && input.isEmpty()) {
                 player.sendMessage(LangUtils.getLang("ticket.field_required",
@@ -197,7 +215,7 @@ public final class TicketInputProcessor {
         }
         if (!input.isEmpty()) {
             String[] parts = input.split("\\s+");
-            Set<Integer> selected = new java.util.HashSet<>();
+            Set<Integer> selected = new HashSet<>();
             for (String p : parts) {
                 try {
                     int idx = Integer.parseInt(p);

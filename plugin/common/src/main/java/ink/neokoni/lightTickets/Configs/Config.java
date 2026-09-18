@@ -45,9 +45,20 @@ public class Config {
         @Comment("玩家数据自动刷新间隔 (秒, 设为 0 则禁用)")
         @Getter
         private int playerRefreshInterval = 300;
+        @Comment("是否将玩家名上传到玩家组")
+        @Getter
+        private PlayerGroupUpload playerGroupUpload = new PlayerGroupUpload();
         @Comment("议题状态颜色设置")
         @Getter
         private TicketStatusColors ticketStatusColors = new TicketStatusColors();
+    }
+
+    @Configuration
+    public static class PlayerGroupUpload {
+        @Getter
+        private boolean enabled = false;
+        @Getter
+        private String[] groupId = new String[0];
     }
 
     @Configuration

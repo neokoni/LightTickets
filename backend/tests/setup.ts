@@ -53,6 +53,8 @@ beforeEach(async () => {
   await prisma().federatedAuthProvider.deleteMany();
   await prisma().setupStatus.deleteMany();
   await prisma().appConfig.deleteMany();
+  await prisma().playerGroupItem.deleteMany();
+  await prisma().playerGroup.deleteMany();
   await prisma().auditLog.deleteMany();
   await prisma().auditLogPending.deleteMany();
   await prisma().minecraftHookDelivery.deleteMany();

@@ -149,7 +149,14 @@ export interface AuditLog {
 }
 
 export interface TemplateField {
-  type: 'markdown' | 'input' | 'textarea' | 'checkboxes' | 'dropdown' | 'select_input';
+  type:
+    | 'markdown'
+    | 'input'
+    | 'textarea'
+    | 'checkboxes'
+    | 'dropdown'
+    | 'select_input'
+    | 'player_select';
   id?: string;
   validations?: { required?: boolean };
   attributes: {
@@ -158,6 +165,8 @@ export interface TemplateField {
     placeholder?: string;
     value?: string;
     options?: (string | { label: string; required?: boolean })[];
+    groups?: string[];
+    input_any?: boolean;
   };
 }
 

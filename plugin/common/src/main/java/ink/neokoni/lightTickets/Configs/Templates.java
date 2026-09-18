@@ -176,7 +176,14 @@ public class Templates {
             }
         }
 
-        return new TemplateField(type, id, required, label, description, placeholder, value, options);
+        TemplateField field = new TemplateField(type, id, required, label, description, placeholder, value, options);
+        if (attrs.has("groups") && attrs.get("groups").isJsonArray()) {
+            List<String> groups = new ArrayList<>();
+            for (JsonElement group : attrs.getAsJsonArray("groups")) groups.add(group.getAsString());
+            field.setGroups(groups);
+        }
+        if (attrs.has("input_any") && !attrs.get("input_any").isJsonNull()) field.setInputAny(attrs.get("input_any").getAsBoolean());
+        return field;
     }
 
 }

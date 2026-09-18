@@ -23,10 +23,18 @@ import {
   mcUnlinkSchema,
   mcViewerSchema,
 } from '../schemas/mc.js';
+import { playerGroupUploadSchema } from '../schemas/player-groups.js';
+import * as playerGroupService from '../services/player-group.service.js';
 
 const router = Router();
 
 router.use(serverAuthMiddleware);
+
+router.post('/player-group/items', async (req: Request, res: Response) => {
+  const data = validate(playerGroupUploadSchema, req.body);
+  await playerGroupService.uploadItem(data.groupId, data.value);
+  res.status(204).end();
+});
 
 router.post('/register', authLimiter, async (req: Request, res: Response) => {
   const data = validate(mcRegisterSchema, req.body);

@@ -152,6 +152,13 @@ public class CreateTicket {
                 player.sendMessage(LangUtils.getLang("ticket.option",
                         Map.of("{num}", String.valueOf(i + 1), "{option}", options.get(i).getLabel())));
             }
+        } else if (field.isPlayerSelectType()) {
+            if (field.getPlaceholder() != null && !field.getPlaceholder().isEmpty()) {
+                player.sendMessage(LangUtils.getLang("ticket.field_player_select_placeholder",
+                        Map.of("{field}", label, "{placeholder}", field.getPlaceholder())));
+            } else {
+                player.sendMessage(LangUtils.getLang("ticket.field_player_select", placeholders));
+            }
         } else if (field.isInputType()) {
             if (field.getPlaceholder() != null && !field.getPlaceholder().isEmpty()) {
                 player.sendMessage(LangUtils.getLang("ticket.field_input_placeholder",

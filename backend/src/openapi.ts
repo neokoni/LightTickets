@@ -74,6 +74,15 @@ import {
   usernameSchema,
 } from './routes/users.js';
 import { adminTemplateCreateSchema, adminTemplateUpdateSchema } from './routes/admin-templates.js';
+import {
+  playerGroupCreateSchema,
+  playerGroupItemsQuerySchema,
+  playerGroupItemsSchema,
+  playerGroupItemUpdateSchema,
+  playerGroupSearchSchema,
+  playerGroupUpdateSchema,
+  playerGroupUploadSchema,
+} from './schemas/player-groups.js';
 import { attachmentTargetFields } from './routes/attachments.js';
 import { attachmentConfigSchema } from './schemas/attachment.js';
 import { deliveryIdSchema } from './routes/admin-minecraft-hook-deliveries.js';
@@ -122,6 +131,41 @@ const errorEnvelopeSchema = registry.register(
     statusCode: z.number().int(),
     message: z.string(),
     traceId: z.string().optional(),
+  }),
+);
+
+const playerGroupItemSchema = registry.register(
+  'PlayerGroupItem',
+  z.object({
+    id: z.uuid(),
+    groupId: z.string(),
+    value: z.string(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  }),
+);
+const playerGroupBaseShape = {
+  id: z.string(),
+  name: z.string().nullable(),
+  note: z.string().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+};
+const playerGroupSummarySchema = registry.register(
+  'PlayerGroupSummary',
+  z.object({
+    ...playerGroupBaseShape,
+    _count: z.object({ items: z.number().int().nonnegative() }),
+  }),
+);
+const playerGroupSchema = registry.register(
+  'PlayerGroupItemsPage',
+  z.object({
+    group: playerGroupSummarySchema,
+    items: z.array(playerGroupItemSchema),
+    total: z.number().int().nonnegative(),
+    page: z.number().int().positive(),
+    pageSize: z.number().int().positive(),
   }),
 );
 
@@ -718,6 +762,15 @@ const registerServerRoutes = () => {
 const registerMcRoutes = () => {
   registerRoute({
     method: 'post',
+    path: '/api/mc/player-group/items',
+    summary: '上传玩家名到玩家组',
+    auth: 'apiKey',
+    tags: ['MC'],
+    bodySchema: playerGroupUploadSchema,
+    successStatus: '204',
+  });
+  registerRoute({
+    method: 'post',
     path: '/api/mc/register',
     summary: 'MC 插件注册用户',
     auth: 'apiKey',
@@ -939,6 +992,89 @@ const registerTemplateRoutes = () => {
     summary: '删除模板',
     auth: 'admin',
     tags: ['Admin Templates'],
+    successStatus: '204',
+  });
+};
+
+const registerPlayerGroupRoutes = () => {
+  registerRoute({
+    method: 'get',
+    path: '/api/player-groups/search',
+    summary: '搜索玩家组值',
+    auth: 'jwt',
+    tags: ['Player groups'],
+    querySchema: playerGroupSearchSchema,
+    responseSchema: z.array(z.string()),
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/admin/player-groups',
+    summary: '获取玩家组',
+    auth: 'admin',
+    tags: ['Player groups'],
+    responseSchema: z.array(playerGroupSummarySchema),
+  });
+  registerRoute({
+    method: 'get',
+    path: '/api/admin/player-groups/{id}',
+    summary: '获取玩家组详情',
+    auth: 'admin',
+    tags: ['Player groups'],
+    querySchema: playerGroupItemsQuerySchema,
+    responseSchema: playerGroupSchema,
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/admin/player-groups',
+    summary: '创建玩家组',
+    auth: 'admin',
+    tags: ['Player groups'],
+    bodySchema: playerGroupCreateSchema,
+    responseSchema: playerGroupSummarySchema,
+    successStatus: '201',
+  });
+  registerRoute({
+    method: 'patch',
+    path: '/api/admin/player-groups/{id}',
+    summary: '更新玩家组',
+    auth: 'admin',
+    tags: ['Player groups'],
+    bodySchema: playerGroupUpdateSchema,
+    responseSchema: playerGroupSummarySchema,
+  });
+  registerRoute({
+    method: 'delete',
+    path: '/api/admin/player-groups/{id}',
+    summary: '删除玩家组',
+    auth: 'admin',
+    tags: ['Player groups'],
+    successStatus: '204',
+  });
+  registerRoute({
+    method: 'post',
+    path: '/api/admin/player-groups/{id}/items',
+    summary: '批量添加玩家组值',
+    auth: 'admin',
+    tags: ['Player groups'],
+    bodySchema: playerGroupItemsSchema,
+    responseSchema: playerGroupSummarySchema,
+    successStatus: '201',
+  });
+  registerRoute({
+    method: 'patch',
+    path: '/api/admin/player-groups/{id}/items/{itemId}',
+    summary: '更新玩家组值',
+    auth: 'admin',
+    tags: ['Player groups'],
+    bodySchema: playerGroupItemUpdateSchema,
+    responseSchema: playerGroupItemSchema,
+  });
+  registerRoute({
+    method: 'delete',
+    path: '/api/admin/player-groups/{id}/items/{itemId}',
+    summary: '删除玩家组值',
+    auth: 'admin',
+    tags: ['Player groups'],
     successStatus: '204',
   });
 };
@@ -1366,6 +1502,7 @@ registerAttachmentRoutes();
 registerServerRoutes();
 registerMcRoutes();
 registerTemplateRoutes();
+registerPlayerGroupRoutes();
 registerStorageRoutes();
 registerMinecraftHookDeliveryRoutes();
 registerUserRoutes();

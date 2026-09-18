@@ -25,9 +25,11 @@ import type {
 } from '@/types/template';
 import type { TemplateField, TemplateHiddenMode } from '@/types/ticket';
 import { apiGetAdminTemplate } from '@/api/templates';
+import { usePlayerGroupsStore } from '@/stores/player-groups';
 
 const templates = useTemplatesStore();
 const labels = useLabelsStore();
+const playerGroups = usePlayerGroupsStore();
 const ui = useUiStore();
 const { confirm } = useConfirm();
 
@@ -185,6 +187,8 @@ function emptyField(type: EditableTemplateField['type']): EditableTemplateField 
     placeholder: '',
     value: '',
     options: [],
+    groups: [],
+    inputAny: false,
     advancedOpen: false,
   };
 }
@@ -207,6 +211,8 @@ function deserializeField(field: TemplateField): EditableTemplateField {
     placeholder: field.attributes.placeholder ?? '',
     value: field.attributes.value ?? '',
     options: (field.attributes.options ?? []).map(normalizeOption),
+    groups: field.attributes.groups ?? [],
+    inputAny: field.attributes.input_any === true,
   };
 }
 
@@ -246,6 +252,10 @@ function serializeField(field: EditableTemplateField): TemplateField {
         .map((option) =>
           option.required ? { label: option.label.trim(), required: true } : option.label.trim(),
         );
+    }
+    if (field.type === 'player_select') {
+      attributes.groups = field.groups.filter((group) => group.trim());
+      if (field.inputAny) attributes.input_any = true;
     }
   }
 
@@ -532,6 +542,7 @@ function fieldIcon(type: EditableTemplateField['type']): string {
   if (type === 'checkboxes') return 'lucide:list-checks';
   if (type === 'dropdown') return 'lucide:list-collapse';
   if (type === 'select_input') return 'lucide:list-plus';
+  if (type === 'player_select') return 'lucide:user-round-search';
   if (type === 'input') return 'lucide:text-cursor-input';
   return 'lucide:align-left';
 }
@@ -636,6 +647,11 @@ const fieldTypeOptions = [
     label: t('admin.templates.fieldType.select_input'),
     icon: 'lucide:list-plus',
   },
+  {
+    value: 'player_select',
+    label: t('admin.templates.fieldType.player_select'),
+    icon: 'lucide:user-round-search',
+  },
 ];
 
 const selectionFieldTypeOptions = fieldTypeOptions.filter((option) => option.value !== 'markdown');
@@ -667,6 +683,7 @@ onMounted(async () => {
     await Promise.all([
       templates.loaded ? Promise.resolve() : templates.fetchList(),
       labels.loaded ? Promise.resolve() : labels.fetchList(),
+      playerGroups.loaded ? Promise.resolve() : playerGroups.fetchList(),
     ]);
   } catch (e) {
     handleError(e, t('common.loadFailed'));
@@ -937,11 +954,15 @@ onMounted(async () => {
                       v-if="
                         field.type === 'checkboxes' ||
                         field.type === 'dropdown' ||
-                        field.type === 'select_input'
+                        field.type === 'select_input' ||
+                        field.type === 'player_select'
                       "
                       class="space-y-2"
                     >
-                      <div class="flex items-center justify-between gap-3">
+                      <div
+                        v-if="field.type !== 'player_select'"
+                        class="flex items-center justify-between gap-3"
+                      >
                         <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{
                           t('admin.templates.options')
                         }}</span>
@@ -954,32 +975,56 @@ onMounted(async () => {
                           {{ t('admin.templates.addOption') }}
                         </BaseButton>
                       </div>
-                      <div
-                        v-for="(option, optionIndex) in field.options"
-                        :key="optionIndex"
-                        class="flex items-center gap-2"
-                      >
-                        <BaseInput
-                          v-model="option.label"
-                          class="min-w-0 flex-1"
-                          :placeholder="t('admin.templates.optionPlaceholder')"
+                      <div v-if="field.type === 'player_select'" class="grid gap-3 sm:grid-cols-2">
+                        <BaseMultiSelect
+                          v-model="field.groups"
+                          :label="t('admin.templates.playerGroups')"
+                          :placeholder="t('admin.templates.playerGroupsPlaceholder')"
+                          :options="
+                            playerGroups.groups.map((group) => ({
+                              value: group.id,
+                              label: group.name ? `${group.name} (${group.id})` : group.id,
+                            }))
+                          "
+                          :empty-text="t('common.noData')"
+                          :no-results-text="t('common.noResults')"
+                          :all-selected-text="t('common.noResults')"
                         />
                         <label
-                          v-if="field.type === 'checkboxes'"
-                          class="flex shrink-0 items-center gap-2 text-xs text-slate-600 dark:text-slate-400"
+                          class="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-800 dark:text-slate-300"
                         >
-                          <BaseToggle v-model="option.required" />
-                          {{ t('admin.templates.requiredOption') }}
+                          {{ t('admin.templates.playerInputAny') }}
+                          <BaseToggle v-model="field.inputAny" />
                         </label>
-                        <BaseButton
-                          :class="dangerIconButtonClass"
-                          type="button"
-                          :title="t('common.delete')"
-                          @click="removeOption(field, optionIndex)"
-                        >
-                          <Icon icon="lucide:x" class="h-4 w-4" />
-                        </BaseButton>
                       </div>
+                      <template v-if="field.type !== 'player_select'">
+                        <div
+                          v-for="(option, optionIndex) in field.options"
+                          :key="optionIndex"
+                          class="flex items-center gap-2"
+                        >
+                          <BaseInput
+                            v-model="option.label"
+                            class="min-w-0 flex-1"
+                            :placeholder="t('admin.templates.optionPlaceholder')"
+                          />
+                          <label
+                            v-if="field.type === 'checkboxes'"
+                            class="flex shrink-0 items-center gap-2 text-xs text-slate-600 dark:text-slate-400"
+                          >
+                            <BaseToggle v-model="option.required" />
+                            {{ t('admin.templates.requiredOption') }}
+                          </label>
+                          <BaseButton
+                            :class="dangerIconButtonClass"
+                            type="button"
+                            :title="t('common.delete')"
+                            @click="removeOption(field, optionIndex)"
+                          >
+                            <Icon icon="lucide:x" class="h-4 w-4" />
+                          </BaseButton>
+                        </div>
+                      </template>
                     </div>
 
                     <BaseButton
@@ -1009,7 +1054,8 @@ onMounted(async () => {
                         v-if="
                           field.type === 'textarea' ||
                           field.type === 'input' ||
-                          field.type === 'select_input'
+                          field.type === 'select_input' ||
+                          field.type === 'player_select'
                         "
                         v-model="field.placeholder"
                         :label="t('admin.templates.placeholderOptional')"
@@ -1210,7 +1256,8 @@ onMounted(async () => {
                             v-if="
                               field.type === 'input' ||
                               field.type === 'textarea' ||
-                              field.type === 'select_input'
+                              field.type === 'select_input' ||
+                              field.type === 'player_select'
                             "
                             v-model="field.placeholder"
                             :label="t('admin.templates.placeholderOptional')"
@@ -1226,11 +1273,15 @@ onMounted(async () => {
                           v-if="
                             field.type === 'checkboxes' ||
                             field.type === 'dropdown' ||
-                            field.type === 'select_input'
+                            field.type === 'select_input' ||
+                            field.type === 'player_select'
                           "
                           class="space-y-2"
                         >
-                          <div class="flex items-center justify-between gap-2">
+                          <div
+                            v-if="field.type !== 'player_select'"
+                            class="flex items-center justify-between gap-2"
+                          >
                             <span class="text-sm font-medium text-slate-700 dark:text-slate-300">{{
                               t('admin.templates.options')
                             }}</span>
@@ -1244,31 +1295,58 @@ onMounted(async () => {
                             </BaseButton>
                           </div>
                           <div
-                            v-for="(option, optionIndex) in field.options"
-                            :key="optionIndex"
-                            class="flex items-center gap-2"
+                            v-if="field.type === 'player_select'"
+                            class="grid gap-3 sm:grid-cols-2"
                           >
-                            <BaseInput
-                              v-model="option.label"
-                              class="min-w-0 flex-1"
-                              :placeholder="t('admin.templates.optionPlaceholder')"
+                            <BaseMultiSelect
+                              v-model="field.groups"
+                              :label="t('admin.templates.playerGroups')"
+                              :placeholder="t('admin.templates.playerGroupsPlaceholder')"
+                              :options="
+                                playerGroups.groups.map((group) => ({
+                                  value: group.id,
+                                  label: group.name ? `${group.name} (${group.id})` : group.id,
+                                }))
+                              "
+                              :empty-text="t('common.noData')"
+                              :no-results-text="t('common.noResults')"
+                              :all-selected-text="t('common.noResults')"
                             />
                             <label
-                              v-if="field.type === 'checkboxes'"
-                              class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+                              class="flex items-center justify-between gap-3 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-800 dark:text-slate-300"
                             >
-                              <BaseToggle v-model="option.required" />
-                              {{ t('admin.templates.requiredOption') }}
+                              {{ t('admin.templates.playerInputAny') }}
+                              <BaseToggle v-model="field.inputAny" />
                             </label>
-                            <BaseButton
-                              :class="dangerIconButtonClass"
-                              type="button"
-                              :title="t('common.delete')"
-                              @click="removeOption(field, optionIndex)"
-                            >
-                              <Icon icon="lucide:x" class="h-4 w-4" />
-                            </BaseButton>
                           </div>
+                          <template v-if="field.type !== 'player_select'">
+                            <div
+                              v-for="(option, optionIndex) in field.options"
+                              :key="optionIndex"
+                              class="flex items-center gap-2"
+                            >
+                              <BaseInput
+                                v-model="option.label"
+                                class="min-w-0 flex-1"
+                                :placeholder="t('admin.templates.optionPlaceholder')"
+                              />
+                              <label
+                                v-if="field.type === 'checkboxes'"
+                                class="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+                              >
+                                <BaseToggle v-model="option.required" />
+                                {{ t('admin.templates.requiredOption') }}
+                              </label>
+                              <BaseButton
+                                :class="dangerIconButtonClass"
+                                type="button"
+                                :title="t('common.delete')"
+                                @click="removeOption(field, optionIndex)"
+                              >
+                                <Icon icon="lucide:x" class="h-4 w-4" />
+                              </BaseButton>
+                            </div>
+                          </template>
                         </div>
                       </article>
                       <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">

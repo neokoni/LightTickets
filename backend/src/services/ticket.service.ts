@@ -258,7 +258,10 @@ export async function create(input: CreateTicketInput) {
   ) {
     throw new ForbiddenError('只有管理组或可信 Minecraft 会话可以指定来源服务器');
   }
-  const formData = templateService.validateAndNormalizeFormData(def, input.formData || {});
+  const formData = await templateService.validateAndNormalizeFormDataAsync(
+    def,
+    input.formData || {},
+  );
   const hidden = resolveTicketHidden(def.hidden, input.hidden);
   title = applyTitlePrefix(title, def.title_prefix);
 

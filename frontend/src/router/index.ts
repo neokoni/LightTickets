@@ -122,6 +122,12 @@ const router = createRouter({
           meta: { auth: true, admin: true, titleKey: 'admin.templates.title' },
         },
         {
+          path: 'player-groups',
+          name: 'admin-player-groups',
+          component: () => import('@/views/admin/AdminPlayerGroupsView.vue'),
+          meta: { auth: true, admin: true, titleKey: 'admin.playerGroups.title' },
+        },
+        {
           path: 'users',
           name: 'admin-users',
           component: () => import('@/views/admin/AdminUsersView.vue'),

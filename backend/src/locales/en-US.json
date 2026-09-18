@@ -99,7 +99,32 @@
         "settings": "Settings",
         "storage": "Storage",
         "templates": "Templates",
+        "playerGroups": "Player groups",
         "users": "Users"
+      },
+      "playerGroups": {
+        "addItems": "Add",
+        "create": "New player group",
+        "deleteConfirm": "Delete player group “{id}”?",
+        "deleted": "Player group deleted",
+        "edit": "Edit player group",
+        "empty": "No player groups",
+        "id": "Unique ID",
+        "itemsEmpty": "No players",
+        "itemsPlaceholder": "Enter player names separated by spaces or commas",
+        "itemsSaved": "Players added",
+        "managePlayers": "Manage players",
+        "noPlayerMatches": "No matching players",
+        "note": "Note",
+        "playerCount": "{count} players",
+        "playerDeleteConfirm": "Remove “{player}” from this player group?",
+        "playerDeleted": "Player removed",
+        "playerRenamed": "Player name updated",
+        "playersTitle": "Manage players · {name}",
+        "renamePlayer": "Rename player",
+        "saved": "Player group saved",
+        "searchPlayers": "Search players...",
+        "title": "Player groups"
       },
       "rateLimit": {
         "authHelp": "Limits registration, token refresh, external login, and other authentication requests with one shared quota per IP. Login uses its own policy.",
@@ -249,10 +274,14 @@
           "input": "Single-line text",
           "markdown": "Markdown",
           "select_input": "Select or enter",
+          "player_select": "Player select",
           "textarea": "Textarea"
         },
         "formFields": "Form fields",
         "formFieldsHelp": "Configure the information users provide when creating a ticket.",
+        "playerGroups": "Player group IDs",
+        "playerGroupsPlaceholder": "group-a, group-b",
+        "playerInputAny": "Allow values outside the groups",
         "hook": "Completion hook",
         "hookConditionOptional": "Condition",
         "hookEvent": {
@@ -714,7 +743,8 @@
         "submit": "Submit issue",
         "title": "New issue",
         "titlePlaceholder": "Briefly describe the problem",
-        "titlePrefixHelp": "Prefix \"{prefix}\" will be added to the title automatically"
+        "titlePrefixHelp": "Prefix \"{prefix}\" will be added to the title automatically",
+        "playerSelectPlaceholder": "Type to search players"
       },
       "visibility": {
         "createLabel": "Issue visibility",

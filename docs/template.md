@@ -128,17 +128,37 @@ completion_hooks: []        # 可选，状态变更时触发的钩子
 
 `select_input` 的预设选项与自定义输入均按原文提交，不解析 `|` 分隔符。
 
+### player_select — 玩家选择
+
+```yaml
+- type: player_select
+  id: players
+  validations:
+    required: true
+  attributes:
+    label: 选择玩家
+    placeholder: 输入玩家名搜索
+    groups: [online_players, trusted_players]
+    input_any: false
+```
+
+`groups` 至少包含一个后台已创建的玩家组 ID。控件不会预加载组内全部玩家，只有输入非空搜索词后才查询；多个组中的同名玩家只返回一次。字段支持多选，提交值以逗号分隔。默认仅允许提交组中已有的玩家名；`input_any: true` 时也允许提交未列出的有效 Minecraft 玩家名。
+
+管理员可在「玩家组」页面维护 group 的固定 ID、可修改名称、备注及玩家名。插件配置 `playerGroupUpload.enabled` 开启后，会在玩家连接时将玩家名写入 `playerGroupUpload.groupId: [group-a, group-b]` 指定的多个 group。
+
 ## 字段属性一览
 
 | 属性 | 适用类型 | 说明 |
 |------|---------|------|
-| `id` | input / textarea / checkboxes / dropdown / select_input | 字段标识符，用于 `formData` 存储和 `{field.<id>}` 占位符 |
-| `validations.required` | input / textarea / checkboxes / dropdown / select_input | 是否必填（前端校验） |
-| `attributes.label` | input / textarea / checkboxes / dropdown / select_input | 字段标签 |
-| `attributes.description` | input / textarea / dropdown / select_input | 字段说明文字 |
-| `attributes.placeholder` | input / textarea / select_input | 输入框占位提示 |
+| `id` | input / textarea / checkboxes / dropdown / select_input / player_select | 字段标识符，用于 `formData` 存储和 `{field.<id>}` 占位符 |
+| `validations.required` | input / textarea / checkboxes / dropdown / select_input / player_select | 是否必填（前端校验） |
+| `attributes.label` | input / textarea / checkboxes / dropdown / select_input / player_select | 字段标签 |
+| `attributes.description` | input / textarea / dropdown / select_input / player_select | 字段说明文字 |
+| `attributes.placeholder` | input / textarea / select_input / player_select | 输入框占位提示 |
 | `attributes.value` | markdown | 静态 Markdown 内容 |
 | `attributes.options` | checkboxes / dropdown / select_input | 选项列表 |
+| `attributes.groups` | player_select | 可搜索的玩家组 ID 列表，至少一个 |
+| `attributes.input_any` | player_select | 是否允许提交不在玩家组中的有效玩家名 |
 
 ## completion_hooks — 状态变更钩子
 
@@ -206,7 +226,7 @@ commands:
 决策完成前仍仅 staff/admin 可见，完成后会对所有能查看该议题的人公开。公开结果不会让无权
 查看隐藏议题的用户绕过议题可见性。
 
-字段支持 `input`、`textarea`、`dropdown` 和 `checkboxes`（多选），结构与 `body` 字段相同；
+字段支持 `input`、`textarea`、`dropdown`、`checkboxes`（多选）和 `player_select`，结构与 `body` 字段相同；
 其中每个字段都必须配置唯一 `id` 和非空 `attributes.label`。`actions` 支持配置多个
 `command` / `minimessage` 动作，每个动作又可包含多条命令或消息，并按配置顺序下发。
 
@@ -329,9 +349,10 @@ completion_hooks:
 | `checkboxes` | 每个选中项输出 `- [x] 选项文本` |
 | `dropdown` | `**标签:** 显示文本` |
 | `select_input` | `**标签:** 预设值或自定义输入` |
+| `player_select` | `**标签:** 玩家名（多个值以逗号分隔并以逗号加空格显示）` |
 
 各字段之间以 `---` 分隔。若所有字段均为空则输出 `No content provided`。
 
 ## 管理后台编辑
 
-管理后台的「模板管理」编辑窗口分为「基础信息」「表单字段」「完成钩子」「编辑原文」四个分区，移动端可通过下拉框切换。`body` 和 `completion_hooks` 都会自动反序列化为结构化编辑器；保存时再自动序列化，由后端校验后同步写回 `data/templates/<name>.yml` 文件。表单字段和完成钩子均在列表底部选择类型后添加，并支持拖拽或箭头排序。表单字段支持 `input`、`textarea`、`markdown`、`checkboxes` 和 `dropdown`；普通完成钩子可配置事件、类型、条件以及命令或消息列表，“执行选项”还可配置结果卡片可见性、决策字段和多个提交后动作。空的可选配置不会写入模板。「编辑原文」会在 GUI 内容变化时实时生成完整 YAML，也可直接修改；保存前会由后端解析并校验，GUI 与原文均有修改时以最后发生的修改为准。
+管理后台的「模板管理」编辑窗口分为「基础信息」「表单字段」「完成钩子」「编辑原文」四个分区，移动端可通过下拉框切换。`body` 和 `completion_hooks` 都会自动反序列化为结构化编辑器；保存时再自动序列化，由后端校验后同步写回 `data/templates/<name>.yml` 文件。表单字段和完成钩子均在列表底部选择类型后添加，并支持拖拽或箭头排序。表单字段支持 `input`、`textarea`、`markdown`、`checkboxes`、`dropdown` 和 `player_select`；普通完成钩子可配置事件、类型、条件以及命令或消息列表，「执行选项」还可配置结果卡片可见性、决策字段和多个提交后动作。空的可选配置不会写入模板。「编辑原文」会在 GUI 内容变化时实时生成完整 YAML，也可直接修改；保存前会由后端解析并校验，GUI 与原文均有修改时以最后发生的修改为准。

@@ -12,6 +12,7 @@ import ink.neokoni.lightTickets.Utils.DataRefreshManager;
 import ink.neokoni.lightTickets.velocity.LightTicketsVelocity;
 import ink.neokoni.lightTickets.velocity.packet.PlayerContextListener;
 import ink.neokoni.lightTickets.velocity.platform.VelocityPlayer;
+import ink.neokoni.lightTickets.Utils.PlayerGroupUploader;
 
 import java.util.UUID;
 
@@ -29,6 +30,7 @@ public final class ConnectListener {
         Player player = event.getPlayer();
         if (player != null) {
             DataRefreshManager.onPlayerJoin(player.getUniqueId());
+            PlayerGroupUploader.upload(new VelocityPlayer(player));
         }
     }
 

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { SERVER_API_KEY_TYPES } from '../constants/server-api-key.js';
 
+const serverIdentifyIdPattern = '^[^\\u0000-\\u001F\\u007F]+$';
+
 export const serverIdentifierSchema = z
   .string()
   .trim()
@@ -22,7 +24,8 @@ export const serverIdentifyIdSchema = z
         return code < 0x20 || code === 0x7f;
       }),
     '识别 ID 不能包含控制字符',
-  );
+  )
+  .meta({ pattern: serverIdentifyIdPattern });
 
 export const serverCreateSchema = z.object({
   serverId: serverIdentifierSchema,

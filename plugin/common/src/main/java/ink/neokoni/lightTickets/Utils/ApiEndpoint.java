@@ -13,6 +13,7 @@ public enum ApiEndpoint {
     MC_LINK_CODE("POST", "/api/mc/link-code", true),
     MC_PLAYER_SESSION("POST", "/api/mc/session", true),
     MC_CREATE_TICKET("POST", "/api/mc/tickets", true),
+    MC_PLAYER_GROUP_ITEM("POST", "/api/mc/player-group/items", true),
     MC_TICKET_LIST("GET", "/api/mc/tickets", true),
     MC_TICKET_SEARCH("POST", "/api/mc/tickets/search", true),
     MC_USER("GET", "/api/mc/user/{minecraftUuid}", true),
