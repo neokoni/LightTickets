@@ -416,6 +416,46 @@ describe('player groups', () => {
     await templateService.adminDelete(anyName);
   });
 
+  it('matches player_select membership case-sensitively', async () => {
+    await request(app)
+      .post('/api/admin/player-groups')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ id: 'case-group', name: 'case-group' })
+      .expect(201);
+    await request(app)
+      .post('/api/admin/player-groups/case-group/items')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ values: ['Alice'] })
+      .expect(201);
+    const templateName = 'player_select_case';
+    await templateService.adminCreate({
+      name: templateName,
+      nameI18n: templateName,
+      description: templateName,
+      body: JSON.stringify([
+        {
+          type: 'player_select',
+          id: 'players',
+          validations: { required: true },
+          attributes: { label: 'Players', groups: ['case-group'], input_any: false },
+        },
+      ]),
+    });
+
+    await request(app)
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ title: 'wrong case', template: templateName, formData: { players: 'alice' } })
+      .expect(400);
+    await request(app)
+      .post('/api/tickets')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ title: 'exact case', template: templateName, formData: { players: 'Alice' } })
+      .expect(201);
+
+    await templateService.adminDelete(templateName);
+  });
+
   it('accepts authenticated player uploads and rejects invalid requests', async () => {
     const serverKey = 'player-group-upload-key';
     await prisma().server.create({ data: serverData('player-group-upload', serverKey) });
