@@ -310,7 +310,11 @@ function assertValidTemplateBody(
 ): asserts value is TemplateField[] {
   for (const field of value) {
     if (!isRecord(field)) throw new ValidationError('body 字段包含无效的模板字段');
+    // Only reject unknown field types on write. On load (validateOptions=false) an
+    // unknown/legacy type is tolerated so a single bad field never drops the whole
+    // on-disk template out of the cache; unknown types are simply ignored downstream.
     if (
+      validateOptions &&
       ![
         'markdown',
         'input',

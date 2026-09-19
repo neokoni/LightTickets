@@ -26,6 +26,7 @@ const testTemplateNames = [
   'invalid_selection_hook_tmpl_6',
   'invalid_selection_source_tmpl',
   'legacy_invalid_options_tmpl',
+  'unknown_field_type_tmpl',
 ];
 
 afterEach(() => {
@@ -151,6 +152,42 @@ describe('GET /api/admin/templates', () => {
       const template = await templateService.adminGet(name);
       expect(template.name).toBe(name);
       expect(template.source).toContain('options: ["v", "v"]');
+    } finally {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      await templateService.initTemplates();
+    }
+  });
+
+  it('loads templates with an unknown field type instead of dropping them', async () => {
+    await setupAndGetAdmin();
+    const name = 'unknown_field_type_tmpl';
+    const filePath = path.join(templatesDir, `${name}.yml`);
+    const source = [
+      'name: Unknown field type',
+      'description: Legacy or typo field type',
+      'body:',
+      '  - type: inputt',
+      '    id: legacy',
+      '    attributes:',
+      '      label: Legacy',
+      '',
+    ].join('\n');
+
+    fs.writeFileSync(filePath, source, 'utf-8');
+    try {
+      await templateService.initTemplates();
+      const template = await templateService.adminGet(name);
+      expect(template.name).toBe(name);
+
+      // Writing an unknown field type through the service is still rejected.
+      await expect(
+        templateService.adminCreate({
+          name: 'unknown_field_type_write',
+          nameI18n: 'x',
+          description: 'x',
+          body: JSON.stringify([{ type: 'inputt', id: 'legacy', attributes: { label: 'x' } }]),
+        }),
+      ).rejects.toThrow();
     } finally {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       await templateService.initTemplates();
