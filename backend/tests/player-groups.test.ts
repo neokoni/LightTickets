@@ -1,9 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setImmediate } from 'node:timers/promises';
 import fs from 'node:fs';
 import path from 'node:path';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import * as templateService from '../src/services/template.service.js';
+import * as completionHookService from '../src/services/completion-hook.service.js';
+import * as adminPlayerGroupService from '../src/services/admin-player-group.service.js';
 import { dataPath } from '../src/paths.js';
 import { prisma, serverData } from './setup.js';
 
@@ -36,6 +39,105 @@ beforeEach(async () => {
 });
 
 describe('player groups', () => {
+  it.each(['close', 'closed', 'invalid'] as const)(
+    'protects group dependencies until the %s hook transaction commits',
+    async (operation) => {
+      const groupId = 'review_hook_group';
+      const templateName = 'review_hook_race';
+      const group = await prisma().playerGroup.create({ data: { id: groupId } });
+      await templateService.adminCreate({
+        name: templateName,
+        nameI18n: 'Hook race',
+        description: 'Hook race',
+        body: '[]',
+        completionHooks: JSON.stringify([
+          {
+            event: operation === 'invalid' ? 'invalid' : 'closed',
+            type: 'selection',
+            title: 'Select players',
+            fields: [
+              {
+                type: 'player_select',
+                id: 'players',
+                attributes: { label: 'Players', groups: [groupId] },
+              },
+            ],
+            actions: [{ type: 'command', commands: ['say {selection.players}'] }],
+          },
+        ]),
+      });
+      const created = await request(app)
+        .post('/api/tickets')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ title: 'Hook race', template: templateName, formData: {} })
+        .expect(201);
+      const ticketId = created.body.data.id;
+      const entered = Promise.withResolvers<void>();
+      const release = Promise.withResolvers<void>();
+      const createPending = completionHookService.createPendingForEvent;
+      const spy = vi
+        .spyOn(completionHookService, 'createPendingForEvent')
+        .mockImplementationOnce(async (...args) => {
+          const count = await createPending(...args);
+          entered.resolve();
+          await release.promise;
+          return count;
+        });
+      const transition =
+        operation === 'close'
+          ? request(app).post(`/api/tickets/${ticketId}/close`)
+          : request(app).patch(`/api/tickets/${ticketId}`).send({ status: operation });
+      const closing = transition
+        .set('Authorization', `Bearer ${adminToken}`)
+        .then((response) => response);
+      let deletion: Promise<unknown> | undefined;
+      try {
+        await Promise.race([
+          entered.promise,
+          closing.then(() => {
+            throw new Error('Hook creation was not reached');
+          }),
+        ]);
+        let templateDeleted = false;
+        // Keep the real hook transaction open while template removal and group deletion queue.
+        deletion = templateService
+          .adminDelete(templateName)
+          .then(async () => {
+            templateDeleted = true;
+            return adminPlayerGroupService.deleteGroup(groupId);
+          })
+          .then(
+            () => null,
+            (error: unknown) => error,
+          );
+        await setImmediate();
+        expect(templateDeleted).toBe(false);
+        expect(templateService.getDefinition(templateName)).toBeDefined();
+      } finally {
+        release.resolve();
+        await closing;
+        await deletion;
+        spy.mockRestore();
+      }
+      expect((await closing).status).toBe(200);
+      expect(await deletion).toMatchObject({ statusCode: 409 });
+      expect(
+        await prisma().ticketCompletionHook.count({ where: { ticketId, status: 'pending' } }),
+      ).toBe(1);
+      expect(await prisma().playerGroup.findUnique({ where: { id: groupId } })).toMatchObject({
+        id: groupId,
+        updatedAt: group.updatedAt,
+      });
+
+      await prisma().ticketCompletionHook.updateMany({
+        where: { ticketId },
+        data: { status: 'skipped' },
+      });
+      await adminPlayerGroupService.deleteGroup(groupId);
+      expect(await prisma().playerGroup.findUnique({ where: { id: groupId } })).toBeNull();
+    },
+  );
+
   it('keeps rejected creates and updates out of disk and cache during other saves', async () => {
     const original = { nameI18n: 'Original', description: 'Original', body: '[]' };
     await templateService.adminCreate({ name: 'review_other', ...original });

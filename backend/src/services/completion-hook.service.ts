@@ -139,8 +139,12 @@ async function validateResponse(
   return normalized;
 }
 
-export async function pendingUsesPlayerGroup(groupId: string): Promise<boolean> {
-  const hooks = await prisma().ticketCompletionHook.findMany({
+export async function pendingUsesPlayerGroup(
+  groupId: string,
+  tx?: Prisma.TransactionClient,
+): Promise<boolean> {
+  const db = tx ?? prisma();
+  const hooks = await db.ticketCompletionHook.findMany({
     where: { status: 'pending' },
     select: { fields: true },
   });
@@ -212,6 +216,17 @@ export async function createPendingForEvent(
   const variables = templateService.createHookVariables(ticket);
   const hooks = templateService.resolveSelectionHooks(definition, event, variables);
   if (hooks.length === 0) return 0;
+
+  const groupIds = [
+    ...new Set(
+      hooks.flatMap((hook) =>
+        hook.fields.flatMap((field) =>
+          field.type === 'player_select' ? (field.attributes.groups ?? []) : [],
+        ),
+      ),
+    ),
+  ];
+  await playerGroupService.lockGroups(tx, groupIds);
 
   // Decision hooks are triggered only once per ticket — on the first close.
   // Reopen → re-close does not re-trigger them.  The CAS update on

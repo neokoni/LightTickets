@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
+import { getConfig } from '../config.js';
+import { DatabaseProvider } from '../constants/database-provider.js';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
@@ -26,6 +28,25 @@ async function assertGroupExists(id: string): Promise<void> {
     select: { id: true },
   });
   if (!group || group.id !== id) throw new NotFoundError('group 不存在');
+}
+
+export async function lockGroups(tx: Prisma.TransactionClient, ids: string[]): Promise<void> {
+  const groupIds = [...new Set(ids.map((id) => assertGroupId(id)))].sort();
+  if (groupIds.length === 0) return;
+
+  // Both paths acquire a write lock without changing the group's metadata.
+  if (getConfig().database.provider === DatabaseProvider.MYSQL) {
+    const locked = await tx.$queryRaw<Array<{ id: string }>>(
+      Prisma.sql`SELECT id FROM player_groups WHERE id IN (${Prisma.join(groupIds)}) ORDER BY id FOR UPDATE`,
+    );
+    if (locked.length !== groupIds.length) throw new NotFoundError('group 不存在');
+    return;
+  }
+
+  const locked = await tx.$executeRaw(
+    Prisma.sql`UPDATE player_groups SET updated_at = updated_at WHERE id IN (${Prisma.join(groupIds)})`,
+  );
+  if (locked !== groupIds.length) throw new NotFoundError('group 不存在');
 }
 
 async function upsertItems(groupId: string, values: string[]): Promise<string> {
