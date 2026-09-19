@@ -30,7 +30,7 @@ const router = Router();
 
 router.use(serverAuthMiddleware);
 
-router.post('/player-group/items', async (req: Request, res: Response) => {
+router.post('/player-group/items', authLimiter, async (req: Request, res: Response) => {
   const data = validate(playerGroupUploadSchema, req.body);
   await playerGroupService.uploadItem(data.groupId, data.value);
   res.status(204).end();
