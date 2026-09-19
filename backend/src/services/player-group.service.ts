@@ -181,6 +181,7 @@ export async function searchValues(
 ): Promise<string[]> {
   const ids = Array.from(new Set(groupIds.map(assertGroupId)));
   if (!ids.length) throw new ValidationError('至少需要一个 group');
+  if (!(await groupsExist(ids))) throw new NotFoundError('group 不存在');
   const trimmed = query.trim();
   if (!trimmed) return [];
   const rows = await prisma().playerGroupItem.groupBy({

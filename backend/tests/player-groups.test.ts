@@ -284,6 +284,13 @@ describe('player groups', () => {
       .expect(200);
     expect(limitedSearch.body.data).toEqual(['SharedPlayer', 'UniquePlayer']);
 
+    // A non-existent group id is rejected rather than silently returning a subset.
+    await request(app)
+      .get('/api/player-groups/search')
+      .set('Authorization', `Bearer ${userToken}`)
+      .query({ groupIds: 'staff-a,ghost', q: 'Player' })
+      .expect(404);
+
     await request(app)
       .get('/api/admin/player-groups')
       .set('Authorization', `Bearer ${userToken}`)
