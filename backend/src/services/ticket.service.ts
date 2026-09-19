@@ -130,6 +130,21 @@ async function assertAssignableUserIds(
   }
 }
 
+// The template mutation lock serializes status transitions against template/group edits so
+// a referenced player group cannot be deleted mid-transition. It is only needed when the
+// transition would create a pending selection hook referencing a group; otherwise run
+// directly to avoid serializing every unrelated status change process-wide.
+function withGroupHookLock<T>(
+  ticket: Parameters<typeof completionHookService.eventReferencesPlayerGroups>[0],
+  event: string | undefined,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const needsLock =
+    (event === TICKET_STATUS.CLOSED || event === TICKET_STATUS.INVALID) &&
+    completionHookService.eventReferencesPlayerGroups(ticket, event);
+  return needsLock ? templateService.withTemplateMutationLock(operation) : operation();
+}
+
 async function createPendingCompletionHooks(
   tx: Prisma.TransactionClient,
   ticket: {
@@ -467,60 +482,64 @@ export async function update(
   const nextStatus = data.status;
   const statusChanged = nextStatus !== undefined && nextStatus !== ticket.status;
   const visibilityChanged = data.hidden !== undefined && data.hidden !== ticket.hidden;
-  const transition = await templateService.withTemplateMutationLock(async () => {
-    const hookEvent = statusChanged
-      ? minecraftHookDeliveryService.resolveTemplateEvent(ticket, nextStatus)
-      : null;
-    if (hookEvent) assertDirectCommandHookPermission(ticket, hookEvent.hooks, isStaff);
+  const transition = await withGroupHookLock(
+    ticket,
+    statusChanged ? nextStatus : undefined,
+    async () => {
+      const hookEvent = statusChanged
+        ? minecraftHookDeliveryService.resolveTemplateEvent(ticket, nextStatus)
+        : null;
+      if (hookEvent) assertDirectCommandHookPermission(ticket, hookEvent.hooks, isStaff);
 
-    return prisma().$transaction(async (tx) => {
-      if (statusChanged) {
-        const claimed = await tx.ticket.updateMany({
-          where: { id, status: ticket.status },
-          data: updateData,
-        });
-        if (claimed.count !== 1) throw new AppError(409, '议题状态已被其他请求修改');
-      } else {
-        await tx.ticket.update({ where: { id }, data: updateData });
-      }
-
-      const updatedTicket = await tx.ticket.findUniqueOrThrow({
-        where: { id },
-        include: {
-          author: { select: USER_BRIEF_SELECT },
-          labels: { include: { label: true } },
-          server: { select: { id: true, name: true, alias: true } },
-        },
-      });
-
-      let deliveryId: string | null = null;
-      if (statusChanged) {
-        await createAudit(tx, id, userId, AUDIT_ACTION.STATUS_CHANGE, ticket.status, nextStatus);
-        if (nextStatus === TICKET_STATUS.CLOSED || nextStatus === TICKET_STATUS.INVALID) {
-          await createPendingCompletionHooks(tx, ticket, nextStatus, userId);
+      return prisma().$transaction(async (tx) => {
+        if (statusChanged) {
+          const claimed = await tx.ticket.updateMany({
+            where: { id, status: ticket.status },
+            data: updateData,
+          });
+          if (claimed.count !== 1) throw new AppError(409, '议题状态已被其他请求修改');
+        } else {
+          await tx.ticket.update({ where: { id }, data: updateData });
         }
-        deliveryId = await minecraftHookDeliveryService.createForResolvedHooks(
-          tx,
-          ticket,
-          nextStatus,
-          hookEvent!.hooks,
-          hookEvent!.variables,
-        );
-      }
-      if (visibilityChanged) {
-        await createAudit(
-          tx,
-          id,
-          userId,
-          AUDIT_ACTION.VISIBILITY_CHANGE,
-          String(ticket.hidden),
-          String(data.hidden),
-        );
-      }
 
-      return { updatedTicket, deliveryId };
-    });
-  });
+        const updatedTicket = await tx.ticket.findUniqueOrThrow({
+          where: { id },
+          include: {
+            author: { select: USER_BRIEF_SELECT },
+            labels: { include: { label: true } },
+            server: { select: { id: true, name: true, alias: true } },
+          },
+        });
+
+        let deliveryId: string | null = null;
+        if (statusChanged) {
+          await createAudit(tx, id, userId, AUDIT_ACTION.STATUS_CHANGE, ticket.status, nextStatus);
+          if (nextStatus === TICKET_STATUS.CLOSED || nextStatus === TICKET_STATUS.INVALID) {
+            await createPendingCompletionHooks(tx, ticket, nextStatus, userId);
+          }
+          deliveryId = await minecraftHookDeliveryService.createForResolvedHooks(
+            tx,
+            ticket,
+            nextStatus,
+            hookEvent!.hooks,
+            hookEvent!.variables,
+          );
+        }
+        if (visibilityChanged) {
+          await createAudit(
+            tx,
+            id,
+            userId,
+            AUDIT_ACTION.VISIBILITY_CHANGE,
+            String(ticket.hidden),
+            String(data.hidden),
+          );
+        }
+
+        return { updatedTicket, deliveryId };
+      });
+    },
+  );
 
   if (statusChanged) {
     await emitStatusChanged(ticket, userId, ticket.status, nextStatus);
@@ -621,7 +640,7 @@ export async function closeTicket(id: number, userId: number, userRole: string) 
   if (ticket.status !== TICKET_STATUS.OPEN && ticket.status !== TICKET_STATUS.IN_PROGRESS) {
     throw new ForbiddenError('只有开放或处理中的议题可以关闭');
   }
-  const deliveryId = await templateService.withTemplateMutationLock(async () => {
+  const deliveryId = await withGroupHookLock(ticket, TICKET_STATUS.CLOSED, async () => {
     const hookEvent = minecraftHookDeliveryService.resolveTemplateEvent(
       ticket,
       TICKET_STATUS.CLOSED,

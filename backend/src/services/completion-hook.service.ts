@@ -206,6 +206,29 @@ export async function listForTicket(
   return hooks.map(toView);
 }
 
+function resolveHookGroupIds(hooks: templateService.ResolvedSelectionHook[]): string[] {
+  return [
+    ...new Set(
+      hooks.flatMap((hook) =>
+        hook.fields.flatMap((field) =>
+          field.type === 'player_select' ? (field.attributes.groups ?? []) : [],
+        ),
+      ),
+    ),
+  ];
+}
+
+// Whether closing/invalidating the ticket would create a pending selection hook that
+// references a player group. Callers use this to decide whether the transition needs the
+// template mutation lock that guards against concurrent group deletion.
+export function eventReferencesPlayerGroups(ticket: HookTicket, event: string): boolean {
+  const definition = templateService.getDefinition(ticket.template);
+  if (!definition) return false;
+  const variables = templateService.createHookVariables(ticket);
+  const hooks = templateService.resolveSelectionHooks(definition, event, variables);
+  return resolveHookGroupIds(hooks).length > 0;
+}
+
 export async function createPendingForEvent(
   tx: Prisma.TransactionClient,
   ticket: HookTicket,
@@ -217,16 +240,7 @@ export async function createPendingForEvent(
   const hooks = templateService.resolveSelectionHooks(definition, event, variables);
   if (hooks.length === 0) return 0;
 
-  const groupIds = [
-    ...new Set(
-      hooks.flatMap((hook) =>
-        hook.fields.flatMap((field) =>
-          field.type === 'player_select' ? (field.attributes.groups ?? []) : [],
-        ),
-      ),
-    ),
-  ];
-  await playerGroupService.lockGroups(tx, groupIds);
+  await playerGroupService.lockGroups(tx, resolveHookGroupIds(hooks));
 
   // Decision hooks are triggered only once per ticket — on the first close.
   // Reopen → re-close does not re-trigger them.  The CAS update on

@@ -456,6 +456,71 @@ describe('player groups', () => {
     await templateService.adminDelete(templateName);
   });
 
+  it('reports whether a transition event references player groups', async () => {
+    const groupId = 'predicate-group';
+    const withGroup = 'predicate_with_group';
+    const withoutGroup = 'predicate_without_group';
+    await prisma().playerGroup.create({ data: { id: groupId } });
+    await templateService.adminCreate({
+      name: withGroup,
+      nameI18n: withGroup,
+      description: withGroup,
+      body: '[]',
+      completionHooks: JSON.stringify([
+        {
+          event: 'closed',
+          type: 'selection',
+          title: 'Select players',
+          fields: [
+            { type: 'player_select', id: 'players', attributes: { label: 'P', groups: [groupId] } },
+          ],
+          actions: [{ type: 'command', commands: ['say {selection.players}'] }],
+        },
+      ]),
+    });
+    await templateService.adminCreate({
+      name: withoutGroup,
+      nameI18n: withoutGroup,
+      description: withoutGroup,
+      body: '[]',
+      completionHooks: JSON.stringify([
+        {
+          event: 'closed',
+          type: 'selection',
+          title: 'Pick',
+          fields: [{ type: 'input', id: 'note', attributes: { label: 'Note' } }],
+          actions: [{ type: 'command', commands: ['say done'] }],
+        },
+      ]),
+    });
+
+    const base = { id: 1, title: 't', formData: null };
+    expect(
+      completionHookService.eventReferencesPlayerGroups({ ...base, template: withGroup }, 'closed'),
+    ).toBe(true);
+    // Non-terminal event has no matching closed hook.
+    expect(
+      completionHookService.eventReferencesPlayerGroups(
+        { ...base, template: withGroup },
+        'invalid',
+      ),
+    ).toBe(false);
+    // Terminal event but no player_select field.
+    expect(
+      completionHookService.eventReferencesPlayerGroups(
+        { ...base, template: withoutGroup },
+        'closed',
+      ),
+    ).toBe(false);
+    // Unknown template.
+    expect(
+      completionHookService.eventReferencesPlayerGroups({ ...base, template: 'nope' }, 'closed'),
+    ).toBe(false);
+
+    await templateService.adminDelete(withGroup);
+    await templateService.adminDelete(withoutGroup);
+  });
+
   it('accepts authenticated player uploads and rejects invalid requests', async () => {
     const serverKey = 'player-group-upload-key';
     await prisma().server.create({ data: serverData('player-group-upload', serverKey) });
