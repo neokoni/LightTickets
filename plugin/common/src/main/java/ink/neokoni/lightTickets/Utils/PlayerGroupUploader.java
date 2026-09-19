@@ -6,6 +6,7 @@ import ink.neokoni.lightTickets.platform.LightPlatformProvider;
 import ink.neokoni.lightTickets.platform.LightPlayer;
 
 import java.util.Arrays;
+import java.util.Map;
 
 public final class PlayerGroupUploader {
     private PlayerGroupUploader() {}
@@ -24,8 +25,10 @@ public final class PlayerGroupUploader {
                     body.addProperty("value", playerName);
                     try {
                         ApiClient.requestWithStatus(player, ApiEndpoint.MC_PLAYER_GROUP_ITEM, body.toString());
-                    } catch (RuntimeException ignored) {
-                        // Player-group synchronization is best effort and intentionally silent.
+                    } catch (RuntimeException e) {
+                        // Best effort, but surface failures so a misconfigured group or auth is debuggable.
+                        LogUtils.warning("player_group.upload_failed",
+                                Map.of("{group}", groupId, "{message}", LogUtils.exceptionText(e)));
                     }
                 }));
     }

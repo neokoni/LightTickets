@@ -2,16 +2,26 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { getConfig } from '../config.js';
 import { DatabaseProvider } from '../constants/database-provider.js';
+import { PLAYER_GROUP_ID_PATTERN, PLAYER_NAME_PATTERN } from '../constants/player-group.js';
 import { AppError, NotFoundError, ValidationError } from '../utils/errors.js';
-
-const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
-const PLAYER_NAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/;
 
 function assertGroupId(id: string): string {
   const value = id.trim();
-  if (!ID_PATTERN.test(value))
+  if (!PLAYER_GROUP_ID_PATTERN.test(value))
     throw new ValidationError('group id 只能包含字母、数字、下划线和短横线');
   return value;
+}
+
+// Split a comma-separated player_select submission into a deduplicated, trimmed list.
+export function parseSelectionValues(raw: string): string[] {
+  return Array.from(
+    new Set(
+      raw
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
 }
 
 function normalizeValues(values: string[]): string[] {
@@ -51,18 +61,27 @@ export async function lockGroups(tx: Prisma.TransactionClient, ids: string[]): P
 
 async function upsertItems(groupId: string, values: string[]): Promise<string> {
   const id = assertGroupId(groupId);
-  await assertGroupExists(id);
   const normalized = normalizeValues(values);
   if (normalized.length === 0) throw new ValidationError('至少需要一个 group item');
-  await prisma().$transaction(
-    normalized.map((value) =>
-      prisma().playerGroupItem.upsert({
-        where: { groupId_value: { groupId: id, value } },
-        create: { groupId: id, value },
-        update: {},
-      }),
-    ),
-  );
+  // createMany({ skipDuplicates }) is unsupported on the SQLite adapter, so upsert each
+  // value. A missing group surfaces as an FK violation (P2003) which we map to a clean
+  // 404 instead of doing a separate existence pre-check.
+  try {
+    await prisma().$transaction(
+      normalized.map((value) =>
+        prisma().playerGroupItem.upsert({
+          where: { groupId_value: { groupId: id, value } },
+          create: { groupId: id, value },
+          update: {},
+        }),
+      ),
+    );
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      throw new NotFoundError('group 不存在');
+    }
+    throw error;
+  }
   return id;
 }
 
@@ -82,7 +101,7 @@ export async function listGroupItems(
     groupId,
     ...(input.q ? { value: { contains: input.q } } : {}),
   };
-  const [group, items, total] = await prisma().$transaction([
+  const [group, items] = await prisma().$transaction([
     prisma().playerGroup.findUnique({
       where: { id: groupId },
       include: { _count: { select: { items: true } } },
@@ -93,9 +112,11 @@ export async function listGroupItems(
       skip: (input.page - 1) * input.pageSize,
       take: input.pageSize,
     }),
-    prisma().playerGroupItem.count({ where }),
   ]);
   if (!group || group.id !== groupId) throw new NotFoundError('group 不存在');
+  // Without a filter the total is the group's item count already fetched above; only a
+  // filtered listing needs a separate count query.
+  const total = input.q ? await prisma().playerGroupItem.count({ where }) : group._count.items;
   return { group, items, total, page: input.page, pageSize: input.pageSize };
 }
 
@@ -128,12 +149,6 @@ export async function updateGroup(
     },
     include: { _count: { select: { items: true } } },
   });
-}
-
-export async function deleteGroup(id: string) {
-  const groupId = assertGroupId(id);
-  await assertGroupExists(groupId);
-  await prisma().playerGroup.delete({ where: { id: groupId } });
 }
 
 export async function addItems(groupId: string, values: string[]) {

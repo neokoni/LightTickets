@@ -7,6 +7,7 @@ import { createApp } from '../src/app.js';
 import * as templateService from '../src/services/template.service.js';
 import * as completionHookService from '../src/services/completion-hook.service.js';
 import * as adminPlayerGroupService from '../src/services/admin-player-group.service.js';
+import * as playerGroupService from '../src/services/player-group.service.js';
 import { dataPath } from '../src/paths.js';
 import { prisma, serverData } from './setup.js';
 
@@ -617,5 +618,14 @@ describe('player groups', () => {
     await expect(
       prisma().playerGroup.findUnique({ where: { id: groupId } }),
     ).resolves.not.toBeNull();
+  });
+
+  it('parses selection values by trimming, dropping empties and deduplicating', () => {
+    expect(playerGroupService.parseSelectionValues(' Alice , Bob ,, Alice ')).toEqual([
+      'Alice',
+      'Bob',
+    ]);
+    expect(playerGroupService.parseSelectionValues('')).toEqual([]);
+    expect(playerGroupService.parseSelectionValues('   ')).toEqual([]);
   });
 });

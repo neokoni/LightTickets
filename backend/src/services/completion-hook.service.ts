@@ -97,14 +97,7 @@ async function validateResponse(
       if (!(await playerGroupService.groupsExist(groups))) {
         throw new ValidationError(`${field.attributes.label} 配置的 group 不存在`);
       }
-      const selected = Array.from(
-        new Set(
-          text
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean),
-        ),
-      );
+      const selected = playerGroupService.parseSelectionValues(text);
       if (required && selected.length === 0) {
         throw new ValidationError(`${field.attributes.label} 为必填项`);
       }

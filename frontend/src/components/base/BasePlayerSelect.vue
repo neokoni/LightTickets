@@ -19,6 +19,7 @@ const query = ref('');
 const options = ref<string[]>([]);
 const open = ref(false);
 const loading = ref(false);
+const PLAYER_NAME_PATTERN = /^[A-Za-z0-9_]{3,16}$/;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let sequence = 0;
 
@@ -41,7 +42,6 @@ function search() {
   loading.value = true;
   timer = setTimeout(async () => {
     timer = undefined;
-    loading.value = true;
     try {
       const result = await apiSearchPlayerGroupValues(groups, q);
       if (current === sequence) {
@@ -66,6 +66,12 @@ function add(value: string) {
   query.value = '';
   closeList();
 }
+// Free-text entry (input_any) must still be a valid Minecraft name; otherwise the backend
+// rejects the whole submission. Keep an invalid draft in the field instead of adding it.
+function addFromInput() {
+  const value = query.value.trim();
+  if (PLAYER_NAME_PATTERN.test(value)) add(value);
+}
 function remove(value: string) {
   model.value = model.value.filter((item) => item !== value);
 }
@@ -76,7 +82,7 @@ function onKeydown(event: KeyboardEvent) {
   }
   if (event.key === 'Enter' && props.inputAny && query.value.trim()) {
     event.preventDefault();
-    add(query.value.trim());
+    addFromInput();
   }
 }
 function isInsideRoot(target: unknown): boolean {
@@ -85,7 +91,7 @@ function isInsideRoot(target: unknown): boolean {
 function onBlur(event: { relatedTarget: unknown }) {
   if (isInsideRoot(event.relatedTarget)) return;
   if (props.inputAny && query.value.trim()) {
-    add(query.value.trim());
+    addFromInput();
   }
   closeList();
 }

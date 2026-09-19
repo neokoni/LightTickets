@@ -504,22 +504,23 @@ function parseTemplateSourceForWrite(source: string): TemplateDefinition {
 }
 
 async function assertTemplatePlayerGroups(definition: TemplateDefinition): Promise<void> {
-  const groupSets = [
-    ...definition.body
-      .filter((field) => field.type === 'player_select')
-      .map((field) => field.attributes.groups ?? []),
-    ...definition.completion_hooks
-      .filter((hook) => hook?.type === 'selection')
-      .flatMap((hook) =>
-        (hook.fields ?? [])
-          .filter((field) => field.type === 'player_select')
-          .map((field) => field.attributes.groups ?? []),
-      ),
+  const groupIds = [
+    ...new Set([
+      ...definition.body
+        .filter((field) => field.type === 'player_select')
+        .flatMap((field) => field.attributes.groups ?? []),
+      ...definition.completion_hooks
+        .filter((hook) => hook?.type === 'selection')
+        .flatMap((hook) =>
+          (hook.fields ?? [])
+            .filter((field) => field.type === 'player_select')
+            .flatMap((field) => field.attributes.groups ?? []),
+        ),
+    ]),
   ];
-  for (const groupIds of groupSets) {
-    if (!(await playerGroupService.groupsExist(groupIds))) {
-      throw new ValidationError('player_select 引用的 group 不存在');
-    }
+  if (groupIds.length === 0) return;
+  if (!(await playerGroupService.groupsExist(groupIds))) {
+    throw new ValidationError('player_select 引用的 group 不存在');
   }
 }
 
@@ -696,14 +697,7 @@ export function validateAndNormalizeFormData(
     }
 
     if (field.type === 'player_select') {
-      const selected = Array.from(
-        new Set(
-          raw
-            .split(',')
-            .map((value) => value.trim())
-            .filter(Boolean),
-        ),
-      );
+      const selected = playerGroupService.parseSelectionValues(raw);
       if (required && selected.length === 0) throw new ValidationError(`${label} 为必填项`);
       normalized[field.id] = selected.join(',');
       continue;

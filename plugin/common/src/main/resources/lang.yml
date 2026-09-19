@@ -170,6 +170,9 @@ websocket:
   missing_player_uuid: "MiniMessage Hook 缺少玩家 UUID"
   player_not_online: "玩家不在线: {uuid}"
 
+player_group:
+  upload_failed: "玩家组同步失败: {group} ({message})"
+
 status:
   header: "<color:#ffdbab>LightTickets 状态"
   websocket: "<white>WebSocket: {status}"
