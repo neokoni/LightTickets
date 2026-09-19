@@ -275,6 +275,14 @@ function hasValidChoiceOptions(
   }
   if (type !== 'dropdown') return true;
 
+  return dropdownOptionsUnambiguous(options);
+}
+
+// Dropdown options are unambiguous when every option has a non-empty label and value, no
+// two options share a label, value or raw label, and no option's value collides with
+// another option's raw label. Otherwise normalizeDropdownValue could map a submission to
+// the wrong option's value at submit time.
+function dropdownOptionsUnambiguous(options: unknown[]): boolean {
   const parsed = options.map(parseTemplateOption);
   const rawLabels = options.map(templateOptionRawLabel);
   return (
@@ -286,6 +294,28 @@ function hasValidChoiceOptions(
       rawLabels.every((rawLabel, rawIndex) => index === rawIndex || option.value !== rawLabel),
     )
   );
+}
+
+// Loading tolerates legacy/hand-edited templates with ambiguous dropdown options (writes
+// reject them), so surface them at load so an operator can repair the file before a
+// submission is silently mis-mapped.
+function warnAmbiguousDropdownOptions(nameKey: string, definition: TemplateDefinition): void {
+  const fields = [
+    ...definition.body,
+    ...definition.completion_hooks.flatMap((hook) => hook.fields ?? []),
+  ];
+  const ambiguous = fields.some(
+    (field) =>
+      field.type === 'dropdown' &&
+      Array.isArray(field.attributes.options) &&
+      field.attributes.options.length > 0 &&
+      !dropdownOptionsUnambiguous(field.attributes.options),
+  );
+  if (ambiguous) {
+    console.warn(
+      `[templates] ${nameKey}: dropdown options are ambiguous; submissions may map to the wrong value`,
+    );
+  }
 }
 
 function assertPlayerSelectAttributes(attributes: Record<string, unknown>): void {
@@ -496,6 +526,7 @@ async function assertTemplatePlayerGroups(definition: TemplateDefinition): Promi
 function loadTemplateFile(filePath: string, nameKey: string): CachedTemplate {
   const raw = fs.readFileSync(filePath, 'utf-8');
   const definition = parseTemplateSource(raw);
+  warnAmbiguousDropdownOptions(nameKey, definition);
   const stat = fs.statSync(filePath);
 
   return {

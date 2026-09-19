@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import request from 'supertest';
 import fs from 'fs';
 import path from 'path';
@@ -27,6 +27,7 @@ const testTemplateNames = [
   'invalid_selection_source_tmpl',
   'legacy_invalid_options_tmpl',
   'unknown_field_type_tmpl',
+  'ambiguous_dropdown_tmpl',
 ];
 
 afterEach(() => {
@@ -153,6 +154,36 @@ describe('GET /api/admin/templates', () => {
       expect(template.name).toBe(name);
       expect(template.source).toContain('options: ["v", "v"]');
     } finally {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      await templateService.initTemplates();
+    }
+  });
+
+  it('warns about ambiguous dropdown options while still loading the template', async () => {
+    await setupAndGetAdmin();
+    const name = 'ambiguous_dropdown_tmpl';
+    const filePath = path.join(templatesDir, `${name}.yml`);
+    const source = [
+      'name: Ambiguous dropdown',
+      'description: Duplicate option values',
+      'body:',
+      '  - type: dropdown',
+      '    id: choice',
+      '    attributes:',
+      '      label: Choice',
+      '      options: ["Yes|1", "No|1"]',
+      '',
+    ].join('\n');
+
+    fs.writeFileSync(filePath, source, 'utf-8');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await templateService.initTemplates();
+      const template = await templateService.adminGet(name);
+      expect(template.name).toBe(name);
+      expect(warn.mock.calls.some((call) => String(call[0]).includes(name))).toBe(true);
+    } finally {
+      warn.mockRestore();
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       await templateService.initTemplates();
     }
