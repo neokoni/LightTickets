@@ -112,6 +112,11 @@ public class CreateTicket {
             return;
         }
 
+        if (session.isContextViewStep()) {
+            player.sendMessage(LangUtils.getLang("ticket.allow_context_view_prompt"));
+            return;
+        }
+
         if (session.isVisibilityStep()) {
             player.sendMessage(LangUtils.getLang("ticket.visibility_prompt"));
             return;
@@ -218,6 +223,9 @@ public class CreateTicket {
         reqBody.add("formData", formData);
         if (session.getHidden() != null) {
             reqBody.addProperty("hidden", session.getHidden());
+        }
+        if (session.getAllowContextView() != null) {
+            reqBody.addProperty("allowContextView", session.getAllowContextView());
         }
         if (session.isIncludeContext()) {
             JsonObject context = new JsonObject();

@@ -5204,6 +5204,10 @@
                   "hidden": {
                     "type": "boolean"
                   },
+                  "allowContextView": {
+                    "type": "boolean",
+                    "description": "Whether ordinary viewers (non-staff, non-author) may see the ticket context (world/coordinates/server). Unset allows viewing."
+                  },
                   "context": {
                     "type": "object",
                     "properties": {

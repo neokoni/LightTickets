@@ -86,6 +86,7 @@ router.post('/tickets', minecraftPlayerSessionMiddleware, async (req: Request, r
     identity: req.minecraftPlayer!,
     context: data.context,
     hidden: data.hidden,
+    allowContextView: data.allowContextView,
   });
 
   res.status(201).json(ticket);

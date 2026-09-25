@@ -256,6 +256,7 @@ model Ticket {
   gameContext String?          @map("game_context")
   status      TicketStatus     @default(open)
   hidden      Boolean          @default(false)
+  allowContextView Boolean?    @map("allow_context_view")
   authorId    Int              @map("author_id")
   serverId    String?          @map("server_id")
   createdAt   DateTime         @default(now()) @map("created_at")

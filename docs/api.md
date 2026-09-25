@@ -373,6 +373,10 @@ HTTPS `siteUrl`；重置链接永远不会从请求的 `Origin`、`Referer`、`H
 可选认证。
 
 隐藏议题对无权用户返回 `404`。同一规则适用于评论、审计日志和附件读取，避免通过关联资源绕过。
+议题的附加信息（`gameContext` 的世界/坐标/游戏模式与来源服务器 `server`）按议题创建时的
+`allowContextView` 设置控制：设为 `false` 时，非工作人员且非创建者的查看者（含未登录用户）
+在议题详情与列表中读不到该信息；创建者本人与 `staff` / `admin` 始终可见；未设置或为 `true`
+时保持可见。Web 与 `/api/mc` 读取接口采用同一规则。
 当访问者为 `staff` / `admin` 时，详情还会包含 `completionHooks`，用于显示模板在本次状态
 变更时生成的执行选项及其 `pending` / `completed` / `skipped` 状态。普通用户和未登录用户
 仅会收到已完成且 `visibility` 为 `public` 的结果卡片；`staff` 结果和所有待决策字段不会公开。
@@ -919,6 +923,7 @@ hash；旧版插件绑定没有此凭据，必须先在 Web 解绑后重新绑�
   "template": "bug_report",
   "formData": {},
   "hidden": true,
+  "allowContextView": false,
   "context": {
     "world": "world",
     "x": 1,
@@ -928,6 +933,11 @@ hash；旧版插件绑定没有此凭据，必须先在 Web 解绑后重新绑�
   }
 }
 ```
+
+`allowContextView` 可选，按议题存储，由插件在创建时询问玩家：设为 `false` 时，普通用户
+（非工作人员、非创建者本人）在 Web 议题详情与列表、`/api/mc` 读取接口中都看不到该议题的
+附加信息（世界/坐标/游戏模式与来源服务器）；不传或 `true` 时保持可见。创建者本人与
+`staff` / `admin` 始终可见。
 
 ### MC 议题与评论
 

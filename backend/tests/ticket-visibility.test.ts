@@ -64,6 +64,18 @@ describe('ticket visibility policy helpers', () => {
       '此模板必须选择议题可见性',
     );
   });
+
+  it('gates context for ordinary viewers while keeping staff and author access', () => {
+    const denied = { authorId: 1, allowContextView: false };
+    const allowed = { authorId: 1, allowContextView: null };
+    expect(ticketService.canViewTicketContext(denied)).toBe(false);
+    expect(ticketService.canViewTicketContext(denied, { userId: 2 })).toBe(false);
+    expect(ticketService.canViewTicketContext(denied, { userId: 1 })).toBe(true);
+    expect(ticketService.canViewTicketContext(denied, { userId: 2, role: 'staff' })).toBe(true);
+    expect(ticketService.canViewTicketContext(denied, { userId: 2, role: 'admin' })).toBe(true);
+    expect(ticketService.canViewTicketContext(allowed, { userId: 2 })).toBe(true);
+    expect(ticketService.canViewTicketContext({ authorId: 1, allowContextView: true })).toBe(true);
+  });
 });
 
 describe('ticket visibility on web routes', () => {
@@ -292,5 +304,142 @@ describe('ticket visibility on Minecraft routes', () => {
         )
       ).status,
     ).toBe(200);
+  });
+});
+
+describe('ticket context visibility', () => {
+  async function createAuthorWithSession(prefix: string) {
+    const minecraftUuid = '00000000-0000-0000-0000-000000000301';
+    const author = await createUser(`${prefix}-author`, { minecraftUuid });
+    const serverKey = `${prefix}-mc-key`;
+    const server = await prisma().server.create({ data: serverData(`${prefix}-mc`, serverKey) });
+    const credential = `${prefix}-credential`.padEnd(48, 'x');
+    await prisma().minecraftPlayerCredential.create({
+      data: {
+        userId: author.user.id,
+        minecraftUuid,
+        credentialHash: hashMinecraftSecret(credential),
+      },
+    });
+    const session = await request(app)
+      .post('/api/mc/session')
+      .set('X-Server-Key', serverKey)
+      .send({ minecraftUuid, playerCredential: credential });
+    const sessionToken = session.body.data.sessionToken as string;
+    return { author, minecraftUuid, serverKey, server, sessionToken };
+  }
+
+  it('stores the creation-time setting and hides context from ordinary viewers when disabled', async () => {
+    const { author, minecraftUuid, serverKey, server, sessionToken } =
+      await createAuthorWithSession('ctx-disabled');
+    const other = await createUser('ctx-disabled-other');
+    const staff = await createUser('ctx-disabled-staff', { role: 'staff' });
+
+    const created = await request(app)
+      .post('/api/mc/tickets')
+      .set('X-Server-Key', serverKey)
+      .set('X-Player-Session', sessionToken)
+      .send({
+        minecraftUuid,
+        title: 'Private location',
+        body: 'Body',
+        template: 'bug_report',
+        formData: { description: 'desc', reproduce: 'steps' },
+        context: { world: 'world', x: 10, y: 64, z: -20, gameMode: 'SURVIVAL' },
+        allowContextView: false,
+      });
+    expect(created.status).toBe(201);
+    expect(created.body.data.allowContextView).toBe(false);
+    const ticketId = created.body.data.id as number;
+    const stored = await prisma().ticket.findUniqueOrThrow({ where: { id: ticketId } });
+    expect(stored.allowContextView).toBe(false);
+    expect(stored.gameContext).toContain('world');
+
+    const detailFor = async (token?: string) => {
+      const req = request(app).get(`/api/tickets/${ticketId}`);
+      if (token) req.set('Authorization', `Bearer ${token}`);
+      return req;
+    };
+
+    const anonymousDetail = await detailFor();
+    expect(anonymousDetail.status).toBe(200);
+    expect(anonymousDetail.body.data.gameContext).toBeNull();
+    expect(anonymousDetail.body.data.server).toBeNull();
+
+    const otherDetail = await detailFor(other.token);
+    expect(otherDetail.status).toBe(200);
+    expect(otherDetail.body.data.gameContext).toBeNull();
+    expect(otherDetail.body.data.server).toBeNull();
+
+    const authorDetail = await detailFor(author.token);
+    expect(authorDetail.body.data.gameContext).toContain('world');
+    expect(authorDetail.body.data.server.id).toBe(server.id);
+
+    const staffDetail = await detailFor(staff.token);
+    expect(staffDetail.body.data.gameContext).toContain('world');
+    expect(staffDetail.body.data.server.id).toBe(server.id);
+
+    const otherList = await request(app)
+      .get('/api/tickets')
+      .set('Authorization', `Bearer ${other.token}`);
+    const otherRow = otherList.body.data.tickets.find(
+      (ticket: { id: number }) => ticket.id === ticketId,
+    );
+    expect(otherRow.gameContext).toBeNull();
+    expect(otherRow.serverId).toBe(server.id);
+
+    const authorList = await request(app)
+      .get('/api/tickets')
+      .set('Authorization', `Bearer ${author.token}`);
+    const authorRow = authorList.body.data.tickets.find(
+      (ticket: { id: number }) => ticket.id === ticketId,
+    );
+    expect(authorRow.gameContext).toContain('world');
+
+    const anonymousMcDetail = await request(app)
+      .get(`/api/mc/tickets/${ticketId}/detail`)
+      .set('X-Server-Key', serverKey)
+      .query({ minecraftUuid: '00000000-0000-0000-0000-000000000999' });
+    expect(anonymousMcDetail.status).toBe(200);
+    expect(anonymousMcDetail.body.data.gameContext).toBeNull();
+    expect(anonymousMcDetail.body.data.server).toBeNull();
+
+    const authorMcDetail = await request(app)
+      .get(`/api/mc/tickets/${ticketId}/detail`)
+      .set('X-Server-Key', serverKey)
+      .set('X-Player-Session', sessionToken)
+      .query({ minecraftUuid });
+    expect(authorMcDetail.status).toBe(200);
+    expect(authorMcDetail.body.data.gameContext).toContain('world');
+    expect(authorMcDetail.body.data.server.id).toBe(server.id);
+  });
+
+  it('keeps context viewable by ordinary viewers when the creation request omits the setting', async () => {
+    const { minecraftUuid, serverKey, sessionToken } = await createAuthorWithSession('ctx-default');
+    const other = await createUser('ctx-default-other');
+
+    const created = await request(app)
+      .post('/api/mc/tickets')
+      .set('X-Server-Key', serverKey)
+      .set('X-Player-Session', sessionToken)
+      .send({
+        minecraftUuid,
+        title: 'Public location',
+        body: 'Body',
+        template: 'bug_report',
+        formData: { description: 'desc', reproduce: 'steps' },
+        context: { world: 'world', x: 1, y: 2, z: 3, gameMode: 'CREATIVE' },
+      });
+    expect(created.status).toBe(201);
+    const ticketId = created.body.data.id as number;
+    const stored = await prisma().ticket.findUniqueOrThrow({ where: { id: ticketId } });
+    expect(stored.allowContextView).toBeNull();
+
+    const otherDetail = await request(app)
+      .get(`/api/tickets/${ticketId}`)
+      .set('Authorization', `Bearer ${other.token}`);
+    expect(otherDetail.status).toBe(200);
+    expect(otherDetail.body.data.gameContext).toContain('world');
+    expect(otherDetail.body.data.server).not.toBeNull();
   });
 });

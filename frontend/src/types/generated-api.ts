@@ -3153,6 +3153,8 @@ export interface paths {
               [key: string]: string;
             };
             hidden?: boolean;
+            /** @description Whether ordinary viewers (non-staff, non-author) may see the ticket context (world/coordinates/server). Unset allows viewing. */
+            allowContextView?: boolean;
             context?: {
               world?: string;
               x?: number;

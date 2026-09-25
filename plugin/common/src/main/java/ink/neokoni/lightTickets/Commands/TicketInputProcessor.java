@@ -66,6 +66,10 @@ public final class TicketInputProcessor {
             handleInfoInput(player, session, input);
             return;
         }
+        if (session.isContextViewStep()) {
+            handleContextViewInput(player, session, input);
+            return;
+        }
         if (session.isVisibilityStep()) {
             handleVisibilityInput(player, session, input);
             return;
@@ -154,6 +158,20 @@ public final class TicketInputProcessor {
             session.setIncludeContext(true);
         } else if (lower.equals("no") || lower.equals("n")) {
             session.setIncludeContext(false);
+        } else {
+            player.sendMessage(LangUtils.getLang("ticket.attach_info_invalid"));
+            return;
+        }
+        session.setStep(session.getStep() + 1);
+        CreateTicket.promptNext(player, session);
+    }
+
+    private static void handleContextViewInput(LightPlayer player, TicketSession session, String input) {
+        String lower = input.toLowerCase();
+        if (lower.equals("yes") || lower.equals("y")) {
+            session.setAllowContextView(true);
+        } else if (lower.equals("no") || lower.equals("n")) {
+            session.setAllowContextView(false);
         } else {
             player.sendMessage(LangUtils.getLang("ticket.attach_info_invalid"));
             return;

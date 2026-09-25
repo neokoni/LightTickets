@@ -54,6 +54,7 @@ describe('generated OpenAPI contract', () => {
     expect(operation.security).toEqual([{ apiKey: [], minecraftPlayerSession: [] }]);
     expect(properties).toHaveProperty('body');
     expect(properties).toHaveProperty('context');
+    expect(properties).toHaveProperty('allowContextView');
     expect(properties).not.toHaveProperty('gameContext');
   });
 

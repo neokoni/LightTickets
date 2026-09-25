@@ -83,6 +83,7 @@ export interface Ticket {
   authorId: number;
   serverId?: string;
   gameContext?: string | null;
+  allowContextView?: boolean | null;
   assigneeId?: number;
   assignees?: TicketAssignee[];
   createdAt: string;

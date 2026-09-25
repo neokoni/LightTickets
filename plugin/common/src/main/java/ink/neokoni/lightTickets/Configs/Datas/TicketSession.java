@@ -20,6 +20,7 @@ public class TicketSession {
     private int z;
     private String gameMode;
     private boolean includeContext;
+    private Boolean allowContextView;
     private Boolean hidden;
     private final long createdAtMillis;
 
@@ -52,11 +53,15 @@ public class TicketSession {
     }
 
     public boolean isVisibilityStep() {
-        return "optional".equals(template.getHiddenMode()) && step == template.getFields().size() + 2;
+        return "optional".equals(template.getHiddenMode()) && step == template.getFields().size() + 3;
+    }
+
+    public boolean isContextViewStep() {
+        return step == template.getFields().size() + 2;
     }
 
     public boolean isFinished() {
-        int lastStep = template.getFields().size() + ("optional".equals(template.getHiddenMode()) ? 2 : 1);
+        int lastStep = template.getFields().size() + ("optional".equals(template.getHiddenMode()) ? 3 : 2);
         return step > lastStep;
     }
 

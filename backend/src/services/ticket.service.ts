@@ -191,6 +191,7 @@ interface CreateTicketInput {
   gameContext?: string;
   attachmentIds?: string[];
   hidden?: boolean;
+  allowContextView?: boolean;
   creatorRole?: string;
   trustedServer?: boolean;
 }
@@ -240,6 +241,20 @@ export async function assertTicketVisible(id: number, viewer?: TicketViewer) {
   });
   if (!ticket || !canViewTicket(ticket, viewer)) throw new NotFoundError('议题不存在');
   return ticket;
+}
+
+type TicketContextVisibility = {
+  authorId: number;
+  allowContextView: boolean | null;
+};
+
+export function canViewTicketContext(
+  ticket: TicketContextVisibility,
+  viewer?: TicketViewer,
+): boolean {
+  if (viewer?.role !== undefined && isStaffRole(viewer.role)) return true;
+  if (viewer?.userId !== undefined && ticket.authorId === viewer.userId) return true;
+  return ticket.allowContextView !== false;
 }
 
 export function resolveTicketHidden(
@@ -314,6 +329,7 @@ export async function create(input: CreateTicketInput) {
         authorId: input.authorId,
         serverId: input.serverId,
         hidden,
+        allowContextView: input.allowContextView ?? null,
         labels: {
           create: templateLabels.map((label) => ({ labelId: label.id })),
         },
@@ -413,7 +429,11 @@ export async function list(input: ListTicketsInput) {
     prisma().ticket.count({ where }),
   ]);
 
-  return { tickets, total, page, pageSize };
+  const visibleTickets = tickets.map((ticket) =>
+    canViewTicketContext(ticket, input.viewer) ? ticket : { ...ticket, gameContext: null },
+  );
+
+  return { tickets: visibleTickets, total, page, pageSize };
 }
 
 export async function getById(id: number, viewer?: TicketViewer) {
@@ -431,6 +451,9 @@ export async function getById(id: number, viewer?: TicketViewer) {
     },
   });
   if (!ticket || !canViewTicket(ticket, viewer)) throw new NotFoundError('议题不存在');
+  const visibleTicket = canViewTicketContext(ticket, viewer)
+    ? ticket
+    : { ...ticket, gameContext: null, server: null };
   if (viewer?.role !== undefined && isStaffRole(viewer.role)) {
     const [completionHooks, deliveries] = await Promise.all([
       completionHookService.listForTicket(id, true),
@@ -447,7 +470,7 @@ export async function getById(id: number, viewer?: TicketViewer) {
       }),
     ]);
     return {
-      ...ticket,
+      ...visibleTicket,
       completionHooks,
       hookDeliveries: deliveries.map((d) => ({
         id: d.id,
@@ -462,8 +485,8 @@ export async function getById(id: number, viewer?: TicketViewer) {
   }
   const publicCompletionHooks = await completionHookService.listForTicket(id, false);
   if (publicCompletionHooks.length > 0)
-    return { ...ticket, completionHooks: publicCompletionHooks };
-  return ticket;
+    return { ...visibleTicket, completionHooks: publicCompletionHooks };
+  return visibleTicket;
 }
 
 export async function update(

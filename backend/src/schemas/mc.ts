@@ -42,6 +42,12 @@ export const mcTicketSchema = mcServerContextSchema.extend({
       'Fields declared by the selected template. Dropdowns submit their actual value; a legacy full label|value option is accepted and normalized.',
     ),
   hidden: z.boolean().optional(),
+  allowContextView: z
+    .boolean()
+    .optional()
+    .describe(
+      'Whether ordinary viewers (non-staff, non-author) may see the ticket context (world/coordinates/server). Unset allows viewing.',
+    ),
   context: z
     .object({
       world: z.string().optional(),

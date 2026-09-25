@@ -147,6 +147,7 @@ export async function createTicketFromMinecraft(input: {
   context?: Record<string, unknown>;
   identity: MinecraftPlayerIdentity;
   hidden?: boolean;
+  allowContextView?: boolean;
 }) {
   return ticketService.create({
     title: input.title,
@@ -159,6 +160,7 @@ export async function createTicketFromMinecraft(input: {
     trustedServer: true,
     gameContext: input.context ? JSON.stringify(input.context) : undefined,
     hidden: input.hidden,
+    allowContextView: input.allowContextView,
   });
 }
 
