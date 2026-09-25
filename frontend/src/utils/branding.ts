@@ -2,6 +2,12 @@ const CUSTOM_ICON_ATTR = 'data-branding-icon';
 
 const CUSTOM_ICON_RELS = ['icon', 'apple-touch-icon'] as const;
 
+const LIGHT_HREF_ATTR = 'data-branding-light-href';
+
+const DARK_ICON_BY_HREF: Readonly<Record<string, string>> = {
+  '/favicon.svg': '/favicon-dark.svg',
+};
+
 let defaultIcons: HTMLLinkElement[] | null = null;
 
 function collectDefaultIcons(): HTMLLinkElement[] {
@@ -12,17 +18,46 @@ function collectDefaultIcons(): HTMLLinkElement[] {
   );
 }
 
-export function applySiteFavicon(url: string | null): void {
+function getDefaultIcons(): HTMLLinkElement[] {
+  if (!defaultIcons) defaultIcons = collectDefaultIcons();
+  return defaultIcons;
+}
+
+function applyDefaultIconTheme(dark: boolean): void {
+  const head = document.head;
+
+  for (const link of getDefaultIcons()) {
+    if (link.relList.contains('icon')) {
+      let lightHref = link.getAttribute(LIGHT_HREF_ATTR);
+      if (lightHref === null) {
+        lightHref = link.getAttribute('href') ?? '';
+        link.setAttribute(LIGHT_HREF_ATTR, lightHref);
+      }
+
+      const darkHref = DARK_ICON_BY_HREF[lightHref];
+      if (dark) {
+        if (!darkHref) {
+          link.remove();
+          continue;
+        }
+        link.setAttribute('href', darkHref);
+      } else {
+        link.setAttribute('href', lightHref);
+      }
+    }
+
+    if (!link.isConnected) head.appendChild(link);
+  }
+}
+
+export function applySiteFavicon(url: string | null, dark = false): void {
   const head = document.head;
   head
     .querySelectorAll<HTMLLinkElement>(`link[${CUSTOM_ICON_ATTR}]`)
     .forEach((link) => link.remove());
 
   if (url) {
-    if (!defaultIcons) {
-      defaultIcons = collectDefaultIcons();
-      defaultIcons.forEach((link) => link.remove());
-    }
+    getDefaultIcons().forEach((link) => link.remove());
     for (const rel of CUSTOM_ICON_RELS) {
       const link = document.createElement('link');
       link.rel = rel;
@@ -33,8 +68,5 @@ export function applySiteFavicon(url: string | null): void {
     return;
   }
 
-  if (defaultIcons) {
-    defaultIcons.forEach((link) => head.appendChild(link));
-    defaultIcons = null;
-  }
+  applyDefaultIconTheme(dark);
 }

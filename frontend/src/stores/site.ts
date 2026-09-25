@@ -65,8 +65,8 @@ export function initSiteBranding(ui: ReturnType<typeof useUiStore>): void {
     { immediate: true },
   );
   watch(
-    () => variantUrl(siteConfig.faviconUrl, siteConfig.faviconDarkUrl),
-    (value) => applySiteFavicon(value),
+    [() => variantUrl(siteConfig.faviconUrl, siteConfig.faviconDarkUrl), () => darkTheme.value],
+    ([url, dark]) => applySiteFavicon(url, dark),
     { immediate: true },
   );
 }
