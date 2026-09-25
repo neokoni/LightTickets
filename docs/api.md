@@ -52,6 +52,8 @@
 返回 setup 状态、站点名、注册策略、页脚等公开配置。`registrationEmailVerificationEnabled`
 表示当前 SMTP 是否可用于网页注册邮箱验证。
 `federatedAuthProviders` 仅包含已启用 Provider 的公开名称、图标、slug 与注册开关，不包含端点、Client ID 或密钥。
+`faviconUrl` / `logoUrl` 与对应的 `faviconDarkUrl` / `logoDarkUrl`（暗色模式版本）为自定义站点图标与
+Logo 的公开地址（未上传时为 `null`），详见“站点图标与 Logo”。
 
 ### 外部登录
 
@@ -533,6 +535,54 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 `DELETE /api/attachments/:id`
 
 上传者或 `admin` 可删除，删除数据库记录前会删除物理文件。
+
+## 站点图标与 Logo
+
+挂载路径：`/api/branding/:slot`，`slot` 只接受 `favicon`、`favicon-dark`、`logo`、`logo-dark`，
+其中 `-dark` 为暗色模式专用版本。文件存放在数据目录中（与 `config.yml` 同级），按固定文件名
+`favicon.<ext>` / `favicon-dark.<ext>` / `logo.<ext>` / `logo-dark.<ext>` 读取，不写数据库、
+不进入 config.yml；上传时按格式固定扩展名，同 slot 只保留最新一份。
+
+### 获取文件
+
+`GET /api/branding/:slot`
+
+公开接口，无需认证。存在自定义文件时返回文件内容，按扩展名返回 `image/png`、
+`image/jpeg`、`image/webp`、`image/gif` 或 `image/svg+xml`，并带
+`Cache-Control: public, max-age=0, must-revalidate` 与 ETag 协商缓存；SVG 额外返回
+`Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`，
+阻止同源导航时执行脚本。不存在自定义文件时返回 `404`，前端回退到内置默认图标。
+
+### 上传文件
+
+`PUT /api/branding/:slot`
+
+需要 `admin`，`multipart/form-data`，字段 `file`。接受 PNG / JPEG / WebP / GIF / SVG，
+最大 2 MiB；位图复用附件的 magic bytes 二次校验，SVG 必须以 `<svg>` 开头且不得包含脚本或
+`javascript:` 内容。上传覆盖同 slot 的旧文件（包括扩展名不同的旧文件），返回最新状态：
+
+```json
+{
+  "success": true,
+  "data": {
+    "faviconUrl": "/api/branding/favicon?v=1758800000000",
+    "faviconDarkUrl": null,
+    "logoUrl": null,
+    "logoDarkUrl": null
+  }
+}
+```
+
+### 删除文件
+
+`DELETE /api/branding/:slot`
+
+需要 `admin`。删除该 slot 的自定义文件并回退到内置默认图标，返回结构与上传一致，
+被删除的字段为 `null`。
+
+`GET /api/setup/site-config` 返回 `faviconUrl`、`faviconDarkUrl`、`logoUrl` 与 `logoDarkUrl`
+（未上传时为 `null`），URL 带 `?v=<mtime>` 版本号用于缓存刷新；前端据此按当前主题替换默认 favicon
+与页头 Logo，暗色版本缺失时依次回退到浅色版本与内置默认资源。
 
 ## 标签
 

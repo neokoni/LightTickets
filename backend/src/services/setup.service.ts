@@ -16,6 +16,7 @@ import * as mailConfigService from './mail-config.service.js';
 import * as turnstileConfigService from './turnstile-config.service.js';
 import * as rateLimitConfigService from './rate-limit-config.service.js';
 import * as attachmentConfigService from './attachment-config.service.js';
+import * as brandingService from './branding.service.js';
 import * as federatedAuthProviderService from './federatedauth-provider.service.js';
 import type { RateLimitConfigInput } from '../schemas/rate-limit.js';
 import type { AttachmentConfigInput } from '../schemas/attachment.js';
@@ -98,6 +99,10 @@ export interface SiteConfig {
   footerContent: string | null;
   defaultLanguage: string;
   turnstile: turnstileConfigService.TurnstilePublicConfig;
+  faviconUrl: string | null;
+  faviconDarkUrl: string | null;
+  logoUrl: string | null;
+  logoDarkUrl: string | null;
   federatedAuthProviders: Array<{
     slug: string;
     name: string;
@@ -106,7 +111,10 @@ export interface SiteConfig {
   }>;
 }
 
-export interface AdminSettings extends Omit<SiteConfig, 'isSetup'> {
+export interface AdminSettings extends Omit<
+  SiteConfig,
+  'isSetup' | 'faviconUrl' | 'faviconDarkUrl' | 'logoUrl' | 'logoDarkUrl'
+> {
   sendEmailNotifications: boolean;
   mail: PublicMailConfig;
   turnstile: turnstileConfigService.PublicTurnstileConfig;
@@ -172,6 +180,7 @@ function toSiteConfig(status: {
     footerContent: status.footerContent ?? null,
     defaultLanguage,
     turnstile: { enabled: false, siteKey: '' },
+    ...brandingService.getBrandingState(),
     federatedAuthProviders: [],
   };
 }
@@ -234,6 +243,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       footerContent: null,
       defaultLanguage: i18nService.DEFAULT_LANGUAGE_ID,
       turnstile: { enabled: false, siteKey: '' },
+      ...brandingService.getBrandingState(),
       federatedAuthProviders: [],
     };
   }
@@ -296,6 +306,7 @@ export async function getSiteConfig(): Promise<SiteConfig> {
       footerContent: status?.footerContent ?? null,
       defaultLanguage: i18nService.resolveLanguageId(status?.defaultLanguage),
       turnstile: { enabled: false, siteKey: '' },
+      ...brandingService.getBrandingState(),
       federatedAuthProviders: [],
     };
   } catch (e: unknown) {

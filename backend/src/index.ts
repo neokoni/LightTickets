@@ -80,13 +80,15 @@ async function startSetupServer() {
     res.json({ status: 'ok' });
   });
 
-  app.get('/api/setup/site-config', (_req, res) => {
+  app.get('/api/setup/site-config', async (_req, res) => {
+    const { getBrandingState } = await import('./services/branding.service.js');
     res.json({
       isSetup: false,
       requireLogin: false,
       siteName: DEFAULT_SITE_TITLE,
       registrationEmailVerificationEnabled: false,
       turnstile: { enabled: false, siteKey: '' },
+      ...getBrandingState(),
     });
   });
 

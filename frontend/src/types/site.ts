@@ -9,7 +9,16 @@ export const DatabaseProvider = {
 
 export type DatabaseProvider = (typeof DatabaseProvider)[keyof typeof DatabaseProvider];
 
-export interface SiteConfig {
+export type BrandingSlot = 'favicon' | 'favicon-dark' | 'logo' | 'logo-dark';
+
+export interface BrandingState {
+  faviconUrl: string | null;
+  faviconDarkUrl: string | null;
+  logoUrl: string | null;
+  logoDarkUrl: string | null;
+}
+
+export interface SiteConfig extends BrandingState {
   isSetup: boolean;
   requireLogin: boolean;
   allowWebRegister: boolean;

@@ -3,6 +3,7 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
 import { useUiStore } from './stores/ui';
+import { initSiteBranding } from './stores/site';
 import { frontendConfig } from './config';
 import { initI18n } from './i18n';
 import './app.css';
@@ -11,6 +12,7 @@ async function bootstrap() {
   const pinia = createPinia();
   const ui = useUiStore(pinia);
   ui.initTheme();
+  initSiteBranding(ui);
 
   try {
     const res = await fetch(frontendConfig.serverUrl + '/health');

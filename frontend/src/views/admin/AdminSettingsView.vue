@@ -1,6 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { Icon } from '@iconify/vue';
 import { getSettings, updateSettings } from '@/api/setup';
+import { apiDeleteBranding, apiUploadBranding } from '@/api/branding';
+import type { BrandingSlot, BrandingState } from '@/types/site';
 import {
   setMailFeatureAvailabilityCache,
   setRequireLoginCache,
@@ -16,6 +19,8 @@ import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
+
+const BRANDING_ACCEPT = 'image/png,image/jpeg,image/webp,image/gif,image/svg+xml';
 
 const ui = useUiStore();
 const requireLogin = ref(false);
@@ -74,6 +79,93 @@ async function save() {
     saving.value = false;
   }
 }
+
+const fileInputs = reactive<Partial<Record<BrandingSlot, HTMLInputElement | null>>>({});
+const uploadingSlot = ref<BrandingSlot | null>(null);
+const deletingSlot = ref<BrandingSlot | null>(null);
+
+interface BrandingVariant {
+  slot: BrandingSlot;
+  label: string;
+  url: string | null;
+}
+
+function buildVariants(
+  lightSlot: BrandingSlot,
+  darkSlot: BrandingSlot,
+  lightUrl: string | null,
+  darkUrl: string | null,
+): BrandingVariant[] {
+  return [
+    { slot: lightSlot, label: t('admin.settings.variantLight'), url: lightUrl },
+    { slot: darkSlot, label: t('admin.settings.variantDark'), url: darkUrl },
+  ];
+}
+
+const brandingGroups = computed(() => [
+  {
+    key: 'favicon',
+    label: t('admin.settings.favicon'),
+    help: t('admin.settings.faviconHelp'),
+    previewClass: 'w-10',
+    variants: buildVariants(
+      'favicon',
+      'favicon-dark',
+      siteConfig.faviconUrl,
+      siteConfig.faviconDarkUrl,
+    ),
+  },
+  {
+    key: 'logo',
+    label: t('admin.settings.logo'),
+    help: t('admin.settings.logoHelp'),
+    previewClass: 'w-40',
+    variants: buildVariants('logo', 'logo-dark', siteConfig.logoUrl, siteConfig.logoDarkUrl),
+  },
+]);
+
+function applyBrandingState(state: BrandingState) {
+  siteConfig.faviconUrl = state.faviconUrl;
+  siteConfig.faviconDarkUrl = state.faviconDarkUrl;
+  siteConfig.logoUrl = state.logoUrl;
+  siteConfig.logoDarkUrl = state.logoDarkUrl;
+}
+
+function setFileInput(slot: BrandingSlot, element: unknown) {
+  fileInputs[slot] = (element as HTMLInputElement | null) ?? null;
+}
+
+function pickBrandingFile(slot: BrandingSlot) {
+  fileInputs[slot]?.click();
+}
+
+async function uploadBranding(slot: BrandingSlot, event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0] ?? null;
+  input.value = '';
+  if (!file) return;
+  uploadingSlot.value = slot;
+  try {
+    applyBrandingState(await apiUploadBranding(slot, file));
+    ui.toast(t('admin.settings.saved'), ToastType.SUCCESS);
+  } catch (e) {
+    handleError(e, t('common.saveFailed'));
+  } finally {
+    uploadingSlot.value = null;
+  }
+}
+
+async function removeBranding(slot: BrandingSlot) {
+  deletingSlot.value = slot;
+  try {
+    applyBrandingState(await apiDeleteBranding(slot));
+    ui.toast(t('admin.settings.saved'), ToastType.SUCCESS);
+  } catch (e) {
+    handleError(e, t('common.deleteFailed'));
+  } finally {
+    deletingSlot.value = null;
+  }
+}
 </script>
 
 <template>
@@ -128,6 +220,71 @@ async function save() {
           maxlength="2000"
           :placeholder="t('admin.settings.footerPlaceholder')"
         />
+      </div>
+
+      <!-- Site Icon & Logo -->
+      <div v-for="group in brandingGroups" :key="group.key" class="space-y-1.5">
+        <label class="text-sm font-medium text-slate-900 dark:text-white">{{ group.label }}</label>
+        <p class="text-xs text-slate-500 dark:text-slate-400">{{ group.help }}</p>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div
+            v-for="variant in group.variants"
+            :key="variant.slot"
+            class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/80 p-3 dark:border-slate-800/80"
+          >
+            <div class="flex flex-col gap-1">
+              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {{ variant.label }}
+              </span>
+              <div
+                class="flex h-10 items-center justify-center rounded-md border border-slate-200 p-1 dark:border-slate-700"
+                :class="group.previewClass"
+              >
+                <img
+                  v-if="variant.url"
+                  :src="variant.url"
+                  :alt="variant.label"
+                  class="max-h-full max-w-full object-contain"
+                />
+                <Icon
+                  v-else
+                  icon="lucide:image-off"
+                  class="h-5 w-5 text-slate-400 dark:text-slate-500"
+                  aria-hidden="true"
+                />
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <BaseButton
+                size="sm"
+                :loading="uploadingSlot === variant.slot"
+                :disabled="deletingSlot === variant.slot"
+                @click="pickBrandingFile(variant.slot)"
+              >
+                {{ t('common.upload') }}
+              </BaseButton>
+              <BaseButton
+                v-if="variant.url"
+                size="sm"
+                variant="danger"
+                :loading="deletingSlot === variant.slot"
+                :disabled="uploadingSlot === variant.slot"
+                @click="removeBranding(variant.slot)"
+              >
+                {{ t('common.delete') }}
+              </BaseButton>
+            </div>
+            <input
+              :ref="(element: unknown) => setFileInput(variant.slot, element)"
+              type="file"
+              class="sr-only"
+              tabindex="-1"
+              aria-hidden="true"
+              :accept="BRANDING_ACCEPT"
+              @change="uploadBranding(variant.slot, $event)"
+            />
+          </div>
+        </div>
       </div>
 
       <!-- Allow Web Register Toggle -->

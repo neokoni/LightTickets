@@ -5,21 +5,10 @@ import { getStorageAdapter } from './storage/index.js';
 import type { Response } from 'express';
 import * as ticketService from './ticket.service.js';
 import { MEBIBYTE_BYTES, UPLOAD_TYPE_BY_MIME } from '../constants/upload.js';
+import { validateMagicBytes } from '../utils/magic-bytes.js';
 import { isAdminRole, isStaffRole } from '../constants/roles.js';
 import { AttachmentStatus, Prisma } from '@prisma/client';
 import * as attachmentConfigService from './attachment-config.service.js';
-
-function validateMagicBytes(buffer: Buffer, mimeType: string): void {
-  const definition = UPLOAD_TYPE_BY_MIME.get(mimeType);
-  if (!definition) throw new ValidationError('不支持的文件类型');
-  if (definition.magicBytes.length === 0) return;
-  const matches = definition.magicBytes.some((signature) =>
-    signature.every((byte, index) => buffer[index] === byte),
-  );
-  if (!matches) {
-    throw new ValidationError('文件内容与声明类型不匹配');
-  }
-}
 
 function encodeContentDispositionFilename(filename: string): string {
   const encoded = encodeURIComponent(filename).replace(

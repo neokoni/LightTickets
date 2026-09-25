@@ -53,7 +53,7 @@ export function normalizeError(err: unknown): Error {
   }
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return new ValidationError('文件大小超过限制 (10MB)');
+      return new ValidationError('文件大小超过限制');
     }
     return new ValidationError(err.message);
   }

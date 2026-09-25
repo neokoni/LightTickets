@@ -57,9 +57,13 @@
         "allowMcRegisterHelp": "When disabled, server plugins cannot register new accounts through the API",
         "allowWebRegister": "Allow web registration",
         "allowWebRegisterHelp": "When disabled, the login page hides the registration link and web registration is disabled",
+        "favicon": "Site icon",
+        "faviconHelp": "PNG, JPEG, WebP, GIF, or SVG up to 2 MiB; dark mode prefers the dark variant, falling back to the light variant and then the built-in icon",
         "footerContent": "Custom footer content",
         "footerHelp": "Supports Markdown. Use it for regulatory links, copyright notices, and similar content",
         "footerPlaceholder": "[ICP xxxxxxx](https://beian.miit.gov.cn)",
+        "logo": "Site logo",
+        "logoHelp": "PNG, JPEG, WebP, GIF, or SVG up to 2 MiB; dark mode prefers the dark variant, falling back to the light variant and then the built-in logo",
         "mailEnabled": "Enable email service",
         "mailEnabledHelp": "Used for registration email verification and password resets. When enabled, web registration requires an email verification code.",
         "mailFromAddress": "From address",
@@ -81,7 +85,9 @@
         "smtpTestFailed": "SMTP connection test failed",
         "smtpTestSuccess": "SMTP connection succeeded",
         "smtpUsername": "SMTP username",
-        "title": "Platform settings"
+        "title": "Platform settings",
+        "variantDark": "Dark mode",
+        "variantLight": "Light mode"
       },
       "mail": {
         "description": "Configure the SMTP service used for registration verification and password reset emails.",
@@ -410,7 +416,8 @@
       "selectPlaceholder": "Select",
       "selectPlaceholderWithDots": "Select...",
       "selectOrInputPlaceholder": "Select or enter a value",
-      "updateFailed": "Update failed"
+      "updateFailed": "Update failed",
+      "upload": "Upload"
     },
     "federatedauth": {
       "callbackFailed": "External login failed. Try again or sign in with your account.",

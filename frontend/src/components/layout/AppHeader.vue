@@ -4,7 +4,7 @@ import { Icon } from '@iconify/vue';
 import { RouterLink, useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { Theme, useUiStore } from '@/stores/ui';
-import { siteConfig, siteTitle } from '@/stores/site';
+import { isDefaultSiteLogo, siteConfig, siteLogoUrl, siteTitle } from '@/stores/site';
 import { t } from '@/i18n';
 import BaseSlidingTabs from '@/components/base/BaseSlidingTabs.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
@@ -51,8 +51,9 @@ async function handleLogout() {
       <RouterLink to="/" class="inline-flex w-fit shrink-0 items-center gap-2.5">
         <img
           :alt="siteTitle"
-          src="/icons/lighttickets.svg"
-          class="app-logo h-6 w-6 lg:h-7 lg:w-7"
+          :src="siteLogoUrl"
+          class="h-7 w-auto max-w-40 object-contain"
+          :class="{ 'app-logo': isDefaultSiteLogo }"
         />
         <div
           class="text-sm font-semibold tracking-[0.06em] text-slate-900 dark:text-slate-100 lg:text-base"
@@ -183,7 +184,12 @@ async function handleLogout() {
         >
           <div class="mb-5 flex items-center justify-between">
             <div class="flex items-center gap-2.5">
-              <img :alt="siteTitle" src="/icons/lighttickets.svg" class="app-logo h-6 w-6" />
+              <img
+                :alt="siteTitle"
+                :src="siteLogoUrl"
+                class="h-6 w-auto max-w-36 object-contain"
+                :class="{ 'app-logo': isDefaultSiteLogo }"
+              />
               <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {{ siteTitle }}
               </div>

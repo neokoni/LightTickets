@@ -3572,6 +3572,257 @@
         }
       }
     },
+    "/api/branding/{slot}": {
+      "get": {
+        "summary": "获取站点图标或 Logo 文件",
+        "tags": [
+          "Branding"
+        ],
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "favicon",
+                "favicon-dark",
+                "logo",
+                "logo-dark"
+              ]
+            },
+            "required": true,
+            "name": "slot",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "自定义站点图标或 Logo 的文件内容；未上传时返回 404",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "上传站点图标或 Logo",
+        "tags": [
+          "Branding"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "favicon",
+                "favicon-dark",
+                "logo",
+                "logo-dark"
+              ]
+            },
+            "required": true,
+            "name": "slot",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "覆盖写入成功，返回最新的站点图标与 Logo URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "faviconUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "自定义站点图标 URL（带 mtime 版本号），未上传自定义图标时为 null"
+                        },
+                        "faviconDarkUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暗色模式专用站点图标 URL（带 mtime 版本号），未上传时为 null，前端回退到浅色图标"
+                        },
+                        "logoUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "自定义站点 Logo URL（带 mtime 版本号），未上传自定义 Logo 时为 null"
+                        },
+                        "logoDarkUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暗色模式专用站点 Logo URL（带 mtime 版本号），未上传时为 null，前端回退到浅色 Logo"
+                        }
+                      },
+                      "required": [
+                        "faviconUrl",
+                        "faviconDarkUrl",
+                        "logoUrl",
+                        "logoDarkUrl"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "删除自定义站点图标或 Logo",
+        "tags": [
+          "Branding"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "favicon",
+                "favicon-dark",
+                "logo",
+                "logo-dark"
+              ]
+            },
+            "required": true,
+            "name": "slot",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功并回退到内置默认图标，返回最新的站点图标与 Logo URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "faviconUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "自定义站点图标 URL（带 mtime 版本号），未上传自定义图标时为 null"
+                        },
+                        "faviconDarkUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暗色模式专用站点图标 URL（带 mtime 版本号），未上传时为 null，前端回退到浅色图标"
+                        },
+                        "logoUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "自定义站点 Logo URL（带 mtime 版本号），未上传自定义 Logo 时为 null"
+                        },
+                        "logoDarkUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暗色模式专用站点 Logo URL（带 mtime 版本号），未上传时为 null，前端回退到浅色 Logo"
+                        }
+                      },
+                      "required": [
+                        "faviconUrl",
+                        "faviconDarkUrl",
+                        "logoUrl",
+                        "logoDarkUrl"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/servers": {
       "get": {
         "summary": "获取服务器列表",
@@ -9493,6 +9744,26 @@
                         "defaultLanguage": {
                           "type": "string"
                         },
+                        "faviconUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "自定义站点图标 URL（带 mtime 版本号），未上传自定义图标时为 null"
+                        },
+                        "faviconDarkUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暗色模式专用站点图标 URL（带 mtime 版本号），未上传时为 null，前端回退到浅色图标"
+                        },
+                        "logoUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "自定义站点 Logo URL（带 mtime 版本号），未上传自定义 Logo 时为 null"
+                        },
+                        "logoDarkUrl": {
+                          "type": "string",
+                          "nullable": true,
+                          "description": "暗色模式专用站点 Logo URL（带 mtime 版本号），未上传时为 null，前端回退到浅色 Logo"
+                        },
                         "turnstile": {
                           "type": "object",
                           "properties": {
@@ -9547,6 +9818,10 @@
                         "siteUrl",
                         "footerContent",
                         "defaultLanguage",
+                        "faviconUrl",
+                        "faviconDarkUrl",
+                        "logoUrl",
+                        "logoDarkUrl",
                         "turnstile",
                         "federatedAuthProviders"
                       ]

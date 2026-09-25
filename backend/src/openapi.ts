@@ -56,6 +56,7 @@ import {
   ticketUpdateSchema,
 } from './routes/tickets.js';
 import { commentBodyUpdateSchema, commentCreateSchema } from './routes/comments.js';
+import { brandingSlotParamsSchema } from './routes/branding.js';
 import {
   serverApiKeyCreateSchema,
   serverApiKeyUpdateSchema,
@@ -1272,6 +1273,10 @@ const registerSetupRoutes = () => {
       siteUrl: siteUrlSchema.nullable(),
       footerContent: z.string().nullable(),
       defaultLanguage: z.string(),
+      faviconUrl: brandingStateSchema.shape.faviconUrl,
+      faviconDarkUrl: brandingStateSchema.shape.faviconDarkUrl,
+      logoUrl: brandingStateSchema.shape.logoUrl,
+      logoDarkUrl: brandingStateSchema.shape.logoDarkUrl,
       turnstile: z.object({
         enabled: z.boolean(),
         siteKey: z.string(),
@@ -1341,6 +1346,62 @@ const registerSetupRoutes = () => {
     responseSchema: z.object({
       message: z.string(),
     }),
+  });
+};
+
+const brandingStateSchema = z.object({
+  faviconUrl: z
+    .string()
+    .nullable()
+    .describe('自定义站点图标 URL（带 mtime 版本号），未上传自定义图标时为 null'),
+  faviconDarkUrl: z
+    .string()
+    .nullable()
+    .describe('暗色模式专用站点图标 URL（带 mtime 版本号），未上传时为 null，前端回退到浅色图标'),
+  logoUrl: z
+    .string()
+    .nullable()
+    .describe('自定义站点 Logo URL（带 mtime 版本号），未上传自定义 Logo 时为 null'),
+  logoDarkUrl: z
+    .string()
+    .nullable()
+    .describe('暗色模式专用站点 Logo URL（带 mtime 版本号），未上传时为 null，前端回退到浅色 Logo'),
+});
+
+const registerBrandingRoutes = () => {
+  registerRoute({
+    method: 'get',
+    path: '/api/branding/{slot}',
+    summary: '获取站点图标或 Logo 文件',
+    auth: 'none',
+    tags: ['Branding'],
+    paramsSchema: brandingSlotParamsSchema,
+    responseKind: 'raw',
+    responseMediaType: 'image/*',
+    responseSchema: z.string().openapi({ format: 'binary' }),
+    successDescription: '自定义站点图标或 Logo 的文件内容；未上传时返回 404',
+  });
+  registerRoute({
+    method: 'put',
+    path: '/api/branding/{slot}',
+    summary: '上传站点图标或 Logo',
+    auth: 'admin',
+    tags: ['Branding'],
+    paramsSchema: brandingSlotParamsSchema,
+    bodySchema: z.object({ file: z.string().openapi({ type: 'string', format: 'binary' }) }),
+    requestMediaType: 'multipart/form-data',
+    responseSchema: brandingStateSchema,
+    successDescription: '覆盖写入成功，返回最新的站点图标与 Logo URL',
+  });
+  registerRoute({
+    method: 'delete',
+    path: '/api/branding/{slot}',
+    summary: '删除自定义站点图标或 Logo',
+    auth: 'admin',
+    tags: ['Branding'],
+    paramsSchema: brandingSlotParamsSchema,
+    responseSchema: brandingStateSchema,
+    successDescription: '删除成功并回退到内置默认图标，返回最新的站点图标与 Logo URL',
   });
 };
 
@@ -1499,6 +1560,7 @@ registerTicketRoutes();
 registerCommentRoutes();
 registerLabelRoutes();
 registerAttachmentRoutes();
+registerBrandingRoutes();
 registerServerRoutes();
 registerMcRoutes();
 registerTemplateRoutes();

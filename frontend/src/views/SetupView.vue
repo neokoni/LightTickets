@@ -164,6 +164,10 @@ async function submit() {
       siteUrl: res.setup.siteUrl,
       footerContent: null,
       defaultLanguage: res.setup.defaultLanguage,
+      faviconUrl: null,
+      faviconDarkUrl: null,
+      logoUrl: null,
+      logoDarkUrl: null,
       turnstile: { enabled: false, siteKey: '' },
       federatedAuthProviders: [],
     });

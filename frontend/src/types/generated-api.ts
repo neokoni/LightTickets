@@ -2179,6 +2179,148 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/branding/{slot}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** 获取站点图标或 Logo 文件 */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          slot: 'favicon' | 'favicon-dark' | 'logo' | 'logo-dark';
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 自定义站点图标或 Logo 的文件内容；未上传时返回 404 */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'image/*': string;
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    /** 上传站点图标或 Logo */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          slot: 'favicon' | 'favicon-dark' | 'logo' | 'logo-dark';
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /** Format: binary */
+            file: string;
+          };
+        };
+      };
+      responses: {
+        /** @description 覆盖写入成功，返回最新的站点图标与 Logo URL */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** @description 自定义站点图标 URL（带 mtime 版本号），未上传自定义图标时为 null */
+                faviconUrl: string | null;
+                /** @description 暗色模式专用站点图标 URL（带 mtime 版本号），未上传时为 null，前端回退到浅色图标 */
+                faviconDarkUrl: string | null;
+                /** @description 自定义站点 Logo URL（带 mtime 版本号），未上传自定义 Logo 时为 null */
+                logoUrl: string | null;
+                /** @description 暗色模式专用站点 Logo URL（带 mtime 版本号），未上传时为 null，前端回退到浅色 Logo */
+                logoDarkUrl: string | null;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    post?: never;
+    /** 删除自定义站点图标或 Logo */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          slot: 'favicon' | 'favicon-dark' | 'logo' | 'logo-dark';
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description 删除成功并回退到内置默认图标，返回最新的站点图标与 Logo URL */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': {
+              /** @enum {boolean} */
+              success: true;
+              data: {
+                /** @description 自定义站点图标 URL（带 mtime 版本号），未上传自定义图标时为 null */
+                faviconUrl: string | null;
+                /** @description 暗色模式专用站点图标 URL（带 mtime 版本号），未上传时为 null，前端回退到浅色图标 */
+                faviconDarkUrl: string | null;
+                /** @description 自定义站点 Logo URL（带 mtime 版本号），未上传自定义 Logo 时为 null */
+                logoUrl: string | null;
+                /** @description 暗色模式专用站点 Logo URL（带 mtime 版本号），未上传时为 null，前端回退到浅色 Logo */
+                logoDarkUrl: string | null;
+              };
+            };
+          };
+        };
+        /** @description Error */
+        default: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ErrorEnvelope'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/servers': {
     parameters: {
       query?: never;
@@ -5740,6 +5882,14 @@ export interface paths {
                 siteUrl: string | null;
                 footerContent: string | null;
                 defaultLanguage: string;
+                /** @description 自定义站点图标 URL（带 mtime 版本号），未上传自定义图标时为 null */
+                faviconUrl: string | null;
+                /** @description 暗色模式专用站点图标 URL（带 mtime 版本号），未上传时为 null，前端回退到浅色图标 */
+                faviconDarkUrl: string | null;
+                /** @description 自定义站点 Logo URL（带 mtime 版本号），未上传自定义 Logo 时为 null */
+                logoUrl: string | null;
+                /** @description 暗色模式专用站点 Logo URL（带 mtime 版本号），未上传时为 null，前端回退到浅色 Logo */
+                logoDarkUrl: string | null;
                 turnstile: {
                   enabled: boolean;
                   siteKey: string;
