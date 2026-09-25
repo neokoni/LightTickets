@@ -14,6 +14,7 @@ import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
 import BaseSelect from '@/components/base/BaseSelect.vue';
 import BaseMultiSelect from '@/components/base/BaseMultiSelect.vue';
+import AssignPickerModal from '@/components/tickets/AssignPickerModal.vue';
 import type {
   AdminTemplate,
   EditableTemplateCompletionHook,
@@ -24,7 +25,9 @@ import type {
   TemplateCompletionHookAction,
 } from '@/types/template';
 import type { TemplateField, TemplateHiddenMode } from '@/types/ticket';
+import type { AssignableUser } from '@/types/user';
 import { apiGetAdminTemplate } from '@/api/templates';
+import { apiGetAssignableUsers } from '@/api/users';
 import { usePlayerGroupsStore } from '@/stores/player-groups';
 
 const templates = useTemplatesStore();
@@ -45,6 +48,8 @@ const dragOver = ref<{ group: 'fields' | 'hooks'; index: number } | null>(null);
 const source = ref('');
 const initialSource = ref('');
 const guiSourceSyncEnabled = ref(false);
+const showAssigneePicker = ref(false);
+const assignableUsers = ref<AssignableUser[]>([]);
 let nextFieldKey = 0;
 let nextHookKey = 0;
 let nextHookActionKey = 0;
@@ -54,6 +59,7 @@ const form = ref({
   description: '',
   titlePrefix: '',
   labels: [] as string[],
+  assigneeIds: [] as number[],
   enabled: true,
   hidden: 'false',
 });
@@ -71,6 +77,7 @@ function openCreate() {
     description: '',
     titlePrefix: '',
     labels: [],
+    assigneeIds: [],
     enabled: true,
     hidden: 'false',
   };
@@ -84,6 +91,26 @@ function openCreate() {
   guiSourceSyncEnabled.value = true;
   activeSection.value = 'basic';
   showModal.value = true;
+  fetchAssignableUsers();
+}
+
+async function fetchAssignableUsers() {
+  if (assignableUsers.value.length) return;
+  try {
+    assignableUsers.value = await apiGetAssignableUsers();
+  } catch {
+    /* ignore */
+  }
+}
+
+function openAssigneePicker() {
+  fetchAssignableUsers();
+  showAssigneePicker.value = true;
+}
+
+function applyAssigneeSave(ids: number[]) {
+  form.value.assigneeIds = ids;
+  showAssigneePicker.value = false;
 }
 
 async function openEdit(tmpl: AdminTemplate) {
@@ -103,6 +130,7 @@ async function openEdit(tmpl: AdminTemplate) {
       description: full.description,
       titlePrefix: full.titlePrefix || '',
       labels: normalizeLabelReferences(parsedLabels),
+      assigneeIds: full.assigneeIds ?? [],
       enabled: full.enabled,
       hidden: String(full.hidden),
     };
@@ -116,6 +144,7 @@ async function openEdit(tmpl: AdminTemplate) {
     guiSourceSyncEnabled.value = true;
     activeSection.value = 'basic';
     showModal.value = true;
+    fetchAssignableUsers();
   } catch (e) {
     handleError(e, t('admin.templates.deserializeFailed'));
   }
@@ -135,6 +164,7 @@ async function save() {
         description: form.value.description,
         titlePrefix: form.value.titlePrefix,
         labels: JSON.stringify(form.value.labels),
+        assigneeIds: form.value.assigneeIds,
         body: serializeFields(),
         completionHooks: serializeHooks(),
         enabled: form.value.enabled,
@@ -515,6 +545,9 @@ function serializeTemplateSource(): string {
   };
   if (form.value.titlePrefix) template.title_prefix = form.value.titlePrefix;
   template.labels = labelsForSource();
+  if (form.value.assigneeIds.length) {
+    template.assignee_ids = [...form.value.assigneeIds].sort((a, b) => a - b);
+  }
   template.body = fields.value.map(serializeField);
   template.completion_hooks = hooks.value.map(serializeHook);
   template.enabled = form.value.enabled;
@@ -840,6 +873,39 @@ onMounted(async () => {
                 />
                 <p class="text-xs text-slate-500 dark:text-slate-400">
                   {{ t('admin.templates.labelsHelp') }}
+                </p>
+              </div>
+              <div class="space-y-2">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {{ t('admin.templates.assignees') }}
+                  </span>
+                  <div class="flex items-center gap-3">
+                    <span
+                      v-if="form.assigneeIds.length"
+                      class="text-sm text-slate-500 dark:text-slate-400"
+                    >
+                      {{ t('ticket.assignees.selectedCount', { count: form.assigneeIds.length }) }}
+                    </span>
+                    <span v-else class="text-sm text-slate-400 dark:text-slate-500">
+                      {{ t('ticket.assignees.unassigned') }}
+                    </span>
+                    <BaseButton
+                      size="sm"
+                      type="button"
+                      icon="lucide:user-plus"
+                      @click="openAssigneePicker"
+                    >
+                      {{
+                        form.assigneeIds.length
+                          ? t('ticket.assignees.manage')
+                          : t('ticket.assignees.assign')
+                      }}
+                    </BaseButton>
+                  </div>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                  {{ t('admin.templates.assigneesHelp') }}
                 </p>
               </div>
               <BaseSelect
@@ -1556,6 +1622,13 @@ onMounted(async () => {
         </div>
       </form>
     </BaseModal>
+
+    <AssignPickerModal
+      v-model:open="showAssigneePicker"
+      :users="assignableUsers"
+      :selected-ids="form.assigneeIds"
+      @save="applyAssigneeSave"
+    />
   </div>
 </template>
 

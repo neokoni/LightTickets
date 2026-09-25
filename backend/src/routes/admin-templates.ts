@@ -20,6 +20,10 @@ export const adminTemplateCreateSchema = z.object({
   description: z.string().min(1).max(500),
   titlePrefix: z.string().max(50).optional(),
   labels: z.string().optional(),
+  assigneeIds: z
+    .array(z.number().int().positive())
+    .refine((ids) => new Set(ids).size === ids.length, '受理人不能重复')
+    .optional(),
   body: z.string().min(1),
   completionHooks: z.string().optional(),
   source: z.string().min(1).optional(),

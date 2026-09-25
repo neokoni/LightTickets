@@ -20,19 +20,17 @@ import { renderTicketRefs } from '@/utils/ticketRef';
 import { timeAgo, formatDate } from '@/utils/date';
 import BaseBadge from '@/components/base/BaseBadge.vue';
 import BaseButton from '@/components/base/BaseButton.vue';
-import BaseCheckbox from '@/components/base/BaseCheckbox.vue';
 import BaseInput from '@/components/base/BaseInput.vue';
 import BaseLoadingState from '@/components/base/BaseLoadingState.vue';
-import BaseModal from '@/components/base/BaseModal.vue';
 import BaseTextarea from '@/components/base/BaseTextarea.vue';
 import BaseToggle from '@/components/base/BaseToggle.vue';
 import UserAvatar from '@/components/base/UserAvatar.vue';
 import MarkdownRenderer from '@/components/markdown/MarkdownRenderer.vue';
+import AssignPickerModal from '@/components/tickets/AssignPickerModal.vue';
 import TicketLabels from '@/components/tickets/TicketLabels.vue';
 import TicketCompletionHooks from '@/components/tickets/TicketCompletionHooks.vue';
-import type { TicketStatus, GameContext, Role } from '@/types/ticket';
+import type { TicketStatus, GameContext } from '@/types/ticket';
 import { CommentSource, STATUS_META } from '@/types/ticket';
-import { ROLE_META } from '@/types/user';
 import { t } from '@/i18n';
 import { AUDIT_ACTION } from '@/types/audit';
 import { apiGetTemplates } from '@/api/tickets';
@@ -138,13 +136,10 @@ const {
 const {
   assignableUsers,
   showAssignPicker,
-  assignSearch,
   selectedAssigneeIds,
   assigning,
-  filteredAssignableUsers,
   fetchAssignableUsers,
   openAssignPicker,
-  toggleAssignee,
   saveAssignees,
 } = useAssignees(() => ticket.value);
 
@@ -901,63 +896,13 @@ watch(
         </div>
 
         <!-- Assign picker modal -->
-        <BaseModal v-model="showAssignPicker" :title="t('ticket.assignees.assign')">
-          <div class="space-y-3">
-            <div class="relative">
-              <Icon
-                icon="lucide:search"
-                class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
-              />
-              <BaseInput
-                v-model="assignSearch"
-                :placeholder="t('ticket.assignees.searchUser')"
-                class="[&_input]:pl-9"
-              />
-            </div>
-
-            <div class="max-h-64 overflow-y-auto space-y-0.5 -mx-1">
-              <label
-                v-for="u in filteredAssignableUsers"
-                :key="u.id"
-                class="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer hover:bg-slate-200/75 dark:hover:bg-slate-800 transition"
-              >
-                <BaseCheckbox
-                  :checked="selectedAssigneeIds.includes(u.id)"
-                  @update:checked="toggleAssignee(u.id)"
-                />
-                <div class="w-7 h-7 shrink-0">
-                  <UserAvatar :username="u.username" :avatar-url="u.avatarUrl" />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="text-sm text-slate-900 dark:text-white truncate">
-                    {{ u.username }}
-                  </div>
-                  <div class="text-[11px] text-slate-400 dark:text-slate-500">
-                    {{ t(ROLE_META[u.role as Role].labelKey) }}
-                  </div>
-                </div>
-              </label>
-              <div
-                v-if="!filteredAssignableUsers.length"
-                class="py-4 text-center text-sm text-slate-400"
-              >
-                {{ t('ticket.assignees.noMatches') }}
-              </div>
-            </div>
-          </div>
-
-          <template #footer>
-            <span class="text-xs text-slate-400 dark:text-slate-500 mr-auto self-center">{{
-              t('ticket.assignees.selectedCount', { count: selectedAssigneeIds.length })
-            }}</span>
-            <BaseButton size="sm" @click="showAssignPicker = false">{{
-              t('common.cancel')
-            }}</BaseButton>
-            <BaseButton size="sm" :filled="true" :loading="assigning" @click="saveAssignees">{{
-              t('common.confirm')
-            }}</BaseButton>
-          </template>
-        </BaseModal>
+        <AssignPickerModal
+          v-model:open="showAssignPicker"
+          :users="assignableUsers"
+          :selected-ids="selectedAssigneeIds"
+          :saving="assigning"
+          @save="saveAssignees"
+        />
 
         <!-- Game context -->
         <div

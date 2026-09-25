@@ -5,6 +5,7 @@ import { NotFoundError, AppError, ValidationError } from '../utils/errors.js';
 import { dataPath } from '../paths.js';
 import { TEMPLATE_HIDDEN_MODE, type TemplateHiddenMode } from '../constants/ticket-visibility.js';
 import * as playerGroupService from './player-group.service.js';
+import * as userService from './user.service.js';
 
 const defaultTemplatesDir = path.resolve('templates');
 const dataTemplatesDir = dataPath('templates');
@@ -119,6 +120,7 @@ export interface TemplateDefinition {
   enabled?: boolean;
   hidden: TemplateHiddenMode;
   labels: string[];
+  assignee_ids?: number[];
   body: TemplateField[];
   completion_hooks: CompletionHook[];
 }
@@ -137,6 +139,7 @@ export interface AdminTemplate {
   description: string;
   titlePrefix: string | null;
   labels: string;
+  assigneeIds: number[];
   body: string;
   completionHooks: string;
   source: string;
@@ -250,6 +253,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
+function isValidAssigneeIds(value: unknown): value is number[] {
+  return (
+    Array.isArray(value) &&
+    value.every((id) => typeof id === 'number' && Number.isInteger(id) && id > 0) &&
+    new Set(value).size === value.length
+  );
 }
 
 function isValidTemplateOption(value: unknown): value is TemplateOption {
@@ -466,6 +477,7 @@ function parseTemplateSource(raw: string): TemplateDefinition {
     (def.labels !== undefined &&
       (!Array.isArray(def.labels) || !def.labels.every((label) => typeof label === 'string'))) ||
     (def.title_prefix !== undefined && typeof def.title_prefix !== 'string') ||
+    (def.assignee_ids !== undefined && !isValidAssigneeIds(def.assignee_ids)) ||
     (def.completion_hooks !== undefined && !Array.isArray(def.completion_hooks)) ||
     (def.enabled !== undefined && typeof def.enabled !== 'boolean')
   ) {
@@ -476,7 +488,7 @@ function parseTemplateSource(raw: string): TemplateDefinition {
   assertValidTemplateBody(def.body, false);
   assertValidCompletionHooks(completionHooks, false);
 
-  return {
+  const definition: TemplateDefinition = {
     name: def.name,
     description: def.description,
     title_prefix: def.title_prefix?.trim() || undefined,
@@ -486,6 +498,10 @@ function parseTemplateSource(raw: string): TemplateDefinition {
     enabled: def.enabled ?? true,
     hidden: normalizeTemplateHiddenMode(def.hidden),
   };
+  if (isValidAssigneeIds(def.assignee_ids) && def.assignee_ids.length > 0) {
+    definition.assignee_ids = [...def.assignee_ids].sort((a, b) => a - b);
+  }
+  return definition;
 }
 
 function parseTemplateSourceForWrite(source: string): TemplateDefinition {
@@ -521,6 +537,13 @@ async function assertTemplatePlayerGroups(definition: TemplateDefinition): Promi
   if (groupIds.length === 0) return;
   if (!(await playerGroupService.groupsExist(groupIds))) {
     throw new ValidationError('player_select 引用的 group 不存在');
+  }
+}
+
+async function assertTemplateAssignees(definition: TemplateDefinition): Promise<void> {
+  if (!definition.assignee_ids?.length) return;
+  if (!(await userService.assignableUsersExist(definition.assignee_ids))) {
+    throw new ValidationError('assignee_ids 引用的用户不是存在的 staff 或 admin 用户');
   }
 }
 
@@ -891,6 +914,7 @@ function toAdminTemplate(entry: CachedTemplate): AdminTemplate {
     description: entry.definition.description,
     titlePrefix: entry.definition.title_prefix ?? null,
     labels: JSON.stringify(entry.definition.labels),
+    assigneeIds: entry.definition.assignee_ids ?? [],
     // JSON is also valid YAML and gives the admin field builder a deterministic
     // representation that can be deserialized without shipping a second YAML parser.
     body: JSON.stringify(entry.definition.body, null, 2),
@@ -940,6 +964,7 @@ function buildTemplateDefinition(data: {
   description: string;
   titlePrefix?: string | null;
   labels?: string;
+  assigneeIds?: number[];
   body: string;
   completionHooks?: string;
   enabled?: boolean;
@@ -970,6 +995,9 @@ function buildTemplateDefinition(data: {
   };
   const titlePrefix = data.titlePrefix?.trim();
   if (titlePrefix) template.title_prefix = titlePrefix;
+  if (data.assigneeIds?.length) {
+    template.assignee_ids = [...new Set(data.assigneeIds)].sort((a, b) => a - b);
+  }
   return template;
 }
 
@@ -979,6 +1007,7 @@ async function adminCreateUnlocked(data: {
   description: string;
   titlePrefix?: string;
   labels?: string;
+  assigneeIds?: number[];
   body: string;
   completionHooks?: string;
   source?: string;
@@ -994,6 +1023,7 @@ async function adminCreateUnlocked(data: {
       ? parseTemplateSourceForWrite(data.source)
       : buildTemplateDefinition(data);
   await assertTemplatePlayerGroups(definition);
+  await assertTemplateAssignees(definition);
   if (cache.has(data.name) || fs.existsSync(templatePath(data.name)))
     throw new AppError(409, '模板 key 已存在');
   fs.mkdirSync(dataTemplatesDir, { recursive: true });
@@ -1012,6 +1042,7 @@ export function adminCreate(data: {
   description: string;
   titlePrefix?: string;
   labels?: string;
+  assigneeIds?: number[];
   body: string;
   completionHooks?: string;
   source?: string;
@@ -1028,6 +1059,7 @@ async function adminUpdateUnlocked(
     description?: string;
     titlePrefix?: string;
     labels?: string;
+    assigneeIds?: number[];
     body?: string;
     completionHooks?: string;
     source?: string;
@@ -1048,12 +1080,14 @@ async function adminUpdateUnlocked(
           description: data.description ?? current.description,
           titlePrefix: data.titlePrefix !== undefined ? data.titlePrefix : current.titlePrefix,
           labels: data.labels ?? current.labels,
+          assigneeIds: data.assigneeIds !== undefined ? data.assigneeIds : current.assigneeIds,
           body: data.body ?? current.body,
           completionHooks: data.completionHooks ?? current.completionHooks,
           enabled: data.enabled ?? current.enabled,
           hidden: data.hidden ?? current.hidden,
         });
   await assertTemplatePlayerGroups(definition);
+  await assertTemplateAssignees(definition);
   if (!cache.has(name) || !fs.existsSync(existing.filePath)) throw new NotFoundError('模板不存在');
   if (fs.readFileSync(existing.filePath, 'utf-8') !== current.source)
     throw new AppError(409, '模板已被其他请求修改，请重新加载');
@@ -1074,6 +1108,7 @@ export function adminUpdate(
     description?: string;
     titlePrefix?: string;
     labels?: string;
+    assigneeIds?: number[];
     body?: string;
     completionHooks?: string;
     source?: string;

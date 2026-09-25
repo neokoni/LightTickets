@@ -1,9 +1,10 @@
 import bcrypt from 'bcrypt';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from './setup.js';
 import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 import * as mailService from '../src/services/mail.service.js';
 import * as commentService from '../src/services/comment.service.js';
+import * as templateService from '../src/services/template.service.js';
 import * as ticketService from '../src/services/ticket.service.js';
 
 const mailConfig = {
@@ -61,6 +62,12 @@ async function createTicket(authorId: number) {
 beforeEach(() => {
   clearTestOutbox();
   vi.restoreAllMocks();
+});
+
+afterEach(async () => {
+  if (templateService.getAdminDefinition('assignee_mail_test')) {
+    await templateService.adminDelete('assignee_mail_test');
+  }
 });
 
 describe('ticket email notifications', () => {
@@ -130,5 +137,74 @@ describe('ticket email notifications', () => {
 
     expect(comment.body).toBe('Persist despite failure');
     expect(await prisma().comment.findUnique({ where: { id: comment.id } })).not.toBeNull();
+  });
+
+  it('emails newly assigned staff when assignees change', async () => {
+    await configureNotifications();
+    const author = await createUser('assign-author@test.com', 'assignauthor');
+    const actor = await createUser('assign-actor@test.com', 'assignactor', 'staff');
+    const target = await createUser('assign-target@test.com', 'assigntarget', 'staff');
+    const ticket = await createTicket(author.id);
+
+    await ticketService.setAssignees(ticket.id, actor.id, 'staff', [target.id]);
+
+    expect(getTestOutbox()).toHaveLength(1);
+    const mail = getTestOutbox()[0];
+    expect(mail.to).toBe(target.email);
+    expect(mail.text).toContain('将此议题分配给了你');
+    expect(mail.text).toContain('你已成为该议题的受理人');
+    expect(mail.html).toContain(`https://tickets.example.com/tickets/${ticket.id}`);
+  });
+
+  it('skips assignment mail for self assignment and opted-out assignees', async () => {
+    await configureNotifications();
+    const author = await createUser('selfassign-author@test.com', 'selfassignauthor');
+    const actor = await createUser('selfassign-actor@test.com', 'selfassignactor', 'staff');
+    const optedOut = await createUser('selfassign-optout@test.com', 'selfassignoptout', 'staff');
+    const ticket = await createTicket(author.id);
+
+    await ticketService.setAssignees(ticket.id, actor.id, 'staff', [actor.id]);
+    expect(getTestOutbox()).toHaveLength(0);
+
+    await prisma().user.update({
+      where: { id: optedOut.id },
+      data: { receiveEmailNotifications: false },
+    });
+    await ticketService.setAssignees(ticket.id, actor.id, 'staff', [optedOut.id]);
+    expect(getTestOutbox()).toHaveLength(0);
+  });
+
+  it('emails template default assignees when a ticket is created', async () => {
+    await configureNotifications();
+    const author = await createUser('templateassign-author@test.com', 'templateassignauthor');
+    const assignee = await createUser(
+      'templateassign-staff@test.com',
+      'templateassignstaff',
+      'staff',
+    );
+
+    await templateService.adminCreate({
+      name: 'assignee_mail_test',
+      nameI18n: 'Assignee mail test',
+      description: 'Template that assigns on creation',
+      assigneeIds: [assignee.id],
+      body: JSON.stringify([{ type: 'input', id: 'reason', attributes: { label: 'Reason' } }]),
+      hidden: false,
+    });
+
+    const ticket = await ticketService.create({
+      title: 'Assigned ticket',
+      template: 'assignee_mail_test',
+      formData: { reason: 'needs handling' },
+      authorId: author.id,
+    });
+
+    const rows = await prisma().ticketAssignee.findMany({ where: { ticketId: ticket.id } });
+    expect(rows.map((row) => row.userId)).toEqual([assignee.id]);
+
+    expect(getTestOutbox()).toHaveLength(1);
+    const mail = getTestOutbox()[0];
+    expect(mail.to).toBe(assignee.email);
+    expect(mail.text).toContain('将此议题分配给了你');
   });
 });

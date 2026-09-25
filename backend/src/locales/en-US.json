@@ -250,6 +250,8 @@
         "addMessage": "Add message",
         "addOption": "Add option",
         "addTextarea": "Add textarea",
+        "assignees": "Default assignees",
+        "assigneesHelp": "Tickets created from this template are assigned immediately and each assignee receives an email notification.",
         "basicHelp": "Configure the template name, description, visibility, and enabled state.",
         "commandPlaceholder": "tell {player_name} Ticket #{ticket_id} has been closed",
         "commands": "Commands",
@@ -520,6 +522,9 @@
         "title": "Verify your new email"
       },
       "ticketNotification": {
+        "assignDetail": "You have been assigned to this issue. Please review and handle it.",
+        "assignFooter": "You received this email because you are an assignee of this issue.",
+        "assignTitle": "assigned this issue to you",
         "commentTitle": "replied to your issue",
         "footer": "You received this email because you created this issue.",
         "intro": "{event}",

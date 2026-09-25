@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, it, expect } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, it, expect } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { prisma, serverData } from './setup.js';
@@ -10,9 +10,10 @@ import { AUDIT_SETTLE_DELAY_MS } from '../src/constants/audit.js';
 const app = createApp();
 const selectionTemplateName = 'selection_hook_test';
 const disabledTemplateName = 'disabled_ticket_test';
+const assigneeTemplateName = 'assignee_default_test';
 
 beforeAll(async () => {
-  for (const name of [selectionTemplateName, disabledTemplateName]) {
+  for (const name of [selectionTemplateName, disabledTemplateName, assigneeTemplateName]) {
     if (templateService.getAdminDefinition(name)) {
       await templateService.adminDelete(name);
     }
@@ -119,7 +120,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  for (const name of [selectionTemplateName, disabledTemplateName]) {
+  for (const name of [selectionTemplateName, disabledTemplateName, assigneeTemplateName]) {
     if (templateService.getAdminDefinition(name)) {
       await templateService.adminDelete(name);
     }
@@ -388,6 +389,80 @@ describe('ticketService.create', () => {
 
     expect(ticket.title).toBe('[Bug] Rendered client title');
     expect(ticket.body).toBe('Rendered body');
+  });
+});
+
+describe('template default assignees', () => {
+  const assigneeTemplateBody = JSON.stringify([
+    { type: 'input', id: 'reason', attributes: { label: 'Reason' } },
+  ]);
+
+  afterEach(async () => {
+    if (templateService.getAdminDefinition(assigneeTemplateName)) {
+      await templateService.adminDelete(assigneeTemplateName);
+    }
+  });
+
+  it('assigns template default assignees and records the audit entry on creation', async () => {
+    const authorToken = await createUserAndGetToken('assignee-template-author@test.com');
+    await createStaffAndGetToken('assignee-template-target@test.com');
+    const staff = await prisma().user.findUniqueOrThrow({
+      where: { email: 'assignee-template-target@test.com' },
+    });
+
+    await templateService.adminCreate({
+      name: assigneeTemplateName,
+      nameI18n: 'Assignee default',
+      description: 'Template with default assignees',
+      assigneeIds: [staff.id],
+      body: assigneeTemplateBody,
+      hidden: false,
+    });
+
+    const res = await createTicket(authorToken, {
+      template: assigneeTemplateName,
+      formData: { reason: 'needs handling' },
+    });
+
+    expect(res.status).toBe(201);
+
+    const detail = await request(app)
+      .get(`/api/tickets/${res.body.data.id}`)
+      .set('Authorization', `Bearer ${authorToken}`);
+    expect(detail.body.data.assignees.map((assignee) => assignee.userId)).toEqual([staff.id]);
+
+    await auditService.settlePending(new Date(Date.now() + AUDIT_SETTLE_DELAY_MS + 1));
+    const audits = await prisma().auditLog.findMany({
+      where: { ticketId: res.body.data.id, action: 'assignees_change' },
+    });
+    expect(audits).toHaveLength(1);
+    expect(JSON.parse(audits[0].newValue)).toEqual([staff.id]);
+  });
+
+  it('skips stale default assignees without blocking ticket creation', async () => {
+    const authorToken = await createUserAndGetToken('assignee-stale-author@test.com');
+    await createStaffAndGetToken('assignee-stale-target@test.com');
+    const staff = await prisma().user.findUniqueOrThrow({
+      where: { email: 'assignee-stale-target@test.com' },
+    });
+
+    await templateService.adminCreate({
+      name: assigneeTemplateName,
+      nameI18n: 'Assignee default',
+      description: 'Template with stale default assignee',
+      assigneeIds: [staff.id],
+      body: assigneeTemplateBody,
+      hidden: false,
+    });
+    await prisma().user.update({ where: { id: staff.id }, data: { role: 'player' } });
+
+    const res = await createTicket(authorToken, {
+      template: assigneeTemplateName,
+      formData: { reason: 'needs handling' },
+    });
+
+    expect(res.status).toBe(201);
+    expect(await prisma().ticketAssignee.count({ where: { ticketId: res.body.data.id } })).toBe(0);
   });
 });
 

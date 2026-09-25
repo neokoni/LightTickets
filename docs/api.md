@@ -475,7 +475,8 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 
 需要 `staff` 或 `admin` 权限。数组中的用户必须全部存在且角色为 `staff` 或 `admin`；包含
 不存在用户、普通用户或重复 ID 时返回 `400`，且不会部分修改负责人或写入审计日志。空数组用于
-清空全部负责人。
+清空全部负责人。每位新增负责人都会收到一封分配提醒邮件（操作者本人除外，且受平台与个人
+邮件通知开关控制）。
 
 请求体：
 
@@ -721,8 +722,10 @@ API key 类型为 `paper_folia` 或 `velocity`。创建与更新 key 的请求�
 `mail.password` 不传或传空时保留原密码；关闭邮件只需设置 `mail.enabled=false`。SMTP 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
 `siteUrl` 接受 HTTP(S) origin 并规范化存储，但 HTTP 地址不会启用密码重置；设置为 `null`
 或空字符串会立即关闭密码重置，不影响注册邮箱验证码。
-议题邮件通知仅在 SMTP 配置可用、平台 `sendEmailNotifications=true`、议题创建者个人
-`receiveEmailNotifications=true` 且操作者不是创建者本人时发送。发送失败不会影响回复或状态变更操作。
+议题邮件通知仅在 SMTP 配置可用、平台 `sendEmailNotifications=true`、收件人个人
+`receiveEmailNotifications=true` 且操作者不是收件人本人时发送。回复与状态变更通知收件人为
+议题创建者；新增负责人（手动指派或模板默认受理人）时通知收件人为该负责人。发送失败不会
+影响回复、状态变更或分配操作。
 `turnstile.secretKey` 不传或传空时保留原 Secret Key；关闭 Turnstile 只需设置 `turnstile.enabled=false`。Turnstile 配置为可选配置，只通过管理后台维护，不属于初始化步骤。
 
 限流策略保存在数据库 `AppConfig` 中，修改后立即应用。全局限流按 IP 统计所有 API 请求；认证限流按 IP 统计所有挂载认证限流器的接口并共享额度。请求窗口内前 `maxRequests` 次放行，之后返回 429，到窗口结束后重新计数。注册验证码和密码重置邮件统一读取 `email.cooldownSeconds`；前者按规范化邮箱统计，后者按用户账号统计。所有秒数和请求额度必须为正整数；秒数最大 86400，请求额度最大 100000。
@@ -766,6 +769,13 @@ HTTP 200 返回业务级 `success: false`。
 
 `GET /:name` 返回 `source` 字段，其中包含模板文件的完整 YAML 原文。`PATCH /:name`
 可单独提交 `{ "source": "..." }` 直接更新原文；后端会在写入前解析并校验模板结构。
+
+`POST /` 与 `PATCH /:name` 支持可选请求体字段 `assigneeIds: number[]`（正整数、不可重复，
+`[]` 表示清空），用于设置模板默认受理人；引用的用户必须存在且角色为 `staff` 或 `admin`，
+否则返回 `400`。模板 YAML 中对应字段为 `assignee_ids`，也可在 `source` 原文中直接维护。
+使用该模板创建议题时会在创建事务内立即写入分配并记录一条 `assignees_change` 审计（操作者
+为创建者）；届时已失效的受理人会被跳过，不阻断议题创建。默认受理人不会出现在公开的
+`GET /api/templates` 与 `GET /api/templates/:name` 中。
 
 ### 玩家组
 

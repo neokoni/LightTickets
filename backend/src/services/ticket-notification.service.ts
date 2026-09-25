@@ -11,7 +11,8 @@ const FALLBACK_SITE_ORIGIN = 'http://localhost:23310';
 
 type NotificationEvent =
   | { type: 'comment'; body: string }
-  | { type: 'status'; oldStatus: TicketStatus; newStatus: TicketStatus };
+  | { type: 'status'; oldStatus: TicketStatus; newStatus: TicketStatus }
+  | { type: 'assign' };
 
 function translate(
   messages: Record<string, string>,
@@ -99,15 +100,25 @@ function buildEmail(input: {
     messages,
     input.event.type === 'comment'
       ? 'mail.ticketNotification.commentTitle'
-      : 'mail.ticketNotification.statusTitle',
+      : input.event.type === 'assign'
+        ? 'mail.ticketNotification.assignTitle'
+        : 'mail.ticketNotification.statusTitle',
   );
   const detail =
     input.event.type === 'comment'
       ? input.event.body
-      : translate(messages, 'mail.ticketNotification.statusDetail', {
-          oldStatus: translate(messages, statusKey(input.event.oldStatus)),
-          newStatus: translate(messages, statusKey(input.event.newStatus)),
-        });
+      : input.event.type === 'assign'
+        ? translate(messages, 'mail.ticketNotification.assignDetail')
+        : translate(messages, 'mail.ticketNotification.statusDetail', {
+            oldStatus: translate(messages, statusKey(input.event.oldStatus)),
+            newStatus: translate(messages, statusKey(input.event.newStatus)),
+          });
+  const footer = translate(
+    messages,
+    input.event.type === 'assign'
+      ? 'mail.ticketNotification.assignFooter'
+      : 'mail.ticketNotification.footer',
+  );
   const subject = translate(messages, 'mail.ticketNotification.subject', {
     siteName,
     ticketTitle: input.ticketTitle,
@@ -131,7 +142,7 @@ function buildEmail(input: {
           <div style="margin:20px 0;padding:14px 16px;background:#f8fafc;border-left:3px solid #64748b;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:22px;">${escapeHtml(detail)}</div>
           <a href="${escapeHtml(ticketUrl)}" style="display:inline-block;padding:10px 16px;border-radius:6px;background:#0f172a;color:#fff;text-decoration:none;font-size:14px;font-weight:600;">${escapeHtml(translate(messages, 'mail.ticketNotification.viewTicket'))}</a>
         </td></tr>
-        <tr><td style="padding:16px 28px;border-top:1px solid #e2e8f0;font-size:12px;line-height:20px;color:#64748b;">${escapeHtml(translate(messages, 'mail.ticketNotification.footer'))} <a href="${escapeHtml(unsubscribeUrl)}" style="color:#475569;">${escapeHtml(translate(messages, 'mail.ticketNotification.unsubscribe'))}</a></td></tr>
+        <tr><td style="padding:16px 28px;border-top:1px solid #e2e8f0;font-size:12px;line-height:20px;color:#64748b;">${escapeHtml(footer)} <a href="${escapeHtml(unsubscribeUrl)}" style="color:#475569;">${escapeHtml(translate(messages, 'mail.ticketNotification.unsubscribe'))}</a></td></tr>
       </table>
     </td></tr></table>
   </body>
@@ -148,22 +159,33 @@ function buildEmail(input: {
   return { subject, html, text };
 }
 
+async function loadNotificationContext(): Promise<{
+  siteName: string;
+  siteUrl: string | null;
+  defaultLanguage: string;
+} | null> {
+  const [status, mailConfig] = await Promise.all([
+    prisma().setupStatus.findFirst(),
+    mailConfigService.getFullMailConfig(),
+  ]);
+  if (!status?.sendEmailNotifications || !mailConfigService.canSendPasswordResetMail(mailConfig)) {
+    return null;
+  }
+  return {
+    siteName: status.siteName,
+    siteUrl: status.siteUrl,
+    defaultLanguage: status.defaultLanguage,
+  };
+}
+
 export async function notifyTicketAuthor(
   ticketId: number,
   actorUserId: number,
   event: NotificationEvent,
 ): Promise<void> {
   try {
-    const [status, mailConfig] = await Promise.all([
-      prisma().setupStatus.findFirst(),
-      mailConfigService.getFullMailConfig(),
-    ]);
-    if (
-      !status?.sendEmailNotifications ||
-      !mailConfigService.canSendPasswordResetMail(mailConfig)
-    ) {
-      return;
-    }
+    const context = await loadNotificationContext();
+    if (!context) return;
 
     const ticket = await prisma().ticket.findUnique({
       where: { id: ticketId },
@@ -187,9 +209,9 @@ export async function notifyTicketAuthor(
     if (!actor) return;
 
     const mail = buildEmail({
-      siteName: status.siteName,
-      siteUrl: status.siteUrl,
-      languageId: status.defaultLanguage,
+      siteName: context.siteName,
+      siteUrl: context.siteUrl,
+      languageId: context.defaultLanguage,
       ticketId: ticket.id,
       ticketTitle: ticket.title,
       actorName: actor.minecraftName || actor.username,
@@ -198,6 +220,54 @@ export async function notifyTicketAuthor(
       event,
     });
     await mailService.sendMail({ to: ticket.author.email, ...mail });
+  } catch {
+    // Notification delivery must never make the originating ticket operation fail.
+  }
+}
+
+export async function notifyAssignees(
+  ticketId: number,
+  actorUserId: number,
+  assigneeIds: number[],
+): Promise<void> {
+  try {
+    const recipients = [...new Set(assigneeIds)].filter((assigneeId) => assigneeId !== actorUserId);
+    if (recipients.length === 0) return;
+
+    const context = await loadNotificationContext();
+    if (!context) return;
+
+    const ticket = await prisma().ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, title: true },
+    });
+    if (!ticket) return;
+
+    const assignees = await prisma().user.findMany({
+      where: { id: { in: recipients }, receiveEmailNotifications: true },
+      select: { id: true, email: true, username: true, minecraftName: true, avatarUrl: true },
+    });
+
+    const actor = await prisma().user.findUnique({
+      where: { id: actorUserId },
+      select: { username: true, minecraftName: true, avatarUrl: true },
+    });
+    if (!actor) return;
+
+    for (const assignee of assignees) {
+      const mail = buildEmail({
+        siteName: context.siteName,
+        siteUrl: context.siteUrl,
+        languageId: context.defaultLanguage,
+        ticketId: ticket.id,
+        ticketTitle: ticket.title,
+        actorName: actor.minecraftName || actor.username,
+        actorAvatarUrl: actor.avatarUrl,
+        unsubscribeToken: createUnsubscribeToken(assignee.id),
+        event: { type: 'assign' },
+      });
+      await mailService.sendMail({ to: assignee.email, ...mail });
+    }
   } catch {
     // Notification delivery must never make the originating ticket operation fail.
   }

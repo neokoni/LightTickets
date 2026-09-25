@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { createApp } from '../src/app.js';
 import { dataPath } from '../src/paths.js';
+import { prisma } from './setup.js';
 import * as templateService from '../src/services/template.service.js';
 
 const app = createApp({ enableInitialSetup: true });
@@ -28,6 +29,11 @@ const testTemplateNames = [
   'legacy_invalid_options_tmpl',
   'unknown_field_type_tmpl',
   'ambiguous_dropdown_tmpl',
+  'assignee_store_tmpl',
+  'assignee_reject_tmpl',
+  'assignee_clear_tmpl',
+  'assignee_source_tmpl',
+  'assignee_public_tmpl',
 ];
 
 afterEach(() => {
@@ -609,5 +615,162 @@ describe('DELETE /api/admin/templates/:id', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(204);
+  });
+});
+
+describe('template default assignees', () => {
+  const assigneeBody = '- type: input\n  id: reason\n  attributes:\n    label: Reason';
+
+  async function createRoleUser(email: string, role: 'player' | 'staff') {
+    await request(app)
+      .post('/api/auth/register')
+      .send({ email, password: 'Password123!', username: email.split('@')[0] });
+    const user = await prisma().user.findUnique({ where: { email } });
+    if (!user) throw new Error(`user ${email} was not created`);
+    if (role !== 'player') {
+      await prisma().user.update({ where: { id: user.id }, data: { role } });
+    }
+    return user;
+  }
+
+  it('stores default assignees from structured fields', async () => {
+    const token = await setupAndGetAdmin();
+    const staff = await createRoleUser('assignee-store-staff@tmpl.test', 'staff');
+
+    const res = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'assignee_store_tmpl',
+        nameI18n: 'Assignee Store',
+        description: 'Template with default assignees',
+        assigneeIds: [staff.id],
+        body: assigneeBody,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.assigneeIds).toEqual([staff.id]);
+    expect(res.body.data.source).toContain('assignee_ids:');
+  });
+
+  it('rejects unknown, non-assignable and duplicate assignees', async () => {
+    const token = await setupAndGetAdmin();
+    const player = await createRoleUser('assignee-reject-player@tmpl.test', 'player');
+
+    const unknown = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'assignee_reject_tmpl',
+        nameI18n: 'Assignee Reject',
+        description: 'Unknown assignee',
+        assigneeIds: [2000000000],
+        body: assigneeBody,
+      });
+    expect(unknown.status).toBe(400);
+    expect(unknown.body.message).toContain('assignee_ids');
+
+    const notAssignable = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'assignee_reject_tmpl',
+        nameI18n: 'Assignee Reject',
+        description: 'Player assignee',
+        assigneeIds: [player.id],
+        body: assigneeBody,
+      });
+    expect(notAssignable.status).toBe(400);
+    expect(notAssignable.body.message).toContain('assignee_ids');
+
+    const duplicate = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'assignee_reject_tmpl',
+        nameI18n: 'Assignee Reject',
+        description: 'Duplicate assignees',
+        assigneeIds: [player.id, player.id],
+        body: assigneeBody,
+      });
+    expect(duplicate.status).toBe(400);
+    expect(duplicate.body.message).toContain('受理人不能重复');
+  });
+
+  it('clears default assignees through PATCH', async () => {
+    const token = await setupAndGetAdmin();
+    const staff = await createRoleUser('assignee-clear-staff@tmpl.test', 'staff');
+
+    await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'assignee_clear_tmpl',
+        nameI18n: 'Assignee Clear',
+        description: 'Template to clear',
+        assigneeIds: [staff.id],
+        body: assigneeBody,
+      });
+
+    const res = await request(app)
+      .patch('/api/admin/templates/assignee_clear_tmpl')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ assigneeIds: [] });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.assigneeIds).toEqual([]);
+    expect(res.body.data.source).not.toContain('assignee_ids');
+  });
+
+  it('accepts assignee_ids from the raw source document', async () => {
+    const token = await setupAndGetAdmin();
+    const staff = await createRoleUser('assignee-source-staff@tmpl.test', 'staff');
+
+    const source = [
+      'name: Source Assignee',
+      'description: Template with assignees in source',
+      `assignee_ids: [${staff.id}]`,
+      'body:',
+      '  - type: input',
+      '    id: reason',
+      '    attributes:',
+      '      label: Reason',
+      '',
+    ].join('\n');
+
+    const res = await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'assignee_source_tmpl',
+        nameI18n: 'Source Assignee',
+        description: 'Template with assignees in source',
+        body: assigneeBody,
+        source,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.assigneeIds).toEqual([staff.id]);
+  });
+
+  it('keeps default assignees out of the public template detail', async () => {
+    const token = await setupAndGetAdmin();
+    const staff = await createRoleUser('assignee-public-staff@tmpl.test', 'staff');
+
+    await request(app)
+      .post('/api/admin/templates')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'assignee_public_tmpl',
+        nameI18n: 'Assignee Public',
+        description: 'Public detail hides assignees',
+        assigneeIds: [staff.id],
+        body: assigneeBody,
+      });
+
+    const res = await request(app).get('/api/templates/assignee_public_tmpl');
+    expect(res.status).toBe(200);
+    expect(res.body.data).not.toHaveProperty('assignee_ids');
+    expect(res.body.data).not.toHaveProperty('assigneeIds');
   });
 });

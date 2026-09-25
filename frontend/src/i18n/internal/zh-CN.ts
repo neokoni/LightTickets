@@ -260,6 +260,8 @@ const nestedMessages: Record<string, unknown> = {
       addMessage: '添加消息',
       addOption: '添加选项',
       addTextarea: '添加多行文本',
+      assignees: '默认受理人',
+      assigneesHelp: '使用此模板创建的议题会立即分配给所选受理人，并向其发送邮件提醒。',
       basicHelp: '配置模板名称、描述、可见性和启用状态。',
       commandPlaceholder: 'tell {player_name} 议题 #{ticket_id} 已关闭',
       commands: '命令列表',
@@ -531,6 +533,9 @@ const nestedMessages: Record<string, unknown> = {
       title: '验证新邮箱',
     },
     ticketNotification: {
+      assignDetail: '你已成为该议题的受理人，请及时查看和处理。',
+      assignFooter: '你收到此邮件是因为你是该议题的受理人。',
+      assignTitle: '将此议题分配给了你',
       commentTitle: '回复了你的议题',
       footer: '你收到此邮件是因为你创建了该议题。',
       intro: '{event}',

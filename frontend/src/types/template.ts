@@ -70,6 +70,7 @@ export interface AdminTemplate {
   description: string;
   titlePrefix: string | null;
   labels: string;
+  assigneeIds: number[];
   body: string;
   completionHooks: string;
   source: string;

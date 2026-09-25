@@ -287,7 +287,7 @@ export async function create(input: CreateTicketInput) {
   const attachmentIds = Array.from(new Set(input.attachmentIds ?? []));
   const labelReferences = Array.from(new Set(def.labels));
 
-  return prisma().$transaction(async (tx) => {
+  const { ticket, assignedIds } = await prisma().$transaction(async (tx) => {
     if (input.serverId !== undefined) {
       const server = await tx.server.findUnique({
         where: { id: input.serverId },
@@ -343,8 +343,42 @@ export async function create(input: CreateTicketInput) {
       }
     }
 
-    return ticket;
+    let assignedIds: number[] = [];
+    if (def.assignee_ids?.length) {
+      const assignable = await tx.user.findMany({
+        where: { id: { in: def.assignee_ids }, role: { in: [ROLE.STAFF, ROLE.ADMIN] } },
+        select: { id: true },
+      });
+      const validIds = assignable.map((user) => user.id);
+      const invalidIds = def.assignee_ids.filter((id) => !validIds.includes(id));
+      if (invalidIds.length > 0) {
+        console.warn(
+          `[tickets] template ${input.template}: skipping invalid assignees ${invalidIds.join(', ')}`,
+        );
+      }
+      if (validIds.length > 0) {
+        await tx.ticketAssignee.createMany({
+          data: validIds.map((userId) => ({ ticketId: ticket.id, userId })),
+        });
+        await createAudit(
+          tx,
+          ticket.id,
+          input.authorId,
+          AUDIT_ACTION.ASSIGNEES_CHANGE,
+          JSON.stringify([]),
+          JSON.stringify(validIds),
+        );
+        assignedIds = validIds;
+      }
+    }
+
+    return { ticket, assignedIds };
   });
+
+  if (assignedIds.length > 0) {
+    await ticketNotificationService.notifyAssignees(ticket.id, input.authorId, assignedIds);
+  }
+  return ticket;
 }
 
 export async function list(input: ListTicketsInput) {
@@ -760,7 +794,7 @@ export async function setAssignees(
   if (!isStaffRole(userRole)) throw new ForbiddenError('只有管理员或管理组可以更改议题负责人');
   const normalizedAssigneeIds = normalizeAssigneeIds(assigneeIds);
 
-  await prisma().$transaction(async (tx) => {
+  const { added } = await prisma().$transaction(async (tx) => {
     const ticket = await tx.ticket.findUnique({
       where: { id },
       include: { assignees: { select: { userId: true } } },
@@ -794,7 +828,13 @@ export async function setAssignees(
         JSON.stringify(normalizedAssigneeIds),
       );
     }
+
+    return { added: toAdd };
   });
+
+  if (added.length > 0) {
+    await ticketNotificationService.notifyAssignees(id, userId, added);
+  }
 
   return getById(id, { userId, role: userRole });
 }

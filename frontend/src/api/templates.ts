@@ -16,6 +16,7 @@ export function apiCreateAdminTemplate(data: {
   description: string;
   titlePrefix?: string;
   labels?: string;
+  assigneeIds?: number[];
   body: string;
   completionHooks?: string;
   source?: string;
@@ -35,6 +36,7 @@ export function apiUpdateAdminTemplate(
     description?: string;
     titlePrefix?: string;
     labels?: string;
+    assigneeIds?: number[];
     body?: string;
     completionHooks?: string;
     source?: string;

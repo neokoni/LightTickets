@@ -7179,6 +7179,14 @@
                   "labels": {
                     "type": "string"
                   },
+                  "assigneeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "exclusiveMinimum": true
+                    }
+                  },
                   "body": {
                     "type": "string",
                     "minLength": 1
@@ -7416,6 +7424,14 @@
                   },
                   "labels": {
                     "type": "string"
+                  },
+                  "assigneeIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "exclusiveMinimum": true
+                    }
                   },
                   "body": {
                     "type": "string",

@@ -35,6 +35,17 @@ export async function listAssignableUsers() {
   });
 }
 
+export async function assignableUsersExist(ids: number[]): Promise<boolean> {
+  if (ids.length === 0) return true;
+  const count = await prisma().user.count({
+    where: {
+      id: { in: ids },
+      role: { in: [ROLE.STAFF, ROLE.ADMIN] },
+    },
+  });
+  return count === ids.length;
+}
+
 export async function changeRole(userId: number, role: Role) {
   const user = await prisma().user.findUnique({ where: { id: userId } });
   if (!user) throw new NotFoundError('用户不存在');
