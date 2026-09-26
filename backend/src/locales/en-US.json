@@ -54,7 +54,7 @@
       },
       "settings": {
         "allowMcRegister": "Allow Minecraft registration",
-        "allowMcRegisterHelp": "When disabled, server plugins cannot register new accounts through the API",
+        "allowMcRegisterHelp": "When disabled, /lit register cannot generate registration links in-game",
         "allowWebRegister": "Allow web registration",
         "allowWebRegisterHelp": "When disabled, the login page hides the registration link and web registration is disabled",
         "favicon": "Site icon",
@@ -461,6 +461,7 @@
         "code": "Email verification code",
         "codePlaceholder": "Enter the 6-digit code",
         "codeSent": "Code sent. It is valid for 10 minutes",
+        "mcBindingHint": "Your Minecraft account will be linked automatically after registration",
         "resendIn": "Resend in {seconds}s",
         "sendCode": "Send code",
         "sendCodeFailed": "Failed to send verification code",

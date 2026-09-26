@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { apiRequestRegistrationVerificationCode } from '@/api/auth';
 import { siteConfig, siteTitle } from '@/stores/site';
@@ -12,7 +12,13 @@ import { ApiError } from '@/types/api';
 import FederatedAuthButtons from '@/components/auth/FederatedAuthButtons.vue';
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuthStore();
+
+const mcRegisterToken = computed(() => {
+  const value = route.query.mcRegisterToken;
+  return typeof value === 'string' && value ? value : '';
+});
 
 const username = ref('');
 const email = ref('');
@@ -55,7 +61,8 @@ function resolveRequestError(e: unknown, fallbackKey: string): string {
 }
 
 onMounted(() => {
-  if (!siteConfig.allowWebRegister) {
+  const mcLinkAllowed = Boolean(mcRegisterToken.value) && siteConfig.allowMcRegister;
+  if (!siteConfig.allowWebRegister && !mcLinkAllowed) {
     router.replace('/login');
   }
 });
@@ -103,6 +110,7 @@ async function submit() {
       username.value,
       siteConfig.registrationEmailVerificationEnabled ? emailVerificationCode.value : undefined,
       turnstileToken.value,
+      mcRegisterToken.value || undefined,
     );
     router.push('/');
   } catch (e) {
@@ -134,6 +142,9 @@ async function submit() {
         </h1>
         <p class="mt-4 text-base leading-8 text-slate-600 dark:text-slate-300">
           {{ t('auth.register.subtitle') }}
+        </p>
+        <p v-if="mcRegisterToken" class="mt-2 text-sm leading-7 text-slate-600 dark:text-slate-300">
+          {{ t('auth.register.mcBindingHint') }}
         </p>
       </div>
 

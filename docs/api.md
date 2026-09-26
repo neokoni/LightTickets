@@ -180,7 +180,8 @@ Turnstile 默认关闭，初始化接口不接受 Turnstile 配置；如需启�
 `POST /api/auth/register/verification-code`
 
 SMTP 启用且配置完整时，网页注册需要先请求邮箱验证码。该公开接口挂认证限流；启用
-Turnstile 时同样必须传 `turnstileToken`。
+Turnstile 时同样必须传 `turnstileToken`。`allowWebRegister` 与 `allowMcRegister` 同时
+关闭时拒绝请求，任一开启即可发送。
 
 ```json
 {
@@ -211,7 +212,8 @@ Turnstile 时同样必须传 `turnstileToken`。
   "password": "Password123!",
   "username": "player",
   "emailVerificationCode": "123456",
-  "turnstileToken": "optional-token"
+  "turnstileToken": "optional-token",
+  "mcRegisterToken": "optional-token-from-mc-register-link"
 }
 ```
 
@@ -219,6 +221,11 @@ Turnstile 时同样必须传 `turnstileToken`。
 启用 Turnstile 后必须传 `turnstileToken`；未启用时可省略。
 SMTP 可用时必须传 `emailVerificationCode`，验证成功后验证码在创建用户的同一事务中一次性消费；
 SMTP 未启用或配置不完整时该字段可省略，并保持原有注册流程。
+
+传入 `mcRegisterToken`（游戏内 `/lit register` 生成的注册链接中的 token）时改由
+`allowMcRegister` 控制：注册成功会在同一事务中消费该 token，并把 token 对应的 Minecraft
+账号自动绑定到新账户。token 一次性使用，无效、过期或已消费返回 400，Minecraft 账号已被
+绑定返回 409，`allowMcRegister` 关闭时返回 403；此时 `allowWebRegister` 不参与判定。
 
 > **WIP 注意**：启用 SMTP 后，网页注册会立即要求携带邮箱验证码。
 > 回滚旧版本时新增验证表可安全保留；旧程序不会读取该表。
@@ -863,7 +870,7 @@ Velocity 插件从 Velocity 自身的服务器注册信息读取该 ID，也就�
 `POST /api/mc/tickets/:id/detail`、`POST /api/mc/tickets/:id/comments/list` 和
 `POST /api/mc/user`。原 GET 端点保留给 Paper/Folia 与旧版插件兼容。
 
-`register`、`link-code`、`session` 和 `unlink` 以外的玩家接口还必须带：
+`register-link`、`link-code`、`session` 和 `unlink` 以外的玩家接口还必须带：
 
 ```http
 X-Player-Session: <short-lived session token>
@@ -873,12 +880,40 @@ X-Player-Session: <short-lived session token>
 `player` / `staff` / `admin` 角色执行权限检查，并将所有议题查询与操作限制在当前
 解析后的服务器。Velocity 的服务器来自请求体 `serverId`，Paper/Folia 来自 key 的唯一绑定。
 
-### 插件注册账号
+### 生成一次性注册链接
 
-`POST /api/mc/register`
+`POST /api/mc/register-link`
 
-受 `allowMcRegister` 控制。成功响应只返回用户资料和 `playerCredential`，不向插件返回 Web
-Access Token 或 Refresh Token。
+游戏内 `/lit register` 调用。受 `allowMcRegister` 控制，关闭时返回 403。站点地址
+（管理后台的 `siteUrl`）未配置时返回 400，不会生成链接；该地址缺失或非法时 fail-closed，
+不从任何请求头推导。
+
+请求体：
+
+```json
+{
+  "minecraftUuid": "uuid",
+  "minecraftName": "Steve"
+}
+```
+
+响应（201）：
+
+```json
+{
+  "url": "https://tickets.example.com/register?mcRegisterToken=<token>",
+  "expiresAt": "2026-09-26T12:00:00.000Z",
+  "playerCredential": "credential"
+}
+```
+
+- `url` 为一次性注册链接，默认有效期与绑定码一致（`linkCodeExpiry`）；玩家在网页打开并完成
+  注册后，该 Minecraft 账号自动绑定到新建账户（见 `POST /api/auth/register` 的
+  `mcRegisterToken`）。
+- 同一 Minecraft UUID 只保留最新一条链接，重复调用会替换旧 token。
+- 响应同时返回只展示一次的 `playerCredential`，插件必须安全保存（数据库只存 SHA-256
+  hash）；网页完成注册后插件凭它调用 `POST /api/mc/session`。Minecraft 账号已绑定返回 409。
+- 已过期的链接由后台任务定期清理。
 
 ### 生成绑定码
 

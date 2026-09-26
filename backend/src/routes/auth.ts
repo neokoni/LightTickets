@@ -32,8 +32,10 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
 
   const { getSiteConfig } = await import('../services/setup.service.js');
   const config = await getSiteConfig();
-  if (!config.allowWebRegister) {
-    throw new ForbiddenError('网页注册已关闭，请联系管理员');
+  if (data.mcRegisterToken ? !config.allowMcRegister : !config.allowWebRegister) {
+    throw new ForbiddenError(
+      data.mcRegisterToken ? 'Minecraft注册已关闭，请联系管理员' : '网页注册已关闭，请联系管理员',
+    );
   }
 
   await turnstileConfigService.verifyTurnstileToken(data.turnstileToken, req.ip);
@@ -42,6 +44,7 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
     data.password,
     data.username,
     data.emailVerificationCode,
+    data.mcRegisterToken,
   );
   const { refreshToken, ...response } = result;
   setRefreshCookie(res, refreshToken);
@@ -53,7 +56,7 @@ router.post('/register/verification-code', authLimiter, async (req: Request, res
 
   const { getSiteConfig } = await import('../services/setup.service.js');
   const config = await getSiteConfig();
-  if (!config.allowWebRegister) {
+  if (!config.allowWebRegister && !config.allowMcRegister) {
     throw new ForbiddenError('网页注册已关闭，请联系管理员');
   }
 

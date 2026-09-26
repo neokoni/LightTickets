@@ -3,6 +3,8 @@ import { getConfig } from '../config.js';
 import { prisma } from '../db.js';
 import { AppError, NotFoundError, UnauthorizedError } from '../utils/errors.js';
 import { generateLinkCode } from '../utils/link-code.js';
+import { generateRegisterToken } from '../utils/register-link.js';
+import { normalizeSiteUrl } from '../utils/site-url.js';
 import { USER_PUBLIC_SELECT } from './constants.js';
 import * as commentService from './comment.service.js';
 import * as ticketService from './ticket.service.js';
@@ -46,6 +48,56 @@ export async function createLinkCode(input: {
 
 export async function cleanupExpiredLinkCodes(): Promise<number> {
   const result = await prisma().linkCode.deleteMany({
+    where: { expiresAt: { lte: new Date() } },
+  });
+  return result.count;
+}
+
+export async function createRegisterLink(input: {
+  minecraftUuid: string;
+  minecraftName: string;
+  serverId: string;
+}) {
+  const setup = await prisma().setupStatus.findFirst({ select: { siteUrl: true } });
+  const origin = normalizeSiteUrl(setup?.siteUrl);
+  if (!origin) {
+    throw new AppError(400, '站点地址未配置，无法生成注册链接，请联系管理员');
+  }
+
+  const existing = await prisma().user.findUnique({
+    where: { minecraftUuid: input.minecraftUuid },
+  });
+  if (existing) throw new AppError(409, '该Minecraft账号已绑定到账户');
+
+  const token = generateRegisterToken();
+  const playerCredential = generateMinecraftSecret();
+  const expiresAt = new Date(Date.now() + getConfig().linkCodeExpiry);
+  // One active register link per Minecraft UUID: replace any previous link so
+  // stale tokens can't linger.
+  const registerLink = await prisma().$transaction(async (tx) => {
+    await tx.mcRegisterToken.deleteMany({
+      where: { minecraftUuid: input.minecraftUuid },
+    });
+    return tx.mcRegisterToken.create({
+      data: {
+        token,
+        minecraftUuid: input.minecraftUuid,
+        minecraftName: input.minecraftName,
+        serverId: input.serverId,
+        expiresAt,
+        playerCredentialHash: hashMinecraftSecret(playerCredential),
+      },
+    });
+  });
+
+  const url = new URL('/register', origin);
+  url.searchParams.set('mcRegisterToken', registerLink.token);
+
+  return { url: url.toString(), expiresAt: registerLink.expiresAt, playerCredential };
+}
+
+export async function cleanupExpiredRegisterTokens(): Promise<number> {
+  const result = await prisma().mcRegisterToken.deleteMany({
     where: { expiresAt: { lte: new Date() } },
   });
   return result.count;

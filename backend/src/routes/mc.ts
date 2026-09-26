@@ -8,13 +8,12 @@ import {
   minecraftPlayerSessionMiddleware,
 } from '../middleware/minecraft-player-session.js';
 import { validate, parseId, parsePagination } from '../utils/validate.js';
-import * as authService from '../services/auth.service.js';
 import * as mcService from '../services/mc.service.js';
 import {
   mcCommentSchema,
   mcLinkCodeSchema,
   mcPlayerSessionSchema,
-  mcRegisterSchema,
+  mcRegisterLinkSchema,
   mcStatusSchema,
   mcTicketActionSchema,
   mcTicketListQuerySchema,
@@ -36,8 +35,8 @@ router.post('/player-group/items', authLimiter, async (req: Request, res: Respon
   res.status(204).end();
 });
 
-router.post('/register', authLimiter, async (req: Request, res: Response) => {
-  const data = validate(mcRegisterSchema, req.body);
+router.post('/register-link', authLimiter, async (req: Request, res: Response) => {
+  const data = validate(mcRegisterLinkSchema, req.body);
 
   const { getSiteConfig } = await import('../services/setup.service.js');
   const siteConfig = await getSiteConfig();
@@ -45,15 +44,12 @@ router.post('/register', authLimiter, async (req: Request, res: Response) => {
     throw new ForbiddenError('Minecraft注册已关闭，请联系管理员');
   }
 
-  const result = await authService.registerFromMinecraft(
-    data.email,
-    data.password,
-    data.username,
-    data.minecraftUuid,
-    data.minecraftName,
-    data.emailVerificationCode,
-  );
-  res.status(201).json(result);
+  const registerLink = await mcService.createRegisterLink({
+    minecraftUuid: data.minecraftUuid,
+    minecraftName: data.minecraftName,
+    serverId: req.server!.id,
+  });
+  res.status(201).json(registerLink);
 });
 
 router.post('/link-code', authLimiter, async (req: Request, res: Response) => {

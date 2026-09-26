@@ -24,6 +24,7 @@ templates:
   parse_failed: "解析模板 {key} 失败: {message}"
 logs:
   bind_failed: "绑定账号命令执行失败: {player} ({message})"
+  register_failed: "注册命令执行失败: {player} ({message})"
   unbind_failed: "解绑账号命令执行失败: {player} ({message})"
   account_info_failed: "获取账号信息命令执行失败: {player} ({message})"
   ticket_list_failed: "获取议题列表命令执行失败: {player} ({message})"
@@ -39,6 +40,10 @@ bind:
   copy_hint: "<gray>点击复制"
   already_code: "<color:#ffdbab>你已生成过绑定码, 请先在网页完成绑定"
   already_bound: "<color:#ffdbab>你已绑定 LightTickets 账号"
+register:
+  guide: "<color:#ffdbab>点击链接完成注册, 注册成功后你的 Minecraft 账号将自动绑定:"
+  link: "<color:#ffffff>注册链接: {url} <gray>({validity})"
+  link_hover: "<gray>点击打开注册链接"
 unbind:
   not_bound: "<color:#ff8181>你尚未绑定 LightTickets 账号, 无需解绑"
   success: "<color:#ffffff>已解绑 LightTickets 账号"
@@ -53,7 +58,7 @@ account:
   role: "<white>角色: <color:#96bfff>{role}"
   mc_name: "<white>Minecraft 名称: <color:#96bfff>{mc_name}"
   created_at: "<white>注册时间: <color:#96bfff>{date}"
-  not_bound: "<color:#ff8181>你尚未绑定 LightTickets 账号, 请先执行 /lit bind 或 /lit register 获取绑定码"
+  not_bound: "<color:#ff8181>你尚未绑定 LightTickets 账号, 已有账号请执行 /lit bind, 没有账号请执行 /lit register"
   role_admin: "管理员"
   role_staff: "工作人员"
   role_player: "玩家"

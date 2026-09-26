@@ -9,6 +9,7 @@ export const registerSchema = z.object({
     .regex(/^\d{6}$/)
     .optional(),
   turnstileToken: z.string().optional(),
+  mcRegisterToken: z.string().min(16).max(128).optional(),
 });
 
 export const registrationVerificationRequestSchema = z.object({

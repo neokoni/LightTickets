@@ -6,7 +6,6 @@ import { generateAccessToken } from '../utils/token.js';
 import { USER_PUBLIC_SELECT } from './constants.js';
 import * as mailConfigService from './mail-config.service.js';
 import * as registrationEmailVerificationService from './registration-email-verification.service.js';
-import { generateMinecraftSecret, hashMinecraftSecret } from '../utils/minecraft-credential.js';
 import * as refreshSessionService from './refresh-session.service.js';
 import { AUTH_ERROR_MESSAGES } from '../constants/auth.js';
 import * as rateLimitConfigService from './rate-limit-config.service.js';
@@ -63,8 +62,10 @@ export async function register(
   password: string,
   username: string,
   emailVerificationCode?: string,
+  mcRegisterToken?: string,
 ) {
   const normalizedEmail = registrationEmailVerificationService.normalizeEmail(email);
+  const registerLink = mcRegisterToken ? await resolveRegisterLink(mcRegisterToken) : null;
   await assertRegistrationFieldsAvailable(prisma(), normalizedEmail, username, true);
 
   const mailConfig = await mailConfigService.getFullMailConfig();
@@ -90,9 +91,44 @@ export async function register(
           verificationCodeHash,
         );
       }
+
+      let minecraftIdentity: { minecraftUuid: string; minecraftName: string } | null = null;
+      if (registerLink) {
+        const consumed = await tx.mcRegisterToken.updateMany({
+          where: { id: registerLink.id, used: false, expiresAt: { gt: new Date() } },
+          data: { used: true },
+        });
+        if (consumed.count !== 1) {
+          throw new ValidationError(AUTH_ERROR_MESSAGES.MC_REGISTER_LINK_INVALID_MESSAGE);
+        }
+        const bound = await tx.user.findUnique({
+          where: { minecraftUuid: registerLink.minecraftUuid },
+          select: { id: true },
+        });
+        if (bound) throw new AppError(409, '该Minecraft账号已绑定到其他账户');
+        minecraftIdentity = {
+          minecraftUuid: registerLink.minecraftUuid,
+          minecraftName: registerLink.minecraftName,
+        };
+      }
+
       const user = await tx.user.create({
-        data: { email: normalizedEmail, passwordHash, username },
+        data: {
+          email: normalizedEmail,
+          passwordHash,
+          username,
+          ...(minecraftIdentity ?? {}),
+        },
       });
+      if (registerLink) {
+        await tx.minecraftPlayerCredential.create({
+          data: {
+            userId: user.id,
+            minecraftUuid: registerLink.minecraftUuid,
+            credentialHash: registerLink.playerCredentialHash,
+          },
+        });
+      }
       const refreshToken = await refreshSessionService.createRefreshSession(user.id, tx);
       return { user, refreshToken };
     })
@@ -105,59 +141,12 @@ export async function register(
   };
 }
 
-export async function registerFromMinecraft(
-  email: string,
-  password: string,
-  username: string,
-  minecraftUuid: string,
-  minecraftName: string,
-  emailVerificationCode?: string,
-) {
-  const normalizedEmail = registrationEmailVerificationService.normalizeEmail(email);
-  await assertRegistrationFieldsAvailable(prisma(), normalizedEmail, username);
-  const minecraftConflict = await prisma().user.findUnique({
-    where: { minecraftUuid },
-    select: { id: true },
-  });
-  if (minecraftConflict) throw new AppError(409, '该Minecraft账号已绑定到其他账户');
-
-  const mailConfig = await mailConfigService.getFullMailConfig();
-  const verificationRequired = mailConfigService.canSendPasswordResetMail(mailConfig);
-  if (verificationRequired && !emailVerificationCode) {
-    throw new ValidationError('请输入邮箱验证码');
+async function resolveRegisterLink(token: string) {
+  const registerLink = await prisma().mcRegisterToken.findUnique({ where: { token } });
+  if (!registerLink || registerLink.used || registerLink.expiresAt <= new Date()) {
+    throw new ValidationError(AUTH_ERROR_MESSAGES.MC_REGISTER_LINK_INVALID_MESSAGE);
   }
-  const verificationCodeHash = verificationRequired
-    ? await registrationEmailVerificationService.verifyRegistrationCode(
-        normalizedEmail,
-        emailVerificationCode!,
-      )
-    : null;
-
-  const passwordHash = await bcrypt.hash(password, 12);
-  const playerCredential = generateMinecraftSecret();
-  const user = await prisma().$transaction(async (tx) => {
-    await assertRegistrationFieldsAvailable(tx, normalizedEmail, username);
-    if (verificationCodeHash) {
-      await registrationEmailVerificationService.consumeRegistrationCode(
-        tx,
-        normalizedEmail,
-        verificationCodeHash,
-      );
-    }
-    const created = await tx.user.create({
-      data: { email: normalizedEmail, passwordHash, username, minecraftUuid, minecraftName },
-    });
-    await tx.minecraftPlayerCredential.create({
-      data: {
-        userId: created.id,
-        minecraftUuid,
-        credentialHash: hashMinecraftSecret(playerCredential),
-      },
-    });
-    return created;
-  });
-
-  return { user: sanitizeUser(user), playerCredential };
+  return registerLink;
 }
 
 export async function login(emailOrUsername: string, password: string) {

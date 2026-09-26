@@ -15,6 +15,7 @@ import ink.neokoni.lightTickets.Commands.Functions.BindAccount;
 import ink.neokoni.lightTickets.Commands.Functions.ChangeStatus;
 import ink.neokoni.lightTickets.Commands.Functions.CreateTicket;
 import ink.neokoni.lightTickets.Commands.Functions.Reload;
+import ink.neokoni.lightTickets.Commands.Functions.RegisterAccount;
 import ink.neokoni.lightTickets.Commands.Functions.Status;
 import ink.neokoni.lightTickets.Commands.Functions.TicketInfo;
 import ink.neokoni.lightTickets.Commands.Functions.TicketList;
@@ -84,7 +85,7 @@ public final class VelocityCommandRegister {
                 .executes(ctx -> {
                     if (ctx.getSource() instanceof Player player) {
                         LightPlayer lightPlayer = new VelocityPlayer(player);
-                        LightPlatformProvider.get().runAsync(() -> new BindAccount(lightPlayer));
+                        LightPlatformProvider.get().runAsync(() -> new RegisterAccount(lightPlayer));
                     }
                     return Command.SINGLE_SUCCESS;
                 }));

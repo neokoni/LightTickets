@@ -131,6 +131,7 @@ export interface paths {
             username: string;
             emailVerificationCode?: string;
             turnstileToken?: string;
+            mcRegisterToken?: string;
           };
         };
       };
@@ -2880,7 +2881,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/mc/register': {
+  '/api/mc/register-link': {
     parameters: {
       query?: never;
       header?: never;
@@ -2889,7 +2890,7 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    /** MC 插件注册用户 */
+    /** 生成 MC 一次性注册链接 */
     post: {
       parameters: {
         query?: never;
@@ -2901,11 +2902,6 @@ export interface paths {
         content: {
           'application/json': {
             serverId?: string;
-            /** Format: email */
-            email: string;
-            password: string;
-            username: string;
-            emailVerificationCode?: string;
             /** Format: uuid */
             minecraftUuid: string;
             minecraftName: string;
@@ -2923,9 +2919,9 @@ export interface paths {
               /** @enum {boolean} */
               success: true;
               data: {
-                user: {
-                  [key: string]: unknown;
-                };
+                url: string;
+                /** Format: date-time */
+                expiresAt: string;
                 playerCredential: string;
               };
             };

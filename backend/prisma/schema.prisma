@@ -218,6 +218,7 @@ model Server {
   createdAt        DateTime   @default(now()) @map("created_at")
   tickets     Ticket[]
   linkCodes   LinkCode[]
+  mcRegisterTokens McRegisterToken[]
   minecraftPlayerSessions MinecraftPlayerSession[]
   minecraftHookDeliveries MinecraftHookDelivery[]
   apiKeyBindings ServerApiKeyBinding[]
@@ -377,6 +378,21 @@ model LinkCode {
 
   @@unique([minecraftUuid])
   @@map("link_codes")
+}
+
+model McRegisterToken {
+  id                 String   @id @default(uuid())
+  token              String   @unique
+  minecraftUuid      String   @unique @map("minecraft_uuid")
+  minecraftName      String   @map("minecraft_name")
+  serverId           String   @map("server_id")
+  playerCredentialHash String @map("player_credential_hash")
+  expiresAt          DateTime @map("expires_at")
+  used               Boolean  @default(false)
+  createdAt          DateTime @default(now()) @map("created_at")
+  server             Server   @relation(fields: [serverId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("mc_register_tokens")
 }
 
 model MinecraftPlayerCredential {

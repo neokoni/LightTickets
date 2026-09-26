@@ -11,6 +11,7 @@ public enum ApiEndpoint {
     MC_TICKET_COMMENTS("GET", "/api/mc/tickets/{id}/comments", true),
     MC_TICKET_COMMENTS_BODY("POST", "/api/mc/tickets/{id}/comments/list", true),
     MC_LINK_CODE("POST", "/api/mc/link-code", true),
+    MC_REGISTER_LINK("POST", "/api/mc/register-link", true),
     MC_PLAYER_SESSION("POST", "/api/mc/session", true),
     MC_CREATE_TICKET("POST", "/api/mc/tickets", true),
     MC_PLAYER_GROUP_ITEM("POST", "/api/mc/player-group/items", true),

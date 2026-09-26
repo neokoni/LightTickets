@@ -13,6 +13,7 @@ export function apiRegister(
   username: string,
   emailVerificationCode?: string,
   turnstileToken?: string,
+  mcRegisterToken?: string,
 ) {
   return apiFetch<AuthResponse>('/auth/register', {
     method: 'POST',
@@ -22,6 +23,7 @@ export function apiRegister(
       username,
       emailVerificationCode,
       turnstileToken,
+      mcRegisterToken,
     }),
   });
 }

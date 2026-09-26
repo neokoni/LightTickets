@@ -386,6 +386,11 @@
                   },
                   "turnstileToken": {
                     "type": "string"
+                  },
+                  "mcRegisterToken": {
+                    "type": "string",
+                    "minLength": 16,
+                    "maxLength": 128
                   }
                 },
                 "required": [
@@ -4850,9 +4855,9 @@
         }
       }
     },
-    "/api/mc/register": {
+    "/api/mc/register-link": {
       "post": {
-        "summary": "MC 插件注册用户",
+        "summary": "生成 MC 一次性注册链接",
         "tags": [
           "MC"
         ],
@@ -4873,23 +4878,6 @@
                     "minLength": 1,
                     "maxLength": 64
                   },
-                  "email": {
-                    "type": "string",
-                    "format": "email"
-                  },
-                  "password": {
-                    "type": "string",
-                    "minLength": 8
-                  },
-                  "username": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 32
-                  },
-                  "emailVerificationCode": {
-                    "type": "string",
-                    "pattern": "^\\d{6}$"
-                  },
                   "minecraftUuid": {
                     "type": "string",
                     "format": "uuid"
@@ -4900,9 +4888,6 @@
                   }
                 },
                 "required": [
-                  "email",
-                  "password",
-                  "username",
                   "minecraftUuid",
                   "minecraftName"
                 ]
@@ -4927,19 +4912,20 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "user": {
-                          "type": "object",
-                          "properties": {},
-                          "additionalProperties": {
-                            "nullable": true
-                          }
+                        "url": {
+                          "type": "string"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "format": "date-time"
                         },
                         "playerCredential": {
                           "type": "string"
                         }
                       },
                       "required": [
-                        "user",
+                        "url",
+                        "expiresAt",
                         "playerCredential"
                       ]
                     }

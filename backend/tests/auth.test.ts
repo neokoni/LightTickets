@@ -6,6 +6,9 @@ import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js'
 import { createUnsubscribeToken } from '../src/services/ticket-notification.service.js';
 import * as refreshSessionService from '../src/services/refresh-session.service.js';
 import * as rateLimitConfigService from '../src/services/rate-limit-config.service.js';
+import { AUTH_ERROR_MESSAGES } from '../src/constants/auth.js';
+import { generateRegisterToken } from '../src/utils/register-link.js';
+import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import crypto from 'crypto';
 
 const app = createApp();
@@ -378,6 +381,174 @@ describe('POST /api/auth/register', () => {
     expect(valid.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(getTestOutbox()).toHaveLength(1);
+  });
+});
+
+describe('POST /api/auth/register with a Minecraft register link', () => {
+  const LINK_CREDENTIAL = 'mc-register-link-credential'.padEnd(48, 'x');
+
+  async function createRegisterLink(
+    overrides: { expiresAt?: Date; used?: boolean; minecraftUuid?: string } = {},
+  ) {
+    const token = generateRegisterToken();
+    const suffix = token.slice(-8);
+    const serverKey = `mc-reglink-key-${suffix}`;
+    const server = await prisma().server.create({
+      data: serverData(`mc-reglink-${suffix}`, serverKey),
+    });
+    const minecraftUuid = overrides.minecraftUuid ?? crypto.randomUUID();
+    await prisma().mcRegisterToken.create({
+      data: {
+        token,
+        minecraftUuid,
+        minecraftName: 'LinkSteve',
+        serverId: server.id,
+        playerCredentialHash: hashMinecraftSecret(LINK_CREDENTIAL),
+        expiresAt: overrides.expiresAt ?? new Date(Date.now() + 5 * 60_000),
+        used: overrides.used ?? false,
+      },
+    });
+    return { token, serverKey, minecraftUuid };
+  }
+
+  function register(overrides: Record<string, unknown>) {
+    return request(app)
+      .post('/api/auth/register')
+      .send({ password: 'Password123!', ...overrides });
+  }
+
+  it('creates a bound user and issues a plugin session from the stored credential', async () => {
+    const { token, serverKey, minecraftUuid } = await createRegisterLink();
+
+    const res = await register({
+      email: 'mc-link@test.com',
+      username: 'mclinkuser',
+      mcRegisterToken: token,
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.user.minecraftUuid).toBe(minecraftUuid);
+    expect(res.body.data.user.minecraftName).toBe('LinkSteve');
+    expect(res.body.data.user).not.toHaveProperty('passwordHash');
+
+    const stored = await prisma().mcRegisterToken.findUniqueOrThrow({ where: { token } });
+    expect(stored.used).toBe(true);
+    const credential = await prisma().minecraftPlayerCredential.findUnique({
+      where: { minecraftUuid },
+    });
+    expect(credential?.credentialHash).toBe(hashMinecraftSecret(LINK_CREDENTIAL));
+
+    const session = await request(app)
+      .post('/api/mc/session')
+      .set('X-Server-Key', serverKey)
+      .send({ minecraftUuid, playerCredential: LINK_CREDENTIAL });
+    expect(session.status).toBe(201);
+  });
+
+  it('accepts a register link only once', async () => {
+    const { token } = await createRegisterLink();
+
+    const first = await register({
+      email: 'mc-link-once@test.com',
+      username: 'mclinkonce',
+      mcRegisterToken: token,
+    });
+    expect(first.status).toBe(201);
+
+    const second = await register({
+      email: 'mc-link-twice@test.com',
+      username: 'mclinktwice',
+      mcRegisterToken: token,
+    });
+    expect(second.status).toBe(400);
+    expect(second.body.message).toBe(AUTH_ERROR_MESSAGES.MC_REGISTER_LINK_INVALID_MESSAGE);
+  });
+
+  it('rejects expired, consumed, and unknown register links', async () => {
+    const expired = await createRegisterLink({ expiresAt: new Date(Date.now() - 1000) });
+    const consumed = await createRegisterLink({ used: true });
+    const tokens = [expired.token, consumed.token, generateRegisterToken()];
+
+    for (const [index, token] of tokens.entries()) {
+      const res = await register({
+        email: `mc-link-invalid-${index}@test.com`,
+        username: `mclinkinvalid${index}`,
+        mcRegisterToken: token,
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toBe(AUTH_ERROR_MESSAGES.MC_REGISTER_LINK_INVALID_MESSAGE);
+    }
+    await expect(
+      prisma().user.count({ where: { email: { startsWith: 'mc-link-invalid' } } }),
+    ).resolves.toBe(0);
+  });
+
+  it('rejects a register link whose minecraft account is already bound', async () => {
+    const { token, minecraftUuid } = await createRegisterLink();
+    const bound = await prisma().user.create({
+      data: { email: 'mc-link-bound-owner@test.com', passwordHash: 'hash', username: 'mcbound' },
+    });
+    await prisma().user.update({
+      where: { id: bound.id },
+      data: { minecraftUuid, minecraftName: 'LinkSteve' },
+    });
+
+    const res = await register({
+      email: 'mc-link-bound@test.com',
+      username: 'mclinkbound',
+      mcRegisterToken: token,
+    });
+
+    expect(res.status).toBe(409);
+    const stored = await prisma().mcRegisterToken.findUniqueOrThrow({ where: { token } });
+    expect(stored.used).toBe(false);
+  });
+
+  it('gates link registrations by allowMcRegister and web registrations by allowWebRegister', async () => {
+    const mcClosed = await createRegisterLink();
+    if (!(await prisma().appConfig.findFirst())) {
+      await prisma().appConfig.create({ data: {} });
+    }
+    await prisma().setupStatus.create({
+      data: { isSetup: true, allowMcRegister: false, allowWebRegister: true },
+    });
+
+    const linkRes = await register({
+      email: 'mc-toggle-link@test.com',
+      username: 'mctogglelink',
+      mcRegisterToken: mcClosed.token,
+    });
+    expect(linkRes.status).toBe(403);
+    expect(linkRes.body.message).toBe('Minecraft注册已关闭，请联系管理员');
+
+    const webRes = await register({ email: 'mc-toggle-web@test.com', username: 'mctoggleweb' });
+    expect(webRes.status).toBe(201);
+
+    const status = await prisma().setupStatus.findFirstOrThrow();
+    await prisma().setupStatus.update({
+      where: { id: status.id },
+      data: { allowMcRegister: true, allowWebRegister: false },
+    });
+
+    const mcOpen = await createRegisterLink();
+    const allowedLinkRes = await register({
+      email: 'mc-toggle-link2@test.com',
+      username: 'mctogglelink2',
+      mcRegisterToken: mcOpen.token,
+    });
+    expect(allowedLinkRes.status).toBe(201);
+
+    const closedWebRes = await register({
+      email: 'mc-toggle-web2@test.com',
+      username: 'mctoggleweb2',
+    });
+    expect(closedWebRes.status).toBe(403);
+
+    const codeRes = await request(app)
+      .post('/api/auth/register/verification-code')
+      .send({ email: 'mc-toggle-code@test.com' });
+    expect(codeRes.status).toBe(400);
+    expect(codeRes.body.message).toBe('邮件服务尚未启用');
   });
 });
 

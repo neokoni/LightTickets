@@ -32,7 +32,7 @@ import {
   mcCommentSchema,
   mcLinkCodeSchema,
   mcPlayerSessionSchema,
-  mcRegisterSchema,
+  mcRegisterLinkSchema,
   mcStatusSchema,
   mcTicketActionSchema,
   mcTicketListBodySchema,
@@ -772,13 +772,14 @@ const registerMcRoutes = () => {
   });
   registerRoute({
     method: 'post',
-    path: '/api/mc/register',
-    summary: 'MC 插件注册用户',
+    path: '/api/mc/register-link',
+    summary: '生成 MC 一次性注册链接',
     auth: 'apiKey',
     tags: ['MC'],
-    bodySchema: mcRegisterSchema,
+    bodySchema: mcRegisterLinkSchema,
     responseSchema: z.object({
-      user: z.object({}).passthrough(),
+      url: z.string(),
+      expiresAt: z.string().datetime(),
       playerCredential: z.string(),
     }),
     successStatus: '201',

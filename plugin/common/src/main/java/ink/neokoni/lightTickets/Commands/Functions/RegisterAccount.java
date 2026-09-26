@@ -12,20 +12,21 @@ import ink.neokoni.lightTickets.Utils.LangUtils;
 import ink.neokoni.lightTickets.Utils.LogUtils;
 import ink.neokoni.lightTickets.Utils.PlayerSessionManager;
 import ink.neokoni.lightTickets.Utils.TicketStatus;
+import ink.neokoni.lightTickets.Utils.ValidityUtils;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import ink.neokoni.lightTickets.Utils.ValidityUtils;
 import ink.neokoni.lightTickets.platform.LightPlayer;
 
+import java.net.URI;
 import java.util.Map;
 
-public class BindAccount {
-    public BindAccount(LightPlayer player) {
+public class RegisterAccount {
+    public RegisterAccount(LightPlayer player) {
         try {
             run(player);
         } catch (Throwable t) {
-            LogUtils.severe("logs.bind_failed",
+            LogUtils.severe("logs.register_failed",
                     Map.of("{player}", player.getName(), "{message}", LogUtils.exceptionText(t)));
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", LogUtils.exceptionText(t))));
@@ -52,7 +53,7 @@ public class BindAccount {
 
         HttpUtils.Resp resp;
         try {
-            resp = ApiClient.requestWithStatus(player, ApiEndpoint.MC_LINK_CODE, JsonUtils.toJson(body));
+            resp = ApiClient.requestWithStatus(player, ApiEndpoint.MC_REGISTER_LINK, JsonUtils.toJson(body));
         } catch (RuntimeException e) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", e.getMessage() == null ? LangUtils.getRawLang("errors.unknown") : e.getMessage())));
@@ -64,23 +65,23 @@ public class BindAccount {
             return;
         }
 
+        JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
         if (resp.status() == 409) {
-            player.sendMessage(LangUtils.getLang("errors.rebind_required"));
+            player.sendMessage(LangUtils.getLang("bind.already_bound"));
             return;
         }
-
-        JsonObject parsed = JsonUtils.fromJson(resp.body(), JsonObject.class);
-        if (parsed == null || !parsed.has("code") || !parsed.has("playerCredential")) {
+        if (parsed == null || !parsed.has("url") || !parsed.has("playerCredential")) {
             player.sendMessage(LangUtils.getLang("errors.api_failed",
                     Map.of("{message}", ApiClient.errorMessage(parsed))));
             return;
         }
-        String code = parsed.get("code").getAsString();
+
+        String url = parsed.get("url").getAsString();
         String expiresAt = parsed.has("expiresAt") ? parsed.get("expiresAt").getAsString() : "";
         String playerCredential = parsed.get("playerCredential").getAsString();
 
         PlayerBind bind = PlayerData.getPlayerBind(player, true, true);
-        bind.setBindCode(code);
+        bind.setBindCode("");
         bind.setCodeExpiresAt(expiresAt);
         bind.setBound(false);
         bind.setRole(AccountRole.PLAYER);
@@ -88,18 +89,31 @@ public class BindAccount {
         PlayerData.setPlayerBind(player, bind);
         PlayerSessionManager.invalidate(player.getUniqueId());
 
-        player.sendMessage(LangUtils.getLang("bind.guide"));
-        player.sendMessage(buildCodeMessage(code, expiresAt));
+        player.sendMessage(LangUtils.getLang("register.guide"));
+        player.sendMessage(buildLinkMessage(url, expiresAt));
     }
 
-    private Component buildCodeMessage(String code, String expiresAt) {
-        Component codeComp = Component.text(code)
+    private Component buildLinkMessage(String url, String expiresAt) {
+        Component linkComp = Component.text(url)
                 .color(TicketStatus.CLOSED.textColor())
-                .clickEvent(ClickEvent.copyToClipboard(code))
-                .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("bind.copy_hint")));
+                .clickEvent(clickEvent(url))
+                .hoverEvent(HoverEvent.showText(LangUtils.getLangContent("register.link_hover")));
 
-        return LangUtils.getLang("bind.code", Map.of("{validity}", ValidityUtils.formatRemaining(expiresAt)),
-                Map.of("{code}", codeComp));
+        return LangUtils.getLang("register.link",
+                Map.of("{validity}", ValidityUtils.formatRemaining(expiresAt)),
+                Map.of("{url}", linkComp));
     }
 
+    private ClickEvent clickEvent(String url) {
+        try {
+            URI uri = new URI(url);
+            String scheme = uri.getScheme();
+            if (scheme != null && (scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+                return ClickEvent.openUrl(uri.toString());
+            }
+        } catch (Exception ignored) {
+            // Fall through to the clipboard fallback below.
+        }
+        return ClickEvent.copyToClipboard(url);
+    }
 }

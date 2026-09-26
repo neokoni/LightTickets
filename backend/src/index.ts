@@ -171,10 +171,15 @@ async function scheduleLinkCodeCleanup(): Promise<void> {
     if (running) return;
     running = true;
     try {
-      const { cleanupExpiredLinkCodes } = await import('./services/mc.service.js');
+      const { cleanupExpiredLinkCodes, cleanupExpiredRegisterTokens } =
+        await import('./services/mc.service.js');
       const count = await cleanupExpiredLinkCodes();
       if (count > 0) {
         console.log(`[link-code] Cleaned up ${count} expired link codes`);
+      }
+      const registerCount = await cleanupExpiredRegisterTokens();
+      if (registerCount > 0) {
+        console.log(`[mc-register] Cleaned up ${registerCount} expired register links`);
       }
     } catch {
       console.warn('[link-code] Failed to clean up expired link codes');

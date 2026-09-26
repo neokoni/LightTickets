@@ -18,14 +18,7 @@ export const mcPlayerSessionSchema = mcServerContextSchema.extend({
   playerCredential: z.string().min(32).max(128),
 });
 
-export const mcRegisterSchema = mcServerContextSchema.extend({
-  email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(8),
-  username: z.string().min(2).max(32),
-  emailVerificationCode: z
-    .string()
-    .regex(/^\d{6}$/)
-    .optional(),
+export const mcRegisterLinkSchema = mcServerContextSchema.extend({
   minecraftUuid: minecraftUuidSchema,
   minecraftName: minecraftNameSchema,
 });

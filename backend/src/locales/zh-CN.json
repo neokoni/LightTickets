@@ -54,7 +54,7 @@
       },
       "settings": {
         "allowMcRegister": "允许 Minecraft 注册",
-        "allowMcRegisterHelp": "关闭后，服务器插件将无法通过 API 注册新账户",
+        "allowMcRegisterHelp": "关闭后，游戏内 /lit register 无法生成注册链接",
         "allowWebRegister": "允许网页注册",
         "allowWebRegisterHelp": "关闭后登录页不显示注册入口，且网页注册接口将被禁用",
         "favicon": "站点图标",
@@ -459,6 +459,7 @@
         "code": "邮箱验证码",
         "codePlaceholder": "请输入 6 位验证码",
         "codeSent": "验证码已发送，10 分钟内有效",
+        "mcBindingHint": "注册成功后将自动绑定你的 Minecraft 账号",
         "resendIn": "{seconds} 秒后重发",
         "sendCode": "发送验证码",
         "sendCodeFailed": "验证码发送失败",

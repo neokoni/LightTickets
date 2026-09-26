@@ -6,7 +6,6 @@ import { prisma, serverData } from './setup.js';
 import { hashMinecraftSecret } from '../src/utils/minecraft-credential.js';
 import { hashServerApiKey } from '../src/utils/server-key.js';
 import { generateAccessToken } from '../src/utils/token.js';
-import { clearTestOutbox, getTestOutbox } from '../src/services/mail.service.js';
 import * as rateLimitConfigService from '../src/services/rate-limit-config.service.js';
 
 const app = createApp({ enableInitialSetup: true });
@@ -800,201 +799,182 @@ describe('POST /api/mc/unlink', () => {
   });
 });
 
-describe('POST /api/mc/register', () => {
-  const registration = (suffix: string) => ({
-    email: `${suffix}@test.com`,
-    password: 'Password123!',
-    username: suffix,
+describe('POST /api/mc/register-link', () => {
+  const identity = (suffix: string) => ({
     minecraftUuid: createMinecraftUuid(),
     minecraftName: suffix,
   });
 
-  it('creates a bound user and returns only its player credential', async () => {
-    const server = await createServer('mc-reg');
-    const body = { ...registration('mcreguser'), email: ' MCRegUser@Test.Com ' };
+  async function createSetup(data: { siteUrl?: string | null; allowMcRegister?: boolean } = {}) {
+    // Seed appConfig first: the config services lazily create it and race with
+    // each other when several run concurrently on a wiped database.
+    if (!(await prisma().appConfig.findFirst())) {
+      await prisma().appConfig.create({ data: {} });
+    }
+    return prisma().setupStatus.create({
+      data: {
+        isSetup: true,
+        siteUrl: 'https://tickets.example.com',
+        allowMcRegister: true,
+        ...data,
+      },
+    });
+  }
+
+  function tokenFromUrl(url: string): string {
+    const token = new URL(url).searchParams.get('mcRegisterToken');
+    if (!token) throw new Error(`register link is missing a token: ${url}`);
+    return token;
+  }
+
+  it('creates a one-time register link for the player identity', async () => {
+    await createSetup();
+    const server = await createServer('mc-reglink');
+    const body = identity('LinkSteve');
 
     const res = await request(app)
-      .post('/api/mc/register')
+      .post('/api/mc/register-link')
       .set('X-Server-Key', server.apiKey)
       .send(body);
 
     expect(res.status).toBe(201);
-    expect(res.body.data).toHaveProperty('playerCredential');
+    expect(res.body.data).toHaveProperty('expiresAt');
+    expect(res.body.data.playerCredential.length).toBeGreaterThanOrEqual(32);
     expect(res.body.data).not.toHaveProperty('accessToken');
-    expect(res.body.data).not.toHaveProperty('refreshToken');
-    expect(res.body.data.user.minecraftUuid).toBe(body.minecraftUuid);
-    expect(res.body.data.user.email).toBe('mcreguser@test.com');
 
-    const session = await request(app)
-      .post('/api/mc/session')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        minecraftUuid: body.minecraftUuid,
-        playerCredential: res.body.data.playerCredential,
-      });
-    expect(session.status).toBe(201);
+    const url = new URL(res.body.data.url);
+    expect(url.origin).toBe('https://tickets.example.com');
+    expect(url.pathname).toBe('/register');
+    const token = tokenFromUrl(res.body.data.url);
+    expect(token).toMatch(/^[A-Za-z0-9_-]{32}$/);
+
+    const stored = await prisma().mcRegisterToken.findUniqueOrThrow({
+      where: { token },
+    });
+    expect(stored.minecraftUuid).toBe(body.minecraftUuid);
+    expect(stored.minecraftName).toBe(body.minecraftName);
+    expect(stored.serverId).toBe(server.id);
+    expect(stored.used).toBe(false);
+    expect(stored.playerCredentialHash).toBe(hashMinecraftSecret(res.body.data.playerCredential));
   });
 
-  it('requires and consumes an email verification code when SMTP is enabled', async () => {
-    clearTestOutbox();
-    const server = await createServer('mc-reg-email');
-    await prisma().appConfig.create({
-      data: {
-        id: 'default',
-        mailConfig: JSON.stringify({
-          enabled: true,
-          host: 'smtp.example.com',
-          port: 587,
-          secure: false,
-          username: 'mailer',
-          password: 'secret',
-          fromName: 'LightTickets',
-          fromAddress: 'noreply@example.com',
-        }),
-      },
-    });
-    const body = registration('mcregverify');
+  it('replaces the previous link for the same UUID', async () => {
+    await createSetup();
+    const server = await createServer('mc-reglink-replace');
+    const body = identity('ReplaceAlex');
 
-    const codeRequest = await request(app)
-      .post('/api/auth/register/verification-code')
-      .send({ email: body.email });
-    expect(codeRequest.status).toBe(200);
-    const code = getTestOutbox()[0].text.match(/\b\d{6}\b/)?.[0];
-    expect(code).toMatch(/^\d{6}$/);
-
-    const missing = await request(app)
-      .post('/api/mc/register')
+    const first = await request(app)
+      .post('/api/mc/register-link')
       .set('X-Server-Key', server.apiKey)
       .send(body);
-    expect(missing.status).toBe(400);
-    expect(missing.body.message).toBe('请输入邮箱验证码');
+    expect(first.status).toBe(201);
+    const firstToken = tokenFromUrl(first.body.data.url);
 
-    const valid = await request(app)
-      .post('/api/mc/register')
+    const second = await request(app)
+      .post('/api/mc/register-link')
       .set('X-Server-Key', server.apiKey)
-      .send({ ...body, emailVerificationCode: code });
-    expect(valid.status).toBe(201);
-    await expect(prisma().registrationEmailVerification.count()).resolves.toBe(0);
+      .send(body);
+    expect(second.status).toBe(201);
+    const secondToken = tokenFromUrl(second.body.data.url);
+    expect(secondToken).not.toBe(firstToken);
+
+    const old = await prisma().mcRegisterToken.findUnique({ where: { token: firstToken } });
+    expect(old).toBeNull();
+  });
+
+  it('rejects an already-linked minecraft account with 409', async () => {
+    await createSetup();
+    const server = await createServer('mc-reglink-bound');
+    const body = identity('BoundSteve');
+    await prisma().user.create({
+      data: {
+        email: 'reglink-bound@test.com',
+        passwordHash: await bcrypt.hash('Password123!', 12),
+        username: 'reglinkbound',
+        minecraftUuid: body.minecraftUuid,
+        minecraftName: body.minecraftName,
+      },
+    });
+
+    const res = await request(app)
+      .post('/api/mc/register-link')
+      .set('X-Server-Key', server.apiKey)
+      .send(body);
+
+    expect(res.status).toBe(409);
   });
 
   it('rejects without server key', async () => {
-    const res = await request(app).post('/api/mc/register').send(registration('mcregnokey'));
+    const res = await request(app).post('/api/mc/register-link').send(identity('RegLinkNoKey'));
     expect(res.status).toBe(401);
   });
 
-  it('rejects duplicate email', async () => {
-    const server = await createServer('mc-reg-dup');
-    const first = registration('mcregdup1');
-    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send(first);
-
-    const res = await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send({ ...registration('mcregdup2'), email: first.email });
-
-    expect(res.status).toBe(409);
-  });
-
-  it('rejects duplicate username', async () => {
-    const server = await createServer('mc-reg-username');
-    const first = registration('mcregshared');
-    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send(first);
-
-    const res = await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send({ ...registration('mcregother'), username: first.username });
-
-    expect(res.status).toBe(409);
-  });
-
-  it('rejects when minecraft uuid is already linked to another account', async () => {
-    const server = await createServer('mc-reg-uuid');
-    const first = registration('mcreguuid1');
-    await request(app).post('/api/mc/register').set('X-Server-Key', server.apiKey).send(first);
-
-    const res = await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send({ ...registration('mcreguuid2'), minecraftUuid: first.minecraftUuid });
-
-    expect(res.status).toBe(409);
-  });
-
-  it('rejects invalid payload', async () => {
-    const server = await createServer('mc-reg-invalid');
-
-    const res = await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send({
-        email: 'not-an-email',
-        password: 'short',
-        username: 'x',
-        minecraftUuid: 'invalid-uuid',
-        minecraftName: 'Invalid',
-      });
-
-    expect([400, 422]).toContain(res.status);
-  });
-
   it('rejects invalid Minecraft identity formats', async () => {
-    const server = await createServer('mc-reg-format');
-    const base = registration('mcregformat');
+    await createSetup();
+    const server = await createServer('mc-reglink-format');
+    const cases = [
+      { minecraftUuid: 'not-a-uuid', minecraftName: 'Steve' },
+      { minecraftUuid: '550e8400-e29b-41d4-a716-999999999999', minecraftName: 'ab' },
+      { minecraftUuid: '550e8400-e29b-41d4-a716-999999999999', minecraftName: 'Player Name' },
+    ];
 
-    const invalidUuid = await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send({ ...base, minecraftUuid: 'not-a-uuid' });
-    expect(invalidUuid.status).toBe(400);
+    for (const payload of cases) {
+      const res = await request(app)
+        .post('/api/mc/register-link')
+        .set('X-Server-Key', server.apiKey)
+        .send(payload);
+      expect(res.status).toBe(400);
+    }
+  });
 
-    const invalidName = await request(app)
-      .post('/api/mc/register')
+  it('fails closed when the site URL is not configured', async () => {
+    await createSetup({ siteUrl: null });
+    const server = await createServer('mc-reglink-no-url');
+
+    const res = await request(app)
+      .post('/api/mc/register-link')
       .set('X-Server-Key', server.apiKey)
-      .send({ ...base, minecraftName: '<click:run_command:/op>' });
-    expect(invalidName.status).toBe(400);
+      .send(identity('NoSiteUrl'));
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain('站点地址未配置');
+    await expect(prisma().mcRegisterToken.count()).resolves.toBe(0);
+  });
+
+  it('rejects when allowMcRegister is disabled', async () => {
+    await createSetup({ allowMcRegister: false });
+    const server = await createServer('mc-reglink-disabled');
+
+    const res = await request(app)
+      .post('/api/mc/register-link')
+      .set('X-Server-Key', server.apiKey)
+      .send(identity('RegLinkDisabled'));
+
+    expect(res.status).toBe(403);
   });
 
   it('applies the configured auth rate limit', async () => {
-    const server = await createServer('mc-reg-rate-limit');
+    await createSetup();
+    const server = await createServer('mc-reglink-rate-limit');
+    // Use a distinct window so the authLimiter bucket key differs from other
+    // auth-rate-limit tests in this file.
     await rateLimitConfigService.updateRateLimitConfig({
-      auth: { windowSeconds: 60, maxRequests: 1 },
+      auth: { windowSeconds: 240, maxRequests: 1 },
     });
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('VITEST', '');
 
     const first = await request(app)
-      .post('/api/mc/register')
+      .post('/api/mc/register-link')
       .set('X-Server-Key', server.apiKey)
-      .send(registration('mcregrate1'));
+      .send(identity('RegLinkRate1'));
     const limited = await request(app)
-      .post('/api/mc/register')
+      .post('/api/mc/register-link')
       .set('X-Server-Key', server.apiKey)
-      .send(registration('mcregrate2'));
+      .send(identity('RegLinkRate2'));
 
     expect(first.status).toBe(201);
     expect(limited.status).toBe(429);
-  });
-
-  it('rejects when allowMcRegister is disabled', async () => {
-    const server = await createServer('mc-reg-disabled');
-    const setupRes = await request(app)
-      .post('/api/setup')
-      .send({
-        db: { provider: 'sqlite' },
-        admin: { email: 'mcreg-admin@test.com', password: 'admin123', username: 'mcregadmin' },
-      });
-    await request(app)
-      .patch('/api/setup/settings')
-      .set('Authorization', `Bearer ${setupRes.body.data.accessToken}`)
-      .send({ allowMcRegister: false });
-
-    const res = await request(app)
-      .post('/api/mc/register')
-      .set('X-Server-Key', server.apiKey)
-      .send(registration('mcregdisabled'));
-
-    expect(res.status).toBe(403);
   });
 });
 
