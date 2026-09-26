@@ -209,6 +209,7 @@ type AuthType =
   | 'jwt'
   | 'refresh'
   | 'conditional'
+  | 'jwtOrApiKey'
   | 'admin'
   | 'staff'
   | 'apiKey'
@@ -290,11 +291,13 @@ function registerRoute(def: RouteDef) {
                   },
                   { [apiKeySecurityScheme.name]: [] },
                 ]
-              : def.auth === 'conditional'
-                ? [{ [jwtSecurityScheme.name]: [] }, {}]
-                : def.auth === 'refresh'
-                  ? [{ [refreshCookieSecurityScheme.name]: [] }]
-                  : [{ [jwtSecurityScheme.name]: [] }],
+              : def.auth === 'jwtOrApiKey'
+                ? [{ [jwtSecurityScheme.name]: [] }, { [apiKeySecurityScheme.name]: [] }]
+                : def.auth === 'conditional'
+                  ? [{ [jwtSecurityScheme.name]: [] }, {}]
+                  : def.auth === 'refresh'
+                    ? [{ [refreshCookieSecurityScheme.name]: [] }]
+                    : [{ [jwtSecurityScheme.name]: [] }],
 
     request: {
       ...(paramsSchema && { params: paramsSchema }),
@@ -938,7 +941,7 @@ const registerTemplateRoutes = () => {
     method: 'get',
     path: '/api/templates',
     summary: '获取模板列表',
-    auth: 'none',
+    auth: 'jwtOrApiKey',
     tags: ['Templates'],
     responseSchema: z.array(
       z.object({
@@ -954,7 +957,7 @@ const registerTemplateRoutes = () => {
     method: 'get',
     path: '/api/templates/{name}',
     summary: '获取模板详情',
-    auth: 'none',
+    auth: 'jwtOrApiKey',
     tags: ['Templates'],
   });
   registerRoute({

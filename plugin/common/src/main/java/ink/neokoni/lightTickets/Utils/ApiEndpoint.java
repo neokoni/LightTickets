@@ -4,8 +4,8 @@ import java.util.Map;
 
 public enum ApiEndpoint {
     HEALTH("GET", "/api/health", false),
-    TEMPLATES("GET", "/api/templates", false),
-    TEMPLATE_DETAIL("GET", "/api/templates/{name}", false),
+    TEMPLATES("GET", "/api/templates", true, false),
+    TEMPLATE_DETAIL("GET", "/api/templates/{name}", true, false),
     MC_TICKET_DETAIL("GET", "/api/mc/tickets/{id}/detail", true),
     MC_TICKET_DETAIL_BODY("POST", "/api/mc/tickets/{id}/detail", true),
     MC_TICKET_COMMENTS("GET", "/api/mc/tickets/{id}/comments", true),
@@ -32,11 +32,17 @@ public enum ApiEndpoint {
     private final String method;
     private final String path;
     private final boolean serverAuthenticated;
+    private final boolean serverIdRequired;
 
     ApiEndpoint(String method, String path, boolean serverAuthenticated) {
+        this(method, path, serverAuthenticated, true);
+    }
+
+    ApiEndpoint(String method, String path, boolean serverAuthenticated, boolean serverIdRequired) {
         this.method = method;
         this.path = path;
         this.serverAuthenticated = serverAuthenticated;
+        this.serverIdRequired = serverIdRequired;
     }
 
     public String method() {
@@ -49,6 +55,14 @@ public enum ApiEndpoint {
 
     public boolean serverAuthenticated() {
         return serverAuthenticated;
+    }
+
+    /**
+     * Whether a server-authenticated request must inject the player's serverId on Velocity.
+     * Global endpoints fetched without player context (templates) skip the injection.
+     */
+    public boolean serverIdRequired() {
+        return serverIdRequired;
     }
 
     /**

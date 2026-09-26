@@ -309,10 +309,12 @@ function getFilterLabel(token: SearchToken): string {
 onMounted(async () => {
   syncFromQuery();
   if (!labelsStore.loaded) labelsStore.fetchList().catch(() => {});
-  try {
-    templates.value = await apiGetTemplates();
-  } catch {
-    /* ignore */
+  if (auth.isAuthenticated) {
+    try {
+      templates.value = await apiGetTemplates();
+    } catch {
+      /* ignore */
+    }
   }
   try {
     servers.value = await apiGetServers();

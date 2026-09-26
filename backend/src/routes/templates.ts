@@ -1,9 +1,12 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
+import { authOrServerKeyMiddleware } from '../middleware/auth.js';
 import { list, get } from '../services/template.service.js';
 import { NotFoundError } from '../utils/errors.js';
 
 const router = Router();
+
+router.use(authOrServerKeyMiddleware);
 
 router.get('/', (_req: Request, res: Response) => {
   res.json(list());

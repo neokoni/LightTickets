@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { createApp } from '../src/app.js';
 import { dataPath } from '../src/paths.js';
-import { prisma } from './setup.js';
+import { prisma, serverData } from './setup.js';
 import * as templateService from '../src/services/template.service.js';
 
 const app = createApp({ enableInitialSetup: true });
@@ -65,9 +65,9 @@ async function createUserAndGetToken(email = 'user@test.com') {
 
 describe('GET /api/templates', () => {
   it('returns list of enabled templates', async () => {
-    await setupAndGetAdmin();
+    const token = await setupAndGetAdmin();
 
-    const res = await request(app).get('/api/templates');
+    const res = await request(app).get('/api/templates').set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toBeInstanceOf(Array);
     expect(res.body.data.length).toBeGreaterThanOrEqual(1);
@@ -78,13 +78,42 @@ describe('GET /api/templates', () => {
     expect(tmpl).toHaveProperty('description');
     expect(tmpl).toHaveProperty('labels');
   });
+
+  it('rejects unauthenticated requests', async () => {
+    const list = await request(app).get('/api/templates');
+    const detail = await request(app).get('/api/templates/bug_report');
+
+    expect(list.status).toBe(401);
+    expect(detail.status).toBe(401);
+  });
+
+  it('accepts a valid server key without a body serverId', async () => {
+    await setupAndGetAdmin();
+    await prisma().server.create({ data: serverData('tmpl-srv', 'tmpl-srv-key') });
+
+    const list = await request(app).get('/api/templates').set('X-Server-Key', 'tmpl-srv-key');
+    const detail = await request(app)
+      .get('/api/templates/bug_report')
+      .set('X-Server-Key', 'tmpl-srv-key');
+
+    expect(list.status).toBe(200);
+    expect(detail.status).toBe(200);
+  });
+
+  it('rejects an invalid server key', async () => {
+    const res = await request(app).get('/api/templates').set('X-Server-Key', 'wrong-key');
+
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('GET /api/templates/:name', () => {
   it('returns a specific template by name', async () => {
-    await setupAndGetAdmin();
+    const token = await setupAndGetAdmin();
 
-    const res = await request(app).get('/api/templates/bug_report');
+    const res = await request(app)
+      .get('/api/templates/bug_report')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.data.name).toBeDefined();
     expect(res.body.data.description).toBeDefined();
@@ -93,9 +122,11 @@ describe('GET /api/templates/:name', () => {
   });
 
   it('returns 404 for nonexistent template', async () => {
-    await setupAndGetAdmin();
+    const token = await setupAndGetAdmin();
 
-    const res = await request(app).get('/api/templates/nonexistent');
+    const res = await request(app)
+      .get('/api/templates/nonexistent')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(404);
   });
 });
@@ -768,7 +799,9 @@ describe('template default assignees', () => {
         body: assigneeBody,
       });
 
-    const res = await request(app).get('/api/templates/assignee_public_tmpl');
+    const res = await request(app)
+      .get('/api/templates/assignee_public_tmpl')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.data).not.toHaveProperty('assignee_ids');
     expect(res.body.data).not.toHaveProperty('assigneeIds');

@@ -89,21 +89,6 @@ PKCE；OIDC 额外校验 nonce 和 ID Token。
 
 公开接口。返回合并后的语言资源；自定义语言缺失的 key 回退到内置 `zh-CN`。
 
-### 模板列表
-
-`GET /api/templates`
-
-返回启用模板列表。模板由数据库维护，YAML 文件用于初始化和同步。
-
-### 模板详情
-
-`GET /api/templates/:name`
-
-返回单个模板定义。
-
-模板包含 `hidden` 创建策略：`true` 表示始终隐藏，`false` 表示始终公开，`optional`
-表示创建者必须选择。读取模板 YAML 时兼容历史误拼 `optinal`，API 统一返回 `optional`。
-
 ## 初始化与认证
 
 ### 初始化站点
@@ -605,6 +590,26 @@ Minecraft Hook 与状态变更在同一数据库事务中写入 outbox。每次�
 
 标签标识符只能包含字母、数字、下划线和短横线，创建后不可修改；标签颜色格式为 hex，如 `#22c55e`。
 
+## 模板
+
+### 模板列表
+
+`GET /api/templates`
+
+需要认证，未认证返回 401：网页端携带登录 JWT（`Authorization: Bearer`），服务器插件携带
+`X-Server-Key`。插件请求为 GET，无需携带 `serverId`。
+
+返回启用模板列表。模板由数据库维护，YAML 文件用于初始化和同步。
+
+### 模板详情
+
+`GET /api/templates/:name`
+
+认证方式同模板列表。返回单个模板定义。
+
+模板包含 `hidden` 创建策略：`true` 表示始终隐藏，`false` 表示始终公开，`optional`
+表示创建者必须选择。读取模板 YAML 时兼容历史误拼 `optinal`，API 统一返回 `optional`。
+
 ## 服务器管理
 
 挂载路径：`/api/servers`，全部需要 `admin`。
@@ -785,8 +790,8 @@ HTTP 200 返回业务级 `success: false`。
 `[]` 表示清空），用于设置模板默认受理人；引用的用户必须存在且角色为 `staff` 或 `admin`，
 否则返回 `400`。模板 YAML 中对应字段为 `assignee_ids`，也可在 `source` 原文中直接维护。
 使用该模板创建议题时会在创建事务内立即写入分配并记录一条 `assignees_change` 审计（操作者
-为创建者）；届时已失效的受理人会被跳过，不阻断议题创建。默认受理人不会出现在公开的
-`GET /api/templates` 与 `GET /api/templates/:name` 中。
+为创建者）；届时已失效的受理人会被跳过，不阻断议题创建。默认受理人不会出现在
+`GET /api/templates` 与 `GET /api/templates/:name` 的响应中。
 
 ### 玩家组
 

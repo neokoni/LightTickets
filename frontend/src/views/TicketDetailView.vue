@@ -68,6 +68,7 @@ const inlineActionButtonClass =
   '!px-0 !py-0 border-none text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300';
 
 async function fetchTemplateNames() {
+  if (!auth.isAuthenticated) return;
   try {
     const list = await apiGetTemplates();
     for (const t of list) {

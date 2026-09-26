@@ -6893,7 +6893,14 @@
         "tags": [
           "Templates"
         ],
-        "security": [],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -6979,7 +6986,14 @@
         "tags": [
           "Templates"
         ],
-        "security": [],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
         "parameters": [
           {
             "schema": {

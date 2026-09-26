@@ -177,6 +177,7 @@ public class ApiClient {
                                     @Nullable Map<String, String> queryParams,
                                     @Nullable String body) {
         if (!endpoint.serverAuthenticated()
+                || !endpoint.serverIdRequired()
                 || LightPlatformProvider.get().getType() != PlatformType.VELOCITY) {
             return new Prepared(endpoint, queryParams, body);
         }

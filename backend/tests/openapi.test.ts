@@ -46,6 +46,17 @@ describe('generated OpenAPI contract', () => {
     expect(document.paths['/api/labels']?.get.security).toEqual([{ bearerAuth: [] }, {}]);
   });
 
+  it('documents template access as JWT or server key authenticated', () => {
+    expect(document.paths['/api/templates']?.get.security).toEqual([
+      { bearerAuth: [] },
+      { apiKey: [] },
+    ]);
+    expect(document.paths['/api/templates/{name}']?.get.security).toEqual([
+      { bearerAuth: [] },
+      { apiKey: [] },
+    ]);
+  });
+
   it('documents the actual MC ticket request and both authentication headers', () => {
     const operation = document.paths['/api/mc/tickets']?.post;
     const requestSchema = operation.requestBody?.content?.['application/json']?.schema;
