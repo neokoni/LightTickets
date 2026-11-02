@@ -4,8 +4,12 @@ const CUSTOM_ICON_RELS = ['icon', 'apple-touch-icon'] as const;
 
 const LIGHT_HREF_ATTR = 'data-branding-light-href';
 
+export const DEFAULT_FAVICON = '/favicon.svg';
+
+export const DEFAULT_FAVICON_DARK = '/favicon-dark.svg';
+
 const DARK_ICON_BY_HREF: Readonly<Record<string, string>> = {
-  '/favicon.svg': '/favicon-dark.svg',
+  [DEFAULT_FAVICON]: DEFAULT_FAVICON_DARK,
 };
 
 let defaultIcons: HTMLLinkElement[] | null = null;

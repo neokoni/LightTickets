@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { Icon } from '@iconify/vue';
 import { getSettings, updateSettings } from '@/api/setup';
 import { apiDeleteBranding, apiUploadBranding } from '@/api/branding';
 import type { BrandingSlot, BrandingState } from '@/types/site';
 import {
+  DEFAULT_SITE_LOGO,
   setMailFeatureAvailabilityCache,
   setRequireLoginCache,
   siteConfig,
   siteTitle,
 } from '@/stores/site';
+import { DEFAULT_FAVICON, DEFAULT_FAVICON_DARK } from '@/utils/branding';
 import { ToastType, useUiStore } from '@/stores/ui';
 import { handleError } from '@/utils/error';
 import { availableLanguages, t } from '@/i18n';
@@ -86,41 +87,76 @@ const deletingSlot = ref<BrandingSlot | null>(null);
 
 interface BrandingVariant {
   slot: BrandingSlot;
+  dark: boolean;
   label: string;
-  url: string | null;
+  status: string;
+  custom: boolean;
+  previewUrl: string;
+  previewClass: string;
 }
 
-function buildVariants(
-  lightSlot: BrandingSlot,
-  darkSlot: BrandingSlot,
-  lightUrl: string | null,
-  darkUrl: string | null,
-): BrandingVariant[] {
-  return [
-    { slot: lightSlot, label: t('admin.settings.variantLight'), url: lightUrl },
-    { slot: darkSlot, label: t('admin.settings.variantDark'), url: darkUrl },
-  ];
+interface BrandingAsset {
+  lightSlot: BrandingSlot;
+  darkSlot: BrandingSlot;
+  lightUrl: string | null;
+  darkUrl: string | null;
+  defaultLight: string;
+  defaultDark: string;
+  defaultFilter: [string, string];
+}
+
+function buildVariants(asset: BrandingAsset): BrandingVariant[] {
+  const variant = (dark: boolean): BrandingVariant => {
+    const own = dark ? asset.darkUrl : asset.lightUrl;
+    const inherited = dark ? asset.lightUrl : null;
+    const fallback = inherited ?? (dark ? asset.defaultDark : asset.defaultLight);
+    let status = t('admin.settings.brandingCustom');
+    if (!own) {
+      status = inherited
+        ? t('admin.settings.brandingInherited')
+        : t('admin.settings.brandingDefault');
+    }
+    return {
+      slot: dark ? asset.darkSlot : asset.lightSlot,
+      dark,
+      label: dark ? t('admin.settings.variantDark') : t('admin.settings.variantLight'),
+      status,
+      custom: !!own,
+      previewUrl: own ?? fallback,
+      previewClass: own || inherited ? '' : asset.defaultFilter[dark ? 1 : 0],
+    };
+  };
+  return [variant(false), variant(true)];
 }
 
 const brandingGroups = computed(() => [
   {
     key: 'favicon',
     label: t('admin.settings.favicon'),
-    help: t('admin.settings.faviconHelp'),
-    previewClass: 'w-10',
-    variants: buildVariants(
-      'favicon',
-      'favicon-dark',
-      siteConfig.faviconUrl,
-      siteConfig.faviconDarkUrl,
-    ),
+    tileClass: 'w-9',
+    variants: buildVariants({
+      lightSlot: 'favicon',
+      darkSlot: 'favicon-dark',
+      lightUrl: siteConfig.faviconUrl,
+      darkUrl: siteConfig.faviconDarkUrl,
+      defaultLight: DEFAULT_FAVICON,
+      defaultDark: DEFAULT_FAVICON_DARK,
+      defaultFilter: ['', ''],
+    }),
   },
   {
     key: 'logo',
     label: t('admin.settings.logo'),
-    help: t('admin.settings.logoHelp'),
-    previewClass: 'w-40',
-    variants: buildVariants('logo', 'logo-dark', siteConfig.logoUrl, siteConfig.logoDarkUrl),
+    tileClass: 'w-28',
+    variants: buildVariants({
+      lightSlot: 'logo',
+      darkSlot: 'logo-dark',
+      lightUrl: siteConfig.logoUrl,
+      darkUrl: siteConfig.logoDarkUrl,
+      defaultLight: DEFAULT_SITE_LOGO,
+      defaultDark: DEFAULT_SITE_LOGO,
+      defaultFilter: ['brightness-0', 'brightness-0 invert'],
+    }),
   },
 ]);
 
@@ -223,68 +259,76 @@ async function removeBranding(slot: BrandingSlot) {
       </div>
 
       <!-- Site Icon & Logo -->
-      <div v-for="group in brandingGroups" :key="group.key" class="space-y-1.5">
-        <label class="text-sm font-medium text-slate-900 dark:text-white">{{ group.label }}</label>
-        <p class="text-xs text-slate-500 dark:text-slate-400">{{ group.help }}</p>
-        <div class="grid gap-3 sm:grid-cols-2">
+      <div class="space-y-4">
+        <div v-for="group in brandingGroups" :key="group.key" class="space-y-1.5">
+          <label class="text-sm font-medium text-slate-900 dark:text-white">{{
+            group.label
+          }}</label>
           <div
-            v-for="variant in group.variants"
-            :key="variant.slot"
-            class="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/80 p-3 dark:border-slate-800/80"
+            class="divide-y divide-slate-200/80 rounded-xl border border-slate-200/80 dark:divide-slate-800/80 dark:border-slate-800/80"
           >
-            <div class="flex flex-col gap-1">
-              <span class="text-xs font-medium text-slate-500 dark:text-slate-400">
-                {{ variant.label }}
-              </span>
+            <div
+              v-for="variant in group.variants"
+              :key="variant.slot"
+              class="flex items-center gap-4 px-4 py-3"
+            >
               <div
-                class="flex h-10 items-center justify-center rounded-md border border-slate-200 p-1 dark:border-slate-700"
-                :class="group.previewClass"
+                class="flex h-9 shrink-0 items-center justify-center rounded-md border p-1.5"
+                :class="[
+                  group.tileClass,
+                  variant.dark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-white',
+                ]"
               >
                 <img
-                  v-if="variant.url"
-                  :src="variant.url"
+                  :src="variant.previewUrl"
                   :alt="variant.label"
                   class="max-h-full max-w-full object-contain"
-                />
-                <Icon
-                  v-else
-                  icon="lucide:image-off"
-                  class="h-5 w-5 text-slate-400 dark:text-slate-500"
-                  aria-hidden="true"
+                  :class="[variant.previewClass, { 'opacity-60': !variant.custom }]"
                 />
               </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-slate-900 dark:text-white">
+                  {{ variant.label }}
+                </p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ variant.status }}</p>
+              </div>
+              <div class="flex shrink-0 items-center gap-2">
+                <BaseButton
+                  size="sm"
+                  icon="lucide:upload"
+                  :loading="uploadingSlot === variant.slot"
+                  :disabled="deletingSlot === variant.slot"
+                  @click="pickBrandingFile(variant.slot)"
+                >
+                  {{ variant.custom ? t('admin.settings.brandingReplace') : t('common.upload') }}
+                </BaseButton>
+                <BaseButton
+                  v-if="variant.custom"
+                  size="sm"
+                  variant="danger"
+                  icon="lucide:trash-2"
+                  :aria-label="t('common.delete')"
+                  :title="t('common.delete')"
+                  :loading="deletingSlot === variant.slot"
+                  :disabled="uploadingSlot === variant.slot"
+                  @click="removeBranding(variant.slot)"
+                />
+              </div>
+              <input
+                :ref="(element: unknown) => setFileInput(variant.slot, element)"
+                type="file"
+                class="sr-only"
+                tabindex="-1"
+                aria-hidden="true"
+                :accept="BRANDING_ACCEPT"
+                @change="uploadBranding(variant.slot, $event)"
+              />
             </div>
-            <div class="flex items-center gap-2">
-              <BaseButton
-                size="sm"
-                :loading="uploadingSlot === variant.slot"
-                :disabled="deletingSlot === variant.slot"
-                @click="pickBrandingFile(variant.slot)"
-              >
-                {{ t('common.upload') }}
-              </BaseButton>
-              <BaseButton
-                v-if="variant.url"
-                size="sm"
-                variant="danger"
-                :loading="deletingSlot === variant.slot"
-                :disabled="uploadingSlot === variant.slot"
-                @click="removeBranding(variant.slot)"
-              >
-                {{ t('common.delete') }}
-              </BaseButton>
-            </div>
-            <input
-              :ref="(element: unknown) => setFileInput(variant.slot, element)"
-              type="file"
-              class="sr-only"
-              tabindex="-1"
-              aria-hidden="true"
-              :accept="BRANDING_ACCEPT"
-              @change="uploadBranding(variant.slot, $event)"
-            />
           </div>
         </div>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          {{ t('admin.settings.brandingFormatHint') }}
+        </p>
       </div>
 
       <!-- Allow Web Register Toggle -->
