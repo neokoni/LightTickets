@@ -4,6 +4,7 @@ import { useUiStore } from '@/stores/ui';
 import { getSiteConfig } from '@/api/setup';
 import { siteConfig, setSiteConfigCache, setConnectionError } from '@/stores/site';
 import { syncI18nWithDefault } from '@/i18n';
+import { setPageTitleKey } from '@/utils/page-title';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -17,73 +18,73 @@ const router = createRouter({
       path: '/connection-error',
       name: 'connection-error',
       component: () => import('@/views/ConnectionErrorView.vue'),
-      meta: { public: true },
+      meta: { public: true, titleKey: 'connectionError.title' },
     },
     {
       path: '/setup',
       name: 'setup',
       component: () => import('@/views/SetupView.vue'),
-      meta: { setup: true },
+      meta: { setup: true, titleKey: 'setup.title' },
     },
     {
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
-      meta: { guest: true },
+      meta: { guest: true, titleKey: 'auth.login.title' },
     },
     {
       path: '/register',
       name: 'register',
       component: () => import('@/views/RegisterView.vue'),
-      meta: { guest: true },
+      meta: { guest: true, titleKey: 'auth.register.title' },
     },
     {
       path: '/federatedauth/complete',
       name: 'federatedauth-complete',
       component: () => import('@/views/FederatedAuthCompleteView.vue'),
-      meta: { public: true },
+      meta: { public: true, titleKey: 'federatedauth.completing' },
     },
     {
       path: '/federatedauth/register',
       name: 'federatedauth-register',
       component: () => import('@/views/FederatedAuthRegisterView.vue'),
-      meta: { guest: true },
+      meta: { guest: true, titleKey: 'federatedauth.createAccount' },
     },
     {
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('@/views/ForgotPasswordView.vue'),
-      meta: { guest: true },
+      meta: { guest: true, titleKey: 'auth.forgot.title' },
     },
     {
       path: '/reset-password',
       name: 'reset-password',
       component: () => import('@/views/ResetPasswordView.vue'),
-      meta: { guest: true, allowAuthenticated: true },
+      meta: { guest: true, allowAuthenticated: true, titleKey: 'auth.reset.title' },
     },
     {
       path: '/unsubscribe',
       name: 'unsubscribe',
       component: () => import('@/views/UnsubscribeView.vue'),
-      meta: { guest: true, allowAuthenticated: true },
+      meta: { guest: true, allowAuthenticated: true, titleKey: 'unsubscribe.title' },
     },
     {
       path: '/cancel-email-change',
       name: 'cancel-email-change',
       component: () => import('@/views/CancelEmailChangeView.vue'),
-      meta: { guest: true, allowAuthenticated: true },
+      meta: { guest: true, allowAuthenticated: true, titleKey: 'emailChangeCancel.title' },
     },
     {
       path: '/',
       name: 'tickets',
       component: () => import('@/views/TicketListView.vue'),
-      meta: { public: true },
+      meta: { public: true, titleKey: 'nav.tickets' },
     },
     {
       path: '/tickets/new',
       name: 'ticket-create',
       component: () => import('@/views/TicketCreateView.vue'),
-      meta: { auth: true },
+      meta: { auth: true, titleKey: 'ticket.create.title' },
     },
     {
       path: '/tickets/:id',
@@ -107,73 +108,73 @@ const router = createRouter({
           path: 'labels',
           name: 'admin-labels',
           component: () => import('@/views/admin/AdminLabelsView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.labels.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.labels' },
         },
         {
           path: 'servers',
           name: 'admin-servers',
           component: () => import('@/views/admin/AdminServersView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.servers.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.servers' },
         },
         {
           path: 'templates',
           name: 'admin-templates',
           component: () => import('@/views/admin/AdminTemplatesView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.templates.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.templates' },
         },
         {
           path: 'player-groups',
           name: 'admin-player-groups',
           component: () => import('@/views/admin/AdminPlayerGroupsView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.playerGroups.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.playerGroups' },
         },
         {
           path: 'users',
           name: 'admin-users',
           component: () => import('@/views/admin/AdminUsersView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.users.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.users' },
         },
         {
           path: 'settings',
           name: 'admin-settings',
           component: () => import('@/views/admin/AdminSettingsView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.settings.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.settings' },
         },
         {
           path: 'mail',
           name: 'admin-mail',
           component: () => import('@/views/admin/AdminMailView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.mail.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.mail' },
         },
         {
           path: 'turnstile',
           name: 'admin-turnstile',
           component: () => import('@/views/admin/AdminTurnstileView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.turnstile.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.turnstile' },
         },
         {
           path: 'rate-limit',
           name: 'admin-rate-limit',
           component: () => import('@/views/admin/AdminRateLimitView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.rateLimit.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.rateLimit' },
         },
         {
           path: 'federatedauth',
           name: 'admin-federatedauth',
           component: () => import('@/views/admin/AdminFederatedAuthView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.federatedauth.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.federatedauth' },
         },
         {
           path: 'storage',
           name: 'admin-storage',
           component: () => import('@/views/admin/AdminStorageView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.storage.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.storage' },
         },
         {
           path: 'about',
           name: 'admin-about',
           component: () => import('@/views/admin/AdminAboutView.vue'),
-          meta: { auth: true, admin: true, titleKey: 'admin.about.title' },
+          meta: { auth: true, admin: true, titleKey: 'admin.nav.about' },
         },
       ],
     },
@@ -181,7 +182,7 @@ const router = createRouter({
       path: '/:pathMatch(.*)*',
       name: 'not-found',
       component: () => import('@/views/NotFoundView.vue'),
-      meta: { public: true },
+      meta: { public: true, titleKey: 'notFound.title' },
     },
   ],
 });
@@ -255,7 +256,8 @@ router.beforeEach(async (to) => {
   }
 });
 
-router.afterEach(() => {
+router.afterEach((to) => {
+  if (typeof to.meta.titleKey === 'string') setPageTitleKey(to.meta.titleKey);
   useUiStore().stopRouteLoading();
 });
 

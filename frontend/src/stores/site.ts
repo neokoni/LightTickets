@@ -48,14 +48,6 @@ export const siteLogoUrl = computed(() => customSiteLogoUrl.value || DEFAULT_SIT
 
 export const isDefaultSiteLogo = computed(() => !customSiteLogoUrl.value);
 
-watch(
-  siteTitle,
-  (value) => {
-    document.title = value;
-  },
-  { immediate: true },
-);
-
 export function initSiteBranding(ui: ReturnType<typeof useUiStore>): void {
   watch(
     () => ui.resolvedTheme,

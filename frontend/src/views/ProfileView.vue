@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watchEffect } from 'vue';
 import { useRoute } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { useAuthStore } from '@/stores/auth';
@@ -18,6 +18,7 @@ import {
   apiUnlinkFederatedAuth,
 } from '@/api/federatedauth';
 import { siteConfig } from '@/stores/site';
+import { setPageTitleKey } from '@/utils/page-title';
 import type { FederatedAuthIdentity } from '@/types/federatedauth';
 
 const auth = useAuthStore();
@@ -50,6 +51,11 @@ const mobileNavOptions = computed(() =>
     icon: item.icon,
   })),
 );
+
+watchEffect(() => {
+  const item = navItems.find((entry) => entry.key === activeSection.value);
+  setPageTitleKey(item?.labelKey ?? 'nav.profile');
+});
 
 const selectedProfileSection = computed({
   get: () => activeSection.value,

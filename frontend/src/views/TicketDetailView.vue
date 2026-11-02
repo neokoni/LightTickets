@@ -6,6 +6,7 @@ import {
   onUnmounted,
   computed,
   nextTick,
+  watchEffect,
   type ComponentPublicInstance,
 } from 'vue';
 import { useRoute } from 'vue-router';
@@ -41,6 +42,7 @@ import { useAuditTimeline } from '@/composables/useAuditTimeline';
 import NotFoundView from '@/views/NotFoundView.vue';
 import { ApiError } from '@/types/api';
 import { userDisplayName } from '@/utils/user-display';
+import { setPageTitleText } from '@/utils/page-title';
 
 const route = useRoute();
 const store = useTicketsStore();
@@ -52,6 +54,17 @@ const ticketId = computed(() => Number(route.params.id));
 const ticket = computed(() => store.currentTicket);
 const isCurrentTicketLoaded = computed(() => ticket.value?.id === ticketId.value);
 const notFound = ref(false);
+
+watchEffect(() => {
+  if (!Number.isFinite(ticketId.value) || notFound.value) {
+    setPageTitleText('404');
+    return;
+  }
+  if (isCurrentTicketLoaded.value && ticket.value) {
+    setPageTitleText(`#${ticket.value.id} ${ticket.value.title}`);
+  }
+});
+
 const visibilitySaving = ref(false);
 
 const commentTextareaRef = ref<ComponentPublicInstance | null>(null);
