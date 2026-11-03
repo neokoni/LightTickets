@@ -547,7 +547,16 @@
       }
     },
     "markdown": {
-      "copyCode": "Copy code"
+      "copyCode": "Copy code",
+      "imageViewer": {
+        "close": "Close image viewer",
+        "label": "Image viewer",
+        "next": "Next image",
+        "previous": "Previous image",
+        "resetZoom": "Reset zoom",
+        "zoomIn": "Zoom in",
+        "zoomOut": "Zoom out"
+      }
     },
     "nav": {
       "admin": "Admin",

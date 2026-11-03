@@ -6,10 +6,16 @@ import type { Options } from 'markdown-it';
 import type Renderer from 'markdown-it/lib/renderer.mjs';
 import type Token from 'markdown-it/lib/token.mjs';
 import { t } from '@/i18n';
+import ImageLightbox from './ImageLightbox.vue';
+import type { LightboxImage, LightboxOrigin } from '@/types/image-viewer';
 
 const props = defineProps<{ content: string; compact?: boolean }>();
 
 const containerRef = ref<HTMLElement | null>(null);
+const viewerImages = ref<LightboxImage[]>([]);
+const viewerIndex = ref(0);
+const viewerOrigin = ref<LightboxOrigin>();
+const viewerOpen = ref(false);
 
 const md = new MarkdownIt({
   html: false,
@@ -54,6 +60,30 @@ function insertCopyButtons(el: HTMLElement) {
   });
 }
 
+function openImageViewer(event: MouseEvent) {
+  const container = containerRef.value;
+  const image = (event.target as HTMLElement | null)?.closest('img');
+  if (!container || !image || !container.contains(image) || image.closest('a')) return;
+
+  const images = Array.from(container.querySelectorAll('img')).filter((node) => !node.closest('a'));
+  const index = images.indexOf(image);
+  if (index === -1) return;
+
+  viewerImages.value = images.map((node) => ({
+    src: node.currentSrc || node.src,
+    alt: node.alt,
+  }));
+  viewerIndex.value = index;
+  const rect = image.getBoundingClientRect();
+  viewerOrigin.value = {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  };
+  viewerOpen.value = true;
+}
+
 async function copyCode(pre: HTMLPreElement) {
   const code = pre.querySelector('code');
   const text = code?.textContent || '';
@@ -85,6 +115,13 @@ watch(
     ref="containerRef"
     class="markdown-body prose prose-sm dark:prose-invert max-w-none prose-slate prose-blockquote:not-italic prose-blockquote:font-normal"
     :class="{ 'markdown-body-compact': compact }"
+    @click="openImageViewer"
+  />
+  <ImageLightbox
+    v-model="viewerOpen"
+    :images="viewerImages"
+    :initial-index="viewerIndex"
+    :origin-rect="viewerOrigin"
   />
 </template>
 
@@ -209,6 +246,14 @@ watch(
 .markdown-body :deep(a) {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.markdown-body :deep(img) {
+  cursor: zoom-in;
+}
+
+.markdown-body :deep(a img) {
+  cursor: pointer;
 }
 
 .markdown-body :deep(h1),
