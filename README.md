@@ -1,44 +1,49 @@
 <div align="center">
 
-<img src="banner.png" alt="banner" style="width: 25em"></img>
+<a href="https://github.com/neokoni/LightTickets" target="_blank">
+    <img src="banner.png" alt="banner" style="width: 25em"></img>
+</a>
 
 [![License: MIT](https://img.shields.io/github/license/neokoni/LightTickets)](LICENSE)
 [![Dev Build Artifacts](https://github.com/neokoni/LightTickets/actions/workflows/dev-build.yml/badge.svg)](https://github.com/neokoni/LightTickets/actions/workflows/dev-build.yml)
 
+English • [简体中文](README_ZH.md)
+
 </div>
-LightTickets 是一个自托管的面向 Minecraft 服务器管理的议题/工单平台，支持网页管理以及Paper/Folia, Velocity插件端连接交互使用
 
-## 功能
+LightTickets is a self-hosted issue/ticket platform for Minecraft server administration, supporting web-based management as well as interaction with Paper/Folia and Velocity plugins.
 
-- 议题管理： 基于模板创建，可设置标签，负责人，可见性等参数
-- Minecraft服务器集成： 通过API Key以及服务端/代理端插件与LightTickets交互
-- 账号认证： 支持用户账户注册，找回密码，邮件发送以及外部单点登录功能
-- 访问限制： 支持设置不同操作类型的频率限制，自带CloudFlare Turnstil支持
-- 自定义站点信息： 支持自定义站点标题, favicon, 以及logo等站点信息
-- 文件存储： 支持本地存储与连接S3兼容存储
-- 邮件提醒： 支持连接SMTP服务，发送议题状态变更以及新议题分配提醒
-- 搜索过滤： 支持`from`, `type`, `status`等语句通过搜索栏过滤议题
+## Features
 
-## 结构
+- **Issue management**: created from templates, with configurable labels, assignees, visibility, and more
+- **Minecraft server** integration: interacts with LightTickets via API keys and server/proxy plugins
+- **Account authentication**: user registration, password recovery, email delivery, and external single sign-on
+- **Access restrictions**: per-operation-type rate limits, with built-in Cloudflare Turnstile support
+- **Custom site** information: customizable site title, favicon, logo, and other site details
+- **File storage**: local storage and S3-compatible storage
+- **Email notifications**: SMTP support for issue status changes and new issue assignment alerts
+- **Search filters**: filter issues from the search bar with queries such as `from`, `type`, and `status`
+
+## Structure
 
 ```text
 LightTickets/
-    ├─ backend/            # 后端服务
-    ├─ frontend/           # Web 前端
-    ├─ plugin/             # Minecraft 插件集成
-    ├─ docs/               # 部分临时文档约束，非正式参考
-    ├─ scripts/            # 部分脚本
-    └─ docker-compose.yml  # 示例docker compose文件
+    ├─ backend/            # Backend service
+    ├─ frontend/           # Web frontend
+    ├─ plugin/             # Minecraft plugin integration
+    ├─ docs/               # Temporary internal documents, not an official reference
+    ├─ scripts/            # Utility scripts
+    └─ docker-compose.yml  # Example docker compose file
 ```
 
-## 环境要求
+## Requirements
 
-- Node.js 24 与 npm
-- Java 21 及以上（Minecraft 插件）
+- Node.js 24 and npm
+- Java 21 or newer (Minecraft plugins)
 
-## 本地开发
+## Local development
 
-安装全部依赖：
+Install all dependencies:
 
 ```bash
 npm install
@@ -46,44 +51,43 @@ npm install --prefix backend
 npm install --prefix frontend
 ```
 
-启动服务
+Start the services:
 
 ```bash
 npm run dev
 ```
 
-启动后访问 `http://localhost:23310`，首次运行需要进行初始化。
+Once started, visit `http://localhost:23310`; the first run requires initialization.
 
-后端 API 默认监听 `http://localhost:23320`
+The backend API listens on `http://localhost:23320` by default.
 
-仅启动前端/后端：
+Start only the frontend or backend:
 
 ```bash
-npm run dev:server   # 仅后端
-npm run dev:web      # 仅前端
+npm run dev:server   # backend only
+npm run dev:web      # frontend only
 ```
-## 配置
 
-`config.yml` 只保存平台基础设置，位于后端数据目录。字段定义见 `backend/src/config.default.yml`。
+## Configuration
 
-LightTickets的设置存储在数据库中
+`config.yml` holds only platform base settings and lives in the backend data directory. See `backend/src/config.default.yml` for the field definitions.
 
-| 键                          | 说明                                     |
-| --------------------------- | --------------------------------------- |
-| `server.port`               | 后端监听端口，默认 `23320`                 |
-| `server.corsOrigins`        | 允许的跨域来源（数组）                      |
-| `server.trustedProxyIps`    | 可信反向代理 IP （数组），流空表示不信任转发头 |
-| `database.provider`         | `sqlite` 或 `mysql`；缺失时进将入初始化模式  |
-| `database.mysql.*`          | mysql数据库信息，`host` / `username` / `database` 必填，`port` 默认 `3306`|
-| `security.jwtSecret`        | 访问令牌签名密钥                           |
-| `security.jwtRefreshSecret` | 刷新令牌签名密钥                           |
-| `security.jwtUnsubscribeSecret` | 邮件退订 JWT 密钥，旧版升级时自动生成     |
-| `security.legacyJwtCutoff`  | 旧 JWT 格式兼容截止时间戳                   |
-| `security.externalEncryptionKey` | 外部登录 Provider 密钥加密主密钥       |
+LightTickets settings are stored in the database.
 
+| Key                          | Description                                                              |
+| ---------------------------- | ------------------------------------------------------------------------ |
+| `server.port`               | Backend listen port, default `23320`                                      |
+| `server.corsOrigins`        | Allowed CORS origins (array)                                              |
+| `server.trustedProxyIps`    | Trusted reverse proxy IPs (array); empty means forwarding headers are not trusted |
+| `database.provider`         | `sqlite` or `mysql`; when absent, initialization mode is entered          |
+| `database.mysql.*`          | MySQL connection info; `host` / `username` / `database` are required, `port` defaults to `3306` |
+| `security.jwtSecret`        | Access token signing secret                                               |
+| `security.jwtRefreshSecret` | Refresh token signing secret                                              |
+| `security.jwtUnsubscribeSecret` | Email unsubscribe JWT secret, generated automatically when upgrading from older versions |
+| `security.legacyJwtCutoff`  | Compatibility cutoff timestamp for legacy JWT format                      |
+| `security.externalEncryptionKey` | Master key for encrypting external login provider secrets            |
 
-
-## 快速开始
+## Quick start
 
 ### Docker Compose
 
@@ -91,13 +95,13 @@ LightTickets的设置存储在数据库中
 docker compose up -d
 ```
 
-Compose 启动 `server` 与 `web` 两个容器：仅 `web` 发布到主机端口 `23310`，`server` 在内部网络以 `23320` 提供服务。
+Compose starts two containers, `server` and `web`: only `web` is published to host port `23310`, while `server` serves on `23320` inside the internal network.
 
-SQLite 数据、配置、模板、语言资源与本地附件保存在`./data`目录。端口、镜像与数据目录的调整方式参考文档。
+SQLite data, configuration, templates, language resources, and local attachments are stored in the `./data` directory. See the docs for how to adjust ports, images, and data directories.
 
-### 手动运行
+### Manual setup
 
-后端：
+Backend:
 
 ```bash
 cd backend
@@ -106,7 +110,7 @@ npm run build
 npm start
 ```
 
-前端：
+Frontend:
 
 ```bash
 cd frontend
@@ -115,39 +119,40 @@ LT_WEB_API_URL=/api npm run build
 LT_WEB_HOST=0.0.0.0 LT_WEB_PORT=23310 LT_SERVER_URL=http://127.0.0.1:23320 npm start
 ```
 
-## 服务端插件
+## Server plugins
 
-在 `plugin` 目录构建插件：
+Build the plugins in the `plugin` directory:
 
 ```bash
 cd plugin
 ./gradlew build
 ```
 
-产物为 `plugin/paper/build/libs/*-all.jar` 与 `plugin/velocity/build/libs/*-all.jar`
+Artifacts are `plugin/paper/build/libs/*-all.jar` and `plugin/velocity/build/libs/*-all.jar`.
 
-插件 `config.yml` 中的 `baseUrl` 填写LightTickets公开地址（如 `https://tickets.example.com`）
+Set `baseUrl` in the plugin `config.yml` to the public LightTickets address (e.g. `https://tickets.example.com`).
 
-`serverKey` 填入LightTickets管理员后台生成的服务器密钥
+Set `serverKey` to a server key generated in the LightTickets admin console.
 
-命令（前缀为 `/lit` 或 `/lighttickets`）：
+Commands (prefix `/lit` or `/lighttickets`):
 
-| 命令                                | 说明               |
-| ----------------------------------- | ------------------ |
-| `/lit bind` / `/lit unbind`         | 绑定或解绑账号     |
-| `/lit account`                      | 查看账号信息       |
-| `/lit register`                     | 获取网页注册链接   |
-| `/lit ticket create [type]`         | 创建议题           |
-| `/lit ticket list [page]`           | 查看议题列表       |
-| `/lit ticket info <id>`             | 查看议题详情       |
-| `/lit ticket comment <id>`          | 评论议题           |
-| `/lit ticket status <id> [status]`  | 修改议题状态       |
-| `/lit ticket search <query>`        | 搜索议题           |
-| `/lit reload` / `/lit status`       | 重载配置或查看状态 |
+| Command                             | Description                     |
+| ----------------------------------- | ------------------------------- |
+| `/lit bind` / `/lit unbind`         | Bind or unbind an account       |
+| `/lit account`                      | View account information        |
+| `/lit register`                     | Get a web registration link     |
+| `/lit ticket create [type]`         | Create an issue                 |
+| `/lit ticket list [page]`           | List issues                     |
+| `/lit ticket info <id>`             | View issue details              |
+| `/lit ticket comment <id>`          | Comment on an issue             |
+| `/lit ticket status <id> [status]`  | Change issue status             |
+| `/lit ticket search <query>`        | Search issues                   |
+| `/lit reload` / `/lit status`       | Reload configuration or view status |
 
-## 文档
-详情请查看 [LightTickets文档](https://projects.neokoni.ink/lighttickets/docs/zh-cn)
+## Documentation
 
-## 许可证
+For details, see the [LightTickets documentation](https://projects.neokoni.ink/lighttickets/docs).
 
-[MIT](LICENSE)，Copyright (c) 2026 Neokoni。
+## License
+
+[MIT](LICENSE), Copyright (c) 2026 Neokoni.

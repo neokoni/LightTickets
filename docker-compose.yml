@@ -1,8 +1,7 @@
 services:
   server:
     container_name: lighttickets-server
-    image: lighttickets-server:latest
-    build: ./backend
+    image: neokoni/lighttickets-server:latest
     restart: unless-stopped
     environment:
       LT_SERVER_PORT: 23320
@@ -13,8 +12,7 @@ services:
 
   web:
     container_name: lighttickets-web
-    image: lighttickets-web:latest
-    build: ./frontend
+    image: neokoni/lighttickets-web:latest
     restart: unless-stopped
     depends_on:
       server:
