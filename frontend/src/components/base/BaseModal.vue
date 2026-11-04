@@ -144,7 +144,9 @@ onBeforeUnmount(() => {
             v-if="title"
             class="flex shrink-0 items-center justify-between px-6 py-5 border-b border-slate-200/80 dark:border-slate-800/80"
           >
-            <h3 class="text-base font-semibold text-slate-900 dark:text-white">{{ title }}</h3>
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white">
+              {{ title }}
+            </h3>
             <button
               class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 dark:border-slate-800 text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
               @click="modelValue = false"

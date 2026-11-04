@@ -204,7 +204,11 @@ async function submit() {
           v-if="selectedTemplate?.title_prefix"
           class="mt-1 text-xs text-slate-400 dark:text-slate-500"
         >
-          {{ t('ticket.create.titlePrefixHelp', { prefix: selectedTemplate.title_prefix }) }}
+          {{
+            t('ticket.create.titlePrefixHelp', {
+              prefix: selectedTemplate.title_prefix,
+            })
+          }}
         </p>
       </div>
 

@@ -290,7 +290,9 @@ async function removeBranding(slot: BrandingSlot) {
                 <p class="text-sm font-medium text-slate-900 dark:text-white">
                   {{ variant.label }}
                 </p>
-                <p class="text-xs text-slate-500 dark:text-slate-400">{{ variant.status }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400">
+                  {{ variant.status }}
+                </p>
               </div>
               <div class="flex shrink-0 items-center gap-2">
                 <BaseButton

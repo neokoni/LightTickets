@@ -599,7 +599,11 @@ function submitOnInputEnter(event: KeyboardEvent) {
 
 const editorNavItems = [
   { key: 'basic' as const, labelKey: 'admin.templates.section.basic', icon: 'lucide:info' },
-  { key: 'fields' as const, labelKey: 'admin.templates.section.fields', icon: 'lucide:list-plus' },
+  {
+    key: 'fields' as const,
+    labelKey: 'admin.templates.section.fields',
+    icon: 'lucide:list-plus',
+  },
   { key: 'hooks' as const, labelKey: 'admin.templates.section.hooks', icon: 'lucide:workflow' },
   {
     key: 'source' as const,
@@ -628,7 +632,11 @@ const selectedSection = computed({
 const hiddenModeOptions = [
   { value: 'false', label: t('admin.templates.visibilityPublic'), icon: 'lucide:eye' },
   { value: 'true', label: t('admin.templates.visibilityHidden'), icon: 'lucide:eye-off' },
-  { value: 'optional', label: t('admin.templates.visibilityOptional'), icon: 'lucide:settings-2' },
+  {
+    value: 'optional',
+    label: t('admin.templates.visibilityOptional'),
+    icon: 'lucide:settings-2',
+  },
 ];
 
 const hookEventOptions = [
@@ -662,8 +670,16 @@ const selectionVisibilityOptions = [
 ];
 
 const fieldTypeOptions = [
-  { value: 'input', label: t('admin.templates.fieldType.input'), icon: 'lucide:text-cursor-input' },
-  { value: 'textarea', label: t('admin.templates.fieldType.textarea'), icon: 'lucide:align-left' },
+  {
+    value: 'input',
+    label: t('admin.templates.fieldType.input'),
+    icon: 'lucide:text-cursor-input',
+  },
+  {
+    value: 'textarea',
+    label: t('admin.templates.fieldType.textarea'),
+    icon: 'lucide:align-left',
+  },
   { value: 'markdown', label: t('admin.templates.fieldType.markdown'), icon: 'lucide:text' },
   {
     value: 'checkboxes',
@@ -885,7 +901,11 @@ onMounted(async () => {
                       v-if="form.assigneeIds.length"
                       class="text-sm text-slate-500 dark:text-slate-400"
                     >
-                      {{ t('ticket.assignees.selectedCount', { count: form.assigneeIds.length }) }}
+                      {{
+                        t('ticket.assignees.selectedCount', {
+                          count: form.assigneeIds.length,
+                        })
+                      }}
                     </span>
                     <span v-else class="text-sm text-slate-400 dark:text-slate-500">
                       {{ t('ticket.assignees.unassigned') }}

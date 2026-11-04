@@ -400,7 +400,11 @@ async function changeLanguage(languageId: string) {
             <template v-else>
               <div v-if="auth.user?.pendingEmail" class="space-y-2 max-w-lg pt-1">
                 <p class="text-xs text-amber-700 dark:text-amber-300">
-                  {{ t('profile.account.emailPending', { email: auth.user.pendingEmail }) }}
+                  {{
+                    t('profile.account.emailPending', {
+                      email: auth.user.pendingEmail,
+                    })
+                  }}
                 </p>
                 <div class="flex flex-wrap items-end gap-2">
                   <BaseInput

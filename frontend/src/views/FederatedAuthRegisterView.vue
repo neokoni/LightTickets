@@ -139,7 +139,11 @@ async function submit() {
               {{ t('federatedauth.createAccount') }}
             </h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">
-              {{ t('federatedauth.createAccountHelp', { provider: session.provider.name }) }}
+              {{
+                t('federatedauth.createAccountHelp', {
+                  provider: session.provider.name,
+                })
+              }}
             </p>
           </div>
         </div>

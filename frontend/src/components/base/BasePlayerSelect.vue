@@ -133,7 +133,9 @@ onBeforeUnmount(() => {
           @click="add(option)"
           >{{ option }}</BaseButton
         >
-        <p v-if="loading" class="px-3 py-2 text-xs text-slate-400">{{ t('common.loading') }}</p>
+        <p v-if="loading" class="px-3 py-2 text-xs text-slate-400">
+          {{ t('common.loading') }}
+        </p>
         <p v-else-if="!options.length" class="px-3 py-2 text-xs text-slate-400">
           {{ t('common.noResults') }}
         </p>

@@ -474,7 +474,9 @@ async function unlinkAll(provider: FederatedAuthProvider) {
           <div class="flex items-center justify-between gap-4">
             <div>
               <p class="text-sm font-medium">PKCE</p>
-              <p class="text-xs text-slate-500">{{ t('admin.federatedauth.pkceHelp') }}</p>
+              <p class="text-xs text-slate-500">
+                {{ t('admin.federatedauth.pkceHelp') }}
+              </p>
             </div>
             <BaseToggle v-model="form.pkce" />
           </div>

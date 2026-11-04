@@ -247,7 +247,8 @@ onMounted(fetchAll);
             <p class="text-xs text-slate-500">
               <code>{{ server.serverId }}</code>
               <template v-if="server.identifyId">
-                · {{ t('admin.servers.identifyId') }} <code>{{ server.identifyId }}</code>
+                · {{ t('admin.servers.identifyId') }}
+                <code>{{ server.identifyId }}</code>
               </template>
             </p>
           </div>

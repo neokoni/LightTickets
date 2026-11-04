@@ -264,7 +264,10 @@ router.afterEach((to) => {
 if (typeof window !== 'undefined') {
   window.addEventListener('auth:session-expired', () => {
     if (router.currentRoute.value.name !== 'login') {
-      void router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } });
+      void router.push({
+        name: 'login',
+        query: { redirect: router.currentRoute.value.fullPath },
+      });
     }
   });
 }

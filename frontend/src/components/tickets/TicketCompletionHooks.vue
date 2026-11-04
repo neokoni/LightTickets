@@ -390,7 +390,11 @@ const displayDeliveryResults = computed(() =>
           </span>
           <span v-if="hook.completedAt" class="inline-flex items-center gap-1.5">
             <Icon icon="lucide:clock" class="h-3.5 w-3.5" />
-            {{ t('ticket.completionHook.completedAt', { time: formatDate(hook.completedAt) }) }}
+            {{
+              t('ticket.completionHook.completedAt', {
+                time: formatDate(hook.completedAt),
+              })
+            }}
           </span>
         </div>
       </div>

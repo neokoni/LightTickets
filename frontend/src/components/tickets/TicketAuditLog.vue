@@ -37,7 +37,9 @@ onMounted(fetchLogs);
     <h3 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
       {{ t('ticket.audit.title') }}
     </h3>
-    <div v-if="loading" class="text-sm text-slate-400 animate-pulse">{{ t('common.loading') }}</div>
+    <div v-if="loading" class="text-sm text-slate-400 animate-pulse">
+      {{ t('common.loading') }}
+    </div>
 
     <div v-else-if="logs.length === 0" class="text-sm text-slate-400">
       {{ t('ticket.audit.empty') }}
