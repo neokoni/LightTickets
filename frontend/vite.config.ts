@@ -39,12 +39,14 @@ function hasUncommittedChanges(): boolean {
   }
 }
 
-function resolveBuildCommit(configuredCommit?: string): string {
-  let commit = configuredCommit?.trim();
+function resolveBuildLabel(tag?: string, commit?: string): string {
+  const releaseTag = tag?.trim();
+  if (releaseTag) return hasUncommittedChanges() ? `${releaseTag}-dirty` : releaseTag;
 
-  if (!commit) {
+  let commitValue = commit?.trim();
+  if (!commitValue) {
     try {
-      commit = execFileSync('git', ['rev-parse', 'HEAD'], {
+      commitValue = execFileSync('git', ['rev-parse', 'HEAD'], {
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'ignore'],
       }).trim();
@@ -53,16 +55,19 @@ function resolveBuildCommit(configuredCommit?: string): string {
     }
   }
 
-  if (!/^[0-9a-f]{7,40}$/i.test(commit)) return UNKNOWN_COMMIT;
+  if (!/^[0-9a-f]{7,40}$/i.test(commitValue)) return UNKNOWN_COMMIT;
 
-  const shortCommit = commit.slice(0, 7).toLowerCase();
+  const shortCommit = commitValue.slice(0, 7).toLowerCase();
   return hasUncommittedChanges() ? `${shortCommit}-dirty` : shortCommit;
 }
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const webPort = Number(env.LT_WEB_PORT || LT_DEFAULT_WEB_PORT);
-  const buildCommit = resolveBuildCommit(env.LT_GIT_COMMIT || process.env.GITHUB_SHA);
+  const buildCommit = resolveBuildLabel(
+    env.LT_GIT_TAG,
+    env.LT_GIT_COMMIT || process.env.GITHUB_SHA,
+  );
   const appVersion = resolveAppVersion();
   const serverTarget = env.LT_SERVER_URL || LT_DEFAULT_SERVER_URL;
 

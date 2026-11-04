@@ -26,6 +26,7 @@ jobs:
         env:
           LT_WEB_API_URL: /api
           LT_GIT_COMMIT: ${{ github.sha }}
+          LT_GIT_TAG: ${{ github.event.release.tag_name }}
         run: npm run build
 
       - name: Package web.zip
@@ -145,6 +146,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             LT_GIT_COMMIT=${{ github.sha }}
+            LT_GIT_TAG=${{ github.event.release.tag_name }}
           cache-from: type=gha,scope=docker-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=docker-${{ matrix.component }}
 
