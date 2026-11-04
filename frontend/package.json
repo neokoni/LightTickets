@@ -12,8 +12,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,vue}\" \"*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.{ts,vue}\" \"*.mjs\"",
-    "gen:api": "npx --yes openapi-typescript@7.13.0 ../backend/openapi.json -o src/types/generated-api.ts"
+    "format:check": "prettier --check \"src/**/*.{ts,vue}\" \"*.mjs\""
   },
   "dependencies": {
     "@iconify/vue": "^5.0.1",
