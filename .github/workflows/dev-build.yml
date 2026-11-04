@@ -99,7 +99,7 @@ jobs:
 
       - name: Build
         working-directory: plugin
-        run: ./gradlew paper:shadowJar velocity:shadowJar --no-daemon
+        run: ./gradlew build
 
       - name: Upload paper plugin jar
         uses: actions/upload-artifact@v4
