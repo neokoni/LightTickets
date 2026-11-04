@@ -1,7 +1,6 @@
 {
   "manifest": {
     "displayName": "English",
-    "nativeName": "English",
     "direction": "ltr"
   },
   "messages": {

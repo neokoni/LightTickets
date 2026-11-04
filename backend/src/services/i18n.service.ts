@@ -8,7 +8,6 @@ export const DEFAULT_LANGUAGE_ID = 'zh-CN';
 
 export interface LanguageManifest {
   displayName: string;
-  nativeName?: string;
   direction?: 'ltr' | 'rtl';
 }
 
@@ -91,7 +90,6 @@ function readLanguageFile(filePath: string, id: string, source: LanguageSource) 
     id,
     manifest: {
       displayName,
-      nativeName: raw.manifest?.nativeName,
       direction,
     },
     messages: flattenMessages(raw.messages),
@@ -154,7 +152,7 @@ function getDefaultLanguage(languages: Map<string, LoadedLanguage>): LoadedLangu
     return {
       id: DEFAULT_LANGUAGE_ID,
       source: LANGUAGE_SOURCE.INTERNAL,
-      manifest: { displayName: '简体中文', nativeName: '简体中文', direction: 'ltr' },
+      manifest: { displayName: '简体中文', direction: 'ltr' },
       messages: {},
     };
   }

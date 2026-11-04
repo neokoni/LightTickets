@@ -36,7 +36,7 @@ describe('GET /api/i18n/languages', () => {
     fs.writeFileSync(
       dataPath('locales/en-US.json'),
       JSON.stringify({
-        manifest: { displayName: 'English', nativeName: 'English', direction: 'ltr' },
+        manifest: { displayName: 'English', direction: 'ltr' },
         messages: { common: { save: 'Save' } },
       }),
       'utf-8',

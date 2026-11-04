@@ -7,7 +7,6 @@ export type LanguageSource = (typeof LANGUAGE_SOURCE)[keyof typeof LANGUAGE_SOUR
 
 export interface LanguageManifest {
   displayName: string;
-  nativeName?: string;
   direction?: 'ltr' | 'rtl';
 }
 

@@ -3,7 +3,6 @@ import { LANGUAGE_SOURCE, type LanguagePack, type LanguageSummary } from '@/type
 export const fallbackLanguageSummary: LanguageSummary = {
   id: 'zh-CN',
   displayName: '简体中文',
-  nativeName: '简体中文',
   direction: 'ltr',
   source: LANGUAGE_SOURCE.INTERNAL,
 };
@@ -920,7 +919,6 @@ export const fallbackLanguagePack: LanguagePack = {
   id: fallbackLanguageSummary.id,
   properties: {
     displayName: fallbackLanguageSummary.displayName,
-    nativeName: fallbackLanguageSummary.nativeName,
     direction: fallbackLanguageSummary.direction,
   },
   messages: flattenMessages(nestedMessages),
