@@ -12,7 +12,7 @@ const UNKNOWN_COMMIT = 'unknow';
 function resolveAppVersion(): string {
   try {
     const packageJson: unknown = JSON.parse(
-      readFileSync(path.resolve(__dirname, 'package.json'), 'utf8'),
+      readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf8'),
     );
 
     if (typeof packageJson === 'object' && packageJson !== null && 'version' in packageJson) {
@@ -75,7 +75,7 @@ export default defineConfig(({ mode }) => {
     plugins: [vue(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, 'src'),
+        '@': path.resolve(import.meta.dirname, 'src'),
       },
     },
     server: {
