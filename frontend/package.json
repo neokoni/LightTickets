@@ -17,20 +17,14 @@
   "dependencies": {
     "@iconify/vue": "^5.0.1",
     "@mdit/plugin-tasklist": "^0.22.3",
-    "@tailwindcss/typography": "^0.5.19",
-    "@vueuse/core": "^14.3.0",
     "diff": "^9.0.0",
     "markdown-it": "^14.1.1",
     "pinia": "^3.0.4",
-    "tailwindcss": "^4.3.0",
     "vue": "^3.5.34",
     "vue-router": "^5.0.7"
   },
   "overrides": {
-    "minimatch": "^11.0.4",
-    "@tailwindcss/typography": {
-      "postcss-selector-parser": "^6.1.5"
-    }
+    "minimatch": "^11.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
