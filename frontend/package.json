@@ -27,6 +27,12 @@
     "vue": "^3.5.34",
     "vue-router": "^5.0.7"
   },
+  "overrides": {
+    "minimatch": "^11.0.4",
+    "@tailwindcss/typography": {
+      "postcss-selector-parser": "^6.1.5"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.0",

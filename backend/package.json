@@ -39,7 +39,7 @@
     "js-yaml": "^4.1.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.1.1",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.3.1",
     "openid-client": "^6.8.4",
     "socket.io": "^4.8.3",
     "zod": "^4.4.3"
@@ -64,5 +64,15 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.63.0",
     "vitest": "^4.1.6"
+  },
+  "overrides": {
+    "minimatch": "^11.0.4"
+  },
+  "allowScripts": {
+    "bcrypt": true,
+    "better-sqlite3": true,
+    "esbuild": true,
+    "prisma": true,
+    "@prisma/engines": true
   }
 }
