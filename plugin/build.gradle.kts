@@ -6,9 +6,9 @@ plugins {
 }
 
 allprojects {
-    group = "ink.neokoni.LightTickets"
-    version = "1.0.0"
-    description = "A LightWeight issue platform support for Minecraft Server"
+    group = property("group") as String
+    version = project.property("version") as String
+    description = project.property("description") as String
 }
 
 subprojects {

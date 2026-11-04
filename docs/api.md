@@ -1017,5 +1017,5 @@ key 和自报 UUID 鉴权的旧实现。若必须回退数据库，从升级前�
 - `GET /api/docs/openapi.json`
 
 返回构建生成的 OpenAPI JSON；如果尚未生成，返回 `404` 标准错误响应。
-规范方言固定为 OpenAPI `3.0.3`；项目仍处于 WIP，`info.version` 保持初始版本 `1.0.0`。
+规范方言固定为 OpenAPI `3.0.3`。
 生成过程会校验成功/错误 envelope，并对比 Express 实际路由与文档路由，存在遗漏或陈旧路由时失败。

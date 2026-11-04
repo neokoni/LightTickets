@@ -1581,7 +1581,7 @@ const openapi = generator.generateDocument({
   openapi: '3.0.3',
   info: {
     title: 'LightTickets API',
-    version: '1.0.0',
+    version: '1.0.1',
     description: 'LightTickets API 文档',
   },
   servers: [{ url: 'http://localhost:23320', description: 'Development server' }],
@@ -1702,9 +1702,6 @@ function validateResponseContracts(): void {
 function validateOpenApiDocument(): void {
   if (openapi.openapi !== '3.0.3') {
     throw new Error(`OpenAPI dialect must be 3.0.3, received ${openapi.openapi}`);
-  }
-  if (openapi.info.version !== '1.0.0') {
-    throw new Error(`WIP API version must remain 1.0.0, received ${openapi.info.version}`);
   }
 
   const runtimeRoutes = getRuntimeRoutes();
