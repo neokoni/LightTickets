@@ -103,9 +103,9 @@ jobs:
           DOCKERHUB_IMAGE: neokoni/lighttickets-${{ matrix.component }}
         run: |
           if [[ "${GITHUB_REPOSITORY}" == "neokoni/LightTickets" ]]; then
-            printf 'images=%s\n%s\n' "$GHCR_IMAGE" "$DOCKERHUB_IMAGE" >> "$GITHUB_OUTPUT"
+            echo "images=${GHCR_IMAGE},${DOCKERHUB_IMAGE}" >> "$GITHUB_OUTPUT"
           else
-            printf 'images=%s\n' "$GHCR_IMAGE" >> "$GITHUB_OUTPUT"
+            echo "images=${GHCR_IMAGE}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Docker metadata

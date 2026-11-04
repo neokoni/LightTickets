@@ -1,11 +1,11 @@
+<div align="center">
 
-<center>
 <img src="banner.png" alt="banner" style="width: 25em"></img>
 
 [![License: MIT](https://img.shields.io/github/license/neokoni/LightTickets)](LICENSE)
 [![Dev Build Artifacts](https://github.com/neokoni/LightTickets/actions/workflows/dev-build.yml/badge.svg)](https://github.com/neokoni/LightTickets/actions/workflows/dev-build.yml)
 
-</center>
+</div>
 LightTickets 是一个自托管的面向 Minecraft 服务器管理的议题/工单平台，支持网页管理以及Paper/Folia, Velocity插件端连接交互使用
 
 ## 功能
