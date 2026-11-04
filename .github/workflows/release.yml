@@ -39,7 +39,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            LightTickets-web.zip
+            frontend/LightTickets-web.zip
 
   server:
     name: Package server.zip
@@ -75,7 +75,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            LightTickets-server.zip
+            backend/LightTickets-server.zip
 
   docker:
     name: Docker ${{ matrix.component }}
@@ -174,4 +174,5 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            plugin/build/libs/LightTickets-*.jar
+            plugin/velocity/build/libs/LightTickets-*-all.jar
+            plugin/paper/build/libs/LightTickets-*-all.jar
