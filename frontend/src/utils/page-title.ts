@@ -1,6 +1,6 @@
 import { computed, ref, watchEffect } from 'vue';
 import { t } from '@/i18n';
-import { siteTitle } from '@/stores/site';
+import { siteConfigLoaded, siteTitle } from '@/stores/site';
 
 type PageTitleSource = { key: string } | { text: string };
 
@@ -21,6 +21,8 @@ export function setPageTitleText(text: string | null): void {
 }
 
 watchEffect(() => {
+  if (!siteConfigLoaded.value) return;
   const page = resolvedPageTitle.value;
-  document.title = page ? `${page} - ${siteTitle.value}` : siteTitle.value;
+  if (!page) return;
+  document.title = `${page} - ${siteTitle.value}`;
 });

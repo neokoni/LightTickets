@@ -34,13 +34,19 @@ export const siteConfig = reactive<SiteConfigCache>({
 
 const darkTheme = ref(false);
 
+const isSiteConfigLoaded = ref(false);
+
 function variantUrl(lightUrl: string | null, darkUrl: string | null): string | null {
   const light = lightUrl?.trim() || null;
   const dark = darkUrl?.trim() || null;
   return darkTheme.value ? dark || light : light;
 }
 
-export const siteTitle = computed(() => siteConfig.siteName?.trim() || DEFAULT_SITE_TITLE);
+export const siteTitle = computed(() =>
+  isSiteConfigLoaded.value ? siteConfig.siteName?.trim() || DEFAULT_SITE_TITLE : '',
+);
+
+export const siteConfigLoaded = computed(() => isSiteConfigLoaded.value);
 
 const customSiteLogoUrl = computed(() => variantUrl(siteConfig.logoUrl, siteConfig.logoDarkUrl));
 
@@ -57,14 +63,22 @@ export function initSiteBranding(ui: ReturnType<typeof useUiStore>): void {
     { immediate: true },
   );
   watch(
-    [() => variantUrl(siteConfig.faviconUrl, siteConfig.faviconDarkUrl), () => darkTheme.value],
-    ([url, dark]) => applySiteFavicon(url, dark),
+    [
+      () => variantUrl(siteConfig.faviconUrl, siteConfig.faviconDarkUrl),
+      () => darkTheme.value,
+      () => isSiteConfigLoaded.value,
+    ],
+    ([url, dark, loaded]) => {
+      if (!loaded) return;
+      applySiteFavicon(url, dark);
+    },
     { immediate: true },
   );
 }
 
 export function setSiteConfigCache(data: SiteConfig) {
   Object.assign(siteConfig, data, { connectionError: false });
+  isSiteConfigLoaded.value = true;
 }
 
 export function setMailFeatureAvailabilityCache(

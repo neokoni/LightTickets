@@ -8,22 +8,40 @@ export const DEFAULT_FAVICON = '/favicon.svg';
 
 export const DEFAULT_FAVICON_DARK = '/favicon-dark.svg';
 
+interface DefaultIconSpec {
+  rel: 'icon' | 'apple-touch-icon';
+  href: string;
+  type?: string;
+  sizes?: string;
+}
+
+const DEFAULT_ICON_SPECS: readonly DefaultIconSpec[] = [
+  { rel: 'icon', href: DEFAULT_FAVICON, type: 'image/svg+xml' },
+  { rel: 'icon', href: '/icons/lighttickets_32.png', type: 'image/png', sizes: '32x32' },
+  { rel: 'icon', href: '/icons/lighttickets_64.png', type: 'image/png', sizes: '64x64' },
+  { rel: 'icon', href: '/icons/lighttickets_128.png', type: 'image/png', sizes: '128x128' },
+  { rel: 'icon', href: '/icons/lighttickets_512.png', type: 'image/png', sizes: '512x512' },
+  { rel: 'apple-touch-icon', href: '/icons/lighttickets_128.png', sizes: '128x128' },
+];
+
 const DARK_ICON_BY_HREF: Readonly<Record<string, string>> = {
   [DEFAULT_FAVICON]: DEFAULT_FAVICON_DARK,
 };
 
 let defaultIcons: HTMLLinkElement[] | null = null;
 
-function collectDefaultIcons(): HTMLLinkElement[] {
-  return Array.from(
-    document.querySelectorAll<HTMLLinkElement>(
-      `link[rel~="icon"]:not([${CUSTOM_ICON_ATTR}]), link[rel="apple-touch-icon"]:not([${CUSTOM_ICON_ATTR}])`,
-    ),
-  );
-}
-
 function getDefaultIcons(): HTMLLinkElement[] {
-  if (!defaultIcons) defaultIcons = collectDefaultIcons();
+  if (defaultIcons) return defaultIcons;
+
+  defaultIcons = DEFAULT_ICON_SPECS.map((spec) => {
+    const link = document.createElement('link');
+    link.rel = spec.rel;
+    link.href = spec.href;
+    if (spec.type) link.type = spec.type;
+    if (spec.sizes) link.sizes = spec.sizes;
+    if (spec.rel === 'icon') link.setAttribute(LIGHT_HREF_ATTR, spec.href);
+    return link;
+  });
   return defaultIcons;
 }
 
@@ -32,13 +50,9 @@ function applyDefaultIconTheme(dark: boolean): void {
 
   for (const link of getDefaultIcons()) {
     if (link.relList.contains('icon')) {
-      let lightHref = link.getAttribute(LIGHT_HREF_ATTR);
-      if (lightHref === null) {
-        lightHref = link.getAttribute('href') ?? '';
-        link.setAttribute(LIGHT_HREF_ATTR, lightHref);
-      }
-
+      const lightHref = link.getAttribute(LIGHT_HREF_ATTR) ?? link.getAttribute('href') ?? '';
       const darkHref = DARK_ICON_BY_HREF[lightHref];
+
       if (dark) {
         if (!darkHref) {
           link.remove();
