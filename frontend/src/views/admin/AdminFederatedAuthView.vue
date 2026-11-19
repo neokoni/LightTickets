@@ -93,6 +93,7 @@ const form = reactive<ProviderForm>({
 const protocolOptions = computed(() => [
   { value: 'oidc', label: t('admin.federatedauth.oidc') },
   { value: 'oauth', label: t('admin.federatedauth.oauth') },
+  { value: 'qq', label: t('admin.federatedauth.qq') },
 ]);
 const secretModeOptions = computed(() => [
   { value: 'basic', label: 'client_secret_basic' },
@@ -181,7 +182,7 @@ function reset(provider?: FederatedAuthProvider) {
 }
 
 function changeProtocol(value: string | undefined) {
-  if (value !== 'oidc' && value !== 'oauth') return;
+  if (value !== 'oidc' && value !== 'oauth' && value !== 'qq') return;
   form.protocol = value;
   if (value === 'oidc') {
     form.scope = 'openid profile email';
@@ -190,7 +191,7 @@ function changeProtocol(value: string | undefined) {
     form.emailPath = 'email';
     form.avatarPath = 'picture';
     if (form.secretMode === 'bcrypt') form.secretMode = 'basic';
-  } else {
+  } else if (value === 'oauth') {
     form.scope = 'profile email';
     form.subjectPath = 'id';
     form.usernamePath = 'username';
@@ -227,24 +228,22 @@ function payload(): FederatedAuthProviderPayload {
   }
   if (!callbackUrl.value) throw new Error(callbackUrlHint.value);
   const redirectUri = httpUrl(callbackUrl.value, t('admin.federatedauth.redirectUri'))!;
+  const isOAuth = form.protocol === 'oauth';
   return {
     slug: form.slug.trim(),
     name: form.name.trim(),
     iconUrl: httpUrl(form.iconUrl, t('admin.federatedauth.iconUrl'), true),
     protocol: form.protocol,
     issuer: form.protocol === 'oidc' ? httpUrl(form.issuer, 'Issuer') : null,
-    authorizationEndpoint:
-      form.protocol === 'oauth'
-        ? httpUrl(form.authorizationEndpoint, t('admin.federatedauth.authorizationEndpoint'))
-        : null,
-    tokenEndpoint:
-      form.protocol === 'oauth'
-        ? httpUrl(form.tokenEndpoint, t('admin.federatedauth.tokenEndpoint'))
-        : null,
-    userInfoEndpoint:
-      form.protocol === 'oauth'
-        ? httpUrl(form.userInfoEndpoint, t('admin.federatedauth.userInfoEndpoint'))
-        : null,
+    authorizationEndpoint: isOAuth
+      ? httpUrl(form.authorizationEndpoint, t('admin.federatedauth.authorizationEndpoint'))
+      : null,
+    tokenEndpoint: isOAuth
+      ? httpUrl(form.tokenEndpoint, t('admin.federatedauth.tokenEndpoint'))
+      : null,
+    userInfoEndpoint: isOAuth
+      ? httpUrl(form.userInfoEndpoint, t('admin.federatedauth.userInfoEndpoint'))
+      : null,
     redirectUri,
     clientId: form.clientId.trim(),
     ...(form.clientSecret && { clientSecret: form.clientSecret }),
@@ -429,7 +428,7 @@ async function unlinkAll(provider: FederatedAuthProvider) {
           @update:model-value="changeProtocol"
         />
         <BaseInput v-if="form.protocol === 'oidc'" v-model="form.issuer" label="Issuer" required />
-        <template v-else>
+        <template v-else-if="form.protocol === 'oauth'">
           <BaseInput
             v-model="form.authorizationEndpoint"
             :label="t('admin.federatedauth.authorizationEndpoint')"
@@ -473,16 +472,27 @@ async function unlinkAll(provider: FederatedAuthProvider) {
             {{ t('admin.federatedauth.redirectUriHelp') }}
           </p>
         </div>
-        <BaseInput v-model="form.clientId" label="Client ID" required />
+        <BaseInput
+          v-model="form.clientId"
+          :label="form.protocol === 'qq' ? t('admin.federatedauth.appId') : 'Client ID'"
+          required
+        />
         <BaseInput
           v-model="form.clientSecret"
-          label="Client Secret"
+          :label="form.protocol === 'qq' ? t('admin.federatedauth.appKey') : 'Client Secret'"
           type="password"
+          :required="form.protocol === 'qq'"
           :placeholder="editing?.clientSecretSet ? t('admin.federatedauth.keepSecret') : ''"
         />
-        <BaseInput v-model="form.scope" label="Scope" :required="form.protocol === 'oidc'" />
+        <BaseInput
+          v-if="form.protocol !== 'qq'"
+          v-model="form.scope"
+          label="Scope"
+          :required="form.protocol === 'oidc'"
+        />
 
         <BaseButton
+          v-if="form.protocol !== 'qq'"
           type="button"
           size="sm"
           :aria-expanded="advancedOpen"
@@ -493,11 +503,9 @@ async function unlinkAll(provider: FederatedAuthProvider) {
           <Icon :icon="advancedOpen ? 'lucide:chevron-up' : 'lucide:chevron-down'" />
         </BaseButton>
         <div
-          v-show="advancedOpen"
+          v-if="advancedOpen && form.protocol !== 'qq'"
           id="federatedauth-advanced-options"
           class="space-y-4"
-          :aria-hidden="!advancedOpen"
-          :inert="advancedOpen ? undefined : true"
         >
           <div class="grid gap-3 sm:grid-cols-2">
             <BaseInput

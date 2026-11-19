@@ -70,6 +70,10 @@ PKCE；OIDC 额外校验 nonce 和 ID Token。
 `client_secret_basic`/`client_secret_post`/bcrypt `$2y$` Secret 方式，以及自定义 Access Token 和
 用户信息 JSON Path。所有非标准行为默认关闭，不根据域名自动启用或回退。
 
+Provider 协议除通用 OIDC 与 OAuth 外，还支持 `qq`（QQ 互联）。选择该协议时只需填写 APP ID 与
+APP KEY，其余端点、Scope、用户字段路径均使用 QQ 互联的固定取值，回调地址仍由站点地址与路径标识生成。
+QQ 互联不支持 PKCE，身份标识取自 `openid`。
+
 管理员可调用 `DELETE /api/admin/federatedauth/providers/:id/identities` 一次解除该 Provider 的全部
 身份绑定。该操作只删除外部身份关系，账户及其密码、议题等数据均保留；Provider 仍需另行删除。
 

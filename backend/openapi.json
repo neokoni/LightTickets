@@ -11791,7 +11791,8 @@
                     "type": "string",
                     "enum": [
                       "oidc",
-                      "oauth"
+                      "oauth",
+                      "qq"
                     ]
                   },
                   "issuer": {
@@ -12023,7 +12024,8 @@
                     "type": "string",
                     "enum": [
                       "oidc",
-                      "oauth"
+                      "oauth",
+                      "qq"
                     ]
                   },
                   "issuer": {

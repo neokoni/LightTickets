@@ -47,6 +47,7 @@ enum AttachmentStatus {
 enum FederatedAuthProtocol {
   oidc
   oauth
+  qq
 }
 
 enum FederatedAuthIntent {

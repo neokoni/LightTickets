@@ -3,6 +3,7 @@ import * as oidc from 'openid-client';
 import { prisma } from '../db.js';
 import {
   FEDERATED_AUTH_PROTOCOL,
+  FEDERATED_AUTH_QQ,
   FEDERATED_AUTH_SECRET_MODE,
   type FederatedAuthSecretMode,
 } from '../constants/federatedauth.js';
@@ -18,7 +19,7 @@ export interface FederatedAuthRuntimeProvider {
   slug: string;
   name: string;
   iconUrl: string | null;
-  protocol: 'oidc' | 'oauth';
+  protocol: 'oidc' | 'oauth' | 'qq';
   issuer: string | null;
   authorizationEndpoint: string | null;
   tokenEndpoint: string | null;
@@ -77,32 +78,42 @@ function toAdmin(provider: FederatedAuthProvider & { _count: { identities: numbe
 }
 
 function providerData(input: FederatedAuthProviderCreateInput) {
+  const isOAuth = input.protocol === FEDERATED_AUTH_PROTOCOL.OAUTH;
+  const isQq = input.protocol === FEDERATED_AUTH_PROTOCOL.QQ;
+  if (isQq && !input.clientSecret) throw new ValidationError('QQ 互联需要填写 APP Key');
   return {
     slug: input.slug,
     name: input.name,
     iconUrl: input.iconUrl ?? null,
     protocol: input.protocol,
     issuer: input.protocol === FEDERATED_AUTH_PROTOCOL.OIDC ? (input.issuer ?? null) : null,
-    authorizationEndpoint:
-      input.protocol === FEDERATED_AUTH_PROTOCOL.OAUTH
-        ? (input.authorizationEndpoint ?? null)
+    authorizationEndpoint: isOAuth
+      ? (input.authorizationEndpoint ?? null)
+      : isQq
+        ? FEDERATED_AUTH_QQ.AUTHORIZATION_ENDPOINT
         : null,
-    tokenEndpoint:
-      input.protocol === FEDERATED_AUTH_PROTOCOL.OAUTH ? (input.tokenEndpoint ?? null) : null,
-    userInfoEndpoint:
-      input.protocol === FEDERATED_AUTH_PROTOCOL.OAUTH ? (input.userInfoEndpoint ?? null) : null,
+    tokenEndpoint: isOAuth
+      ? (input.tokenEndpoint ?? null)
+      : isQq
+        ? FEDERATED_AUTH_QQ.TOKEN_ENDPOINT
+        : null,
+    userInfoEndpoint: isOAuth
+      ? (input.userInfoEndpoint ?? null)
+      : isQq
+        ? FEDERATED_AUTH_QQ.USER_INFO_ENDPOINT
+        : null,
     redirectUri: input.redirectUri,
     clientId: input.clientId,
     clientSecretEncrypted: input.clientSecret ? encryptFederatedAuth(input.clientSecret) : null,
-    scope: input.scope,
-    subjectPath: input.subjectPath,
-    usernamePath: input.usernamePath ?? null,
-    emailPath: input.emailPath ?? null,
-    avatarPath: input.avatarPath ?? null,
+    scope: isQq ? FEDERATED_AUTH_QQ.SCOPE : input.scope,
+    subjectPath: isQq ? FEDERATED_AUTH_QQ.SUBJECT_PATH : input.subjectPath,
+    usernamePath: isQq ? FEDERATED_AUTH_QQ.USERNAME_PATH : (input.usernamePath ?? null),
+    emailPath: isQq ? null : (input.emailPath ?? null),
+    avatarPath: isQq ? FEDERATED_AUTH_QQ.AVATAR_PATH : (input.avatarPath ?? null),
     authorizationParams: JSON.stringify(input.authorizationParams ?? {}),
-    pkce: input.pkce,
-    secretMode: input.secretMode,
-    accessTokenPath: input.accessTokenPath,
+    pkce: isQq ? false : input.pkce,
+    secretMode: isQq ? FEDERATED_AUTH_SECRET_MODE.POST : input.secretMode,
+    accessTokenPath: isQq ? FEDERATED_AUTH_QQ.ACCESS_TOKEN_PATH : input.accessTokenPath,
     enabled: input.enabled,
     allowRegistration: input.allowRegistration,
   };
@@ -227,7 +238,6 @@ export async function updateProvider(id: string, input: FederatedAuthProviderUpd
   ) {
     throw new ValidationError('OAuth 端点不能为空');
   }
-
   const provider = await prisma().federatedAuthProvider.update({
     where: { id },
     data: providerData(merged),

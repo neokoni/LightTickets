@@ -1,6 +1,19 @@
 export const FEDERATED_AUTH_PROTOCOL = {
   OIDC: 'oidc',
   OAUTH: 'oauth',
+  QQ: 'qq',
+} as const;
+
+export const FEDERATED_AUTH_QQ = {
+  AUTHORIZATION_ENDPOINT: 'https://graph.qq.com/oauth2.0/authorize',
+  TOKEN_ENDPOINT: 'https://graph.qq.com/oauth2.0/token',
+  OPENID_ENDPOINT: 'https://graph.qq.com/oauth2.0/me',
+  USER_INFO_ENDPOINT: 'https://graph.qq.com/user/get_user_info',
+  SCOPE: 'get_user_info',
+  SUBJECT_PATH: 'openid',
+  USERNAME_PATH: 'nickname',
+  AVATAR_PATH: 'figureurl_qq_2',
+  ACCESS_TOKEN_PATH: 'access_token',
 } as const;
 
 export const FEDERATED_AUTH_INTENT = {

@@ -1,6 +1,6 @@
 import type { AuthResponse } from './user';
 
-export type FederatedAuthProtocol = 'oidc' | 'oauth';
+export type FederatedAuthProtocol = 'oidc' | 'oauth' | 'qq';
 export type FederatedAuthSecretMode = 'basic' | 'post' | 'bcrypt';
 
 export interface FederatedAuthPublicProvider {

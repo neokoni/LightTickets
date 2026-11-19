@@ -6,6 +6,7 @@ import { prisma } from '../db.js';
 import {
   FEDERATED_AUTH_INTENT,
   FEDERATED_AUTH_PROTOCOL,
+  FEDERATED_AUTH_QQ,
   FEDERATED_AUTH_SECRET_MODE,
   FEDERATED_AUTH_TTL,
 } from '../constants/federatedauth.js';
@@ -182,7 +183,7 @@ async function buildAuthorizationUrl(
   const challenge = payload.verifier
     ? await oidc.calculatePKCECodeChallenge(payload.verifier)
     : null;
-  if (provider.protocol === FEDERATED_AUTH_PROTOCOL.OAUTH) {
+  if (provider.protocol !== FEDERATED_AUTH_PROTOCOL.OIDC) {
     return buildOAuthAuthorizationUrl(provider, state, challenge);
   }
 
@@ -345,12 +346,63 @@ async function fetchOidcClaims(
   return { ...claims, ...userInfo, sub: claims.sub };
 }
 
+async function fetchQqJson(url: URL, failure: string): Promise<unknown> {
+  const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(8_000) });
+  if (!response.ok) throw new UnauthorizedError(failure);
+  return parseTokenResponse(response);
+}
+
+async function fetchQqClaims(
+  provider: FederatedAuthRuntimeProvider,
+  currentUrl: URL,
+): Promise<unknown> {
+  const code = currentUrl.searchParams.get('code');
+  if (!code) throw new UnauthorizedError('外部登录回调缺少授权码');
+  if (!provider.clientSecret) throw new ValidationError('QQ 互联需要填写 APP Key');
+
+  const tokenUrl = new URL(FEDERATED_AUTH_QQ.TOKEN_ENDPOINT);
+  tokenUrl.searchParams.set('grant_type', 'authorization_code');
+  tokenUrl.searchParams.set('client_id', provider.clientId);
+  tokenUrl.searchParams.set('client_secret', provider.clientSecret);
+  tokenUrl.searchParams.set('code', code);
+  tokenUrl.searchParams.set('redirect_uri', provider.redirectUri);
+  tokenUrl.searchParams.set('fmt', 'json');
+  const accessToken = optionalString(
+    readJsonPath(
+      await fetchQqJson(tokenUrl, 'QQ 互联 Token 请求失败'),
+      FEDERATED_AUTH_QQ.ACCESS_TOKEN_PATH,
+    ),
+  );
+  if (!accessToken) throw new UnauthorizedError('QQ 互联未返回 Access Token');
+
+  const openIdUrl = new URL(FEDERATED_AUTH_QQ.OPENID_ENDPOINT);
+  openIdUrl.searchParams.set('access_token', accessToken);
+  openIdUrl.searchParams.set('fmt', 'json');
+  const openId = optionalString(
+    readJsonPath(await fetchQqJson(openIdUrl, 'QQ 互联 OpenID 请求失败'), 'openid'),
+  );
+  if (!openId) throw new UnauthorizedError('QQ 互联未返回 OpenID');
+
+  const userInfoUrl = new URL(FEDERATED_AUTH_QQ.USER_INFO_ENDPOINT);
+  userInfoUrl.searchParams.set('access_token', accessToken);
+  userInfoUrl.searchParams.set('oauth_consumer_key', provider.clientId);
+  userInfoUrl.searchParams.set('openid', openId);
+  const userInfo = await fetchQqJson(userInfoUrl, 'QQ 互联用户信息请求失败');
+  return {
+    ...(typeof userInfo === 'object' && userInfo !== null ? userInfo : {}),
+    openid: openId,
+  };
+}
+
 async function providerClaims(
   provider: FederatedAuthRuntimeProvider,
   currentUrl: URL,
   payload: FlowPayload,
   state: string,
 ): Promise<FederatedAuthClaims> {
+  if (provider.protocol === FEDERATED_AUTH_PROTOCOL.QQ) {
+    return mapClaims(provider, await fetchQqClaims(provider, currentUrl));
+  }
   const source =
     provider.protocol === FEDERATED_AUTH_PROTOCOL.OIDC
       ? await fetchOidcClaims(provider, currentUrl, payload, state)

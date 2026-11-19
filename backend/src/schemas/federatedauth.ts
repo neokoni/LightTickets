@@ -34,7 +34,11 @@ const providerFields = {
   slug: federatedAuthSlugSchema,
   name: z.string().trim().min(1).max(80),
   iconUrl: httpUrl.nullable().optional(),
-  protocol: z.enum([FEDERATED_AUTH_PROTOCOL.OIDC, FEDERATED_AUTH_PROTOCOL.OAUTH]),
+  protocol: z.enum([
+    FEDERATED_AUTH_PROTOCOL.OIDC,
+    FEDERATED_AUTH_PROTOCOL.OAUTH,
+    FEDERATED_AUTH_PROTOCOL.QQ,
+  ]),
   issuer: httpUrl.nullable().optional(),
   authorizationEndpoint: httpUrl.nullable().optional(),
   tokenEndpoint: httpUrl.nullable().optional(),
@@ -72,6 +76,7 @@ function validateProtocol(
   context: z.RefinementCtx,
 ): void {
   if (!value.protocol) return;
+  if (value.protocol === FEDERATED_AUTH_PROTOCOL.QQ) return;
   if (value.protocol === FEDERATED_AUTH_PROTOCOL.OIDC) {
     if (!value.issuer) {
       context.addIssue({ code: 'custom', path: ['issuer'], message: 'OIDC issuer 不能为空' });

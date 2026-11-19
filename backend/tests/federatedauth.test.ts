@@ -458,4 +458,141 @@ describe('FederatedAuth Provider administration', () => {
       .set('Authorization', `Bearer ${accessToken}`);
     expect(removed.status).toBe(204);
   });
+
+  it('configures a QQ Connect Provider with only APP ID and APP KEY', async () => {
+    const admin = await prisma().user.create({
+      data: {
+        email: 'qq-admin@example.com',
+        username: 'qq-admin',
+        passwordHash: await bcrypt.hash('Password123!', 12),
+        role: 'admin',
+      },
+    });
+    const accessToken = generateAccessToken(admin.id, admin.role);
+    const created = await request(app)
+      .post('/api/admin/federatedauth/providers')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        slug: 'qq',
+        name: 'QQ',
+        iconUrl: null,
+        protocol: 'qq',
+        issuer: null,
+        authorizationEndpoint: null,
+        tokenEndpoint: null,
+        userInfoEndpoint: null,
+        redirectUri: callback,
+        clientId: '101234567',
+        clientSecret: 'qq-app-key',
+        scope: 'get_user_info',
+        subjectPath: 'openid',
+        usernamePath: 'nickname',
+        emailPath: null,
+        avatarPath: 'figureurl_qq_2',
+        authorizationParams: {},
+        pkce: false,
+        secretMode: 'post',
+        accessTokenPath: 'access_token',
+        enabled: true,
+        allowRegistration: false,
+      });
+    expect(created.status).toBe(201);
+    expect(JSON.stringify(created.body.data)).not.toContain('qq-app-key');
+
+    const rejectMissingKey = await request(app)
+      .post('/api/admin/federatedauth/providers')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        slug: 'qq-nokey',
+        name: 'QQ no key',
+        iconUrl: null,
+        protocol: 'qq',
+        issuer: null,
+        authorizationEndpoint: null,
+        tokenEndpoint: null,
+        userInfoEndpoint: null,
+        redirectUri: callback,
+        clientId: '101234567',
+        scope: 'get_user_info',
+        subjectPath: 'openid',
+        usernamePath: 'nickname',
+        emailPath: null,
+        avatarPath: 'figureurl_qq_2',
+        authorizationParams: {},
+        pkce: false,
+        secretMode: 'post',
+        accessTokenPath: 'access_token',
+        enabled: true,
+        allowRegistration: false,
+      });
+    expect(rejectMissingKey.status).toBe(400);
+    expect(rejectMissingKey.body.message).toContain('APP Key');
+
+    const user = await prisma().user.create({
+      data: {
+        email: 'qq-user@example.com',
+        username: 'qq-user',
+        passwordHash: await bcrypt.hash('Password123!', 12),
+      },
+    });
+    await prisma().federatedAuthIdentity.create({
+      data: { userId: user.id, providerId: created.body.data.id, subject: 'QQ-OPENID' },
+    });
+
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'qq-token', expires_in: 5184000 }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ client_id: '101234567', openid: 'QQ-OPENID' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ ret: 0, nickname: 'QQ 昵称', figureurl_qq_2: 'https://q.qlogo.cn/a' }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const startedResponse = await request(app)
+      .post('/api/auth/federatedauth/qq/start')
+      .send({ returnTo: '/' });
+    expect(startedResponse.status).toBe(200);
+    const authorizationUrl = new URL(startedResponse.body.data.authorizationUrl);
+    expect(authorizationUrl.origin + authorizationUrl.pathname).toBe(
+      'https://graph.qq.com/oauth2.0/authorize',
+    );
+    expect(authorizationUrl.searchParams.get('client_id')).toBe('101234567');
+    expect(authorizationUrl.searchParams.get('scope')).toBe('get_user_info');
+    expect(authorizationUrl.searchParams.has('code_challenge')).toBe(false);
+
+    const completed = await request(app)
+      .get(
+        `/api/auth/federatedauth/qq/callback?code=qq-code&state=${encodeURIComponent(
+          authorizationUrl.searchParams.get('state')!,
+        )}`,
+      )
+      .set('Cookie', cookie(startedResponse.headers['set-cookie'], 'lt_federatedauth_flow'));
+    expect(completed.status).toBe(303);
+    expect(completed.headers.location).toBe('http://localhost/federatedauth/complete?returnTo=%2F');
+
+    const tokenCall = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(tokenCall.searchParams.get('client_secret')).toBe('qq-app-key');
+    expect(tokenCall.searchParams.has('code_verifier')).toBe(false);
+    const identity = await prisma().federatedAuthIdentity.findFirstOrThrow({
+      where: { providerId: created.body.data.id },
+    });
+    expect(identity.usernameHint).toBe('QQ 昵称');
+    expect(identity.avatarUrl).toBe('https://q.qlogo.cn/a');
+  });
 });
