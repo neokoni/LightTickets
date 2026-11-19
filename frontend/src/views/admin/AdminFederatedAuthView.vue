@@ -37,7 +37,6 @@ interface ProviderForm {
   authorizationEndpoint: string;
   tokenEndpoint: string;
   userInfoEndpoint: string;
-  redirectUri: string;
   clientId: string;
   clientSecret: string;
   scope: string;
@@ -61,6 +60,7 @@ const saving = ref(false);
 const testingId = ref<string | null>(null);
 const modalOpen = ref(false);
 const advancedOpen = ref(false);
+const callbackCopied = ref(false);
 const editing = ref<FederatedAuthProvider | null>(null);
 const iconButtonClass =
   '!px-1.5 !py-1.5 border-none text-slate-400 hover:text-slate-700 dark:hover:text-slate-200';
@@ -75,7 +75,6 @@ const form = reactive<ProviderForm>({
   authorizationEndpoint: '',
   tokenEndpoint: '',
   userInfoEndpoint: '',
-  redirectUri: '',
   clientId: '',
   clientSecret: '',
   scope: 'openid profile email',
@@ -126,9 +125,30 @@ async function load() {
 
 onMounted(load);
 
-function suggestedRedirect(slug: string): string {
+const callbackUrl = computed(() => {
+  const slug = form.slug.trim();
   if (!siteConfig.siteUrl || !slug) return '';
   return `${siteConfig.siteUrl.replace(/\/$/, '')}/api/auth/federatedauth/${slug}/callback`;
+});
+
+const callbackUrlHint = computed(() =>
+  siteConfig.siteUrl
+    ? t('admin.federatedauth.redirectUriNeedSlug')
+    : t('admin.federatedauth.redirectUriMissing'),
+);
+
+async function copyCallbackUrl() {
+  if (!callbackUrl.value) return;
+  try {
+    await navigator.clipboard.writeText(callbackUrl.value);
+    callbackCopied.value = true;
+    window.setTimeout(() => {
+      callbackCopied.value = false;
+    }, 2000);
+    ui.toast(t('admin.federatedauth.redirectUriCopied'), ToastType.SUCCESS);
+  } catch {
+    ui.toast(t('common.copyFailed'), ToastType.ERROR);
+  }
 }
 
 function reset(provider?: FederatedAuthProvider) {
@@ -143,7 +163,6 @@ function reset(provider?: FederatedAuthProvider) {
     authorizationEndpoint: provider?.authorizationEndpoint ?? '',
     tokenEndpoint: provider?.tokenEndpoint ?? '',
     userInfoEndpoint: provider?.userInfoEndpoint ?? '',
-    redirectUri: provider?.redirectUri ?? '',
     clientId: provider?.clientId ?? '',
     clientSecret: '',
     scope: provider?.scope ?? 'openid profile email',
@@ -206,10 +225,8 @@ function payload(): FederatedAuthProviderPayload {
   } catch {
     throw new Error(t('admin.federatedauth.invalidParams'));
   }
-  const redirectUri = httpUrl(
-    form.redirectUri || suggestedRedirect(form.slug),
-    t('admin.federatedauth.redirectUri'),
-  )!;
+  if (!callbackUrl.value) throw new Error(callbackUrlHint.value);
+  const redirectUri = httpUrl(callbackUrl.value, t('admin.federatedauth.redirectUri'))!;
   return {
     slug: form.slug.trim(),
     name: form.name.trim(),
@@ -429,12 +446,33 @@ async function unlinkAll(provider: FederatedAuthProvider) {
             required
           />
         </template>
-        <BaseInput
-          v-model="form.redirectUri"
-          :label="t('admin.federatedauth.redirectUri')"
-          required
-          :placeholder="suggestedRedirect(form.slug)"
-        />
+        <div class="min-w-0 space-y-1.5">
+          <span class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+            {{ t('admin.federatedauth.redirectUri') }}
+          </span>
+          <div
+            class="flex items-center gap-2 rounded-md border border-slate-300 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-900/60"
+          >
+            <code
+              class="min-w-0 flex-1 break-all text-xs text-slate-600 dark:text-slate-300"
+              :class="{ 'text-slate-400 dark:text-slate-500': !callbackUrl }"
+            >
+              {{ callbackUrl || callbackUrlHint }}
+            </code>
+            <BaseButton
+              type="button"
+              :class="iconButtonClass"
+              :disabled="!callbackUrl"
+              :title="t('admin.federatedauth.redirectUriCopy')"
+              @click="copyCallbackUrl"
+            >
+              <Icon :icon="callbackCopied ? 'lucide:check' : 'lucide:clipboard'" class="h-4 w-4" />
+            </BaseButton>
+          </div>
+          <p v-if="callbackUrl" class="text-xs text-slate-500">
+            {{ t('admin.federatedauth.redirectUriHelp') }}
+          </p>
+        </div>
         <BaseInput v-model="form.clientId" label="Client ID" required />
         <BaseInput
           v-model="form.clientSecret"
